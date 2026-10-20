@@ -118,26 +118,26 @@
         <item>DROPPED</item>
     </string-array>
     <string-array name="status_anime">
-        <item>PLANNING</item>
-        <item>WATCHING</item>
-        <item>COMPLETED</item>
-        <item>RE-WATCHING</item>
-        <item>PAUSED</item>
-        <item>DROPPED</item>
+        <item>Planning</item>
+        <item>Watching</item>
+        <item>Completed</item>
+        <item>Rewatching</item>
+        <item>Paused</item>
+        <item>Dropped</item>
     </string-array>
     <string-array name="status_manga">
-        <item>PLANNING</item>
-        <item>READING</item>
-        <item>COMPLETED</item>
-        <item>RE-READING</item>
-        <item>PAUSED</item>
-        <item>DROPPED</item>
+        <item>Planning</item>
+        <item>Reading</item>
+        <item>Completed</item>
+        <item>Rereading</item>
+        <item>Paused</item>
+        <item>Dropped</item>
     </string-array>
-    <string name="progress">PROGRESS</string>
-    <string name="score">SCORE</string>
+    <string name="progress">Progress</string>
+    <string name="score">Score</string>
     <string name="score_suffix">" / 10"</string>
-    <string name="started_at">STARTED AT</string>
-    <string name="completed_at">COMPLETED AT</string>
+    <string name="started_at">Started at</string>
+    <string name="completed_at">Completed at</string>
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="remove">Remove</string>
@@ -691,8 +691,12 @@
     <string name="skip">Skip</string>
     <string name="other">Other</string>
     <string name="list_editor_other_group_desc">Repeats, notes, privacy and custom lists</string>
+    <string name="list_editor_decrease">Decrease</string>
+    <string name="list_editor_increase">Increase</string>
+    <string name="list_editor_clear_date">Clear date</string>
+    <string name="list_editor_no_score">No score</string>
     <string name="list_editor_privacy_group_desc">Privacy and home screen visibility</string>
-    <string name="total_repeats">TOTAL REPEATS</string>
+    <string name="total_repeats">Total repeats</string>
     <string name="custom_lists">Custom Lists</string>
     <string name="filter">Filter</string>
     <string name="manage_filters">Manage Filters</string>
@@ -997,7 +1001,7 @@
     <string name="crop_borders">Crop Borders</string>
     <string name="preload_amount">Preload Amount</string>
     <string name="preload_amount_info">Number of upcoming pages to preload while reading</string>
-    <string name="note">NOTE</string>
+    <string name="note">Note</string>
 
     <string name="installing_extension">Installing extension</string>
     <string name="installation_failed">Installation failed: %1$s</string>
@@ -3216,7 +3220,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="novel_max_block_size">Maximum block size</string>
     <string name="novel_max_block_size_desc">Maximum height (horizontal writing) or width (vertical writing)</string>
     <!-- Capitalised like the editor's other field labels (STATUS, PROGRESS, SCORE). -->
-    <string name="list_editor_volume">VOLUME</string>
+    <string name="list_editor_volume">Volume</string>
     <string name="review_write_title">Write a review</string>
     <string name="review_section_summary">Summary</string>
     <string name="review_section_summary_desc">Your take in short, 20 to 2200 characters</string>

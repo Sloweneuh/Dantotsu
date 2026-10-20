@@ -34,7 +34,7 @@
 
     <!-- One of the stats widget's four "which stat" pickers; the AutoCompleteTextView inside carries -->
     <!-- its own id, so this only supplies the outlined-box chrome shared by all four. -->
-    <style name="WidgetConfigureDropdown" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+    <style name="WidgetConfigureDropdown" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginBottom">16dp</item>

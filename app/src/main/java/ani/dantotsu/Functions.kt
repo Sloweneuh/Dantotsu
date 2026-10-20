@@ -4,7 +4,6 @@ import android.Manifest
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.DatePickerDialog
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
@@ -12,7 +11,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -70,7 +68,6 @@ import android.view.animation.TranslateAnimation
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
-import android.widget.DatePicker
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
@@ -88,7 +85,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
-import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
@@ -410,8 +406,21 @@ fun Activity.restartApp() {
 }
 
 open class BottomSheetDialogFragment : BottomSheetDialogFragment() {
+    /**
+     * Open straight to full height and close without stopping half way: for a sheet with controls
+     * fixed at its bottom (the list editors' Save and Delete), which a half-open sheet would leave
+     * below the screen.
+     */
+    protected open val opensExpanded = false
+
     override fun onStart() {
         super.onStart()
+        if (opensExpanded) {
+            (dialog as? com.google.android.material.bottomsheet.BottomSheetDialog)?.behavior?.apply {
+                skipCollapsed = true
+                state = BottomSheetBehavior.STATE_EXPANDED
+            }
+        }
         dialog?.window?.let { window ->
             WindowCompat.setDecorFitsSystemWindows(window, false)
             val immersiveMode: Boolean = PrefManager.getVal(PrefName.ImmersiveMode)
@@ -493,32 +502,6 @@ fun startMainActivity(activity: Activity, bundle: Bundle? = null) {
     )
 }
 
-
-class DatePickerFragment(activity: Activity, var date: FuzzyDate = FuzzyDate().getToday()) :
-    DialogFragment(),
-    DatePickerDialog.OnDateSetListener {
-    var dialog: DatePickerDialog
-
-    init {
-        val c = Calendar.getInstance()
-        val year = date.year ?: c.get(Calendar.YEAR)
-        val month = if (date.month != null) date.month!! - 1 else c.get(Calendar.MONTH)
-        val day = date.day ?: c.get(Calendar.DAY_OF_MONTH)
-        dialog = DatePickerDialog(activity, this, year, month, day)
-        dialog.setButton(
-            DialogInterface.BUTTON_NEUTRAL,
-            activity.getString(R.string.remove)
-        ) { _, which ->
-            if (which == DialogInterface.BUTTON_NEUTRAL) {
-                date = FuzzyDate()
-            }
-        }
-    }
-
-    override fun onDateSet(view: DatePicker, year: Int, month: Int, day: Int) {
-        date = FuzzyDate(year, month + 1, day)
-    }
-}
 
 class InputFilterMinMax(
     private val min: Double,

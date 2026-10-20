@@ -116,25 +116,25 @@
     <string name="write_a_message">Écrire un message</string>
     <string name="status">STATUT</string>
     <string-array name="status_anime">
-        <item>PRÉVU</item>
-        <item>EN COURS</item>
-        <item>TERMINÉ</item>
-        <item>RE-VISIONNAGE</item>
-        <item>EN PAUSE</item>
-        <item>ABANDONNÉ</item>
+        <item>Prévu</item>
+        <item>En cours</item>
+        <item>Terminé</item>
+        <item>Revisionnage</item>
+        <item>En pause</item>
+        <item>Abandonné</item>
     </string-array>
     <string-array name="status_manga">
-        <item>PRÉVU</item>
-        <item>EN LECTURE</item>
-        <item>TERMINÉ</item>
-        <item>RE-LECTURE</item>
-        <item>EN PAUSE</item>
-        <item>ABANDONNÉ</item>
+        <item>Prévu</item>
+        <item>En lecture</item>
+        <item>Terminé</item>
+        <item>Relecture</item>
+        <item>En pause</item>
+        <item>Abandonné</item>
     </string-array>
-    <string name="progress">PROGRESSION</string>
-    <string name="score">NOTE</string>
-    <string name="started_at">COMMENCÉ LE</string>
-    <string name="completed_at">TERMINÉ LE</string>
+    <string name="progress">Progression</string>
+    <string name="score">Note</string>
+    <string name="started_at">Commencé le</string>
+    <string name="completed_at">Terminé le</string>
     <string name="save">Enregistrer</string>
     <string name="delete">Supprimer</string>
     <string name="remove">Retirer</string>
@@ -605,8 +605,12 @@
     <string name="skip">Passer</string>
     <string name="other">Autre</string>
     <string name="list_editor_other_group_desc">Relectures, notes, confidentialité et listes personnalisées</string>
+    <string name="list_editor_decrease">Diminuer</string>
+    <string name="list_editor_increase">Augmenter</string>
+    <string name="list_editor_clear_date">Effacer la date</string>
+    <string name="list_editor_no_score">Pas de note</string>
     <string name="list_editor_privacy_group_desc">Confidentialité et visibilité sur l\'accueil</string>
-    <string name="total_repeats">TOTAL RÉPÉTITIONS</string>
+    <string name="total_repeats">Total des répétitions</string>
     <string name="custom_lists">Listes personnalisées</string>
     <string name="filter">Filtrer</string>
     <string name="no_active_filters">Aucun filtres actifs</string>
@@ -836,7 +840,7 @@
     <string name="crop_borders">Rogner les bordures</string>
     <string name="preload_amount">Nombre de pages préchargées</string>
     <string name="preload_amount_info">Nombre de pages à venir à précharger pendant la lecture</string>
-    <string name="note">NOTE</string>
+    <string name="note">Note</string>
 
     <string name="installing_extension">Installation de l\'extension</string>
     <string name="installation_failed">Installation échouée : %1$s</string>
@@ -3092,7 +3096,7 @@
     <string name="novel_max_inline_size_desc">Largeur de colonne maximale (écriture horizontale) ou hauteur (écriture verticale)</string>
     <string name="novel_max_block_size">Taille de bloc maximale</string>
     <string name="novel_max_block_size_desc">Hauteur maximale (écriture horizontale) ou largeur (écriture verticale)</string>
-    <string name="list_editor_volume">VOLUME</string>
+    <string name="list_editor_volume">Volume</string>
     <string name="review_write_title">Écrire une critique</string>
     <string name="review_section_summary">Résumé</string>
     <string name="review_section_summary_desc">Votre avis en bref, de 20 à 2200 caractères</string>

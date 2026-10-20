@@ -18,7 +18,6 @@ import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBakaSync
 import ani.dantotsu.databinding.BottomSheetMediaListSmallBinding
-import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -34,6 +33,8 @@ import java.io.Serializable
 
 
 class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
+    override val opensExpanded = true
+
 
     private lateinit var media: Media
 
@@ -67,7 +68,6 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
 
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.mediaListContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin += navBarHeight }
         val scope = viewLifecycleOwner.lifecycleScope
         // Nothing to delete when the media isn't on the list yet, so the button just backs out
         // of the sheet instead.
@@ -103,6 +103,7 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
 
         binding.mediaListProgressBar.visibility = View.GONE
         binding.mediaListLayout.visibility = View.VISIBLE
+        binding.mediaListButtons.visibility = View.VISIBLE
         val statuses: Array<String> = resources.getStringArray(R.array.status)
         val statusStrings =
             if (media.manga == null) resources.getStringArray(R.array.status_anime) else resources.getStringArray(
@@ -113,11 +114,7 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
 
         binding.mediaListStatus.setText(userStatus)
         binding.mediaListStatus.setAdapter(
-            ArrayAdapter(
-                requireContext(),
-                R.layout.item_dropdown,
-                statusStrings
-            )
+            ArrayAdapter(requireContext(), R.layout.item_dropdown, statusStrings)
         )
 
         var total: Int? = null
@@ -247,17 +244,15 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
         }
         binding.mediaListVolumeLayout.suffixTextView.gravity = Gravity.CENTER
 
-        binding.mediaListScore.setText(
-            if (media.userScore != 0) media.userScore.div(
-                10.0
-            ).toString() else ""
-        )
-        binding.mediaListScore.filters =
-            arrayOf(InputFilterMinMax(1.0, 10.0), LengthFilter(10.0.toString().length))
-        binding.mediaListScoreLayout.suffixTextView.updateLayoutParams {
-            height = ViewGroup.LayoutParams.MATCH_PARENT
-        }
-        binding.mediaListScoreLayout.suffixTextView.gravity = Gravity.CENTER
+        val initialScore = if (media.userScore != 0) media.userScore else null
+        val scoreSlider =
+            ScoreSlider(
+                binding.mediaListScore, binding.mediaListScoreValue,
+                binding.mediaListScoreValueLayout, initialScore,
+            )
+
+        binding.mediaListDecrement.setOnClickListener { binding.mediaListProgress.decrement() }
+        binding.mediaListVolumeDecrement.setOnClickListener { binding.mediaListVolume.decrement() }
 
         binding.mediaListIncrement.setOnClickListener {
             if (binding.mediaListStatus.text.toString() == statusStrings[0]) {
@@ -323,7 +318,6 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
         }
         val initialProgress = media.userProgress
         val initialVolume = media.userVolume
-        val initialScore = if (media.userScore != 0) media.userScore else null
         val initialStatus = statuses[statusStrings.indexOf(userStatus)]
         val initialIsListPrivate = media.isListPrivate
 
@@ -334,8 +328,7 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                         withContext(Dispatchers.IO) {
                             val progress = _binding?.mediaListProgress?.text.toString().toIntOrNull()
                             val volume = _binding?.mediaListVolume?.text.toString().toIntOrNull()
-                            val score = (_binding?.mediaListScore?.text.toString().toDoubleOrNull()
-                                ?.times(10))?.toInt()
+                            val score = scoreSlider.score
                             val status =
                                 statuses[statusStrings.indexOf(_binding?.mediaListStatus?.text.toString())]
                             val anilistChanged = progress != initialProgress

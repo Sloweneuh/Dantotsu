@@ -17,7 +17,6 @@ import ani.dantotsu.Refresh
 import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.databinding.BottomSheetMediaListBinding
 import ani.dantotsu.media.MediaDetailsViewModel
-import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -33,6 +32,8 @@ import kotlinx.coroutines.withContext
  * Mirrors [ani.dantotsu.media.MediaListDialogFragment] but only handles status + chapter progress.
  */
 class MUListEditorFragment : BottomSheetDialogFragment() {
+    override val opensExpanded = true
+
 
     private var _binding: BottomSheetMediaListBinding? = null
     private val binding get() = _binding!!
@@ -48,10 +49,6 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.mediaListContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            bottomMargin += navBarHeight
-        }
-
         val muMedia: MUMedia = arguments?.getSerialized("muMedia") ?: run {
             dismissAllowingStateLoss()
             return
@@ -77,6 +74,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
 
         binding.mediaListProgressBar.visibility = View.GONE
         binding.mediaListLayout.visibility = View.VISIBLE
+        binding.mediaListButtons.visibility = View.VISIBLE
 
         // Status dropdown using MU list names
         val statusNames =
@@ -192,6 +190,15 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
             }
             val current = binding.mediaListProgress.text.toString().toIntOrNull() ?: 0
             binding.mediaListProgress.setText("${current + 1}")
+        }
+
+        binding.mediaListDecrement.setOnClickListener {
+            val current = binding.mediaListProgress.text.toString().toIntOrNull() ?: return@setOnClickListener
+            if (current > 0) binding.mediaListProgress.setText("${current - 1}")
+        }
+        binding.mediaListVolumeDecrement.setOnClickListener {
+            val current = binding.mediaListVolume.text.toString().toIntOrNull() ?: return@setOnClickListener
+            if (current > 0) binding.mediaListVolume.setText("${current - 1}")
         }
 
         // Volume +1. MangaUpdates exposes no volume total, so there's nothing to cap against and

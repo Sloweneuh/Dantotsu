@@ -1,515 +1,536 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Content scrolls; Save and Delete stay fixed below it (the sheet opens expanded, so they
+     are always on screen). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mediaListContainer"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bottom_sheet_background">
+    android:background="@drawable/bottom_sheet_background"
+    android:orientation="vertical">
 
-    <FrameLayout
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-        <ani.dantotsu.others.MaterialProgressBar
-            android:id="@+id/mediaListProgressBar"
-            style="?android:attr/progressBarStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:indeterminate="true"
-            tools:visibility="invisible" />
-
-        <LinearLayout
-            android:id="@+id/mediaListLayout"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="32dp"
-            android:layout_marginBottom="24dp"
-            android:orientation="vertical"
-            android:visibility="invisible"
-            tools:visibility="visible">
+            android:layout_height="wrap_content">
+
+            <ani.dantotsu.others.MaterialProgressBar
+                android:id="@+id/mediaListProgressBar"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:indeterminate="true"
+                tools:visibility="invisible" />
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/mediaTitle"
-                    android:layout_width="0dp"
-                    android:layout_height="54dp"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:textColor="?attr/colorOnSurface"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:text="@string/list_editor"
-                    android:textSize="20sp" />
-
-            </LinearLayout>
-
-            <ani.dantotsu.others.FormSection
+                android:id="@+id/mediaListLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:icon="@drawable/ic_round_playlist_play_24"
-                app:title="@string/list_editor_progress_group">
-
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="16dp"
-                android:hint="@string/status"
-                app:boxCornerRadiusBottomEnd="16dp"
-                app:boxCornerRadiusBottomStart="16dp"
-                app:boxCornerRadiusTopEnd="16dp"
-                app:boxCornerRadiusTopStart="16dp"
-                app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                app:hintAnimationEnabled="true"
-                app:startIconDrawable="@drawable/ic_round_playlist_play_24">
-
-                <AutoCompleteTextView
-                    android:id="@+id/mediaListStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/poppins_bold"
-                    android:freezesText="false"
-                    android:inputType="none"
-                    android:padding="8dp"
-                    android:text="@string/watch"
-                    android:textAllCaps="true"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="14sp"
-                    tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
-
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <LinearLayout
-                android:id="@+id/mediaListVolumeCont"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/mediaListVolumeLayout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="56dp"
-                    android:layout_weight="1"
-                    android:hint="@string/list_editor_volume"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:endIconMode="none"
-                    app:hintAnimationEnabled="true"
-                    app:startIconDrawable="@drawable/ic_round_book_24"
-                    app:suffixTextAppearance="@style/Suffix">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/mediaListVolume"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_bold"
-                        android:inputType="number"
-                        android:maxLength="4"
-                        android:padding="8dp"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <View
-                    android:layout_width="8dp"
-                    android:layout_height="match_parent" />
-
-                <Button
-                    android:id="@+id/mediaListVolumeIncrement"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="48dp"
-                    android:layout_gravity="center_vertical"
-                    android:elevation="0dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minWidth="@null"
-                    android:paddingLeft="16dp"
-                    android:paddingRight="16dp"
-                    android:singleLine="true"
-                    android:text="+1\u0020"
-                    android:textSize="16sp"
-                    app:cornerRadius="16dp"
-                    tools:ignore="HardcodedText" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/mediaListProgressLayout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="@string/progress"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:endIconMode="none"
-                    app:hintAnimationEnabled="true"
-                    app:startIconDrawable="@drawable/ic_round_add_circle_outline_24"
-                    app:suffixTextAppearance="@style/Suffix">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/mediaListProgress"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
-                        android:inputType="number"
-                        android:maxLength="4"
-                        android:padding="8dp"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <View
-                    android:layout_width="8dp"
-                    android:layout_height="match_parent" />
-
-                <Button
-                    android:id="@+id/mediaListIncrement"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="-2dp"
-                    android:elevation="0dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minWidth="@null"
-                    android:paddingLeft="16dp"
-                    android:paddingRight="16dp"
-                    android:singleLine="true"
-                    android:text="+1\u0020"
-                    android:textSize="16sp"
-                    app:cornerRadius="16dp"
-                    tools:ignore="HardcodedText" />
-
-            </LinearLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/mediaListScoreLayout"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="16dp"
-                android:hint="@string/score"
-                app:boxCornerRadiusBottomEnd="16dp"
-                app:boxCornerRadiusBottomStart="16dp"
-                app:boxCornerRadiusTopEnd="16dp"
-                app:boxCornerRadiusTopStart="16dp"
-                app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                app:endIconMode="none"
-                app:hintAnimationEnabled="true"
-                app:startIconDrawable="@drawable/ic_round_star_24"
-                app:suffixText="@string/score_suffix"
-                app:suffixTextAppearance="@style/Suffix">
-
-                <AutoCompleteTextView
-                    android:id="@+id/mediaListScore"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/poppins_bold"
-                    android:inputType="numberDecimal"
-                    android:padding="8dp"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="14sp"
-                    tools:ignore="LabelFor,TextContrastCheck" />
-
-            </com.google.android.material.textfield.TextInputLayout>
-
-            </ani.dantotsu.others.FormSection>
-
-            <ani.dantotsu.others.FormSection
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:icon="@drawable/ic_round_date_range_24"
-                app:title="@string/list_editor_dates_group">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/mediaListStartLayout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="56dp"
-                    android:layout_marginEnd="12dp"
-                    android:layout_weight="1"
-                    android:hint="@string/started_at"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:endIconMode="none"
-                    app:hintAnimationEnabled="true"
-                    app:startIconDrawable="@drawable/ic_round_date_range_24"
-                    app:suffixTextAppearance="@style/Suffix">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/mediaListStart"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/poppins_bold"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:singleLine="true"
-                        android:textAllCaps="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/mediaListEndLayout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="56dp"
-                    android:layout_weight="1"
-                    android:hint="@string/completed_at"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:endIconMode="none"
-                    app:hintAnimationEnabled="true"
-                    app:suffixTextAppearance="@style/Suffix">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/mediaListEnd"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/poppins_bold"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:singleLine="true"
-                        android:textAllCaps="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-            </LinearLayout>
-            </ani.dantotsu.others.FormSection>
-
-            <!-- Carded like the collapsible groups on the settings screens: Xpandable builds the
-                 icon/title/summary header and the chevron that turns, so the one group in this
-                 sheet reads as the same component as every other. The sheet already insets its
-                 own content by 32dp, hence cardInset="false". -->
-            <ani.dantotsu.others.Xpandable
-                android:id="@+id/mediaListExpandable"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginHorizontal="20dp"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="8dp"
                 android:orientation="vertical"
-                app:cardInset="false"
-                app:icon="@drawable/ic_round_tune_24"
-                app:summary="@string/list_editor_other_group_desc"
-                app:title="@string/other">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/mediaListRepeatLayout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:hint="@string/total_repeats"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:endIconMode="none"
-                    app:hintAnimationEnabled="true"
-                    app:startIconDrawable="@drawable/ic_round_refresh_24"
-                    app:suffixTextAppearance="@style/Suffix">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/mediaListRewatch"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
-                        android:inputType="number"
-                        android:maxLength="4"
-                        android:padding="8dp"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/mediaListNotesLayout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:layout_marginTop="16dp"
-                    android:hint="@string/note"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:endIconMode="none"
-                    app:hintAnimationEnabled="true"
-                    app:startIconDrawable="@drawable/ic_round_edit_note_24"
-                    app:suffixTextAppearance="@style/Suffix">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/mediaListNotes"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
-                        android:inputType="textMultiLine"
-                        android:padding="8dp"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/mediaListPrivate"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:layout_marginTop="16dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/list_private" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/mediaListShow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:layout_marginTop="16dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/hide_in_home_screen" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/mediaListMalSyncExclude"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:layout_marginTop="16dp"
-                    android:fontFamily="@font/poppins_bold" />
-
-                <TextView
-                    android:id="@+id/mediaListAddCustomList"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginHorizontal="16dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:text="@string/custom_lists"
-                    android:textColor="?attr/colorPrimary" />
+                android:visibility="invisible"
+                tools:visibility="visible">
 
                 <LinearLayout
-                    android:id="@+id/mediaListCustomListContainer"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:orientation="vertical">
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal">
 
+                    <TextView
+                        android:id="@+id/mediaTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="54dp"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:gravity="center_vertical"
+                        android:textColor="?attr/colorOnSurface"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:text="@string/list_editor"
+                        android:textSize="20sp" />
                 </LinearLayout>
 
-            </ani.dantotsu.others.Xpandable>
+                <ani.dantotsu.others.FormSection
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    app:icon="@drawable/ic_round_playlist_play_24"
+                    app:title="@string/list_editor_progress_group">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/mediaListDelete"
-                    style="@style/Widget.Material3.Button.OutlinedButton.Icon"
-                    android:layout_width="128dp"
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
                     android:layout_height="56dp"
-                    android:layout_gravity="center"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:padding="8dp"
-                    android:text="@string/delete"
-                    android:textSize="16sp"
-                    app:cornerRadius="16dp"
-                    android:textColor="?attr/colorError"
-                    app:icon="@drawable/ic_round_delete_24"
-                    app:iconTint="?attr/colorError"
-                    app:strokeColor="?attr/colorError" />
+                    android:layout_marginTop="16dp"
+                    android:hint="@string/status_title"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                    app:hintAnimationEnabled="true"
+                    app:startIconDrawable="@drawable/ic_round_playlist_play_24">
 
-                <Button
-                    android:id="@+id/mediaListSave"
-                    style="@style/Widget.Material3.Button.Icon"
-                    android:layout_width="0dp"
-                    android:layout_height="56dp"
-                    android:layout_marginStart="16dp"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:padding="8dp"
-                    android:text="@string/save"
-                    android:textSize="16sp"
-                    app:cornerRadius="16dp"
-                    app:icon="@drawable/ic_round_check_24" />
+                    <AutoCompleteTextView
+                        android:id="@+id/mediaListStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:freezesText="false"
+                        android:inputType="none"
+                        android:padding="8dp"
+                        android:text="@string/watch"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp"
+                        tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- − / count / + : steps for the common case, the field still takes a typed number. -->
+                <LinearLayout
+                    android:id="@+id/mediaListVolumeCont"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/mediaListVolumeDecrement"
+                        style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="8dp"
+                        android:contentDescription="@string/list_editor_decrease"
+                        app:icon="@drawable/ic_round_remove_24" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/mediaListVolumeLayout"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:hint="@string/list_editor_volume"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:endIconMode="none"
+                        app:hintAnimationEnabled="true"
+                        app:startIconDrawable="@drawable/ic_round_book_24"
+                        app:suffixTextAppearance="@style/Suffix">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/mediaListVolume"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_bold"
+                            android:inputType="number"
+                            android:maxLength="4"
+                            android:padding="8dp"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/mediaListVolumeIncrement"
+                        style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@string/list_editor_increase"
+                        app:icon="@drawable/ic_round_add_24" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/mediaListDecrement"
+                        style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="8dp"
+                        android:contentDescription="@string/list_editor_decrease"
+                        app:icon="@drawable/ic_round_remove_24" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/mediaListProgressLayout"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="@string/progress"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:endIconMode="none"
+                        app:hintAnimationEnabled="true"
+                        app:startIconDrawable="@drawable/ic_round_add_circle_outline_24"
+                        app:suffixTextAppearance="@style/Suffix">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/mediaListProgress"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:inputType="number"
+                            android:maxLength="4"
+                            android:padding="8dp"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/mediaListIncrement"
+                        style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@string/list_editor_increase"
+                        app:icon="@drawable/ic_round_add_24" />
+                </LinearLayout>
+
+                <!-- Score: typed in the field, or dragged on the slider under it; see ScoreSlider. Two
+                     lines, so neither is squeezed beside the other on a phone. -->
+                <LinearLayout
+                    android:id="@+id/mediaListScoreLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical">
+
+                    <!-- Fixed height with a match_parent field: Material 1.14 grows a field with an icon late
+                         otherwise. -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/mediaListScoreValueLayout"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:hint="@string/score"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:startIconDrawable="@drawable/ic_round_star_24"
+                        app:suffixTextAppearance="@style/Suffix">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/mediaListScoreValue"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:fontFamily="@font/poppins_bold"
+                            android:imeOptions="actionDone"
+                            android:inputType="numberDecimal"
+                            android:maxLength="5"
+                            android:paddingTop="0dp"
+                            android:paddingBottom="0dp"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:text="7.5" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/mediaListScore"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:contentDescription="@string/score"
+                        android:valueFrom="0"
+                        android:valueTo="10"
+                        app:tickVisibilityMode="autoHide" />
+                </LinearLayout>
+
+                </ani.dantotsu.others.FormSection>
+
+                <ani.dantotsu.others.FormSection
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    app:icon="@drawable/ic_round_date_range_24"
+                    app:title="@string/list_editor_dates_group">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:baselineAligned="false"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/mediaListStartLayout"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:hint="@string/started_at"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:endIconContentDescription="@string/list_editor_clear_date"
+                        app:endIconDrawable="@drawable/ic_round_close_24"
+                        app:endIconMode="custom"
+                        app:hintAnimationEnabled="true"
+                        app:startIconDrawable="@drawable/ic_round_date_range_24"
+                        app:suffixTextAppearance="@style/Suffix">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/mediaListStart"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:fontFamily="@font/poppins_bold"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/mediaListEndLayout"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/completed_at"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:endIconContentDescription="@string/list_editor_clear_date"
+                        app:endIconDrawable="@drawable/ic_round_close_24"
+                        app:endIconMode="custom"
+                        app:hintAnimationEnabled="true"
+                        app:startIconDrawable="@drawable/ic_round_date_range_24"
+                        app:suffixTextAppearance="@style/Suffix">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/mediaListEnd"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:fontFamily="@font/poppins_bold"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+                </ani.dantotsu.others.FormSection>
+
+                <!-- Carded like the collapsible groups on the settings screens: Xpandable builds the
+                     icon/title/summary header and the chevron that turns, so the one group in this
+                     sheet reads as the same component as every other. The sheet already insets its
+                     own content by 32dp, hence cardInset="false". -->
+                <ani.dantotsu.others.Xpandable
+                    android:id="@+id/mediaListExpandable"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="vertical"
+                    app:cardInset="false"
+                    app:icon="@drawable/ic_round_tune_24"
+                    app:summary="@string/list_editor_other_group_desc"
+                    app:title="@string/other">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/mediaListRepeatLayout"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:hint="@string/total_repeats"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:endIconMode="none"
+                        app:hintAnimationEnabled="true"
+                        app:startIconDrawable="@drawable/ic_round_refresh_24"
+                        app:suffixTextAppearance="@style/Suffix">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/mediaListRewatch"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:inputType="number"
+                            android:maxLength="4"
+                            android:padding="8dp"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/mediaListNotesLayout"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:layout_marginTop="16dp"
+                        android:hint="@string/note"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:endIconMode="none"
+                        app:hintAnimationEnabled="true"
+                        app:startIconDrawable="@drawable/ic_round_edit_note_24"
+                        app:suffixTextAppearance="@style/Suffix">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/mediaListNotes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:inputType="textMultiLine"
+                            android:padding="8dp"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/mediaListPrivate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:layout_marginTop="16dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/list_private" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/mediaListShow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:layout_marginTop="16dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/hide_in_home_screen" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/mediaListMalSyncExclude"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:layout_marginTop="16dp"
+                        android:fontFamily="@font/poppins_bold" />
+
+                    <TextView
+                        android:id="@+id/mediaListAddCustomList"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="16dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:gravity="center_vertical"
+                        android:text="@string/custom_lists"
+                        android:textColor="?attr/colorPrimary" />
+
+                    <LinearLayout
+                        android:id="@+id/mediaListCustomListContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:orientation="vertical">
+                    </LinearLayout>
+
+                </ani.dantotsu.others.Xpandable>
             </LinearLayout>
-        </LinearLayout>
 
-        <androidx.cardview.widget.CardView
-            android:layout_width="32dp"
-            android:layout_height="4dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="14dp"
-            android:alpha="0.4"
-            app:cardBackgroundColor="?attr/colorOnSurfaceVariant"
-            app:cardCornerRadius="2dp"
-            app:cardElevation="0dp">
+            <androidx.cardview.widget.CardView
+                android:layout_width="32dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="14dp"
+                android:alpha="0.4"
+                app:cardBackgroundColor="?attr/colorOnSurfaceVariant"
+                app:cardCornerRadius="2dp"
+                app:cardElevation="0dp">
 
-        </androidx.cardview.widget.CardView>
+            </androidx.cardview.widget.CardView>
 
-    </FrameLayout>
-</androidx.core.widget.NestedScrollView>
+        </FrameLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+        android:id="@+id/mediaListButtons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="16dp"
+        android:visibility="invisible"
+        tools:visibility="visible">
+
+        <Button
+            android:id="@+id/mediaListDelete"
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            android:layout_width="128dp"
+            android:layout_height="56dp"
+            android:layout_gravity="center"
+            android:fontFamily="@font/poppins_bold"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="8dp"
+            android:text="@string/delete"
+            android:textSize="16sp"
+            app:cornerRadius="16dp"
+            android:textColor="?attr/colorError"
+            app:icon="@drawable/ic_round_delete_24"
+            app:iconTint="?attr/colorError"
+            app:strokeColor="?attr/colorError" />
+
+        <Button
+            android:id="@+id/mediaListSave"
+            style="@style/Widget.Material3.Button.Icon"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="8dp"
+            android:text="@string/save"
+            android:textSize="16sp"
+            app:cornerRadius="16dp"
+            app:icon="@drawable/ic_round_check_24" />
+    </LinearLayout>
+</LinearLayout>

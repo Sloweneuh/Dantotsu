@@ -11,7 +11,6 @@ import android.widget.ArrayAdapter
 import androidx.appcompat.widget.ListPopupWindow
 import androidx.core.content.ContextCompat
 import androidx.core.math.MathUtils.clamp
-import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.BottomSheetDialogFragment
@@ -22,7 +21,6 @@ import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
-import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
 import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.settings.ExtensionMediaLinker
@@ -107,10 +105,6 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.mediaListContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            bottomMargin += navBarHeight
-        }
-
         val imm = requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
         binding.mediaListProgressBar.visibility = View.GONE

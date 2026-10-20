@@ -244,7 +244,7 @@
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/mbGenreSearchLayout"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_gravity="center_vertical"
@@ -353,7 +353,7 @@
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/mbTagSearchLayout"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_gravity="center_vertical"

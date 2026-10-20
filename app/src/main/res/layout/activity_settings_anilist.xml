@@ -83,7 +83,7 @@
                 android:text="@string/selected_title_language" />
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="32dp"
@@ -105,7 +105,6 @@
                     android:inputType="none"
                     android:padding="8dp"
                     android:text="@string/placeholder"
-                    android:textAllCaps="true"
                     android:textColor="?android:attr/textColorSecondary"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
@@ -119,7 +118,7 @@
                 android:text="@string/selected_staff_language" />
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="32dp"
@@ -141,7 +140,6 @@
                     android:inputType="none"
                     android:padding="8dp"
                     android:text="@string/placeholder"
-                    android:textAllCaps="true"
                     android:textColor="?android:attr/textColorSecondary"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
@@ -155,7 +153,7 @@
                 android:text="@string/selected_merge_time" />
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="32dp"
@@ -177,7 +175,6 @@
                     android:inputType="none"
                     android:padding="8dp"
                     android:text="@string/placeholder"
-                    android:textAllCaps="true"
                     android:textColor="?android:attr/textColorSecondary"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
@@ -213,7 +210,7 @@
                 android:text="@string/selected_score_format" />
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="32dp"
@@ -235,7 +232,6 @@
                     android:inputType="none"
                     android:padding="8dp"
                     android:text="@string/placeholder"
-                    android:textAllCaps="true"
                     android:textColor="?android:attr/textColorSecondary"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
@@ -249,7 +245,7 @@
                 android:text="@string/selected_row_order" />
 
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="32dp"
@@ -271,7 +267,6 @@
                     android:inputType="none"
                     android:padding="8dp"
                     android:text="@string/placeholder"
-                    android:textAllCaps="true"
                     android:textColor="?android:attr/textColorSecondary"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
@@ -357,7 +352,7 @@
             android:text="@string/selected_time_zone" />
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="32dp"
@@ -379,7 +374,6 @@
                 android:inputType="none"
                 android:padding="8dp"
                 android:text="@string/placeholder"
-                android:textAllCaps="true"
                 android:textColor="?android:attr/textColorSecondary"
                 android:textSize="14sp"
                 tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />

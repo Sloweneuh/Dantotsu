@@ -12,7 +12,6 @@ import androidx.appcompat.widget.ListPopupWindow
 import ani.dantotsu.R
 import androidx.core.content.ContextCompat
 import androidx.core.math.MathUtils.clamp
-import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
@@ -20,7 +19,6 @@ import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.databinding.BottomSheetSourceSearchBinding
 import ani.dantotsu.media.anime.AnimeSourceAdapter
 import ani.dantotsu.media.manga.MangaSourceAdapter
-import ani.dantotsu.navBarHeight
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.HAnimeSources
 import ani.dantotsu.parsers.HMangaSources
@@ -91,8 +89,6 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.mediaListContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin += navBarHeight }
-
         val scope = requireActivity().lifecycleScope
         val imm =
             requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager

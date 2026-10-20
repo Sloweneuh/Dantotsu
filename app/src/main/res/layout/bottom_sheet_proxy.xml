@@ -43,7 +43,7 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/proxyHostLayout"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
                 android:layout_weight="5"
@@ -73,7 +73,7 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/proxyPortLayout"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
                 android:layout_weight="3"
@@ -111,7 +111,7 @@
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/proxyUsernameLayout"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="10dp"
@@ -142,7 +142,7 @@
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/proxyPasswordLayout"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="16dp"

@@ -11,7 +11,6 @@ import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.BottomSheetDialogFragment
-import ani.dantotsu.DatePickerFragment
 import ani.dantotsu.InputFilterMinMax
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
@@ -20,13 +19,11 @@ import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBakaSync
 import ani.dantotsu.databinding.BottomSheetMediaListBinding
-import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.settings.saving.removeMediaId
 import ani.dantotsu.snackString
-import ani.dantotsu.tryWith
 import ani.dantotsu.util.Logger
 import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +33,8 @@ import kotlinx.coroutines.withContext
 
 
 class MediaListDialogFragment : BottomSheetDialogFragment() {
+    override val opensExpanded = true
+
 
     private var _binding: BottomSheetMediaListBinding? = null
     private val binding get() = _binding!!
@@ -50,7 +49,6 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.mediaListContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin += navBarHeight }
         var media: Media?
         val model: MediaDetailsViewModel by activityViewModels()
         val scope = viewLifecycleOwner.lifecycleScope
@@ -60,6 +58,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
             if (media != null) {
                 binding.mediaListProgressBar.visibility = View.GONE
                 binding.mediaListLayout.visibility = View.VISIBLE
+                binding.mediaListButtons.visibility = View.VISIBLE
 
                 val statuses: Array<String> = resources.getStringArray(R.array.status)
                 val statusStrings =
@@ -71,11 +70,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
 
                 binding.mediaListStatus.setText(userStatus)
                 binding.mediaListStatus.setAdapter(
-                    ArrayAdapter(
-                        requireContext(),
-                        R.layout.item_dropdown,
-                        statusStrings
-                    )
+                    ArrayAdapter(requireContext(), R.layout.item_dropdown, statusStrings)
                 )
 
                 var total: Int? = null
@@ -208,57 +203,28 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 }
                 binding.mediaListVolumeLayout.suffixTextView.gravity = Gravity.CENTER
 
-                binding.mediaListScore.setText(
-                    if (media!!.userScore != 0) media!!.userScore.div(
-                        10.0
-                    ).toString() else ""
-                )
-                binding.mediaListScore.filters =
-                    arrayOf(InputFilterMinMax(1.0, 10.0), LengthFilter(10.0.toString().length))
-                binding.mediaListScoreLayout.suffixTextView.updateLayoutParams {
-                    height = ViewGroup.LayoutParams.MATCH_PARENT
-                }
-                binding.mediaListScoreLayout.suffixTextView.gravity = Gravity.CENTER
+                val initialScore = if ((media?.userScore ?: 0) != 0) media!!.userScore else null
+                val scoreSlider =
+                    ScoreSlider(
+                        binding.mediaListScore, binding.mediaListScoreValue,
+                        binding.mediaListScoreValueLayout, initialScore,
+                    )
 
-                val start = DatePickerFragment(requireActivity(), media!!.userStartedAt)
-                val end = DatePickerFragment(requireActivity(), media!!.userCompletedAt)
-                binding.mediaListStart.setText(media!!.userStartedAt.toStringOrEmpty())
-                binding.mediaListStart.setOnClickListener {
-                    tryWith(false) {
-                        if (!start.dialog.isShowing) start.dialog.show()
-                    }
-                }
-                binding.mediaListStart.setOnFocusChangeListener { _, b ->
-                    tryWith(false) {
-                        if (b && !start.dialog.isShowing) start.dialog.show()
-                    }
-                }
-                binding.mediaListEnd.setText(media!!.userCompletedAt.toStringOrEmpty())
-                binding.mediaListEnd.setOnClickListener {
-                    tryWith(false) {
-                        if (!end.dialog.isShowing) end.dialog.show()
-                    }
-                }
-                binding.mediaListEnd.setOnFocusChangeListener { _, b ->
-                    tryWith(false) {
-                        if (b && !end.dialog.isShowing) end.dialog.show()
-                    }
-                }
-                start.dialog.setOnDismissListener { _binding?.mediaListStart?.setText(start.date.toStringOrEmpty()) }
-                end.dialog.setOnDismissListener { _binding?.mediaListEnd?.setText(end.date.toStringOrEmpty()) }
+                val start = ListDateField(
+                    this, binding.mediaListStartLayout, binding.mediaListStart,
+                    media!!.userStartedAt, "startDate",
+                )
+                val end = ListDateField(
+                    this, binding.mediaListEndLayout, binding.mediaListEnd,
+                    media!!.userCompletedAt, "endDate",
+                )
 
                 fun fillStartDateIfNeeded() {
-                    if (start.date.year == null) {
-                        start.date = FuzzyDate().getToday()
-                        binding.mediaListStart.setText(start.date.toString())
-                    }
+                    if (start.date.year == null) start.set(FuzzyDate().getToday())
                 }
 
                 fun fillEndDateIfNeeded() {
-                    if (end.date.year == null) {
-                        end.date = FuzzyDate().getToday()
-                        binding.mediaListEnd.setText(end.date.toString())
-                    }
+                    if (end.date.year == null) end.set(FuzzyDate().getToday())
                 }
 
                 fun onComplete() {
@@ -294,14 +260,8 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                     } else {
                         if (progressBackup != null) binding.mediaListProgress.setText(progressBackup)
                         if (volumeBackup != null) binding.mediaListVolume.setText(volumeBackup)
-                        if (startBackupDate != null) {
-                            binding.mediaListStart.setText(startBackupDate.toString())
-                            start.date = startBackupDate
-                        }
-                        if (endBackupDate != null) {
-                            binding.mediaListEnd.setText(endBackupDate.toString())
-                            end.date = endBackupDate
-                        }
+                        startBackupDate?.let { start.set(it) }
+                        endBackupDate?.let { end.set(it) }
                         if (i == 1) fillStartDateIfNeeded()
                     }
                 }
@@ -332,6 +292,9 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                         onComplete()
                     }
                 }
+
+                binding.mediaListDecrement.setOnClickListener { binding.mediaListProgress.decrement() }
+                binding.mediaListVolumeDecrement.setOnClickListener { binding.mediaListVolume.decrement() }
 
                 binding.mediaListVolumeIncrement.setOnClickListener {
                     if (binding.mediaListStatus.text.toString() == statusStrings[0]) {
@@ -397,7 +360,6 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
 
                 val initialProgress = media?.userProgress
                 val initialVolume = media?.userVolume
-                val initialScore = if ((media?.userScore ?: 0) != 0) media!!.userScore else null
                 val initialStatus = statuses[statusStrings.indexOf(userStatus)]
                 val initialRewatch = media?.userRepeat
                 val initialNotes = media?.notes ?: ""
@@ -413,9 +375,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                     if (media != null) {
                                         val progress =
                                             _binding?.mediaListProgress?.text.toString().toIntOrNull()
-                                        val score =
-                                            (_binding?.mediaListScore?.text.toString().toDoubleOrNull()
-                                                ?.times(10))?.toInt()
+                                        val score = scoreSlider.score
                                         val status =
                                             statuses[statusStrings.indexOf(_binding?.mediaListStatus?.text.toString())]
                                         val rewatch =

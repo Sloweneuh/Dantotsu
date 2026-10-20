@@ -92,7 +92,7 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/mediaSourceNameContainer"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
                 android:layout_weight="1"
@@ -118,7 +118,6 @@
                     android:maxLines="1"
                     android:padding="8dp"
                     android:text="@string/watch"
-                    android:textAllCaps="true"
                     android:textColor="?android:attr/textColorSecondary"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
@@ -145,7 +144,7 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/mediaSourceLanguageContainer"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
                 android:layout_weight="1"
