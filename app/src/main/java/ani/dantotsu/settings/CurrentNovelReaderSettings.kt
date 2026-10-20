@@ -31,17 +31,17 @@ data class CurrentNovelReaderSettings(
      * saved before it existed (deserialising skips defaults) — read it through [effectiveTextSize].
      */
     var textSize: Int = PrefManager.getVal(PrefName.NovelTextSize),
-    /** The typeface, as an index into NovelFonts; 0 in settings saved before it existed. */
-    var font: Int = PrefManager.getVal(PrefName.NovelFont),
+    /** The typeface, as a NovelFonts key; null in settings saved before it existed. */
+    var fontKey: String? = PrefManager.getVal(PrefName.NovelFontKey),
 ) : Serializable {
 
     /** [textSize], with the global default standing in for a book saved before it existed. */
     val effectiveTextSize: Int
         get() = textSize.takeIf { it > 0 } ?: PrefManager.getVal(PrefName.NovelTextSize)
 
-    /** [font], with the global default standing in for a book saved before it existed. */
-    val effectiveFont: Int
-        get() = font.takeIf { it > 0 } ?: PrefManager.getVal(PrefName.NovelFont)
+    /** [fontKey], with the global default standing in for a book saved before it existed. */
+    val effectiveFontKey: String
+        get() = fontKey ?: PrefManager.getVal(PrefName.NovelFontKey)
 
     companion object {
         // Pinned to the value the class had before textSize and font were added, so every book's saved

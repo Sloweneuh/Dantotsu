@@ -287,9 +287,9 @@ class ReaderSettingsActivity : AppCompatActivity() {
         ) }
 
         bindRebuilt(binding.readerNovelTextRows) { refresh -> listOf(
-            SettingsRows.novelFontRow(this, defaultSettingsLN.effectiveFont) { font ->
-                defaultSettingsLN.font = font
-                PrefManager.setVal(PrefName.NovelFont, font)
+            SettingsRows.novelFontRow(this, defaultSettingsLN.effectiveFontKey) { font ->
+                defaultSettingsLN.fontKey = font
+                PrefManager.setVal(PrefName.NovelFontKey, font)
                 refresh()
             },
             stepper(R.string.novel_text_size, R.drawable.ic_round_format_text_24, R.string.novel_text_size_desc,

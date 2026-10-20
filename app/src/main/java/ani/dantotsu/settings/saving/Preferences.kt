@@ -410,8 +410,8 @@ enum class PrefName(val data: Pref) {
     DualPageModeNovel(Pref(Location.NovelReader, Int::class, 1)),
     LineHeight(Pref(Location.NovelReader, Float::class, 1.4f)),
     NovelTextSize(Pref(Location.NovelReader, Int::class, 100)),
-    // Index into NovelFonts; 1 is the book's own.
-    NovelFont(Pref(Location.NovelReader, Int::class, 1)),
+    // A NovelFonts key; "book" keeps the book's own fonts.
+    NovelFontKey(Pref(Location.NovelReader, String::class, "book")),
     Margin(Pref(Location.NovelReader, Float::class, 0.06f)),
     Justify(Pref(Location.NovelReader, Boolean::class, true)),
     Hyphenation(Pref(Location.NovelReader, Boolean::class, true)),

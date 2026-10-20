@@ -95,8 +95,8 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
 
         SettingsRows.bindRebuilt(binding.novelTextRows) { refresh ->
             listOf(
-                SettingsRows.novelFontRow(ctx, settings.effectiveFont) { font ->
-                    settings.font = font
+                SettingsRows.novelFontRow(ctx, settings.effectiveFontKey) { font ->
+                    settings.fontKey = font
                     activity.applySettings()
                     refresh()
                 },

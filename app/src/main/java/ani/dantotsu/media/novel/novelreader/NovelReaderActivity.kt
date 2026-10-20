@@ -95,6 +95,7 @@ import java.util.TimerTask
 import kotlin.math.roundToInt
 import kotlin.math.min
 import kotlin.properties.Delegates
+import org.json.JSONObject
 
 
 class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
@@ -451,37 +452,56 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
      * styles not winning, and neither is something this can check. The class is kept only as the
      * handle for finding what to put out again.
      */
+    /** The font key this page was last sent the rule for; see [applyFont]. */
+    private var sentFontKey: String? = null
+
     /**
      * The chosen typeface, added to the styles the ebook library gives each chapter. The library
      * has no font setting and rewrites its styles whenever it lays out a chapter or changes its
      * appearance, so the renderer's setStyles is wrapped once to append the font rule to whatever
-     * it is given — marked, so a rule already there is replaced rather than stacked. Run just
-     * before the appearance is set, which passes the chapter on screen its styles through it.
+     * it is given — after a marker, so a rule already there is replaced rather than stacked. Run
+     * just before the appearance is set, which passes the chapter on screen its styles through it.
+     *
+     * A font file travels inside its rule, so the rule is only sent when the choice changes. If the
+     * page has lost it since (a reload starts the page afresh), the script says so and it is sent
+     * again, and the chapter on screen is restyled with it.
      */
-    private fun applyFont() {
-        val family = NovelFonts.css(defaultSettings.effectiveFont)
-        // Only ever one of NovelFonts' own family lists, so nothing to escape.
-        val rule = if (family == null) "" else
-            "html, body, body *:not(pre):not(code):not(kbd):not(samp) { font-family: $family !important; }"
+    private fun applyFont(force: Boolean = false) {
+        val key = defaultSettings.effectiveFontKey
+        val rule = if (force || key != sentFontKey) NovelFonts.cssRule(this, key) else null
+        sentFontKey = key
         val script = """
-            (function (rule) {
+            (function (key, rule) {
               try {
                 var r = view && view.renderer;
-                if (!r || !r.setStyles) return;
+                if (!r || !r.setStyles) return 'none';
+                if (rule === null && window.dantotsuFontKey !== key) return 'resend';
                 var MARK = '/*dantotsu-font*/';
-                window.dantotsuFontRule = rule;
+                if (rule !== null) {
+                  window.dantotsuFontRule = rule;
+                  window.dantotsuFontKey = key;
+                }
                 if (!r.dantotsuFontWrapped) {
                   var original = r.setStyles.bind(r);
                   r.setStyles = function (styles) {
-                    var add = function (css) { return String(css || '').split(MARK)[0] + MARK + window.dantotsuFontRule; };
+                    r.dantotsuStyles = styles;
+                    var add = function (css) {
+                      return String(css || '').split(MARK)[0] + MARK + (window.dantotsuFontRule || '');
+                    };
                     return original(Array.isArray(styles) ? [styles[0], add(styles[1])] : add(styles));
                   };
                   r.dantotsuFontWrapped = true;
                 }
-              } catch (e) {}
-            })('$rule');
+                if (rule !== null && r.dantotsuStyles) r.setStyles(r.dantotsuStyles);
+                return 'ok';
+              } catch (e) { return 'error'; }
+            })(${JSONObject.quote(key)}, ${rule?.let { JSONObject.quote(it) } ?: "null"});
         """.trimIndent()
-        tryWith { binding.bookReader.evaluateJavascript(script, null) }
+        tryWith {
+            binding.bookReader.evaluateJavascript(script) { result ->
+                if (result == "\"resend\"" && !isDestroyed) applyFont(force = true)
+            }
+        }
     }
 
     private fun highlightSentence(marker: Int?) {
