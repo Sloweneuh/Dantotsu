@@ -108,16 +108,34 @@
                     tools:ignore="LabelFor,TextContrastCheck" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <TextView
-                android:id="@+id/settingsSearchEmpty"
+            <!-- Empty state: the message with its icon, the icon drifting behind it while it shows. -->
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginVertical="32dp"
-                android:alpha="0.58"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:text="@string/settings_search_no_results"
-                android:textAlignment="center"
-                android:visibility="gone" />
+                android:layout_marginVertical="32dp">
+
+                <ani.dantotsu.others.PatternBackgroundView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:patternAnchor="@id/settingsSearchEmpty"
+                    app:patternIcon="@drawable/ic_round_search_off_24" />
+
+                <TextView
+                    android:id="@+id/settingsSearchEmpty"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.58"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:text="@string/settings_search_no_results"
+                    android:visibility="gone"
+                    android:layout_width="match_parent"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:drawablePadding="12dp"
+                    android:paddingHorizontal="24dp"
+                    android:paddingVertical="48dp"
+                    app:drawableTopCompat="@drawable/ic_round_search_off_24"
+                    app:drawableTint="?attr/colorOnBackground" />
+            </FrameLayout>
 
             <ani.dantotsu.FadingEdgeRecyclerView
                 android:id="@+id/settingsRecyclerView"

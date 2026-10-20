@@ -151,20 +151,37 @@
             android:visibility="gone"
             tools:visibility="visible" />
 
-        <TextView
-            android:id="@+id/mediaListEmpty"
+        <!-- Empty state: the message with its icon, the icon drifting behind it while it shows. -->
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:alpha="0.66"
-            android:fontFamily="@font/poppins_semi_bold"
-            android:gravity="center"
-            android:paddingHorizontal="32dp"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="14sp"
-            android:visibility="gone"
-            tools:text="No entries found"
-            tools:visibility="visible" />
+            android:layout_height="match_parent"
+            android:layout_gravity="center">
+
+            <ani.dantotsu.others.PatternBackgroundView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:patternAnchor="@id/mediaListEmpty"
+                app:patternIcon="@drawable/ic_round_view_list_24" />
+
+            <TextView
+                android:id="@+id/mediaListEmpty"
+                android:layout_height="wrap_content"
+                android:alpha="0.66"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:paddingHorizontal="32dp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp"
+                android:visibility="gone"
+                tools:text="No entries found"
+                tools:visibility="visible"
+                android:layout_width="match_parent"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:drawablePadding="12dp"
+                android:paddingVertical="48dp"
+                app:drawableTopCompat="@drawable/ic_round_view_list_24"
+                app:drawableTint="?attr/colorOnBackground" />
+        </FrameLayout>
     </FrameLayout>
 
 </LinearLayout>

@@ -79,16 +79,34 @@
             android:visibility="gone"
             tools:visibility="visible" />
 
-        <TextView
-            android:id="@+id/muCustomMappingEmpty"
+        <!-- Empty state: the message with its icon, the icon drifting behind it while it shows. -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:alpha="0.5"
-            android:gravity="center"
-            android:text="@string/mu_custom_list_mapping_empty"
-            android:textSize="14sp"
-            android:visibility="gone" />
+            android:layout_marginTop="32dp">
+
+            <ani.dantotsu.others.PatternBackgroundView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:patternAnchor="@id/muCustomMappingEmpty"
+                app:patternIcon="@drawable/view_list_24" />
+
+            <TextView
+                android:id="@+id/muCustomMappingEmpty"
+                android:layout_height="wrap_content"
+                android:alpha="0.5"
+                android:text="@string/mu_custom_list_mapping_empty"
+                android:textSize="14sp"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:drawablePadding="12dp"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="48dp"
+                app:drawableTopCompat="@drawable/view_list_24"
+                app:drawableTint="?attr/colorOnBackground" />
+        </FrameLayout>
 
         <LinearLayout
             android:id="@+id/muCustomMappingContainer"

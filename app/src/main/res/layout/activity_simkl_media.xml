@@ -188,16 +188,33 @@
                     android:indeterminate="true"
                     android:visibility="gone" />
 
-                <TextView
-                    android:id="@+id/simklEpisodesEmpty"
+                <!-- Empty state: the message with its icon, the icon drifting behind it while it shows. -->
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center"
-                    android:padding="32dp"
-                    android:text="@string/no_episode"
-                    android:textSize="16sp"
-                    android:visibility="gone" />
+                    android:layout_height="wrap_content">
+
+                    <ani.dantotsu.others.PatternBackgroundView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        app:patternAnchor="@id/simklEpisodesEmpty"
+                        app:patternIcon="@drawable/ic_round_movie_filter_24" />
+
+                    <TextView
+                        android:id="@+id/simklEpisodesEmpty"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/no_episode"
+                        android:textSize="16sp"
+                        android:visibility="gone"
+                        android:layout_width="match_parent"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:drawablePadding="12dp"
+                        android:paddingHorizontal="24dp"
+                        android:paddingVertical="48dp"
+                        app:drawableTopCompat="@drawable/ic_round_movie_filter_24"
+                        app:drawableTint="?attr/colorOnBackground" />
+                </FrameLayout>
 
                 <HorizontalScrollView
                     android:id="@+id/simklEpisodesChipScroll"

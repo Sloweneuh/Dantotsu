@@ -110,32 +110,48 @@
         android:orientation="vertical"
         android:gravity="center_horizontal">
 
-        <LinearLayout
+        <!-- Empty state (news, reviews, watch order): the message with its icon, the icon drifting
+             behind it — the same treatment as the other empty screens. -->
+        <FrameLayout
             android:id="@+id/listEmptyContainer"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:alpha="0.6"
             android:visibility="gone">
 
-            <ImageView
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:src="@drawable/ic_round_edit_note_24"
-                tools:ignore="ContentDescription" />
+            <ani.dantotsu.others.PatternBackgroundView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:patternAnchor="@id/listEmptyText"
+                app:patternIcon="@drawable/ic_round_edit_note_24" />
 
-            <TextView
-                android:id="@+id/listEmptyText"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:textSize="16sp"
-                android:textAlignment="center"
-                tools:text="No reviews yet" />
-        </LinearLayout>
+                android:layout_gravity="center"
+                android:alpha="0.6"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <ImageView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:src="@drawable/ic_round_edit_note_24"
+                    app:tint="?attr/colorOnBackground"
+                    tools:ignore="ContentDescription" />
+
+                <TextView
+                    android:id="@+id/listEmptyText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:textSize="16sp"
+                    android:textAlignment="center"
+                    tools:text="No reviews yet" />
+            </LinearLayout>
+        </FrameLayout>
 
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/followSwipeRefresh"
