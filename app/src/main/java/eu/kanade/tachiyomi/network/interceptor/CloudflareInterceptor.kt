@@ -27,7 +27,13 @@ class CloudflareInterceptor(
 
     override fun shouldIntercept(response: Response): Boolean {
         // Check if Cloudflare anti-bot is on
-        return response.code in ERROR_CODES && response.header("Server") in SERVER_CHECK
+        if (response.code !in ERROR_CODES || response.header("Server") !in SERVER_CHECK) return false
+        // A challenge is a page for a browser. An API behind Cloudflare answering 403 or 503 in
+        // JSON is the API's own refusal — AniList switching itself off sends exactly that — and
+        // must reach the caller as it is: run through a WebView it hung every request for up to
+        // half a minute and came out as "Failed to bypass Cloudflare", hiding the real reason.
+        if (response.header("Content-Type")?.contains("json", ignoreCase = true) == true) return false
+        return response.request.url.host !in NEVER_CHALLENGED
     }
 
     override fun intercept(
@@ -143,5 +149,11 @@ class CloudflareInterceptor(
 private val ERROR_CODES = listOf(403, 503)
 private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
 private val COOKIE_NAMES = listOf("cf_clearance")
+
+/**
+ * APIs that never serve a browser challenge, whatever their error pages look like: a refusal from
+ * them is information for the caller (see AnilistApiStatus), not something a WebView can solve.
+ */
+private val NEVER_CHALLENGED = setOf("graphql.anilist.co")
 
 class CloudflareBypassException : Exception()

@@ -1523,7 +1523,7 @@
     <string name="anilist_api_blocked">AniList a bloqué ce réseau</string>
     <string name="anilist_api_blocked_info">Trop de requêtes ont été envoyées depuis cette adresse IP. L\'accès revient généralement de lui-même ; en attendant, essayez un autre réseau.</string>
     <string name="anilist_api_retry_in">nouvelle tentative dans %1$d s</string>
-    <string name="anilist_discord">Discord AniList</string>
+    <string name="anilist_discord">Discord</string>
     <string name="anilist_rate_limited">Limite de requêtes AniList atteinte</string>
     <string name="failed_to_load_data">Échec du chargement des données sauvegardées de %1$d</string>
     <string name="mal_login_uri_not_found">Connexion Mal : Uri non trouvée</string>

@@ -1110,7 +1110,7 @@
     <string name="anilist_api_blocked">AniList has blocked this network</string>
     <string name="anilist_api_blocked_info">Too many requests came from this IP address. Access usually returns on its own; another network will work in the meantime.</string>
     <string name="anilist_api_retry_in">retrying in %1$ds</string>
-    <string name="anilist_discord">AniList Discord</string>
+    <string name="anilist_discord">Discord</string>
     <string name="anilist_rate_limited">AniList rate limit reached</string>
     <string name="failed_to_load_data">Failed to load saved data of %1$d</string>
     <string name="mal_login_uri_not_found">Mal Login : Uri not Found</string>
