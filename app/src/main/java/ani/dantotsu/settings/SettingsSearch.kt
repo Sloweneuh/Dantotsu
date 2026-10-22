@@ -431,6 +431,7 @@ object SettingsSearch {
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.always_continue, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAlwaysContinue, keywordsRes = R.string.search_kw_always_continue)
 
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.pause_video_focus, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsPauseVideo, keywordsRes = R.string.search_kw_pause_video_focus)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.player_background_play, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsBackgroundPlay, keywordsRes = R.string.search_kw_player_background_play)
 
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.gestures, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsVerticalGestures, keywordsRes = R.string.search_kw_gestures)
 

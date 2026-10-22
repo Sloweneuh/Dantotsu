@@ -371,6 +371,7 @@ object BackupTree {
                         BackupItem(PrefName.AutoPlay, R.string.auto_play_next_episode),
                         BackupItem(PrefName.AlwaysContinue, R.string.always_continue),
                         BackupItem(PrefName.FocusPause, R.string.pause_video_focus),
+                        BackupItem(PrefName.PlayerBackgroundPlay, R.string.player_background_play),
                         BackupItem(PrefName.WatchPercentage, R.string.watch_complete_percentage),
                         BackupItem(PrefName.AskIndividualPlayer, R.string.ask_update_progress_anime),
                         BackupItem(PrefName.ChapterZeroPlayer, R.string.ask_update_progress_episode_zero),

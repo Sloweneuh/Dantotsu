@@ -214,19 +214,13 @@ import androidx.core.net.toUri
 @SuppressLint("ClickableViewAccessibility")
 class ExoplayerView :
     AppCompatActivity(),
-    Player.Listener,
-    SessionAvailabilityListener {
+    Player.Listener {
     private val resumeWindow = "resumeWindow"
     private val resumePosition = "resumePosition"
     private val playerFullscreen = "playerFullscreen"
     private val playerOnPlay = "playerOnPlay"
-    private var disappeared: Boolean = false
-    private var functionstarted: Boolean = false
 
     private lateinit var exoPlayer: ExoPlayer
-    private var castPlayer: CastPlayer? = null
-    private var castContext: CastContext? = null
-    private var isCastApiAvailable = false
     private lateinit var trackSelector: DefaultTrackSelector
     private lateinit var cacheFactory: CacheDataSource.Factory
     private lateinit var playbackParameters: PlaybackParameters
@@ -247,18 +241,11 @@ class ExoplayerView :
     private lateinit var exoScreen: ImageButton
     private lateinit var exoNext: ImageButton
     private lateinit var exoPrev: ImageButton
-    private lateinit var exoSkipOpEd: ImageButton
     private lateinit var exoPip: ImageButton
     private lateinit var exoBrightness: Slider
     private lateinit var exoVolume: Slider
     private lateinit var exoBrightnessCont: View
     private lateinit var exoVolumeCont: View
-    private lateinit var exoSkip: View
-    private lateinit var exoSkipMini: View
-    private lateinit var exoSkipMiniText: TextView
-    private lateinit var skipTimeButton: View
-    private lateinit var skipTimeText: TextView
-    private lateinit var timeStampText: TextView
     private lateinit var animeTitle: TextView
     private lateinit var videoInfo: TextView
     private lateinit var episodeTitle: Spinner
@@ -275,16 +262,12 @@ class ExoplayerView :
 
     private var orientationListener: OrientationEventListener? = null
 
-    private var downloadId: String? = null
     private var hasExtSubtitles = false
     private var audioLanguages = mutableListOf<Pair<String, String>>()
 
     companion object {
         var initialized = false
         lateinit var media: Media
-
-        /** How far a swipe across the whole player width seeks. */
-        private const val SWIPE_SEEK_FULL_WIDTH_MS = 120_000f
 
         private const val DEFAULT_MIN_BUFFER_MS = 900000
         private const val DEFAULT_MAX_BUFFER_MS = 900000
@@ -310,30 +293,12 @@ class ExoplayerView :
         /** Width the clip sheet's end thumbnail is scaled down to before being handed over. */
         private const val CLIP_THUMBNAIL_WIDTH = 320
 
+        /** Marks the background playback notification's intent; see onNewIntent. */
+        private const val EXTRA_FROM_NOTIFICATION = "ani.dantotsu.player.FROM_NOTIFICATION"
+
         /** How long a chooser hand-off keeps picture-in-picture suppressed. */
         private const val PIP_SUPPRESS_MS = 2000L
-        private const val PIP_PLAY_PAUSE_ACTION = "ani.dantotsu.action.PIP_PLAY_PAUSE"
-        private const val PIP_REPLAY_ACTION = "ani.dantotsu.action.PIP_REPLAY"
-        private const val PIP_FORWARD_ACTION = "ani.dantotsu.action.PIP_FORWARD"
 
-        /**
-         * Resolves `localhost` to both loopback addresses instead of whichever one the system
-         * happens to prefer.
-         *
-         * Some extensions don't hand back a remote URL at all — they stream through a proxy they
-         * run on the device and point the player at `http://localhost:<port>/…`. Android resolves
-         * that name to `127.0.0.1` alone, so when such a server binds the IPv6 wildcard (which is
-         * the default for a Java `ServerSocket` on a v6-capable device) the player is refused by a
-         * server that is up and answering. Offering both addresses lets OkHttp's happy-eyeballs
-         * connect over whichever stack is actually listening, rather than us guessing which.
-         */
-        private val LoopbackAwareDns = Dns { hostname ->
-            if (hostname.equals("localhost", ignoreCase = true)) {
-                listOf(InetAddress.getByName("::1"), InetAddress.getByName("127.0.0.1"))
-            } else {
-                Dns.SYSTEM.lookup(hostname)
-            }
-        }
     }
 
     private lateinit var episode: Episode
@@ -369,28 +334,17 @@ class ExoplayerView :
     /** Deadline until which [onUserLeaveHint] won't start PiP; see [suppressPipForChooser]. */
     private var suppressPipUntil = 0L
     private var isEnteringPip = false
-    private var aspectRatio = Rational(16, 9)
+    private val pip = PlayerPip(this) { if (isInitialized) exoPlayer else null }
     private var pipExitTimestamp: Long = 0
     private var pendingPiPExit: Boolean = false
 
-    private val pipActionReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (!isInitialized) return
-                when (intent?.action) {
-                    PIP_PLAY_PAUSE_ACTION -> if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
-                    PIP_REPLAY_ACTION -> exoPlayer.seekBack()
-                    PIP_FORWARD_ACTION -> exoPlayer.seekForward()
-                }
-            }
-        }
-
     private val handler = Handler(Looper.getMainLooper())
+    private lateinit var cast: PlayerCast
+    private lateinit var bottomBar: PlayerBottomBar
     val model: MediaDetailsViewModel by viewModels()
 
-    private var isTimeStampsLoaded = false
-    private var isSeeking = false
-    private var isFastForwarding = false
+    private lateinit var skipStamps: PlayerSkipStamps
+    private var locked = false
 
     var rotation = 0
 
@@ -440,117 +394,6 @@ class ExoplayerView :
         }
     }
 
-    private fun setupSubFormatting(playerView: PlayerView) {
-        val primaryColor = PrefManager.getVal<Int>(PrefName.PrimaryColor)
-
-        val secondaryColor = PrefManager.getVal<Int>(PrefName.SecondaryColor)
-
-        val outline =
-            when (PrefManager.getVal<Int>(PrefName.Outline)) {
-                0 -> EDGE_TYPE_OUTLINE // Normal
-                1 -> EDGE_TYPE_DEPRESSED // Shine
-                2 -> EDGE_TYPE_DROP_SHADOW // Drop shadow
-                3 -> EDGE_TYPE_NONE // No outline
-                else -> EDGE_TYPE_OUTLINE // Normal
-            }
-
-        val subBackground = PrefManager.getVal<Int>(PrefName.SubBackground)
-
-        val subWindow = PrefManager.getVal<Int>(PrefName.SubWindow)
-
-        val font =
-            when (PrefManager.getVal<Int>(PrefName.Font)) {
-                0 -> ResourcesCompat.getFont(this, R.font.poppins_semi_bold)
-                1 -> ResourcesCompat.getFont(this, R.font.poppins_bold)
-                2 -> ResourcesCompat.getFont(this, R.font.poppins)
-                3 -> ResourcesCompat.getFont(this, R.font.poppins_thin)
-                4 -> ResourcesCompat.getFont(this, R.font.century_gothic_regular)
-                5 -> ResourcesCompat.getFont(this, R.font.levenim_mt_bold)
-                6 -> ResourcesCompat.getFont(this, R.font.blocky)
-                else -> ResourcesCompat.getFont(this, R.font.poppins_semi_bold)
-            }
-        val fontSize = PrefManager.getVal<Int>(PrefName.FontSize).toFloat()
-
-        playerView.subtitleView?.let { subtitles ->
-            subtitles.setApplyEmbeddedStyles(false)
-            subtitles.setApplyEmbeddedFontSizes(false)
-
-            subtitles.setStyle(
-                CaptionStyleCompat(
-                    primaryColor,
-                    subBackground,
-                    subWindow,
-                    outline,
-                    secondaryColor,
-                    font,
-                ),
-            )
-
-            subtitles.alpha =
-                when (PrefManager.getVal<Boolean>(PrefName.Subtitles)) {
-                    true -> PrefManager.getVal(PrefName.SubAlpha)
-                    false -> 0f
-                }
-
-            subtitles.setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
-        }
-    }
-
-    private fun applySubtitleStyles(textView: Xubtitle) {
-        val primaryColor = PrefManager.getVal<Int>(PrefName.PrimaryColor)
-
-        val subBackground = PrefManager.getVal<Int>(PrefName.SubBackground)
-
-        val secondaryColor = PrefManager.getVal<Int>(PrefName.SecondaryColor)
-
-        val subStroke = PrefManager.getVal<Float>(PrefName.SubStroke)
-
-        val fontSize = PrefManager.getVal<Int>(PrefName.FontSize).toFloat()
-
-        val font = subtitleTypeface()
-
-        textView.setBackgroundColor(subBackground)
-        textView.setTextColor(primaryColor)
-        textView.typeface = font
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
-
-        textView.apply {
-            when (PrefManager.getVal<Int>(PrefName.Outline)) {
-                0 -> applyOutline(secondaryColor, subStroke)
-                1 -> applyShineEffect(secondaryColor)
-                2 -> applyDropShadow(secondaryColor, subStroke)
-                3 -> {}
-                else -> applyOutline(secondaryColor, subStroke)
-            }
-        }
-
-        textView.alpha =
-            when (PrefManager.getVal<Boolean>(PrefName.Subtitles)) {
-                true -> PrefManager.getVal(PrefName.SubAlpha)
-                false -> 0f
-            }
-
-        val textElevation =
-            PrefManager.getVal<Float>(PrefName.SubBottomMargin) / 50 * resources.displayMetrics.heightPixels
-        textView.translationY = -textElevation
-    }
-
-    /** The user's chosen subtitle font, shared by the on-screen view and burned-in clip text. */
-    private fun subtitleTypeface() = when (PrefManager.getVal<Int>(PrefName.Font)) {
-        0 -> ResourcesCompat.getFont(this, R.font.poppins_semi_bold)
-        1 -> ResourcesCompat.getFont(this, R.font.poppins_bold)
-        2 -> ResourcesCompat.getFont(this, R.font.poppins)
-        3 -> ResourcesCompat.getFont(this, R.font.poppins_thin)
-        4 -> ResourcesCompat.getFont(this, R.font.century_gothic_regular)
-        5 -> ResourcesCompat.getFont(this, R.font.levenim_mt_bold)
-        6 -> ResourcesCompat.getFont(this, R.font.blocky)
-        else -> ResourcesCompat.getFont(this, R.font.poppins_semi_bold)
-    }
-
-    /**
-     * Bundles up what a clip export needs from the live player: the stream itself, the data source
-     * that can re-read it (headers and warm cache included), and whichever subtitle track is on.
-     */
     /** Shrinks a captured frame to thumbnail size; a full 1080p bitmap is a lot to hand around. */
     private fun clipThumbnail(frame: Bitmap?): Bitmap? {
         if (frame == null || frame.width <= 0) return null
@@ -563,6 +406,10 @@ class ExoplayerView :
         }.getOrDefault(frame)
     }
 
+    /**
+     * Bundles up what a clip export needs from the live player: the stream itself, the data source
+     * that can re-read it (headers and warm cache included), and whichever subtitle track is on.
+     */
     private fun buildClipPayload(endFrame: Bitmap?): ClipDialogFragment.Payload? {
         // Both are set up together with the player; if the episode hasn't loaded there is nothing
         // to re-cut, so the caller reports the failure rather than crashing on the lateinit.
@@ -582,7 +429,7 @@ class ExoplayerView :
                 }
 
             !subtitleCues.isEmpty() ->
-                ClipDialogFragment.Subtitles.Text(subtitleCues, clipSubtitleStyle())
+                ClipDialogFragment.Subtitles.Text(subtitleCues, PlayerSubtitleStyle.forClip(this))
 
             else -> null
         }
@@ -594,27 +441,6 @@ class ExoplayerView :
         )
     }
 
-    /** The on-screen text subtitle styling, described so an export can reproduce it. */
-    private fun clipSubtitleStyle(): ClipSubtitleOverlay.TextStyle {
-        val density = resources.displayMetrics.density
-        val screenHeight = resources.displayMetrics.heightPixels
-        return ClipSubtitleOverlay.TextStyle(
-            typeface = subtitleTypeface(),
-            textColor = PrefManager.getVal(PrefName.PrimaryColor),
-            outlineColor = PrefManager.getVal(PrefName.SecondaryColor),
-            backgroundColor = PrefManager.getVal(PrefName.SubBackground),
-            textSizePx = PrefManager.getVal<Int>(PrefName.FontSize) * density,
-            strokeWidthPx = PrefManager.getVal<Float>(PrefName.SubStroke),
-            alpha = if (PrefManager.getVal<Boolean>(PrefName.Subtitles))
-                PrefManager.getVal(PrefName.SubAlpha) else 0f,
-            bottomMarginPx =
-                PrefManager.getVal<Float>(PrefName.SubBottomMargin) / 50 * screenHeight,
-            // "None" is the only outline mode with nothing drawn behind the glyphs.
-            outlined = PrefManager.getVal<Int>(PrefName.Outline) != 3,
-            referenceHeight = screenHeight,
-        )
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -622,35 +448,12 @@ class ExoplayerView :
         binding = ActivityExoplayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        ContextCompat.registerReceiver(
-            this,
-            pipActionReceiver,
-            IntentFilter().apply {
-                addAction(PIP_PLAY_PAUSE_ACTION)
-                addAction(PIP_REPLAY_ACTION)
-                addAction(PIP_FORWARD_ACTION)
-            },
-            ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
+        pip.register()
 
         // Renders from a previous session are done being shared by now; a new playback session is
         // the safe point to drop them, rather than on dismiss while a share may still be reading.
         ClipOutput.clearWorkDir(this)
 
-        // Initialize
-        isCastApiAvailable = GoogleApiAvailability
-            .getInstance()
-            .isGooglePlayServicesAvailable(this) == ConnectionResult.SUCCESS
-        // The shared CastContext is created asynchronously. Reading the task's result straight
-        // away threw "not yet complete" the first time in every process, which left casting
-        // without a player: the button connected to the TV and nothing ever played on it.
-        if (isCastApiAvailable) try {
-            CastContext.getSharedInstance(this, Executors.newSingleThreadExecutor())
-                .addOnSuccessListener(this) { context -> setUpCastPlayer(context) }
-                .addOnFailureListener(this) { isCastApiAvailable = false }
-        } catch (e: Exception) {
-            isCastApiAvailable = false
-        }
 
         hideSystemBarsExtendView()
 
@@ -659,6 +462,26 @@ class ExoplayerView :
         }
 
         playerView = findViewById(R.id.player_view)
+        bottomBar = PlayerBottomBar(playerView)
+        cast = PlayerCast(this, playerView, object : PlayerCast.Host {
+            override val exoPlayer: ExoPlayer get() = this@ExoplayerView.exoPlayer
+            override val isInitialized: Boolean get() = this@ExoplayerView.isInitialized
+            override val mediaItem: MediaItem?
+                get() = if (this@ExoplayerView::mediaItem.isInitialized) this@ExoplayerView.mediaItem else null
+            override fun withMetadata(item: MediaItem) = item.withEpisodeMetadata()
+            override fun savePosition(position: Long) =
+                PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", position)
+            override fun onActivePlayerChanged() = discordRPC()
+            override fun onCastPlaying() {
+                playedThisEpisode = true
+            }
+            override fun onCastPlayWhenReadyChanged(playWhenReady: Boolean) {
+                (exoPlay.drawable as Animatable?)?.start()
+                Glide.with(this@ExoplayerView)
+                    .load(if (playWhenReady) R.drawable.anim_play_to_pause else R.drawable.anim_pause_to_play)
+                    .into(exoPlay)
+            }
+        }).also { it.setUp() }
         exoPlay = playerView.findViewById(androidx.media3.ui.R.id.exo_play)
         exoSource = playerView.findViewById(R.id.exo_source)
         exoSettings = playerView.findViewById(R.id.exo_settings)
@@ -673,13 +496,6 @@ class ExoplayerView :
         exoBrightnessCont = playerView.findViewById(R.id.exo_brightness_cont)
         exoVolumeCont = playerView.findViewById(R.id.exo_volume_cont)
         exoPip = playerView.findViewById(R.id.exo_pip)
-        exoSkipOpEd = playerView.findViewById(R.id.exo_skip_op_ed)
-        exoSkip = playerView.findViewById(R.id.exo_skip)
-        exoSkipMini = playerView.findViewById(R.id.exo_skip_mini)
-        exoSkipMiniText = exoSkipMini.findViewById(R.id.exo_skip_mini_text)
-        skipTimeButton = playerView.findViewById(R.id.exo_skip_timestamp)
-        skipTimeText = skipTimeButton.findViewById(R.id.exo_skip_timestamp_text)
-        timeStampText = playerView.findViewById(R.id.exo_time_stamp_text)
         customSubtitleView = playerView.findViewById(R.id.customSubtitleView)
 
         animeTitle = playerView.findViewById(R.id.exo_anime_title)
@@ -747,57 +563,20 @@ class ExoplayerView :
             onBackPressedDispatcher.onBackPressed()
         }
 
-        // TimeStamps
-        model.timeStamps.observe(this) { it ->
-            isTimeStampsLoaded = true
-            exoSkipOpEd.visibility =
-                if (it != null) {
-                    val adGroups =
-                        it
-                            .flatMap {
-                                listOf(
-                                    it.interval.startTime.toLong() * 1000,
-                                    it.interval.endTime.toLong() * 1000,
-                                )
-                            }.toLongArray()
-                    val playedAdGroups =
-                        it
-                            .flatMap {
-                                listOf(false, false)
-                            }.toBooleanArray()
-                    playerView.setExtraAdGroupMarkers(adGroups, playedAdGroups)
-                    View.VISIBLE
-                } else {
-                    View.GONE
-                }
-        }
-
-        exoSkipOpEd.alpha = if (PrefManager.getVal(PrefName.AutoSkipOPED)) 1f else 0.3f
-        exoSkipOpEd.setOnClickListener {
-            if (PrefManager.getVal(PrefName.AutoSkipOPED)) {
-                snackString(getString(R.string.disabled_auto_skip))
-                PrefManager.setVal(PrefName.AutoSkipOPED, false)
-            } else {
-                snackString(getString(R.string.auto_skip))
-                PrefManager.setVal(PrefName.AutoSkipOPED, true)
-            }
-            exoSkipOpEd.alpha = if (PrefManager.getVal(PrefName.AutoSkipOPED)) 1f else 0.3f
-        }
-
         // Play Pause
         exoPlay.setOnClickListener {
             if (isInitialized) {
                 isPlayerPlaying = exoPlayer.isPlaying
                 (exoPlay.drawable as Animatable?)?.start()
-                val cast = castPlayer?.takeIf { isCasting }
-                if (cast?.playWhenReady ?: isPlayerPlaying) {
+                val remote = cast.player?.takeIf { cast.isCasting }
+                if (remote?.playWhenReady ?: isPlayerPlaying) {
                     Glide.with(this).load(R.drawable.anim_play_to_pause).into(exoPlay)
                     exoPlayer.pause()
-                    cast?.pause()
+                    remote?.pause()
                 } else {
-                    if (cast != null) {
+                    if (remote != null) {
                         Glide.with(this).load(R.drawable.anim_pause_to_play).into(exoPlay)
-                        cast.play()
+                        remote.play()
                     } else if (!isPlayerPlaying) {
                         Glide.with(this).load(R.drawable.anim_pause_to_play).into(exoPlay)
                         exoPlayer.play()
@@ -824,7 +603,6 @@ class ExoplayerView :
         }
 
         // Lock Button
-        var locked = false
         val container = playerView.findViewById<View>(R.id.exo_controller_cont)
         val screen = playerView.findViewById<View>(R.id.exo_black_screen)
         val lockButton = playerView.findViewById<ImageButton>(R.id.exo_unlock)
@@ -845,507 +623,17 @@ class ExoplayerView :
             timeline.setForceDisabled(false)
         }
 
-        // Skip Time Button
-        var skipTime = PrefManager.getVal<Int>(PrefName.SkipTime)
-        if (skipTime > 0) {
-            exoSkip.findViewById<TextView>(R.id.exo_skip_time).text = skipTime.toString()
-            exoSkip.setOnClickListener {
-                if (isInitialized) {
-                    exoPlayer.seekTo(exoPlayer.currentPosition + skipTime * 1000)
-                }
-            }
-            exoSkip.setOnLongClickListener {
-                val dialog = Dialog(this, R.style.MyPopup)
-                dialog.setContentView(R.layout.item_seekbar_dialog)
-                dialog.setCancelable(true)
-                dialog.setCanceledOnTouchOutside(true)
-                dialog.window?.setLayout(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-                if (skipTime <= 120) {
-                    dialog.findViewById<Slider>(R.id.seekbar).value = skipTime.toFloat()
-                } else {
-                    dialog.findViewById<Slider>(R.id.seekbar).value = 120f
-                }
-                dialog.findViewById<Slider>(R.id.seekbar).addOnChangeListener { _, value, _ ->
-                    skipTime = value.toInt()
-                    // saveData(player, settings)
-                    PrefManager.setVal(PrefName.SkipTime, skipTime)
-                    playerView.findViewById<TextView>(R.id.exo_skip_time).text =
-                        skipTime.toString()
-                    dialog.findViewById<TextView>(R.id.seekbar_value).text =
-                        skipTime.toString()
-                }
-                dialog
-                    .findViewById<Slider>(R.id.seekbar)
-                    .addOnSliderTouchListener(
-                        object : Slider.OnSliderTouchListener {
-                            override fun onStartTrackingTouch(slider: Slider) {}
+        skipStamps = PlayerSkipStamps(this, playerView, model, object : PlayerSkipStamps.Host {
+            override val exoPlayer: ExoPlayer get() = this@ExoplayerView.exoPlayer
+            override val isInitialized: Boolean get() = this@ExoplayerView.isInitialized
+        })
 
-                            override fun onStopTrackingTouch(slider: Slider) {
-                                dialog.dismiss()
-                            }
-                        },
-                    )
-                dialog.findViewById<TextView>(R.id.seekbar_title).text =
-                    getString(R.string.skip_time)
-                dialog.findViewById<TextView>(R.id.seekbar_value).text =
-                    skipTime.toString()
-                @Suppress("DEPRECATION")
-                dialog.window?.decorView?.systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                dialog.show()
-                true
-            }
-        } else {
-            exoSkip.visibility = View.GONE
-        }
-
-        val gestureSpeed = (300 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong()
-        // Player UI Visibility Handler
-        val brightnessRunnable =
-            Runnable {
-                if (exoBrightnessCont.alpha == 1f) {
-                    lifecycleScope.launch {
-                        ObjectAnimator
-                            .ofFloat(exoBrightnessCont, "alpha", 1f, 0f)
-                            .setDuration(gestureSpeed)
-                            .start()
-                        delay(gestureSpeed)
-                        exoBrightnessCont.visibility = View.GONE
-                        checkNotch()
-                    }
-                }
-            }
-        val volumeRunnable =
-            Runnable {
-                if (exoVolumeCont.alpha == 1f) {
-                    lifecycleScope.launch {
-                        ObjectAnimator
-                            .ofFloat(exoVolumeCont, "alpha", 1f, 0f)
-                            .setDuration(gestureSpeed)
-                            .start()
-                        delay(gestureSpeed)
-                        exoVolumeCont.visibility = View.GONE
-                        checkNotch()
-                    }
-                }
-            }
-        playerView.setControllerVisibilityListener(
-            PlayerView.ControllerVisibilityListener { visibility ->
-                if (visibility == View.GONE) {
-                    hideSystemBars()
-                    brightnessRunnable.run()
-                    volumeRunnable.run()
-                }
-            },
-        )
-        val overshoot = AnimationUtils.loadInterpolator(this, R.anim.over_shoot)
-        val controllerDuration = (300 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong()
-
-        fun handleController() {
-            if (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) !isInPictureInPictureMode else true) {
-                if (playerView.isControllerFullyVisible) {
-                    ObjectAnimator
-                        .ofFloat(
-                            playerView.findViewById(R.id.exo_controller),
-                            "alpha",
-                            1f,
-                            0f,
-                        ).setDuration(controllerDuration)
-                        .start()
-                    ObjectAnimator
-                        .ofFloat(
-                            playerView.findViewById(R.id.exo_bottom_cont),
-                            "translationY",
-                            0f,
-                            128f,
-                        ).apply {
-                            interpolator = overshoot
-                            duration = controllerDuration
-                            start()
-                        }
-                    ObjectAnimator
-                        .ofFloat(
-                            playerView.findViewById(R.id.exo_timeline_cont),
-                            "translationY",
-                            0f,
-                            128f,
-                        ).apply {
-                            interpolator = overshoot
-                            duration = controllerDuration
-                            start()
-                        }
-                    ObjectAnimator
-                        .ofFloat(
-                            playerView.findViewById(R.id.exo_top_cont),
-                            "translationY",
-                            0f,
-                            -128f,
-                        ).apply {
-                            interpolator = overshoot
-                            duration = controllerDuration
-                            start()
-                        }
-                    playerView.postDelayed({ playerView.hideController() }, controllerDuration)
-                } else {
-                    checkNotch()
-                    playerView.showController()
-                    ObjectAnimator
-                        .ofFloat(
-                            playerView.findViewById(R.id.exo_controller),
-                            "alpha",
-                            0f,
-                            1f,
-                        ).setDuration(controllerDuration)
-                        .start()
-                    ObjectAnimator
-                        .ofFloat(
-                            playerView.findViewById(R.id.exo_bottom_cont),
-                            "translationY",
-                            128f,
-                            0f,
-                        ).apply {
-                            interpolator = overshoot
-                            duration = controllerDuration
-                            start()
-                        }
-                    ObjectAnimator
-                        .ofFloat(
-                            playerView.findViewById(R.id.exo_timeline_cont),
-                            "translationY",
-                            128f,
-                            0f,
-                        ).apply {
-                            interpolator = overshoot
-                            duration = controllerDuration
-                            start()
-                        }
-                    ObjectAnimator
-                        .ofFloat(
-                            playerView.findViewById(R.id.exo_top_cont),
-                            "translationY",
-                            -128f,
-                            0f,
-                        ).apply {
-                            interpolator = overshoot
-                            duration = controllerDuration
-                            start()
-                        }
-                }
-            }
-        }
-
-        playerView.findViewById<View>(R.id.exo_full_area).setOnClickListener {
-            handleController()
-        }
-
-        val rewindText = playerView.findViewById<TextView>(R.id.exo_fast_rewind_anim)
-        val forwardText = playerView.findViewById<TextView>(R.id.exo_fast_forward_anim)
-        val fastForwardCard = playerView.findViewById<View>(R.id.exo_fast_forward)
-        val fastRewindCard = playerView.findViewById<View>(R.id.exo_fast_rewind)
-
-        // Seeking
-        val seekTimerF = ResettableTimer()
-        val seekTimerR = ResettableTimer()
-        var seekTimesF = 0
-        var seekTimesR = 0
-
-        fun seek(
-            forward: Boolean,
-            event: MotionEvent? = null,
-        ) {
-            val seekTime = PrefManager.getVal<Int>(PrefName.SeekTime)
-            val (card, text) =
-                if (forward) {
-                    val text = "+${seekTime * ++seekTimesF}"
-                    forwardText.text = text
-                    handler.post { exoPlayer.seekTo(exoPlayer.currentPosition + seekTime * 1000) }
-                    fastForwardCard to forwardText
-                } else {
-                    val text = "-${seekTime * ++seekTimesR}"
-                    rewindText.text = text
-                    handler.post { exoPlayer.seekTo(exoPlayer.currentPosition - seekTime * 1000) }
-                    fastRewindCard to rewindText
-                }
-
-            //region Double Tap Animation
-            val showCardAnim = ObjectAnimator.ofFloat(card, "alpha", 0f, 1f).setDuration(300)
-            val showTextAnim = ObjectAnimator.ofFloat(text, "alpha", 0f, 1f).setDuration(150)
-
-            fun startAnim() {
-                showTextAnim.start()
-
-                (text.compoundDrawables[1] as Animatable).apply {
-                    if (!isRunning) start()
-                }
-
-                if (!isSeeking && event != null) {
-                    playerView.hideController()
-                    card.circularReveal(event.x.toInt(), event.y.toInt(), !forward, 800)
-                    showCardAnim.start()
-                }
-            }
-
-            fun stopAnim() {
-                handler.post {
-                    showCardAnim.cancel()
-                    showTextAnim.cancel()
-                    ObjectAnimator.ofFloat(card, "alpha", card.alpha, 0f).setDuration(150).start()
-                    ObjectAnimator.ofFloat(text, "alpha", 1f, 0f).setDuration(150).start()
-                }
-            }
-            //endregion
-
-            startAnim()
-
-            isSeeking = true
-
-            if (forward) {
-                seekTimerR.reset(
-                    object : TimerTask() {
-                        override fun run() {
-                            isSeeking = false
-                            stopAnim()
-                            seekTimesF = 0
-                        }
-                    },
-                    850,
-                )
-            } else {
-                seekTimerF.reset(
-                    object : TimerTask() {
-                        override fun run() {
-                            isSeeking = false
-                            stopAnim()
-                            seekTimesR = 0
-                        }
-                    },
-                    850,
-                )
-            }
-        }
-
-        playerView.findViewById<View>(R.id.exo_fast_forward_button_cont).visibility = View.VISIBLE
-        playerView.findViewById<View>(R.id.exo_fast_rewind_button_cont).visibility = View.VISIBLE
-        playerView.findViewById<ImageButton>(R.id.exo_fast_forward_button).setOnClickListener {
-            if (isInitialized) {
-                exoPlayer.seekForward()
-            }
-        }
-        playerView.findViewById<ImageButton>(R.id.exo_fast_rewind_button).setOnClickListener {
-            if (isInitialized) {
-                exoPlayer.seekBack()
-            }
-        }
-
-        keyMap[KEYCODE_DPAD_RIGHT] = { seek(true) }
-        keyMap[KEYCODE_DPAD_LEFT] = { seek(false) }
-
-        // Screen Gestures
-        if (PrefManager.getVal<Boolean>(PrefName.Gestures) || PrefManager.getVal<Boolean>(PrefName.DoubleTap)) {
-            fun doubleTap(
-                forward: Boolean,
-                event: MotionEvent,
-            ) {
-                if (!locked && isInitialized && PrefManager.getVal<Boolean>(PrefName.DoubleTap)) {
-                    seek(forward, event)
-                }
-            }
-
-            // Brightness
-            var brightnessTimer = Timer()
-            exoBrightnessCont.visibility = View.GONE
-
-            fun brightnessHide() {
-                brightnessTimer.cancel()
-                brightnessTimer.purge()
-                val timerTask: TimerTask =
-                    object : TimerTask() {
-                        override fun run() {
-                            handler.post(brightnessRunnable)
-                        }
-                    }
-                brightnessTimer = Timer()
-                brightnessTimer.schedule(timerTask, 3000)
-            }
-            exoBrightness.value = (getCurrentBrightnessValue(this) * 10f)
-
-            exoBrightness.addOnChangeListener { _, value, _ ->
-                val lp = window.attributes
-                lp.screenBrightness =
-                    brightnessConverter((value.takeIf { !it.isNaN() } ?: 0f) / 10, false)
-                window.attributes = lp
-                brightnessHide()
-            }
-
-            // Volume
-            var volumeTimer = Timer()
-            exoVolumeCont.visibility = View.GONE
-
-            val volumeMax = audioManager.getStreamMaxVolume(STREAM_MUSIC)
-            exoVolume.value = audioManager.getStreamVolume(STREAM_MUSIC).toFloat() / volumeMax * 10
-
-            fun volumeHide() {
-                volumeTimer.cancel()
-                volumeTimer.purge()
-                val timerTask: TimerTask =
-                    object : TimerTask() {
-                        override fun run() {
-                            handler.post(volumeRunnable)
-                        }
-                    }
-                volumeTimer = Timer()
-                volumeTimer.schedule(timerTask, 3000)
-            }
-            exoVolume.addOnChangeListener { _, value, _ ->
-                val volume = ((value.takeIf { !it.isNaN() } ?: 0f) / 10 * volumeMax).roundToInt()
-                audioManager.setStreamVolume(STREAM_MUSIC, volume, 0)
-                volumeHide()
-            }
-            val fastForward = playerView.findViewById<TextView>(R.id.exo_fast_forward_text)
-
-            fun fastForward() {
-                isFastForwarding = true
-                exoPlayer.setPlaybackSpeed(exoPlayer.playbackParameters.speed * 2)
-                fastForward.visibility = View.VISIBLE
-                val speedText = "${exoPlayer.playbackParameters.speed}x"
-                fastForward.text = speedText
-            }
-
-            fun stopFastForward() {
-                if (isFastForwarding) {
-                    isFastForwarding = false
-                    exoPlayer.setPlaybackSpeed(exoPlayer.playbackParameters.speed / 2)
-                    fastForward.visibility = View.GONE
-                }
-            }
-
-            // Swipe to seek: a sideways drag on either side previews a seek in the same pill the
-            // 2x label uses, and seeks when the finger lifts. A full-width swipe is two minutes.
-            var swipeSeekFrom: Long? = null
-            var swipeSeekDx = 0f
-            fun clock(ms: Long): String {
-                val s = ms / 1000
-                return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
-                else "%d:%02d".format(s / 60, s % 60)
-            }
-            fun swipeSeekTarget(): Long {
-                val from = swipeSeekFrom ?: return 0L
-                val width = playerView.width.takeIf { it > 0 } ?: return from
-                val offset = (swipeSeekDx / width * SWIPE_SEEK_FULL_WIDTH_MS).toLong()
-                val duration = exoPlayer.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
-                return (from + offset).coerceIn(0L, duration)
-            }
-            fun swipeSeek(distanceX: Float) {
-                if (locked || !isInitialized || isFastForwarding || !PrefManager.getVal<Boolean>(PrefName.Gestures)) return
-                if (swipeSeekFrom == null) {
-                    swipeSeekFrom = exoPlayer.currentPosition
-                    swipeSeekDx = 0f
-                }
-                // distanceX is the last position minus the new one: a drag to the right is negative.
-                swipeSeekDx -= distanceX
-                val target = swipeSeekTarget()
-                val delta = target - (swipeSeekFrom ?: target)
-                val sign = if (delta < 0) "−" else "+"
-                fastForward.text = "$sign${clock(kotlin.math.abs(delta))} · ${clock(target)}"
-                fastForward.visibility = View.VISIBLE
-            }
-            fun finishSwipeSeek(commit: Boolean) {
-                if (swipeSeekFrom == null) return
-                if (commit) exoPlayer.seekTo(swipeSeekTarget())
-                swipeSeekFrom = null
-                fastForward.visibility = View.GONE
-            }
-            // A touch that ends any way but a lift (cancelled by a system gesture, say) must still
-            // drop the 2x speed and a half-made seek, or playback stays fast.
-            fun endTouch(event: MotionEvent) {
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_UP -> { stopFastForward(); finishSwipeSeek(commit = true) }
-                    MotionEvent.ACTION_CANCEL -> { stopFastForward(); finishSwipeSeek(commit = false) }
-                }
-            }
-
-            // FastRewind (Left Panel)
-            val fastRewindDetector =
-                GestureDetector(
-                    this,
-                    object : GesturesListener() {
-                        override val lockScrollAxis = true
-
-                        override fun onScrollXClick(y: Float) = swipeSeek(y)
-
-                        override fun onLongClick(event: MotionEvent) {
-                            if (PrefManager.getVal(PrefName.FastForward)) fastForward()
-                        }
-
-                        override fun onDoubleClick(event: MotionEvent) {
-                            doubleTap(false, event)
-                        }
-
-                        override fun onScrollYClick(y: Float) {
-                            if (!locked && PrefManager.getVal(PrefName.Gestures)) {
-                                exoBrightness.value = clamp(exoBrightness.value + y / 100, 0f, 10f)
-                                if (exoBrightnessCont.visibility != View.VISIBLE) {
-                                    exoBrightnessCont.visibility = View.VISIBLE
-                                }
-                                exoBrightnessCont.alpha = 1f
-                            }
-                        }
-
-                        override fun onSingleClick(event: MotionEvent) =
-                            if (isSeeking) doubleTap(false, event) else handleController()
-                    },
-                )
-            val rewindArea = playerView.findViewById<View>(R.id.exo_rewind_area)
-            rewindArea.isClickable = true
-            rewindArea.setOnTouchListener { v, event ->
-                fastRewindDetector.onTouchEvent(event)
-                endTouch(event)
-                v.performClick()
-                true
-            }
-
-            // FastForward (Right Panel)
-            val fastForwardDetector =
-                GestureDetector(
-                    this,
-                    object : GesturesListener() {
-                        override val lockScrollAxis = true
-
-                        override fun onScrollXClick(y: Float) = swipeSeek(y)
-
-                        override fun onLongClick(event: MotionEvent) {
-                            if (PrefManager.getVal(PrefName.FastForward)) fastForward()
-                        }
-
-                        override fun onDoubleClick(event: MotionEvent) {
-                            doubleTap(true, event)
-                        }
-
-                        override fun onScrollYClick(y: Float) {
-                            if (!locked && PrefManager.getVal(PrefName.Gestures)) {
-                                exoVolume.value = clamp(exoVolume.value + y / 100, 0f, 10f)
-                                if (exoVolumeCont.visibility != View.VISIBLE) {
-                                    exoVolumeCont.visibility = View.VISIBLE
-                                }
-                                exoVolumeCont.alpha = 1f
-                            }
-                        }
-
-                        override fun onSingleClick(event: MotionEvent) =
-                            if (isSeeking) doubleTap(true, event) else handleController()
-                    },
-                )
-            val forwardArea = playerView.findViewById<View>(R.id.exo_forward_area)
-            forwardArea.isClickable = true
-            forwardArea.setOnTouchListener { v, event ->
-                fastForwardDetector.onTouchEvent(event)
-                endTouch(event)
-                v.performClick()
-                true
-            }
-        }
+        PlayerGestures(this, playerView, keyMap, object : PlayerGestures.Host {
+            override val exoPlayer: ExoPlayer get() = this@ExoplayerView.exoPlayer
+            override val isInitialized: Boolean get() = this@ExoplayerView.isInitialized
+            override val locked: Boolean get() = this@ExoplayerView.locked
+            override fun checkNotch() = this@ExoplayerView.checkNotch()
+        }).setUp()
 
         // Handle Media
         if (!initialized) return startMainActivity(this)
@@ -1385,7 +673,7 @@ class ExoplayerView :
                     exoPlayer.currentPosition,
                 )
                 val prev = episodeArr[currentEpisodeIndex]
-                isTimeStampsLoaded = false
+                skipStamps.loaded = false
                 episodeLength = 0f
                 playedThisEpisode = false
                 media.anime!!.selectedEpisode = episodeArr[index]
@@ -1416,8 +704,7 @@ class ExoplayerView :
                     p3: Long,
                 ) {
                     if (position != currentEpisodeIndex) {
-                        disappeared = false
-                        functionstarted = false
+                        skipStamps.resetHint()
                         change(position)
                     }
                 }
@@ -1431,8 +718,7 @@ class ExoplayerView :
             if (isInitialized) {
                 nextEpisode { i ->
                     updateAniProgress()
-                    disappeared = false
-                    functionstarted = false
+                    skipStamps.resetHint()
                     change(currentEpisodeIndex + i)
                 }
             }
@@ -1441,7 +727,7 @@ class ExoplayerView :
         exoPrev = playerView.findViewById(R.id.exo_prev_ep)
         exoPrev.setOnClickListener {
             if (currentEpisodeIndex > 0) {
-                disappeared = false
+                skipStamps.resetHint()
                 change(currentEpisodeIndex - 1)
             } else {
                 snackString(getString(R.string.first_episode))
@@ -1500,33 +786,17 @@ class ExoplayerView :
 
         // Cast
         if (PrefManager.getVal(PrefName.Cast)) {
-            playerView.findViewById<CustomCastButton>(R.id.exo_cast).apply {
-                visibility = View.VISIBLE
-                if (PrefManager.getVal(PrefName.UseInternalCast)) {
-                    try {
-                        CastButtonFactory.setUpMediaRouteButton(context, this)
-                        dialogFactory = CustomCastThemeFactory()
-                    } catch (e: Exception) {
-                        isCastApiAvailable = false
-                    }
-                } else {
-                    setCastCallback { cast() }
-                }
+            playerView.findViewById<CustomCastButton>(R.id.exo_cast).also { button ->
+                button.visibility = View.VISIBLE
+                cast.setUpButton(button) { castExternally() }
             }
         }
 
-        // Settings
+        // Settings: the sheet, as in the readers; the full page is a row inside it.
         exoSettings.setOnClickListener {
-            PrefManager.setCustomVal(
-                "${media.id}_${media.anime!!.selectedEpisode}",
-                exoPlayer.currentPosition,
-            )
-            val intent =
-                Intent(this, PlayerSettingsActivity::class.java).apply {
-                    putExtra("subtitle", subtitle)
-                }
-            exoPlayer.pause()
-            onChangeSettings.launch(intent)
+            if (supportFragmentManager.findFragmentByTag(PlayerSettingsSheet.TAG) != null) return@setOnClickListener
+            settingsSheetOpen = true
+            PlayerSettingsSheet().show(supportFragmentManager, PlayerSettingsSheet.TAG)
         }
 
         // Continue on another device. Extension-only media (id < 0) can't be re-fetched
@@ -1756,7 +1026,9 @@ class ExoplayerView :
             }
         }
 
-        if (PrefManager.getVal(PrefName.AutoPlay)) {
+        // Always tracked, not only with autoplay on at the start: it can be switched on from the
+        // settings sheet mid-episode, and would then find nobody had ever touched the screen.
+        run {
             var touchTimer = Timer()
 
             fun touched() {
@@ -1847,7 +1119,7 @@ class ExoplayerView :
 
         // Start the recursive Fun
         if (PrefManager.getVal(PrefName.TimeStampsEnabled)) {
-            updateTimeStamp()
+            skipStamps.start()
         }
     }
 
@@ -1862,7 +1134,7 @@ class ExoplayerView :
                 // Whichever player is actually playing: while casting, the phone's own player is
                 // stopped, and reading it would report the episode paused — and auto-clear it —
                 // for as long as it plays on the TV.
-                val active: Player = castPlayer?.takeIf { playerView.player === it } ?: exoPlayer
+                val active: Player = cast.player?.takeIf { playerView.player === it } ?: exoPlayer
                 val now = java.lang.System.currentTimeMillis()
                 val currentPosMs = active.currentPosition.coerceAtLeast(0L)
                 val safeDurationMs = if (active.duration > 0 && active.duration != C.TIME_UNSET) active.duration else 1440000L // default 24 mins
@@ -1925,51 +1197,7 @@ class ExoplayerView :
         val ext = episode.extractors?.find { it.server.name == episode.selectedExtractor } ?: return
         extractor = ext
         video = ext.videos.getOrNull(episode.selectedVideo) ?: return
-        val subLanguages =
-            arrayOf(
-                "Albanian",
-                "Arabic",
-                "Bosnian",
-                "Bulgarian",
-                "Chinese",
-                "Croatian",
-                "Czech",
-                "Danish",
-                "Dutch",
-                "English",
-                "Estonian",
-                "Finnish",
-                "French",
-                "Georgian",
-                "German",
-                "Greek",
-                "Hebrew",
-                "Hindi",
-                "Indonesian",
-                "Irish",
-                "Italian",
-                "Japanese",
-                "Korean",
-                "Lithuanian",
-                "Luxembourgish",
-                "Macedonian",
-                "Mongolian",
-                "Norwegian",
-                "Polish",
-                "Portuguese",
-                "Punjabi",
-                "Romanian",
-                "Russian",
-                "Serbian",
-                "Slovak",
-                "Slovenian",
-                "Spanish",
-                "Turkish",
-                "Ukrainian",
-                "Urdu",
-                "Vietnamese",
-            )
-        val lang = subLanguages[PrefManager.getVal(PrefName.SubLanguage)]
+        val lang = PlayerSources.SUB_LANGUAGES[PrefManager.getVal(PrefName.SubLanguage)]
         subtitle = intent.getSerialized("subtitle")
             ?: when (
                 val subLang: String? =
@@ -2007,80 +1235,13 @@ class ExoplayerView :
                 subClick()
             }
         }
-        val sub: MutableList<MediaItem.SubtitleConfiguration> =
-            emptyList<MediaItem.SubtitleConfiguration>().toMutableList()
-        ext.subtitles.forEach { subtitle ->
-            val subtitleUrl = if (!hasExtSubtitles) video!!.file.url else subtitle.file.url
-            if (subtitle.type == SubtitleType.UNKNOWN) {
-                runBlocking {
-                    val type = SubtitleDownloader.loadSubtitleType(subtitleUrl)
-                    val fileUri = (subtitleUrl).toUri()
-                    sub +=
-                        MediaItem.SubtitleConfiguration
-                            .Builder(fileUri)
-                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                            .setMimeType(
-                                when (type) {
-                                    SubtitleType.VTT -> MimeTypes.TEXT_VTT
-                                    SubtitleType.ASS -> MimeTypes.TEXT_SSA
-                                    SubtitleType.SRT -> MimeTypes.APPLICATION_SUBRIP
-                                    else -> MimeTypes.TEXT_UNKNOWN
-                                },
-                            ).setId("69")
-                            .setLanguage(subtitle.language)
-                            .build()
-                }
-            } else {
-                val subUri = subtitleUrl.toUri()
-                sub +=
-                    MediaItem.SubtitleConfiguration
-                        .Builder(subUri)
-                        .setSelectionFlags(C.SELECTION_FLAG_FORCED)
-                        .setMimeType(
-                            when (subtitle.type) {
-                                SubtitleType.VTT -> MimeTypes.TEXT_VTT
-                                SubtitleType.ASS -> MimeTypes.TEXT_SSA
-                                SubtitleType.SRT -> MimeTypes.APPLICATION_SUBRIP
-                                else -> MimeTypes.TEXT_UNKNOWN
-                            },
-                        ).setId("69")
-                        .setLanguage(subtitle.language)
-                        .build()
-            }
-        }
+        val sub = PlayerSources.subtitleConfigurations(ext, video!!, hasExtSubtitles)
 
         lifecycleScope.launch(Dispatchers.IO) {
             ext.onVideoPlayed(video)
         }
 
-        val httpClient =
-            okHttpClient
-                .newBuilder()
-                .apply {
-                    ignoreAllSSLErrors()
-                    followRedirects(true)
-                    followSslRedirects(true)
-                    dns(LoopbackAwareDns)
-                }.build()
-        val httpDataSourceFactory =
-            OkHttpDataSource.Factory(httpClient).apply {
-                setDefaultRequestProperties(defaultHeaders)
-                video?.file?.headers?.let {
-                    setDefaultRequestProperties(it)
-                }
-            }
-        val defaultDataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
-        // What streams in is written to the disk cache too, so seeking back past the in-memory
-        // back buffer, rewatching, and re-cutting a clip read it from disk instead of downloading
-        // it again. A cache that fails (disk full, a corrupt span) is bypassed, not fatal.
-        val videoCache = VideoCache.getInstance(this)
-        cacheFactory =
-            CacheDataSource.Factory().apply {
-                setCache(videoCache)
-                setUpstreamDataSourceFactory(defaultDataSourceFactory)
-                setCacheWriteDataSinkFactory(CacheDataSink.Factory().setCache(videoCache))
-                setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-            }
+        cacheFactory = PlayerSources.cacheFactory(this, video)
 
         // Set up libass for ASS/SSA subtitle rendering.
         // We use OVERLAY_OPEN_GL to render subtitles in a dedicated hardware-accelerated
@@ -2116,82 +1277,7 @@ class ExoplayerView :
                 else -> MimeTypes.APPLICATION_MP4
             }
 
-        val downloadedMediaItem =
-            if (ext.server.offline) {
-                val titleName =
-                    ext.server.name
-                        .split("/")
-                        .first()
-                val episodeName =
-                    ext.server.name
-                        .split("/")
-                        .last()
-                downloadId = PrefManager
-                    .getAnimeDownloadPreferences()
-                    .getString("$titleName - $episodeName", null)
-                    ?: PrefManager
-                        .getAnimeDownloadPreferences()
-                        .getString(ext.server.name, null)
-                val exoItem =
-                    if (downloadId != null) {
-                        Helper
-                            .downloadManager(this)
-                            .downloadIndex
-                            .getDownload(downloadId!!)
-                            ?.request
-                            ?.toMediaItem()
-                    } else {
-                        null
-                    }
-                if (exoItem != null) {
-                    exoItem
-                } else {
-                    val directory =
-                        getSubDirectory(this, MediaType.ANIME, false, titleName, episodeName)
-                    if (directory != null) {
-                        val files = directory.listFiles()
-                        println(files)
-                        val docFile =
-                            directory.listFiles().firstOrNull {
-                                it.name?.endsWith(".mp4") == true ||
-                                        it.name?.endsWith(".mkv") == true ||
-                                        it.name?.endsWith(
-                                            ".${
-                                                Injekt
-                                                    .get<DownloadAddonManager>()
-                                                    .extension
-                                                    ?.extension
-                                                    ?.getFileExtension()
-                                                    ?.first ?: "ts"
-                                            }",
-                                        ) ==
-                                        true
-                            }
-                        if (docFile != null) {
-                            val uri = docFile.uri
-                            val downloadedMimeType =
-                                when (docFile.extension) {
-                                    "mp4" -> MimeTypes.APPLICATION_MP4
-                                    "mkv" -> MimeTypes.APPLICATION_MATROSKA
-                                    else -> MimeTypes.APPLICATION_MP4
-                                }
-                            MediaItem
-                                .Builder()
-                                .setUri(uri)
-                                .setMimeType(downloadedMimeType)
-                                .build()
-                        } else {
-                            snackString("File not found")
-                            null
-                        }
-                    } else {
-                        snackString("Directory not found")
-                        null
-                    }
-                }
-            } else {
-                null
-            }
+        val downloadedMediaItem = if (ext.server.offline) PlayerSources.downloadedItem(this, ext) else null
 
         mediaItem =
             if (downloadedMediaItem == null) {
@@ -2210,37 +1296,9 @@ class ExoplayerView :
                 } else {
                     downloadedMediaItem
                 }
-            }
+            }.withEpisodeMetadata()
 
-        val audioMediaItem = mutableListOf<MediaItem>()
-        audioLanguages.clear()
-        ext.audioTracks.forEach {
-            var code = LanguageMapper.getLanguageCode(it.lang)
-            if (code == "all") code = "un"
-            audioLanguages.add(Pair(it.lang, code))
-            audioMediaItem.add(
-                MediaItem
-                    .Builder()
-                    .setUri(it.url)
-                    .setMimeType(MimeTypes.AUDIO_UNKNOWN)
-                    .setTag(code)
-                    .build(),
-            )
-        }
-
-        val audioSources =
-            audioMediaItem
-                .map { mediaItem ->
-                    if (mediaItem.localConfiguration
-                            ?.uri
-                            .toString()
-                            .contains(".m3u8")
-                    ) {
-                        HlsMediaSource.Factory(cacheFactory).createMediaSource(mediaItem)
-                    } else {
-                        DefaultMediaSourceFactory(cacheFactory).createMediaSource(mediaItem)
-                    }
-                }.toTypedArray()
+        val audioSources = PlayerSources.audioSources(ext, cacheFactory, audioLanguages)
         val videoMediaSource =
             assMediaSourceFactory
                 .createMediaSource(mediaItem)
@@ -2355,6 +1413,11 @@ class ExoplayerView :
                 .setLoadControl(loadControl)
                 .setSeekBackIncrementMs(PIP_SEEK_INCREMENT_MS)
                 .setSeekForwardIncrementMs(PIP_SEEK_INCREMENT_MS)
+                // Held only while playing: with the screen off (background playback) the CPU and
+                // Wi-Fi would otherwise sleep under a stream mid-episode.
+                .setWakeMode(C.WAKE_MODE_NETWORK)
+                // Unplugged headphones pause rather than switch to the speaker.
+                .setHandleAudioBecomingNoisy(true)
                 .build()
         playerView.player = exoPlayer
 
@@ -2445,8 +1508,8 @@ class ExoplayerView :
             },
         )
 
-        applySubtitleStyles(customSubtitleView)
-        setupSubFormatting(playerView)
+        PlayerSubtitleStyle.applyTo(this, customSubtitleView)
+        PlayerSubtitleStyle.applyTo(this, playerView)
 
         try {
             val rightNow = Calendar.getInstance()
@@ -2454,6 +1517,17 @@ class ExoplayerView :
                 MediaSession
                     .Builder(this, exoPlayer)
                     .setId(rightNow.timeInMillis.toString())
+                    // Tapping the background playback notification comes back to this player.
+                    .setSessionActivity(
+                        PendingIntent.getActivity(
+                            this,
+                            0,
+                            Intent(this, ExoplayerView::class.java)
+                                .putExtra(EXTRA_FROM_NOTIFICATION, true)
+                                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                        ),
+                    )
                     .setMediaButtonPreferences(
                         listOf(
                             CommandButton
@@ -2479,7 +1553,7 @@ class ExoplayerView :
 
         // A new episode or server while casting goes to the TV, not to the phone: the session
         // only announces itself when it starts, so nothing else would send it there.
-        if (castPlayer?.isCastSessionAvailable == true) startCastPlayer()
+        if (cast.player?.isCastSessionAvailable == true) cast.startCasting()
 
         if (!hasExtSubtitles && !PrefManager.getVal<Boolean>(PrefName.Subtitles)) {
             onSetTrackGroupOverride(dummyTrack, TRACK_TYPE_TEXT)
@@ -2496,8 +1570,7 @@ class ExoplayerView :
     private fun releasePlayer() {
         isPlayerPlaying = exoPlayer.playWhenReady
         playbackPosition = exoPlayer.currentPosition
-        disappeared = false
-        functionstarted = false
+        skipStamps.resetHint()
         exoSubtitleView.removeAllViews()
         exoPlayer.release()
         VideoCache.release()
@@ -2550,14 +1623,64 @@ class ExoplayerView :
         SubtitleDialogFragment().show(supportFragmentManager, "dialog")
     }
 
+    // Background playback (PlayerBackgroundPlay): while the player is out of sight and still
+    // playing, its media session is hosted by PlayerBackgroundService. The video track stays
+    // selected — switching it off and on re-prepares the stream there, an audible gap — and its
+    // frames are simply dropped with no surface to draw on.
+
+    /** Playing out of sight right now, the session hosted by [PlayerBackgroundService]. */
+    private var inBackground = false
+
+    /** When [onWindowFocusChanged] last paused for lost focus, which can come just before onPause. */
+    private var focusPausedAt = 0L
+
+    /**
+     * The focus pause, held back a moment while background playback is on: focus can go just
+     * before the screen turns off, and pausing then only to play again in onPause was a hiccup in
+     * the audio. Cancelled by going to the background or getting focus back.
+     */
+    private val focusPause = Runnable {
+        if (isInitialized && !inBackground) {
+            exoPlayer.pause()
+            focusPausedAt = SystemClock.elapsedRealtime()
+        }
+    }
+
+    /**
+     * Whether leaving now should keep the audio going: the setting is on, something is playing
+     * (or was until focus went a moment ago), and it isn't going to a TV or a PiP window instead.
+     */
+    private fun shouldPlayInBackground(): Boolean {
+        if (!PrefManager.getVal<Boolean>(PrefName.PlayerBackgroundPlay)) return false
+        if (!isInitialized || mediaSession == null || isFinishing) return false
+        if (cast.isCasting || isEnteringPip || isInPictureInPictureMode) return false
+        val justFocusPaused = wasPlaying && SystemClock.elapsedRealtime() - focusPausedAt < 1000
+        return exoPlayer.isPlaying || justFocusPaused
+    }
+
+    private fun enterBackground() {
+        handler.removeCallbacks(focusPause)
+        inBackground = true
+        if (!exoPlayer.isPlaying) exoPlayer.play()
+        PlayerBackgroundService.start(this, mediaSession ?: return)
+    }
+
+    private fun leaveBackground() {
+        if (!inBackground) return
+        inBackground = false
+        PlayerBackgroundService.stop(this)
+    }
+
     override fun onPause() {
         super.onPause()
         orientationListener?.disable()
         if (isInitialized) {
-            // Leaving the app pauses the phone, never the TV. This used to ask whether the cast
-            // player was stopped, which is null — so never true — on a device without Play
-            // Services, and there the episode went on playing in the background.
-            if (!isCasting && !isEnteringPip) {
+            if (shouldPlayInBackground()) {
+                enterBackground()
+            } else if (!cast.isCasting && !isEnteringPip) {
+                // Leaving the app pauses the phone, never the TV. This used to ask whether the
+                // cast player was stopped, which is null — so never true — on a device without
+                // Play Services, and there the episode went on playing in the background.
                 playerView.player?.pause()
             }
             if (exoPlayer.currentPosition > 5000) {
@@ -2608,6 +1731,7 @@ class ExoplayerView :
 
     override fun onResume() {
         super.onResume()
+        leaveBackground()
         orientationListener?.enable()
         hideSystemBars()
         if (isInitialized) {
@@ -2619,7 +1743,7 @@ class ExoplayerView :
     override fun onStop() {
         // Always pause playback when the activity stops unless we're currently in PiP mode — or
         // casting: the episode is on the TV, and leaving the app shouldn't stop it there.
-        if (!isInPictureInPictureMode() && isInitialized && !isCasting) {
+        if (!inBackground && !isInPictureInPictureMode() && isInitialized && !cast.isCasting) {
             playerView.player?.pause()
         }
         super.onStop()
@@ -2642,12 +1766,22 @@ class ExoplayerView :
                 exoPlayer.play()
             }
         }
-        if (PrefManager.getVal(PrefName.FocusPause) && !epChanging) {
+        // Playing out of sight is the point of background playback; losing focus to the lock
+        // screen or another app must not pause it.
+        // Nor the player's own "more" menu, which takes focus while it is open.
+        val ownMenu = (::bottomBar.isInitialized && bottomBar.ownsFocusChange) || settingsSheetOpen ||
+            SystemClock.elapsedRealtime() - settingsSheetClosedAt < 500
+        if (PrefManager.getVal(PrefName.FocusPause) && !epChanging && !inBackground && !ownMenu) {
             if (isInitialized && !hasFocus) wasPlaying = exoPlayer.isPlaying
             if (hasFocus) {
+                handler.removeCallbacks(focusPause)
                 if (isInitialized && wasPlaying) exoPlayer.play()
-            } else {
-                if (isInitialized) exoPlayer.pause()
+            } else if (isInitialized) {
+                if (PrefManager.getVal(PrefName.PlayerBackgroundPlay)) {
+                    handler.postDelayed(focusPause, 500)
+                } else {
+                    focusPause.run()
+                }
             }
         }
         super.onWindowFocusChanged(hasFocus)
@@ -2658,15 +1792,7 @@ class ExoplayerView :
         if (!isBuffering) {
             isPlayerPlaying = isPlaying
             playerView.keepScreenOn = isPlaying
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode) {
-                setPictureInPictureParams(
-                    PictureInPictureParams
-                        .Builder()
-                        .setAspectRatio(aspectRatio)
-                        .setActions(pipActions())
-                        .build(),
-                )
-            }
+            pip.refresh()
             (exoPlay.drawable as Animatable?)?.start()
             if (!this.isDestroyed) {
                 Glide
@@ -2704,7 +1830,7 @@ class ExoplayerView :
         val height = (exoPlayer.videoFormat ?: return).height
         val width = (exoPlayer.videoFormat ?: return).width
 
-        aspectRatio = Rational(width, height)
+        pip.aspectRatio = Rational(width, height)
 
         videoInfo.text = getString(R.string.video_quality, height)
 
@@ -2720,7 +1846,7 @@ class ExoplayerView :
             }
         }
 
-        if (duration != null && !isTimeStampsLoaded && PrefManager.getVal(PrefName.TimeStampsEnabled)) {
+        if (duration != null && !skipStamps.loaded && PrefManager.getVal(PrefName.TimeStampsEnabled)) {
             lifecycleScope.launch(Dispatchers.IO) {
                 model.loadTimeStamps(
                     media.idMAL,
@@ -2770,112 +1896,6 @@ class ExoplayerView :
         }
     }
 
-    // TimeStamp Updating
-    private var currentTimeStamp: AniSkip.Stamp? = null
-    private var skippedTimeStamps: MutableList<AniSkip.Stamp> = mutableListOf()
-
-    private fun updateTimeStamp() {
-        if (isInitialized) {
-            val playerCurrentTime = exoPlayer.currentPosition / 1000
-            currentTimeStamp =
-                model.timeStamps.value?.find { timestamp ->
-                    timestamp.interval.startTime < playerCurrentTime &&
-                            playerCurrentTime < (timestamp.interval.endTime - 1)
-                }
-
-            val new = currentTimeStamp
-            timeStampText.text =
-                if (new != null) {
-                    fun disappearSkip() {
-                        functionstarted = true
-                        skipTimeButton.visibility = View.VISIBLE
-                        exoSkip.visibility = View.GONE
-                        skipTimeText.text = new.skipType.getType()
-                        skipTimeButton.setOnClickListener {
-                            exoPlayer.seekTo((new.interval.endTime * 1000).toLong())
-                        }
-                        var timer: CountDownTimer? = null
-
-                        fun cancelTimer() {
-                            timer?.cancel()
-                            timer = null
-                            return
-                        }
-                        timer =
-                            object : CountDownTimer(5000, 1000) {
-                                override fun onTick(millisUntilFinished: Long) {
-                                    if (new == null) {
-                                        skipTimeButton.visibility = View.GONE
-                                        exoSkip.isVisible =
-                                            PrefManager.getVal<Int>(PrefName.SkipTime) > 0
-                                        exoSkipMini.visibility = View.GONE
-                                        disappeared = false
-                                        functionstarted = false
-                                        cancelTimer()
-                                    }
-                                }
-
-                                override fun onFinish() {
-                                    skipTimeButton.visibility = View.GONE
-                                    exoSkip.isVisible =
-                                        PrefManager.getVal<Int>(PrefName.SkipTime) > 0
-                                    // show small persistent skip icon next to skip time button
-                                    exoSkipMiniText.text = new.skipType.getType()
-                                    exoSkipMini.visibility = View.VISIBLE
-                                    exoSkipMini.setOnClickListener {
-                                        exoPlayer.seekTo((new.interval.endTime * 1000).toLong())
-                                    }
-                                    disappeared = true
-                                    functionstarted = false
-                                    cancelTimer()
-                                }
-                            }
-                        timer?.start()
-                    }
-                    if (PrefManager.getVal(PrefName.ShowTimeStampButton)) {
-                        if (!functionstarted && !disappeared && PrefManager.getVal(PrefName.AutoHideTimeStamps)) {
-                            disappearSkip()
-                        } else if (!PrefManager.getVal<Boolean>(PrefName.AutoHideTimeStamps)) {
-                            skipTimeButton.visibility = View.VISIBLE
-                            exoSkip.visibility = View.GONE
-                            exoSkipMini.visibility = View.GONE
-                            skipTimeText.text = new.skipType.getType()
-                            skipTimeButton.setOnClickListener {
-                                exoPlayer.seekTo((new.interval.endTime * 1000).toLong())
-                            }
-                        }
-                    }
-                    if (PrefManager.getVal(PrefName.AutoSkipOPED) &&
-                        (new.skipType == "op" || new.skipType == "ed") &&
-                        !skippedTimeStamps.contains(new)
-                    ) {
-                        exoPlayer.seekTo((new.interval.endTime * 1000).toLong())
-                        skippedTimeStamps.add(new)
-                    }
-                    if (PrefManager.getVal(PrefName.AutoSkipRecap) &&
-                        new.skipType == "recap" &&
-                        !skippedTimeStamps.contains(
-                            new,
-                        )
-                    ) {
-                        exoPlayer.seekTo((new.interval.endTime * 1000).toLong())
-                        skippedTimeStamps.add(new)
-                    }
-                    new.skipType.getType()
-                } else {
-                    disappeared = false
-                    functionstarted = false
-                    skipTimeButton.visibility = View.GONE
-                    exoSkip.isVisible = PrefManager.getVal<Int>(PrefName.SkipTime) > 0
-                    exoSkipMini.visibility = View.GONE
-                    ""
-                }
-        }
-        handler.postDelayed({
-            updateTimeStamp()
-        }, 500)
-    }
-
     fun onSetTrackGroupOverride(
         trackGroup: Tracks.Group,
         type: @C.TrackType Int,
@@ -2890,8 +1910,8 @@ class ExoplayerView :
                     TrackSelectionOverride(trackGroup.mediaTrackGroup, index),
                 ).build()
         if (type == TRACK_TYPE_TEXT) {
-            setupSubFormatting(playerView)
-            applySubtitleStyles(customSubtitleView)
+            PlayerSubtitleStyle.applyTo(this, playerView)
+            PlayerSubtitleStyle.applyTo(this, customSubtitleView)
         }
         playerView.subtitleView?.alpha =
             when (isDisabled) {
@@ -2943,25 +1963,62 @@ class ExoplayerView :
         }
     }
 
+    /** The full Player settings page, from the settings sheet; the episode waits for it. */
+    fun openFullPlayerSettings() {
+        if (isInitialized) {
+            PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", exoPlayer.currentPosition)
+            exoPlayer.pause()
+        }
+        onChangeSettings.launch(
+            Intent(this, PlayerSettingsActivity::class.java).apply { putExtra("subtitle", subtitle) }
+        )
+    }
+
+    // The settings sheet takes window focus while it is open, which "pause when not in focus"
+    // would otherwise take for the user leaving; it is the player's own, as the "more" menu is.
+    private var settingsSheetOpen = false
+    private var settingsSheetClosedAt = 0L
+
+    fun onSettingsSheetClosed() {
+        settingsSheetOpen = false
+        settingsSheetClosedAt = SystemClock.elapsedRealtime()
+    }
+
+    /** The OP/ED skip button shows whether auto-skip is on; for the sheet's switch of it. */
+    fun refreshSkipButton() = skipStamps.refreshAutoSkip()
+
+    /**
+     * Puts the subtitle settings back on the screen after a change: the track switched on or off
+     * as "show subtitles" says, and the style redrawn. For the settings sheet, live, and on the
+     * way back from the full page.
+     */
+    fun applySubtitlePrefs() {
+        if (!isInitialized) return
+        if (!hasExtSubtitles) {
+            exoPlayer.currentTracks.groups.forEach { trackGroup ->
+                if (trackGroup.type == TRACK_TYPE_TEXT) {
+                    onSetTrackGroupOverride(
+                        if (PrefManager.getVal(PrefName.Subtitles)) trackGroup else dummyTrack,
+                        TRACK_TYPE_TEXT,
+                    )
+                }
+            }
+        }
+        applySubtitleStyle()
+    }
+
+    /** Redraws the subtitles in the current style, leaving the track alone; for the sheet's sliders. */
+    fun applySubtitleStyle() {
+        if (!::playerView.isInitialized) return
+        PlayerSubtitleStyle.applyTo(this, playerView)
+        PlayerSubtitleStyle.applyTo(this, customSubtitleView)
+    }
+
     private val onChangeSettings =
         registerForActivityResult(
             ActivityResultContracts.StartActivityForResult(),
         ) { _: ActivityResult ->
-            if (!hasExtSubtitles) {
-                exoPlayer.currentTracks.groups.forEach { trackGroup ->
-                    when (trackGroup.type) {
-                        TRACK_TYPE_TEXT -> {
-                            if (PrefManager.getVal(PrefName.Subtitles)) {
-                                onSetTrackGroupOverride(trackGroup, TRACK_TYPE_TEXT)
-                            } else {
-                                onSetTrackGroupOverride(dummyTrack, TRACK_TYPE_TEXT)
-                            }
-                        }
-
-                        else -> {}
-                    }
-                }
-            }
+            applySubtitlePrefs()
             if (isInitialized) exoPlayer.play()
         }
 
@@ -3035,7 +2092,10 @@ class ExoplayerView :
             return
         }
         if (playbackState == Player.STATE_ENDED && PrefManager.getVal(PrefName.AutoPlay)) {
-            if (interacted) {
+            if (inBackground) {
+                // Loading the next episode can need the server picker, which can't show out of
+                // sight; the episode just ends, and the notification stays to start it again.
+            } else if (interacted) {
                 exoNext.performClick()
             } else {
                 toast(getString(R.string.autoplay_cancelled))
@@ -3048,7 +2108,7 @@ class ExoplayerView :
         if (!playedThisEpisode) return
         val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
         // Whichever player has the episode: watched on the TV counts as watched.
-        val position = (castPlayer?.takeIf { isCasting } ?: exoPlayer).currentPosition
+        val position = (cast.player?.takeIf { cast.isCasting } ?: exoPlayer).currentPosition
         val episodeEnd =
             episodeLength > 0f &&
             position / episodeLength >
@@ -3104,14 +2164,20 @@ class ExoplayerView :
     @SuppressLint("UnsafeIntentLaunch")
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // The background playback notification: back to the player as it is.
+        if (intent.getBooleanExtra(EXTRA_FROM_NOTIFICATION, false)) return
         finishAndRemoveTask()
         startActivity(intent)
     }
 
     override fun onDestroy() {
+        if (inBackground) {
+            inBackground = false
+            PlayerBackgroundService.stop(this)
+        }
         sleepTimer?.cancel()
         sleepTimer = null
-        unregisterReceiver(pipActionReceiver)
+        pip.unregister()
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -3122,115 +2188,35 @@ class ExoplayerView :
 
         if (isInitialized) {
             updateAniProgress()
-            disappeared = false
-            functionstarted = false
+            skipStamps.resetHint()
             releasePlayer()
         }
-        // The cast session belongs to the app, not this screen, so it carries on; only this
-        // screen's hold on it goes (the availability listener would otherwise leak the activity).
-        castPlayer?.setSessionAvailabilityListener(null)
-        castPlayer?.release()
-        castPlayer = null
+        if (::cast.isInitialized) cast.release()
 
         super.onDestroy()
         finishAndRemoveTask()
     }
 
-    // Cast
-    private fun cast() {
-        val videoURL = video?.file?.url ?: return
-        val shareVideo = Intent(Intent.ACTION_VIEW)
-        shareVideo.setDataAndType(videoURL.toUri(), "video/*")
-        shareVideo.setPackage("com.instantbits.cast.webvideo")
-        // The selected external subtitle. This used to send the video's own url as the subtitle
-        // whenever the episode had no external ones but a subtitle was still set.
-        subtitle?.file?.url?.takeIf { hasExtSubtitles }?.let { shareVideo.putExtra("subtitle", it) }
-        shareVideo.putExtra(
-            "title",
+    /** Hands the episode to Web Video Caster, with the selected external subtitle. */
+    private fun castExternally() {
+        val video = video ?: return
+        PlayerCast.openInWebVideoCaster(
+            this,
+            video,
+            // This used to send the video's own url as the subtitle whenever the episode had no
+            // external ones but a subtitle was still set.
+            subtitle?.file?.url?.takeIf { hasExtSubtitles },
             media.userPreferredName + " : Ep " + episodeTitleArr[currentEpisodeIndex],
+            episode.thumb?.url ?: media.cover,
         )
-        shareVideo.putExtra("poster", episode.thumb?.url ?: media.cover)
-        val headers = Bundle()
-        defaultHeaders.forEach {
-            headers.putString(it.key, it.value)
-        }
-        video?.file?.headers?.forEach {
-            headers.putString(it.key, it.value)
-        }
-        shareVideo.putExtra("android.media.intent.extra.HTTP_HEADERS", headers)
-        shareVideo.putExtra("secure_uri", true)
-        try {
-            startActivity(shareVideo)
-        } catch (ex: ActivityNotFoundException) {
-            val intent = Intent(Intent.ACTION_VIEW)
-            val uriString = "market://details?id=com.instantbits.cast.webvideo"
-            intent.data = uriString.toUri()
-            startActivity(intent)
-        }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun pipActions(): List<RemoteAction> =
-        listOf(
-            RemoteAction(
-                Icon.createWithResource(this, R.drawable.ic_round_replay_10_24),
-                getString(R.string.replay_10_seconds),
-                getString(R.string.replay_10_seconds),
-                PendingIntent.getBroadcast(
-                    this,
-                    13,
-                    Intent(PIP_REPLAY_ACTION).setPackage(packageName),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                ),
-            ),
-            RemoteAction(
-                Icon.createWithResource(
-                    this,
-                    if (exoPlayer.isPlaying) R.drawable.ic_round_pause_24 else R.drawable.ic_round_play_arrow_24,
-                ),
-                getString(if (exoPlayer.isPlaying) R.string.pause else R.string.play),
-                getString(if (exoPlayer.isPlaying) R.string.pause else R.string.play),
-                PendingIntent.getBroadcast(
-                    this,
-                    12,
-                    Intent(PIP_PLAY_PAUSE_ACTION).setPackage(packageName),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                ),
-            ),
-            RemoteAction(
-                Icon.createWithResource(this, R.drawable.ic_round_forward_10_24),
-                getString(R.string.forward_10_seconds),
-                getString(R.string.forward_10_seconds),
-                PendingIntent.getBroadcast(
-                    this,
-                    14,
-                    Intent(PIP_FORWARD_ACTION).setPackage(packageName),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                ),
-            ),
-        )
-
     // Enter PiP Mode
-    @Suppress("DEPRECATION")
     private fun enterPipMode() {
         wasPlaying = isPlayerPlaying
         if (!pipEnabled) return
         isEnteringPip = true
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                enterPictureInPictureMode(
-                    PictureInPictureParams
-                        .Builder()
-                        .setAspectRatio(aspectRatio)
-                        .setActions(pipActions())
-                        .build(),
-                )
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                enterPictureInPictureMode()
-            }
-        } catch (e: Exception) {
-            logError(e)
-        }
+        pip.enter()
     }
 
     private fun onPiPChanged(isInPictureInPictureMode: Boolean) {
@@ -3295,127 +2281,20 @@ class ExoplayerView :
             super.dispatchKeyEvent(event)
         }
 
-    /** The episode is playing on a cast device rather than on the phone. */
-    private val isCasting: Boolean
-        get() = castPlayer != null && ::playerView.isInitialized && playerView.player === castPlayer
-
-    private fun setUpCastPlayer(context: CastContext) {
-        if (isDestroyed || castPlayer != null) return
-        castContext = context
-        castPlayer = CastPlayer(context).apply {
-            setSessionAvailabilityListener(this@ExoplayerView)
-            // Once, here: it used to be added on every session start, so each reconnect stacked
-            // another copy of it.
-            addListener(castListener)
-        }
-        // A session that was already up (casting from the previous episode) carries on with
-        // this one.
-        if (castPlayer?.isCastSessionAvailable == true) onCastSessionAvailable()
-    }
-
-    /**
-     * Sends the current episode to the cast device, from where the phone was. Called when a
-     * session starts, and again for each new episode or server while one is up.
-     */
-    private fun startCastPlayer() {
-        val cast = castPlayer ?: return
-        if (!isCastApiAvailable) {
-            snackString(getString(R.string.cast_unavailable))
-            return
-        }
-        if (!this::mediaItem.isInitialized || !isInitialized) return
-        val item = mediaItem
-        // A cast device fetches the stream itself: a file on this phone is out of its reach.
-        val scheme = item.localConfiguration?.uri?.scheme?.lowercase()
-        if (scheme != "http" && scheme != "https") {
-            snackString(getString(R.string.cast_local_unsupported))
-            return
-        }
-        val position = exoPlayer.currentPosition.coerceAtLeast(0L)
-        cast.setMediaItem(item.withCastMetadata(), position)
-        cast.playWhenReady = true
-        cast.prepare()
-        playerView.player = cast
-        // Stopped rather than paused, so the phone stops buffering what it isn't showing;
-        // it keeps its media source and only needs preparing again on the way back.
-        exoPlayer.stop()
-        if (position > 5000) {
-            PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", position)
-        }
-        discordRPC()
-    }
-
-    /** Title and artwork for the cast device's screen and the cast notification. */
-    private fun MediaItem.withCastMetadata(): MediaItem = buildUpon().setMediaMetadata(
-        androidx.media3.common.MediaMetadata.Builder()
-            .setTitle(media.userPreferredName)
-            .setSubtitle(
-                getString(R.string.episode_num, episode.number) +
-                    (episode.title?.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "")
-            )
-            .setArtworkUri((episode.thumb?.url ?: media.cover)?.toUri())
-            .build()
-    ).build()
-
-    private val castListener =
-            object : Player.Listener {
-                // if the player is paused changed, we want to update the UI
-                override fun onPlayWhenReadyChanged(
-                    playWhenReady: Boolean,
-                    reason: Int,
-                ) {
-                    super.onPlayWhenReadyChanged(playWhenReady, reason)
-                    if (playWhenReady) {
-                        (exoPlay.drawable as Animatable?)?.start()
-                        Glide
-                            .with(this@ExoplayerView)
-                            .load(R.drawable.anim_play_to_pause)
-                            .into(exoPlay)
-                    } else {
-                        (exoPlay.drawable as Animatable?)?.start()
-                        Glide
-                            .with(this@ExoplayerView)
-                            .load(R.drawable.anim_pause_to_play)
-                            .into(exoPlay)
-                    }
-                }
-
-                // The phone's own player reports nothing while casting, so presence follows
-                // the cast session's playback instead.
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (isPlaying) playedThisEpisode = true
-                    discordRPC()
-                }
-            }
-
-    /**
-     * Back on the phone, from where the TV got to. The phone's player still has the episode's
-     * media source — with its separate audio tracks and subtitles, which handing it the bare
-     * media item again (as this used to) dropped — so it is only prepared again and seeked.
-     */
-    private fun startExoPlayer() {
-        val cast = castPlayer
-        val position = cast?.takeIf { playerView.player === it }?.currentPosition ?: -1L
-        if (!::playerView.isInitialized) return
-        playerView.player = exoPlayer
-        if (!isInitialized) return
-        exoPlayer.prepare()
-        if (position > 0) {
-            exoPlayer.seekTo(position)
-            PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", position)
-        }
-        // Back on the phone: report its player, not the stopped cast session.
-        discordRPC()
-    }
-
-    override fun onCastSessionAvailable() {
-        if (isCastApiAvailable && !this.isDestroyed) {
-            startCastPlayer()
-        }
-    }
-
-    override fun onCastSessionUnavailable() {
-        startExoPlayer()
+    /** Title and artwork, for the cast device's screen and the playback notification. */
+    private fun MediaItem.withEpisodeMetadata(): MediaItem {
+        val episodeLine = getString(R.string.episode_num, episode.number) +
+            (episode.title?.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "")
+        return buildUpon().setMediaMetadata(
+            androidx.media3.common.MediaMetadata.Builder()
+                .setTitle(media.userPreferredName)
+                // The system's media controls read the second line from the artist, and showed
+                // "null" with only the subtitle set.
+                .setArtist(episodeLine)
+                .setSubtitle(episodeLine)
+                .setArtworkUri((episode.thumb?.url ?: media.cover)?.toUri())
+                .build()
+        ).build()
     }
 
     @SuppressLint("ViewConstructor")

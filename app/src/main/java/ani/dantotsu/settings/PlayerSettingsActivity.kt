@@ -241,6 +241,11 @@ class PlayerSettingsActivity :
             PrefManager.setVal(PrefName.FocusPause, isChecked)
         }
 
+        binding.playerSettingsBackgroundPlay.isChecked = PrefManager.getVal(PrefName.PlayerBackgroundPlay)
+        binding.playerSettingsBackgroundPlay.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.PlayerBackgroundPlay, isChecked)
+        }
+
         binding.playerSettingsVerticalGestures.isChecked = PrefManager.getVal(PrefName.Gestures)
         binding.playerSettingsVerticalGestures.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.Gestures, isChecked)

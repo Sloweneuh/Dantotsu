@@ -300,6 +300,8 @@ enum class PrefName(val data: Pref) {
     WatchPercentage(Pref(Location.Player, Float::class, 0.8f)),
     AlwaysContinue(Pref(Location.Player, Boolean::class, true)),
     FocusPause(Pref(Location.Player, Boolean::class, true)),
+    // Leaving the player or turning the screen off keeps the audio going, controlled from the notification.
+    PlayerBackgroundPlay(Pref(Location.Player, Boolean::class, false)),
     Gestures(Pref(Location.Player, Boolean::class, true)),
     DoubleTap(Pref(Location.Player, Boolean::class, true)),
     FastForward(Pref(Location.Player, Boolean::class, true)),

@@ -811,6 +811,15 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback"
             android:stopWithTask="true" />
+        <!-- Hosts the player's media session while it plays out of sight; see PlayerBackgroundService. -->
+        <service
+            android:name=".media.anime.PlayerBackgroundService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
         <service
             android:name=".connections.discord.DiscordService"
             android:exported="false"

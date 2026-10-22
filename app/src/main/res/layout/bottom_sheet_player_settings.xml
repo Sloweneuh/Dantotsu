@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The player's own settings sheet (PlayerSettingsSheet): the settings worth changing mid-episode,
+     in the same collapsible sections as the readers' sheets, and a way through to the full page. -->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bottom_sheet_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:orientation="vertical"
+        android:paddingBottom="24dp">
+
+        <View
+            android:layout_width="32dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="14dp"
+            android:alpha="0.4"
+            android:background="@drawable/bg_top_banner_handle" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:fontFamily="@font/poppins_bold"
+            android:paddingHorizontal="4dp"
+            android:text="@string/player_settings"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="20sp" />
+
+        <ani.dantotsu.others.Xpandable
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            app:cardInset="false"
+            app:icon="@drawable/ic_round_subtitles_24"
+            app:isExpanded="true"
+            app:title="@string/subtitles">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/playerSubtitleRows"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="8dp"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:itemCount="3"
+                tools:listitem="@layout/item_settings_switch" />
+        </ani.dantotsu.others.Xpandable>
+
+        <ani.dantotsu.others.Xpandable
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            app:cardInset="false"
+            app:icon="@drawable/ic_round_play_arrow_24"
+            app:isExpanded="false"
+            app:title="@string/backup_sub_playback">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/playerPlaybackRows"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="8dp"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:itemCount="3"
+                tools:listitem="@layout/item_settings_switch" />
+        </ani.dantotsu.others.Xpandable>
+
+        <ani.dantotsu.others.Xpandable
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            app:cardInset="false"
+            app:icon="@drawable/ic_round_touch_app_24"
+            app:isExpanded="false"
+            app:title="@string/reader_section_controls">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/playerControlsRows"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="8dp"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:itemCount="3"
+                tools:listitem="@layout/item_settings_switch" />
+        </ani.dantotsu.others.Xpandable>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/playerMoreRows"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:itemCount="1"
+            tools:listitem="@layout/item_settings" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

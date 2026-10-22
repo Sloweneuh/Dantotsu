@@ -150,7 +150,10 @@
 
                 </LinearLayout>
 
+                <!-- More buttons than a phone held upright has room for: PlayerBottomBar shows
+                     what fits and puts the rest behind exo_more. -->
                 <LinearLayout
+                    android:id="@+id/exo_bottom_buttons"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
@@ -280,6 +283,16 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
+
+                    <ImageButton
+                        android:id="@+id/exo_more"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:backgroundTint="#00FFFFFF"
+                        android:contentDescription="@string/more_options"
+                        android:src="@drawable/ic_round_more_vert_24"
+                        android:visibility="gone"
+                        app:tint="#fff" />
 
                 </LinearLayout>
             </LinearLayout>

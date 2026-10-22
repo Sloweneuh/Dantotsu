@@ -524,6 +524,15 @@
     <string name="behaviour">Comportement</string>
     <string name="always_continue">Toujours continuer là où vous vous êtes arrêté</string>
     <string name="pause_video_focus">Pause quand pas au premier plan</string>
+    <string name="player_background_play">Continuer la lecture en arrière-plan</string>
+    <string name="player_background_play_desc">Le son continue écran éteint ou application fermée, avec les commandes dans la notification</string>
+    <string name="search_kw_player_background_play">arrière-plan audio écran éteint écouter notification verrouillage</string>
+    <string name="player_background_notification">Lecture en arrière-plan</string>
+    <string name="player_cast">Diffuser</string>
+    <string name="player_resize">Redimensionner</string>
+    <string name="player_rotate">Pivoter</string>
+    <string name="player_settings_all">Tous les paramètres du lecteur</string>
+    <string name="player_settings_all_desc">Style des sous-titres, qualité, diffusion et plus</string>
     <string name="gestures">Gestes de volume &amp; luminosité</string>
     <string name="double_tap">Double tap pour avancer</string>
     <string name="fast_forward">Avance rapide</string>
