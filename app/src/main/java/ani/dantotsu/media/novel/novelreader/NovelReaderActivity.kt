@@ -96,6 +96,7 @@ import kotlin.math.roundToInt
 import kotlin.math.min
 import kotlin.properties.Delegates
 import org.json.JSONObject
+import ani.dantotsu.settings.ReaderSettingsStore
 
 
 class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
@@ -1671,48 +1672,11 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T> loadReaderSettings(
-        fileName: String,
-        context: Context? = null,
-        toast: Boolean = true
-    ): T? {
-        val a = context ?: currContext()
-        try {
-            if (a?.fileList() != null)
-                if (fileName in a.fileList()) {
-                    val fileIS: FileInputStream = a.openFileInput(fileName)
-                    val objIS = ObjectInputStream(fileIS)
-                    val data = objIS.readObject() as T
-                    objIS.close()
-                    fileIS.close()
-                    return data
-                }
-        } catch (e: Exception) {
-            if (toast) snackString(a?.getString(R.string.error_loading_data, fileName))
-            //try to delete the file
-            try {
-                a?.deleteFile(fileName)
-            } catch (e: Exception) {
-                Injekt.get<CrashlyticsInterface>().log("Failed to delete file $fileName")
-                Injekt.get<CrashlyticsInterface>().logException(e)
-            }
-            e.printStackTrace()
-        }
-        return null
-    }
+    private fun <T> loadReaderSettings(fileName: String, context: Context? = null, toast: Boolean = true): T? =
+        ReaderSettingsStore.load(fileName, context, toast)
 
-    private fun saveReaderSettings(fileName: String, data: Any?, context: Context? = null) {
-        tryWith {
-            val a = context ?: currContext()
-            if (a != null) {
-                val fos: FileOutputStream = a.openFileOutput(fileName, Context.MODE_PRIVATE)
-                val os = ObjectOutputStream(fos)
-                os.writeObject(data)
-                os.close()
-                fos.close()
-            }
-        }
-    }
+    private fun saveReaderSettings(fileName: String, data: Any?, context: Context? = null) =
+        ReaderSettingsStore.save(fileName, data, context)
 
     private fun hideBars() {
         if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) {

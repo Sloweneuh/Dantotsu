@@ -141,27 +141,16 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.properties.Delegates
+import ani.dantotsu.settings.ReaderSettingsStore
 
-/**
- * Pages past the last visible one that automatic translation works ahead on.
- *
- * Small on purpose. Every page ahead is a request that may never be read, and the wait for the page
- * actually on screen is what the reader notices — a deep lookahead makes that wait longer, not
- * shorter, because the queue in front of it is longer.
- */
-private const val AUTO_LOOKAHEAD = 2
 
-/** Failures in a row that end an automatic run. See [MangaReaderActivity.autoFailures]. */
-private const val AUTO_FAILURE_LIMIT = 3
 
-/** Outline of a box the reader drew by hand. See [MangaReaderActivity.drawBoxes]. */
-private const val DRAWN_BOX_COLOR = 0xFF2196F3.toInt()
 
 class MangaReaderActivity : AppCompatActivity() {
     private val mangaCache = Injekt.get<MangaCache>()
 
-    private lateinit var binding: ActivityMangaReaderBinding
-    private val model: MediaDetailsViewModel by viewModels()
+    internal lateinit var binding: ActivityMangaReaderBinding
+    internal val model: MediaDetailsViewModel by viewModels()
     private val scope = lifecycleScope
 
     var defaultSettings = CurrentReaderSettings()
@@ -368,7 +357,7 @@ class MangaReaderActivity : AppCompatActivity() {
         PrefManager.setCustomVal("${media.id}_${chapter.number}_offset", offset)
     }
 
-    private lateinit var media: Media
+    internal lateinit var media: Media
     private lateinit var chapter: MangaChapter
     private lateinit var chapters: MutableMap<String, MangaChapter>
     private lateinit var chaptersArr: List<String>
@@ -376,10 +365,10 @@ class MangaReaderActivity : AppCompatActivity() {
     private var currentChapterIndex = 0
 
     private var isContVisible = false
-    private var showProgressDialog = true
+    internal var showProgressDialog = true
 
-    private var maxChapterPage = 0L
-    private var currentChapterPage = 0L
+    internal var maxChapterPage = 0L
+    internal var currentChapterPage = 0L
 
     private var notchHeight: Int? = null
 
@@ -396,33 +385,10 @@ class MangaReaderActivity : AppCompatActivity() {
 
     var sliding = false
     var isAnimating = false
-    private var autoscrollTimer: Timer? = null
-    var autoscrollOn = false
-    private var autoscrollLastFrameNanos = 0L
-    private var autoscrollAccumulatedPx = 0f
-    private val autoscrollFrameCallback = object : Choreographer.FrameCallback {
-        override fun doFrame(frameTimeNanos: Long) {
-            if (!autoscrollOn) return
-            if (autoscrollLastFrameNanos != 0L) {
-                // Cap elapsed to 50 ms to avoid a large jump after a frame drop or resume
-                val elapsedSec = minOf(
-                    (frameTimeNanos - autoscrollLastFrameNanos) / 1_000_000_000f,
-                    0.05f
-                )
-                val speed = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)
-                autoscrollAccumulatedPx += speed * 240f * elapsedSec
-                val scroll = autoscrollAccumulatedPx.toInt()
-                if (scroll > 0) {
-                    autoscrollAccumulatedPx -= scroll
-                    binding.mangaReaderRecycler.scrollBy(0, scroll)
-                }
-            }
-            autoscrollLastFrameNanos = frameTimeNanos
-            Choreographer.getInstance().postFrameCallback(this)
-        }
-    }
+    private val autoscroll = ReaderAutoscroll(this)
+    val autoscrollOn: Boolean get() = autoscroll.isOn
 
-    private val directionRLBT
+    internal val directionRLBT
         get() = defaultSettings.direction == RIGHT_TO_LEFT
                 || defaultSettings.direction == BOTTOM_TO_TOP
     private val directionPagedBT
@@ -492,74 +458,15 @@ class MangaReaderActivity : AppCompatActivity() {
             hideSystemBarsExtendView()
     }
 
-    private fun toggleAutoscroll() {
-        // Only allow autoscroll when using Continuous layout
-        if (defaultSettings.layout != CurrentReaderSettings.Layouts.CONTINUOUS) {
-            // Inform user and do not toggle
-            try { snackString(getString(R.string.autoscroll_only_continuous)) } catch (_: Exception) {}
-            return
-        }
-        if (autoscrollOn) stopAutoscroll() else startAutoscroll()
-    }
-
-    fun startAutoscroll() {
-        autoscrollOn = true
-        binding.mangaReaderAutoscroll.setImageResource(R.drawable.ic_round_pause_24)
-        autoscrollTimer?.cancel()
-        val speed = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)
-        if (defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) {
-            // Higher `speed` -> faster. Use a tighter base so max values are noticeably faster.
-            val interval = (1000L / maxOf(0.1f, speed)).toLong()
-            autoscrollTimer = Timer()
-            autoscrollTimer?.scheduleAtFixedRate(object : TimerTask() {
-                override fun run() {
-                    binding.mangaReaderPager.post {
-                        try {
-                            if (directionRLBT) {
-                                if (binding.mangaReaderPager.currentItem > 0) binding.mangaReaderPager.currentItem = binding.mangaReaderPager.currentItem - 1
-                            } else {
-                                if (binding.mangaReaderPager.currentItem < binding.mangaReaderPager.adapter?.itemCount?.minus(1) ?: 0) binding.mangaReaderPager.currentItem = binding.mangaReaderPager.currentItem + 1
-                            }
-                        } catch (e: Exception) {
-                        }
-                    }
-                }
-            }, interval, interval)
-        } else {
-            // Continuous: vsync-tied smooth scroll via Choreographer
-            autoscrollLastFrameNanos = 0L
-            autoscrollAccumulatedPx = 0f
-            Choreographer.getInstance().postFrameCallback(autoscrollFrameCallback)
-        }
-    }
-
-    fun stopAutoscroll() {
-        autoscrollOn = false
-        autoscrollTimer?.cancel()
-        autoscrollTimer = null
-        Choreographer.getInstance().removeFrameCallback(autoscrollFrameCallback)
-        autoscrollLastFrameNanos = 0L
-        autoscrollAccumulatedPx = 0f
-        binding.mangaReaderAutoscroll.setImageResource(R.drawable.ic_round_play_arrow_24)
-    }
-
-    fun updateAutoscrollSpeed(newSpeed: Float) {
-        PrefManager.setVal(PrefName.AutoScrollSpeed, newSpeed)
-        if (autoscrollOn) {
-            if (defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) {
-                // Paged mode uses a timer interval, so must restart
-                autoscrollTimer?.cancel()
-                startAutoscroll()
-            }
-            // Continuous mode: Choreographer reads speed on every frame, no restart needed
-        }
-    }
+    fun startAutoscroll() = autoscroll.start()
+    fun stopAutoscroll() = autoscroll.stop()
+    fun updateAutoscrollSpeed(newSpeed: Float) = autoscroll.updateSpeed(newSpeed)
 
     override fun onDestroy() {
         // Diagnostic: isChangingConfigurations=true => torn down for a config change (will be
         // recreated); isFinishing=true => we (or back) closed it. Neither => process is going away.
         ani.dantotsu.util.Logger.log("MangaReaderActivity.onDestroy (isChangingConfigurations=$isChangingConfigurations, isFinishing=$isFinishing, cacheSize=${mangaCache.size()})")
-        autoscrollTimer?.cancel()
+        autoscroll.release()
         prefetcher?.cancel()
         prefetcher = null
         PageEdges.onProfiled = null
@@ -604,7 +511,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 // Not asking individually or incognito
                 && !showProgressDialog && !PrefManager.getVal<Boolean>(PrefName.Incognito)
                 // A tracking choice is actually on record (or "ask individually" is off)
-                && mayTrackProgressSilently()
+                && progress.maySaveSilently()
                 // Not ...opted out ...already? Somehow?
                 && PrefManager.getCustomVal("${media.id}_save_progress", true)
                 //  Allowing adult (Hentai) updates, or not an adult title
@@ -617,7 +524,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 )
                 finish()
             } else {
-                progress { finish() }
+                progress.beforeLeaving { finish() }
             }
         }
 
@@ -912,7 +819,7 @@ class MangaReaderActivity : AppCompatActivity() {
         }
 
         binding.mangaReaderAutoscroll.setOnClickListener {
-            toggleAutoscroll()
+            autoscroll.toggle()
         }
 
         // Start autoscroll if enabled in preferences and layout allows it
@@ -957,7 +864,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 else snackString(getString(R.string.first_chapter))
             } else {
                 if (chaptersArr.size > currentChapterIndex + 1) showGapWarningThenRun(currentChapterIndex + 1) {
-                    progress { change(currentChapterIndex + 1) }
+                    progress.beforeLeaving { change(currentChapterIndex + 1) }
                 }
                 else snackString(getString(R.string.next_chapter_not_found))
             }
@@ -969,7 +876,7 @@ class MangaReaderActivity : AppCompatActivity() {
         binding.mangaReaderPreviousChapter.setOnClickListener {
             if (directionRLBT) {
                 if (chaptersArr.size > currentChapterIndex + 1) showGapWarningThenRun(currentChapterIndex + 1) {
-                    progress { change(currentChapterIndex + 1) }
+                    progress.beforeLeaving { change(currentChapterIndex + 1) }
                 }
                 else snackString(getString(R.string.next_chapter_not_found))
             } else {
@@ -1507,94 +1414,8 @@ class MangaReaderActivity : AppCompatActivity() {
         LEFT, RIGHT, CENTER
     }
 
-    /**
-     * Which side of the screen a tap at ([x], [y]) in a [w] × [h] reader counts as for turning pages,
-     * by the chosen tap-zone layout (ReaderTapZones):
-     *  - 0 Edges: the left and right fifths, below a top strip the width of a fifth (the original).
-     *  - 1 Thirds: the left and right thirds; the middle third opens the menu.
-     *  - 2 L-shape: a 3 × 3 grid — the top row and the middle row's left cell go back, the bottom
-     *    row and the middle row's right cell go forward, the centre opens the menu.
-     *  - 3 Off: every tap opens the menu.
-     *  - 4 Custom: the user's own boxes (ReaderCustomTapZones; see TapZones and
-     *    TapZoneEditorActivity), as back and forward rather than sides, whatever the direction.
-     * Inverted (ReaderTapZonesInverted) swaps the two sides.
-     */
-    private fun tapZoneSide(x: Int, y: Int, w: Int, h: Int): PressPos {
-        if (w <= 0 || h <= 0) return PressPos.CENTER
-        val side = when (PrefManager.getVal<Int>(PrefName.ReaderTapZones)) {
-            1 -> when {
-                x < w / 3 -> PressPos.LEFT
-                x > w - w / 3 -> PressPos.RIGHT
-                else -> PressPos.CENTER
-            }
-            2 -> when {
-                y < h / 3 -> PressPos.LEFT
-                y > h - h / 3 -> PressPos.RIGHT
-                x < w / 3 -> PressPos.LEFT
-                x > w - w / 3 -> PressPos.RIGHT
-                else -> PressPos.CENTER
-            }
-            3 -> PressPos.CENTER
-            4 -> when (
-                TapZones.zoneAt(
-                    TapZones.parse(PrefManager.getVal(PrefName.ReaderCustomTapZones)),
-                    x.toFloat() / w, y.toFloat() / h,
-                )
-            ) {
-                TapZones.Zone.BACK -> PressPos.LEFT
-                TapZones.Zone.FORWARD -> PressPos.RIGHT
-                TapZones.Zone.MENU, null -> PressPos.CENTER
-            }
-            else -> when {
-                y <= w / 5 -> PressPos.CENTER
-                x < w / 5 -> PressPos.LEFT
-                x > w - w / 5 -> PressPos.RIGHT
-                else -> PressPos.CENTER
-            }
-        }
-        if (!PrefManager.getVal<Boolean>(PrefName.ReaderTapZonesInverted)) return side
-        return when (side) {
-            PressPos.LEFT -> PressPos.RIGHT
-            PressPos.RIGHT -> PressPos.LEFT
-            PressPos.CENTER -> PressPos.CENTER
-        }
-    }
-
-    /**
-     * The page filters (global, see ReaderDim / ReaderWarmth / ReaderGreyscale / ReaderInvert): the
-     * dimmer and warm tint as overlays above the pages, greyscale and invert as a colour matrix on
-     * the pages' own layer — the controls and indicators over them keep their colours.
-     */
-    fun applyPageFilters() {
-        val dim = PrefManager.getVal<Float>(PrefName.ReaderDim).coerceIn(0f, 0.8f)
-        binding.mangaReaderDim.alpha = dim
-        binding.mangaReaderDim.isVisible = dim > 0f
-        val warmth = PrefManager.getVal<Float>(PrefName.ReaderWarmth).coerceIn(0f, 1f)
-        // A third at most: past that the tint drowns the page rather than warming it.
-        binding.mangaReaderWarmth.alpha = warmth * 0.35f
-        binding.mangaReaderWarmth.isVisible = warmth > 0f
-
-        val greyscale = PrefManager.getVal<Boolean>(PrefName.ReaderGreyscale)
-        val invert = PrefManager.getVal<Boolean>(PrefName.ReaderInvert)
-        val pages = binding.mangaReaderSwipy
-        if (!greyscale && !invert) {
-            pages.setLayerType(View.LAYER_TYPE_NONE, null)
-            return
-        }
-        val matrix = ColorMatrix()
-        if (greyscale) matrix.setSaturation(0f)
-        if (invert) matrix.postConcat(
-            ColorMatrix(floatArrayOf(
-                -1f, 0f, 0f, 0f, 255f,
-                0f, -1f, 0f, 0f, 255f,
-                0f, 0f, -1f, 0f, 255f,
-                0f, 0f, 0f, 1f, 0f,
-            ))
-        )
-        pages.setLayerType(View.LAYER_TYPE_HARDWARE, Paint().apply {
-            colorFilter = ColorMatrixColorFilter(matrix)
-        })
-    }
+    /** The page filters; see [ReaderPageFilters]. */
+    fun applyPageFilters() = ReaderPageFilters.apply(binding)
 
     fun handleController(shouldShow: Boolean? = null, event: MotionEvent? = null) {
         var pressLocation = PressPos.CENTER
@@ -1607,7 +1428,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 val origin = IntArray(2).also(binding.root::getLocationOnScreen)
                 val x = event.rawX.toInt() - origin[0]
                 val y = event.rawY.toInt() - origin[1]
-                val side = tapZoneSide(x, y, binding.root.width, binding.root.height)
+                val side = TapZones.sideAt(x, y, binding.root.width, binding.root.height)
                 // Screen sides become directions: a right-to-left book turns forward on the left.
                 // Custom zones are already directions — a box marked Back always goes back.
                 val rtl = defaultSettings.direction == RIGHT_TO_LEFT &&
@@ -1813,15 +1634,6 @@ class MangaReaderActivity : AppCompatActivity() {
     private var multiChapterLoading = false
     private var lastTrackedChapterIndex = -1
 
-    /**
-     * Chapter indices whose progress has already been pushed during this reader session.
-     * Resting on a transition leaves the tracked chapter oscillating across the divider — the
-     * item below is only borderline visible, so it drops in and out of the visible range as the
-     * images under it settle from their placeholder height into their real one. Each forward flip
-     * looks like a fresh chapter boundary, so without this the same update (and its toast) fires
-     * over and over while the reader sits still.
-     */
-    private val progressedChapterIndices = mutableSetOf<Int>()
 
     private fun handleContinuousMultiChapterScroll(
         v: RecyclerView,
@@ -1881,7 +1693,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 val prevKey = chaptersArr.getOrNull(lastTrackedChapterIndex)
                 val prevChap = if (prevKey != null) chapters[prevKey] else null
                 if (prevChap != null) {
-                    updateMultiChapterProgressSilently(prevChap, lastTrackedChapterIndex)
+                    progress.chapterFinished(prevChap, lastTrackedChapterIndex)
                 }
             }
             lastTrackedChapterIndex = visibleChapterIdx
@@ -1965,7 +1777,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 val prevKey = chaptersArr.getOrNull(lastTrackedChapterIndex)
                 val prevChap = if (prevKey != null) chapters[prevKey] else null
                 if (prevChap != null) {
-                    updateMultiChapterProgressSilently(prevChap, lastTrackedChapterIndex)
+                    progress.chapterFinished(prevChap, lastTrackedChapterIndex)
                 }
             }
             lastTrackedChapterIndex = visibleChapterIdx
@@ -2168,7 +1980,7 @@ class MangaReaderActivity : AppCompatActivity() {
                     // looks exactly like a fast scroll *forwards* — which is the opposite of what
                     // the reader just did to cause it. Dropping the anchor keeps the direction it
                     // had and re-measures from where things now are.
-                    autoAnchor = RecyclerView.NO_POSITION
+                    translation.resetAnchor()
                     multiChapterLoading = false
                     startPageScan(prevChapter)
                 }
@@ -2226,162 +2038,13 @@ class MangaReaderActivity : AppCompatActivity() {
         return ((lo + 1) until hi).count { it !in presentNumbers }
     }
 
-    /**
-     * Whether progress may be written for this media without a prompt.
-     *
-     * `AskIndividualReader` off means the setting itself has opted into always auto-updating.
-     * Otherwise the user must have actually answered the "update progress?" question at some point
-     * — both Yes and No write `_save_progress`, so the key existing is the record of a choice.
-     * When asking is on and that key is absent the prompt was skipped rather than answered (an
-     * adult title with H-updates off, a stale "don't ask again" flag, an entry path that bypassed
-     * [ChapterLoaderDialog.showProgressPopupIfNecessary]); silently tracking there is exactly the
-     * "never asked but tracked anyway" case, so don't.
-     */
-    private fun mayTrackProgressSilently(): Boolean {
-        if (!PrefManager.getVal<Boolean>(PrefName.AskIndividualReader)) return true
-        return PrefManager.customValExists("${media.id}_save_progress")
-    }
+    private val progress = ReaderProgress(this)
 
-    private fun progress(runnable: Runnable) {
-        if (media.id < 0) { runnable.run(); return }
-        if (maxChapterPage - currentChapterPage <= 1 && Anilist.userid != null) {
-            showProgressDialog =
-                if (PrefManager.getVal(PrefName.AskIndividualReader)) PrefManager.getCustomVal(
-                    "${media.id}_progressDialog",
-                    true
-                )
-                else false
-            val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
-            val isContinuousMultiChapter = PrefManager.getVal<Boolean>(PrefName.ContinuousMultiChapter)
-            if (showProgressDialog && !incognito && !isContinuousMultiChapter) {
+    private fun <T> loadReaderSettings(fileName: String, context: Context? = null, toast: Boolean = true): T? =
+        ReaderSettingsStore.load(fileName, context, toast)
 
-                val dialogView = layoutInflater.inflate(R.layout.item_custom_dialog, null)
-                val checkbox = dialogView.findViewById<CheckBox>(R.id.dialog_checkbox)
-                checkbox.text = getString(R.string.dont_ask_again, media.userPreferredName)
-                checkbox.setOnCheckedChangeListener { _, isChecked ->
-                    PrefManager.setCustomVal("${media.id}_progressDialog", !isChecked)
-                    showProgressDialog = !isChecked
-                }
-                customAlertDialog().apply {
-                    setTitle(R.string.title_update_progress)
-                    setCustomView(dialogView)
-                    // Not dismissable, deliberately: the two buttons are the only answers and one
-                    // of them is needed. The checkbox beside them writes "don't ask again" the
-                    // moment it's ticked, so a dismissal would suppress the dialog for good while
-                    // leaving the answer it suppresses unset — which then falls back to the
-                    // default, silently auto-updating progress from then on. That is the opposite
-                    // of what walking away from the question implies.
-                    setCancelable(false)
-                    setPosButton(R.string.yes) {
-                        PrefManager.setCustomVal("${media.id}_save_progress", true)
-                        updateProgress(
-                            media,
-                            MediaNameAdapter.findChapterNumber(media.manga!!.selectedChapter!!.number)
-                                .toString(),
-                            MediaNameAdapter.findVolumeNumber(media.manga!!.selectedChapter!!.number)
-                        )
-                        runnable.run()
-                    }
-                    setNegButton(R.string.no) {
-                        PrefManager.setCustomVal("${media.id}_save_progress", false)
-                        runnable.run()
-                    }
-                    show()
-
-                }
-            } else {
-                if (!incognito && mayTrackProgressSilently() && PrefManager.getCustomVal(
-                        "${media.id}_save_progress",
-                        true
-                    ) && if (media.isAdult) PrefManager.getVal(PrefName.UpdateForHReader) else true
-                )
-                    updateProgress(
-                        media,
-                        MediaNameAdapter.findChapterNumber(media.manga!!.selectedChapter!!.number)
-                            .toString(),
-                        MediaNameAdapter.findVolumeNumber(media.manga!!.selectedChapter!!.number)
-                    )
-                runnable.run()
-            }
-        } else {
-            runnable.run()
-        }
-    }
-
-
-    /**
-     * Silently updates progress when crossing a chapter boundary in continuous multi-chapter
-     * mode. The user's choice is collected once up front by
-     * [ChapterLoaderDialog.showProgressPopupIfNecessary] when a chapter is tapped in the list,
-     * so each transition only consults the stored `_save_progress` decision — and only when a
-     * decision is actually on record ([mayTrackProgressSilently]), so a prompt that was skipped
-     * rather than answered doesn't turn into silent tracking. Fires at most once per chapter per
-     * session — see [progressedChapterIndices].
-     */
-    private fun updateMultiChapterProgressSilently(completedChapter: MangaChapter, chapterIndex: Int) {
-        if (media.id < 0) return
-        if (Anilist.userid == null) return
-        if (!progressedChapterIndices.add(chapterIndex)) return
-        val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
-        if (incognito) return
-        if (media.isAdult && !PrefManager.getVal<Boolean>(PrefName.UpdateForHReader)) return
-
-        val chapterNum = MediaNameAdapter.findChapterNumber(completedChapter.number)?.toString() ?: return
-
-        if (mayTrackProgressSilently() && PrefManager.getCustomVal("${media.id}_save_progress", true)) {
-            updateProgress(media, chapterNum, MediaNameAdapter.findVolumeNumber(completedChapter.number))
-        }
-    }
-
-
-
-    @Suppress("UNCHECKED_CAST")
-    private fun <T> loadReaderSettings(
-        fileName: String,
-        context: Context? = null,
-        toast: Boolean = true
-    ): T? {
-        val a = context ?: currContext()
-        try {
-            if (a?.fileList() != null)
-                if (fileName in a.fileList()) {
-                    val fileIS: FileInputStream = a.openFileInput(fileName)
-                    val objIS = ObjectInputStream(fileIS)
-                    val data = objIS.readObject() as T
-                    objIS.close()
-                    fileIS.close()
-                    return data
-                }
-        } catch (e: Exception) {
-            // A settings class that has grown a field since the file was written is not corruption,
-            // just a file from an older build: it is replaced from the defaults without a word.
-            if (toast && e !is InvalidClassException) {
-                snackString(a?.getString(R.string.error_loading_data, fileName))
-            }
-            //try to delete the file
-            try {
-                a?.deleteFile(fileName)
-            } catch (e: Exception) {
-                Injekt.get<CrashlyticsInterface>().log("Failed to delete file $fileName")
-                Injekt.get<CrashlyticsInterface>().logException(e)
-            }
-            e.printStackTrace()
-        }
-        return null
-    }
-
-    private fun saveReaderSettings(fileName: String, data: Any?, context: Context? = null) {
-        tryWith {
-            val a = context ?: currContext()
-            if (a != null) {
-                val fos: FileOutputStream = a.openFileOutput(fileName, Context.MODE_PRIVATE)
-                val os = ObjectOutputStream(fos)
-                os.writeObject(data)
-                os.close()
-                fos.close()
-            }
-        }
-    }
+    internal fun saveReaderSettings(fileName: String, data: Any?, context: Context? = null) =
+        ReaderSettingsStore.save(fileName, data, context)
 
     fun getTransformation(mangaImage: MangaImage): BitmapTransformation? {
         return model.loadTransformation(mangaImage, media.selected!!.sourceIndex)
@@ -2411,392 +2074,11 @@ class MangaReaderActivity : AppCompatActivity() {
         // With translation on, a long press is no longer only "show me this image" — so it asks
         // rather than assuming, and only when there is a second thing worth offering.
         if (PageTranslationPipeline.enabled()) {
-            showPageActions(pos, img1, img2, callback)
+            translation.showPageActions(pos, img1, img2, callback)
             return true
         }
         showImageDialog(pos, img1, img2, callback)
         return true
-    }
-
-    /**
-     * The long-press menu, once translation gives a page more than one thing to do to it.
-     *
-     * Re-translating is offered for a page already done because the first answer is not always the
-     * right one, and it is the cheapest correction available before any editing UI exists.
-     */
-    private fun showPageActions(
-        pos: Int,
-        img1: MangaImage,
-        img2: MangaImage?,
-        callback: ((ImageViewDialog) -> Unit)?,
-    ) {
-        val done = TranslatedPages[img1.url.url] != null
-        val actions = listOfNotNull(
-            getString(
-                if (done) R.string.mtl_retranslate_page else R.string.mtl_translate_page,
-            ) to { translatePage(pos, img1) },
-            (getString(R.string.mtl_hide_translation) to { hideTranslation(img1) }).takeIf { done },
-            getString(R.string.mtl_draw_boxes) to { drawBoxes(pos, img1) },
-            getString(R.string.view_image) to { showImageDialog(pos, img1, img2, callback) },
-        )
-        choiceBottomSheet(
-            getString(R.string.mtl_page_actions, pos + 1),
-            actions.map { it.first },
-            selectedIndex = -1,
-        ) { index -> actions[index].second() }
-    }
-
-    private fun hideTranslation(image: MangaImage) {
-        TranslatedPages.remove(image.url.url)
-        refreshTranslationOverlays()
-    }
-
-    /**
-     * Lets the reader draw boxes over text the page pass missed, then translates the page with
-     * them.
-     *
-     * The page pass drops whole columns often enough to need this — a caption in display type, one
-     * column of a two-column bubble — and the same text nearly always reads from a crop, so a box
-     * is all that is needed to get it. What the page pass *did* find is shown first, outlined in
-     * the colour of its verdict, so the missing text is obvious and a bubble it split or framed
-     * wrong can be redrawn: a detected box dragged or resized becomes a drawn one and supersedes
-     * it. Every box drawn or edited is read again at once and the result shown, so a box is judged
-     * before it costs a translation. Boxes are kept per page (see [DrawnRegions]) and shown again
-     * here, so a second visit edits rather than starts over.
-     */
-    private fun drawBoxes(pos: Int, image: MangaImage) {
-        if (!mtlSettings().ready()) {
-            snackString(getString(R.string.mtl_needs_key))
-            return
-        }
-        lifecycleScope.launch {
-            val bitmap = loadBitmap(image.url, pageTransforms(image))
-            if (bitmap == null) {
-                snackString(getString(R.string.mtl_page_unavailable))
-                return@launch
-            }
-            val key = image.url.url
-            val detector = PageTextDetector(activeScript())
-            val binding = DialogDrawBoxesBinding.inflate(layoutInflater)
-            val editor = binding.drawBoxesPage.apply { setPage(bitmap) }
-
-            // Detected blocks keep their ids from the page pass; drawn ones count on from there.
-            // Text is what each box was read as — blank for a box that read as nothing, absent
-            // while a read is still in flight.
-            val detected = LinkedHashMap<Int, ScoredBlock>()
-            val drawn = LinkedHashMap<Int, Rect>()
-            val text = HashMap<Int, String>()
-            // What the scorer makes of each drawn box, once it has been read. The page pass'
-            // blocks carry their own; this is the same judgement passed on the boxes the reader
-            // drew, so a box over artwork or over a sound effect says so instead of being green
-            // for having read any text at all.
-            val verdicts = HashMap<Int, BlockVerdict>()
-            // Boxes whose verdict the reader has overruled. Kept by id rather than on the box so
-            // that a drag, which re-reads and re-scores, does not quietly drop an answer they
-            // already gave.
-            val trusted = HashSet<Int>()
-            var nextId = 1
-            var open = true
-            // Guards the checkbox against its own listener while it is being brought into line
-            // with the selection.
-            var syncing = false
-
-            fun status(id: Int?) {
-                binding.drawBoxesStatus.text = when {
-                    id == null -> getString(R.string.mtl_draw_boxes_hint)
-                    id !in text -> getString(R.string.mtl_draw_boxes_reading, id)
-                    text.getValue(id).isBlank() ->
-                        getString(R.string.mtl_draw_boxes_read_nothing, id)
-
-                    else -> getString(R.string.mtl_draw_boxes_read, id, text.getValue(id))
-                }
-            }
-            /**
-             * Offers the override on the selected box, where there is one to offer.
-             *
-             * Only a drawn box that read something and then scored as untranslatable has anything
-             * to overrule: a box already judged dialogue or an effect is translated regardless, one
-             * still being read has no verdict yet, and one that read nothing has no words to
-             * translate however much anybody insists.
-             */
-            fun trust() {
-                val id = editor.selectedId?.takeIf { it in drawn && !text[it].isNullOrBlank() }
-                val verdict = id?.let { verdicts[it] }
-                val offer = verdict != null && !verdict.translatable
-                syncing = true
-                binding.drawBoxesTrust.isChecked = offer && id in trusted
-                syncing = false
-                binding.drawBoxesTrust.visibility = if (offer) View.VISIBLE else View.GONE
-            }
-            fun render() {
-                editor.setBoxes(
-                    detected.map { (id, entry) ->
-                        BlockEditorView.Box(id, entry.block.box, entry.verdict.color)
-                    } + drawn.map { (id, rect) ->
-                        val color = when {
-                            id !in text -> DRAWN_BOX_COLOR
-                            text.getValue(id).isBlank() -> BlockVerdict.LOW_CONF.color
-                            else -> (verdicts[id] ?: BlockVerdict.DIALOGUE).color
-                        }
-                        BlockEditorView.Box(id, rect, color)
-                    },
-                )
-            }
-            fun read(id: Int) {
-                val rect = drawn[id] ?: return
-                text.remove(id)
-                verdicts.remove(id)
-                status(id)
-                trust()
-                lifecycleScope.launch {
-                    val read = detector.readRegion(bitmap, rect)
-                    // The box may have moved or gone while the recognizer was busy.
-                    if (!open || drawn[id] !== rect) return@launch
-                    // Through the same run the pipeline builds, so the box carries its lines'
-                    // places on the page and is judged a line at a time exactly as it will be
-                    // when the page is translated.
-                    val run = detector.regionRun(read, trusted = id in trusted)
-                    val block = detector.toBlock(
-                        id, read.lines, rect,
-                        synthetic = true, glyphScale = read.scale,
-                        lineBoxes = run?.lineBoxes.orEmpty(),
-                    )
-                    text[id] = block.text
-                    // Scored on its own, so the ruby test — which compares a block against the
-                    // page's median glyph — cannot fire on the one block it is given. That is the
-                    // right answer here anyway: a box drawn by hand is not ruby.
-                    verdicts[id] = withContext(Dispatchers.Default) {
-                        BlockScorer
-                            .score(listOf(block), bitmap, DetectionThresholds.fromPrefs())
-                            .first()
-                            .verdict
-                    }
-                    if (!open || drawn[id] !== rect) return@launch
-                    render()
-                    trust()
-                    if (editor.selectedId == id || editor.selectedId == null) status(id)
-                }
-            }
-            fun remove() {
-                val id = editor.selectedId?.takeIf { it in drawn } ?: drawn.keys.lastOrNull()
-                if (id == null) return
-                drawn.remove(id)
-                text.remove(id)
-                verdicts.remove(id)
-                trusted.remove(id)
-                editor.select(null)
-                render()
-                status(null)
-                trust()
-            }
-
-            editor.onBoxAdded = { rect ->
-                val id = nextId++
-                drawn[id] = rect
-                editor.select(id)
-                render()
-                read(id)
-            }
-            editor.onBoxChanged = { id, rect ->
-                // *Moving* a detected box makes it the reader's own: from here it is read from
-                // where they put it, and whatever the page pass found there gives way to it. Only
-                // a real drag gets here — a tap that merely selects is not an edit, or picking a
-                // box up to look at it would silently convert it.
-                detected.remove(id)
-                drawn[id] = rect
-                // What the page pass read is what it read at the old rect, and what it made of it
-                // was judged there too. Neither describes this box any more, so the box goes back
-                // to pending until the re-read at the end of the drag answers for the new one.
-                text.remove(id)
-                verdicts.remove(id)
-                render()
-            }
-            editor.onBoxEditEnded = { id -> read(id) }
-            editor.onSelectionChanged = { id ->
-                status(id)
-                trust()
-            }
-            binding.drawBoxesTrust.setOnCheckedChangeListener { _, checked ->
-                if (syncing) return@setOnCheckedChangeListener
-                val id = editor.selectedId ?: return@setOnCheckedChangeListener
-                if (checked) trusted.add(id) else trusted.remove(id)
-            }
-
-            binding.drawBoxesStatus.setText(R.string.mtl_draw_boxes_reading_page)
-            customAlertDialog().apply {
-                setTitle(R.string.mtl_draw_boxes_title, pos + 1)
-                setCustomView(binding.root)
-                setPosButton(R.string.mtl_draw_boxes_translate) {
-                    DrawnRegions.put(
-                        key,
-                        drawn.map { (id, rect) -> DrawnRegion(rect, id in trusted) },
-                    )
-                    translatePage(pos, image)
-                }
-                setNeutralButton(R.string.mtl_draw_boxes_remove)
-                setNegButton(R.string.cancel)
-                onDismiss { open = false }
-                // Removing is one step of editing, not the end of it, so the button is rewired
-                // once the dialog exists to keep it open — the builder dismisses on every button.
-                // Only drawn boxes go: a detected one belongs to the page pass, and the way to
-                // overrule it is to draw over it. What is selected goes, else the last box drawn,
-                // so a slip is one tap to undo.
-                var dialog: AlertDialog? = null
-                attach { dialog = it }
-                // The builder installs its own show listener after attach, so the rewiring has
-                // to go through the builder's hook rather than the dialog's.
-                setOnShowListener {
-                    dialog?.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener { remove() }
-                }
-                show()
-            }
-
-            // What the page pass finds, shown before anything is drawn — minus what the boxes
-            // already drawn on this page have superseded. Drawing is armed only once this is in,
-            // since ids are handed out from where the detected ones stop.
-            val kept = DrawnRegions[key]
-            // The neighbours the translation would read across, so the boxes shown here are the
-            // ones it will actually act on. See [PageTranslationPipeline.detect].
-            val (before, after) = seamNeighbours(image)
-            val found = withContext(Dispatchers.Default) {
-                PageTranslationPipeline.detect(
-                    bitmap, activeScript(), kept, mtlSettings(), before, after,
-                )
-            }
-            if (!open) return@launch
-            found.forEach { entry ->
-                detected[entry.block.id] = entry
-                text[entry.block.id] = entry.block.text
-            }
-            nextId = (found.maxOfOrNull { it.block.id } ?: 0) + 1
-            kept.forEach { region ->
-                val id = nextId++
-                drawn[id] = Rect(region.rect)
-                if (region.trusted) trusted.add(id)
-                read(id)
-            }
-            render()
-            // Armed for as long as the dialog is open, and the hint says so in words, so the frame
-            // the view draws around itself would be permanently lit and read as a box around the
-            // whole page.
-            editor.addModeFrame = false
-            editor.addMode = true
-            status(null)
-            trust()
-        }
-    }
-
-    /**
-     * The language code the extension is serving these chapters in, where it names one.
-     *
-     * The source knows what is actually printed on the pages; the media's country of origin only
-     * knows what the work was written in, which is a different thing the moment anybody translates
-     * it. See [SourceScript].
-     */
-    fun sourceLanguageCode(): String? {
-        val index = media.selected?.sourceIndex ?: return null
-        return when (val parser = model.mangaReadSources?.get(index)) {
-            is DynamicMangaParser -> parser.extension.sources.getOrNull(parser.sourceLanguage)?.lang
-            // A download has no extension left to ask, so it answers with what was recorded when
-            // it was made. See [OfflineMangaParser.languageFor].
-            is OfflineMangaParser -> parser.languageFor(media.mainName())
-            else -> null
-        }
-    }
-
-    /** What automatic resolves to for this media, which the settings rows name. */
-    fun detectedScript(): TextScript =
-        SourceScript.detect(sourceLanguageCode(), media.countryOfOrigin)
-
-    /** The recognizer to actually use: the user's choice where there is one, otherwise the above. */
-    private fun activeScript(): TextScript =
-        SourceScript.resolve(mtlSettings().script, sourceLanguageCode(), media.countryOfOrigin)
-
-    /**
-     * This manga's translation choices — part of its reader settings, like its layout, and saved
-     * in the same file. The preferences only seed the first copy; see [MtlSettings].
-     */
-    fun mtlSettings(): MtlSettings = MtlSettings.from(defaultSettings)
-
-    /**
-     * Stores a change from the settings sheet and reopens what automatic translation had given up
-     * on, since whatever failed under the old settings is worth trying again under the new ones.
-     *
-     * Saved without [applySettings], which rebuilds the page adapters: nothing about how the pages
-     * are laid out has changed, and re-binding them for an engine switch would drop every decoded
-     * bitmap on screen for no reason.
-     */
-    fun updateMtlSettings(settings: MtlSettings) {
-        settings.applyTo(defaultSettings)
-        saveReaderSettings("${media.id}_current_settings", defaultSettings)
-        onMtlSettingsChanged()
-    }
-
-    /** Whether the feature is on and this manga asks for pages to translate as they appear. */
-    private fun autoTranslating(): Boolean =
-        PageTranslationPipeline.enabled() && mtlSettings().auto
-
-    /**
-     * Translates one page and paints it.
-     *
-     * The bitmap comes back through the same [loadBitmap] the adapters use, so a page on screen is
-     * already in [ani.dantotsu.media.manga.MangaCache] and this costs a lookup rather than a
-     * re-fetch — and the recognizer sees exactly the pixels the reader is showing, transforms and
-     * all, rather than a differently-processed copy.
-     */
-    private fun translatePage(pos: Int, image: MangaImage) {
-        if (!mtlSettings().ready()) {
-            snackString(getString(R.string.mtl_needs_key))
-            return
-        }
-        snackString(getString(R.string.mtl_translating, pos + 1))
-        lifecycleScope.launch {
-            runTranslation(image)
-                .onSuccess { page ->
-                    if (page == null) {
-                        snackString(getString(R.string.mtl_nothing_found))
-                        return@onSuccess
-                    }
-                    TranslatedPages.put(image.url.url, page)
-                    refreshTranslationOverlays()
-                }
-                .onFailure {
-                    Logger.log("MTL page translation failed: ${it.stackTraceToString()}")
-                    snackString(it.message ?: getString(R.string.mtl_failed))
-                }
-        }
-    }
-
-    /** One page through the pipeline, saying nothing about it — shared by the menu and by auto. */
-    private suspend fun runTranslation(image: MangaImage): Result<TranslatedPage?> = runCatching {
-        val bitmap = loadBitmap(image.url, pageTransforms(image))
-            ?: error(getString(R.string.mtl_page_unavailable))
-        val (before, after) = seamNeighbours(image)
-        withContext(Dispatchers.Default) {
-            PageTranslationPipeline.run(
-                bitmap, activeScript(), sourceLanguageCode(), mtlSettings(), before, after,
-                regions = DrawnRegions[image.url.url],
-            )
-        }
-    }
-
-    /**
-     * The images either side of this one, for reading across the seam between them.
-     *
-     * Only in a continuous layout, because only there are two images two slices of one drawing. In
-     * a paged layout they are two pages: no bubble crosses between them, and handing the recognizer
-     * the neighbour's edge would only give the merger a chance to join text that has nothing to do
-     * with itself.
-     */
-    private suspend fun seamNeighbours(image: MangaImage): Pair<Bitmap?, Bitmap?> {
-        if (!mtlSettings().stitch) return null to null
-        if (defaultSettings.layout != CurrentReaderSettings.Layouts.CONTINUOUS) return null to null
-        val pages = readerPages()
-        val index = pages.indexOfFirst { it.url.url == image.url.url }
-        if (index < 0) return null to null
-        suspend fun at(position: Int): Bitmap? = pages.getOrNull(position)
-            ?.let { loadBitmap(it.url, pageTransforms(it)) }
-        return at(index - 1) to at(index + 1)
     }
 
     /**
@@ -2808,224 +2090,30 @@ class MangaReaderActivity : AppCompatActivity() {
      * one — reading the recycler in paged mode gets a null adapter and an empty answer, which is
      * exactly what it looks like when a feature silently does nothing.
      */
-    private val usingPager
+    internal val usingPager
         get() = defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED
 
-    private val pageHost: View
+    internal val pageHost: View
         get() = if (usingPager) binding.mangaReaderPager else binding.mangaReaderRecycler
 
-    private fun readerAdapter(): RecyclerView.Adapter<*>? =
+    internal fun readerAdapter(): RecyclerView.Adapter<*>? =
         if (usingPager) binding.mangaReaderPager.adapter else binding.mangaReaderRecycler.adapter
 
-    /** Every page the reader currently has in its adapter, in reading order. */
-    private fun readerPages(): List<MangaImage> =
-        when (val adapter = readerAdapter()) {
-            is ContinuousChapterAdapter -> adapter.items.mapNotNull {
-                (it as? ContinuousChapterAdapter.ReaderItem.Image)?.takeIf { !it.composed }?.image
-            }
+    // Machine translation lives in ReaderTranslation. These are its entry points for the page
+    // adapters and the translation settings sheet, which know the reader rather than it.
+    internal val translation by lazy { ReaderTranslation(this) }
 
-            is BaseImageAdapter -> adapter.images
-            else -> emptyList()
-        }
+    fun sourceLanguageCode(): String? = translation.sourceLanguageCode()
+    fun detectedScript(): TextScript = translation.detectedScript()
+    fun mtlSettings(): MtlSettings = translation.mtlSettings()
+    fun updateMtlSettings(settings: MtlSettings) = translation.updateMtlSettings(settings)
+    fun scheduleAutoTranslation() = translation.scheduleAutoTranslation()
+    fun onMtlSettingsChanged() = translation.onMtlSettingsChanged()
+    fun refreshTranslationOverlays() = translation.refreshTranslationOverlays()
+    fun applyTranslationOverlay(itemView: View, position: Int) =
+        translation.applyTranslationOverlay(itemView, position)
 
-    /** The page or pages one adapter position is showing. */
-    private fun pagesAtPosition(position: Int): List<MangaImage> =
-        when (val adapter = readerAdapter()) {
-            is BaseImageAdapter -> adapter.translatableAt(position)
-            is ContinuousChapterAdapter -> listOfNotNull(
-                (adapter.items.getOrNull(position) as? ContinuousChapterAdapter.ReaderItem.Image)
-                    ?.takeIf { !it.composed }?.image,
-            )
-
-            else -> emptyList()
-        }
-
-    /**
-     * How many failures in a row end an automatic run.
-     *
-     * A dead key or a retired model fails identically on every page, and without a limit that is
-     * one doomed request per page for the rest of the chapter. One transient network error is not
-     * that, which is why it is a run of them rather than the first.
-     */
-    private var autoFailures = 0
-
-    /**
-     * Translates pages as they come into view, when that is switched on.
-     *
-     * The queue is rebuilt from what is on screen on every scroll rather than added to, so the page
-     * being looked at is always next — see [AutoTranslator].
-     */
-    private val autoTranslator by lazy {
-        AutoTranslator(lifecycleScope, active = { autoTranslating() && mtlSettings().ready() }) { image ->
-            if (!mtlSettings().ready()) {
-                snackString(getString(R.string.mtl_needs_key))
-                return@AutoTranslator false
-            }
-            runTranslation(image)
-                .onSuccess { page ->
-                    autoFailures = 0
-                    if (page != null) {
-                        TranslatedPages.put(image.url.url, page)
-                        refreshTranslationOverlays()
-                    }
-                }
-                .onFailure {
-                    autoFailures++
-                    Logger.log("MTL auto translation failed: ${it.stackTraceToString()}")
-                    // Said out loud, because automatic translation has no other voice. Nobody
-                    // pressed anything, so a page that fails silently is indistinguishable from
-                    // the feature not being switched on — which is how a dead key, an unloaded
-                    // page and an out-of-memory composite all looked the same from the outside.
-                    // Once per run: the first message is the diagnosis and the rest are noise.
-                    if (autoFailures == 1) {
-                        snackString(it.message ?: getString(R.string.mtl_failed))
-                    }
-                }
-            val keepGoing = autoFailures < AUTO_FAILURE_LIMIT
-            if (!keepGoing) snackString(getString(R.string.mtl_auto_stopped))
-            keepGoing
-        }
-    }
-
-    private var autoQueuePosted = false
-
-    /**
-     * Asks for the visible pages to be queued, once, after the current layout pass.
-     *
-     * Called from the scroll listener, the pager's page change and every overlay binding, all of
-     * which fire far more often than the queue can change; posting once and reading the positions
-     * afterwards is what keeps that from being a cost on every scrolled pixel.
-     */
-    fun scheduleAutoTranslation() {
-        if (!autoTranslating() || autoQueuePosted) return
-        autoQueuePosted = true
-        pageHost.post {
-            autoQueuePosted = false
-            queueAutoTranslation()
-        }
-    }
-
-    /**
-     * Which way through the chapter the reader is moving, as a step in adapter positions.
-     *
-     * Taken from the positions rather than from the scroll's sign, which would have to be read
-     * differently for each of the four reading directions — right-to-left and bottom-to-top both
-     * make a *negative* delta mean forwards. Positions only ever count one way.
-     */
-    private var autoDirection = 1
-    private var autoAnchor = RecyclerView.NO_POSITION
-
-    private fun queueAutoTranslation() {
-        if (!autoTranslating()) return
-        val (first, last) = visiblePositions() ?: return
-
-        if (autoAnchor != RecyclerView.NO_POSITION && first != autoAnchor) {
-            autoDirection = if (first > autoAnchor) 1 else -1
-        }
-        autoAnchor = first
-
-        // The lookahead follows the reader instead of always pointing down the chapter. Fixed
-        // forwards, scrolling back up queued nothing that was not already on screen: a page only
-        // began translating once it was fully in view and took several seconds to arrive, so going
-        // up looked like the feature was off while going down looked like it worked. Which way
-        // "ahead" is depends on where the reader is going, and that is the only thing that decides
-        // which page is worth spending a request on before it is needed.
-        val ahead = if (autoDirection >= 0) {
-            ((last + 1)..(last + AUTO_LOOKAHEAD)).toList()
-        } else {
-            ((first - 1) downTo (first - AUTO_LOOKAHEAD)).toList()
-        }
-        autoTranslator.onVisible(
-            // What is on screen first, then what is about to be. Out-of-range positions resolve to
-            // no pages, so the ends of the chapter need no special case.
-            ((first..last).toList() + ahead).flatMap { pagesAtPosition(it) },
-        )
-    }
-
-    /**
-     * The first and last adapter positions on screen, from whichever view is showing them.
-     *
-     * The pager shows exactly one item, so its current page is both ends of the range — the
-     * lookahead is what gets the next one translated before it is swiped to.
-     */
-    private fun visiblePositions(): Pair<Int, Int>? {
-        if (usingPager) {
-            val current = binding.mangaReaderPager.currentItem
-            return current to current
-        }
-        val manager = binding.mangaReaderRecycler.layoutManager as? LinearLayoutManager ?: return null
-        val first = manager.findFirstVisibleItemPosition()
-        if (first == RecyclerView.NO_POSITION) return null
-        return first to manager.findLastVisibleItemPosition().coerceAtLeast(first)
-    }
-
-    /**
-     * Called when the engine, model, script or target changes.
-     *
-     * A page already translated keeps its words — redoing it would spend quota to say the same
-     * thing differently — but pages that failed under the old settings are worth another go, which
-     * is the case the reader is usually in when they change any of this.
-     */
-    fun onMtlSettingsChanged() {
-        autoFailures = 0
-        autoTranslator.reset()
-        scheduleAutoTranslation()
-    }
-
-    /**
-     * Re-applies overlays to whatever is on screen.
-     *
-     * Cheaper and less disruptive than telling the adapter a page changed: rebinding would drop the
-     * decoded bitmap and re-run the load for a change that only concerns a sibling view.
-     */
-    fun refreshTranslationOverlays() {
-        val recycler = binding.mangaReaderRecycler
-        for (i in 0 until recycler.childCount) {
-            val child = recycler.getChildAt(i) ?: continue
-            val holder = recycler.getChildViewHolder(child) ?: continue
-            applyTranslationOverlay(child, holder.bindingAdapterPosition)
-        }
-    }
-
-    /** Puts the stored translation for whatever page [itemView] is showing onto its overlay. */
-    /**
-     * [blocks] moved down past whatever page-break gaps [PageEdges.withGaps] drew above them, when
-     * the page is a strip of stitched pages shown with gaps; [blocks] as they are otherwise.
-     */
-    private fun stripGapShifted(
-        url: String,
-        blocks: List<ani.dantotsu.media.manga.translation.PaintedBlock>,
-        pageWidth: Int,
-        itemView: View,
-    ): List<ani.dantotsu.media.manga.translation.PaintedBlock> {
-        if (!smartSpacing || knownLongStrip || defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) return blocks
-        if (defaultSettings.direction != TOP_TO_BOTTOM && defaultSettings.direction != BOTTOM_TO_TOP) {
-            return blocks
-        }
-        val viewportWidth = BaseImageAdapter.pageViewport(itemView).first.takeIf { it > 0 }
-            ?: return blocks
-        val gap = (16f.px * pageWidth / viewportWidth.toFloat()).toInt()
-        return blocks.map { block ->
-            val shift = PageEdges.gapShift(url, block.rect.top, pageWidth, gap)
-            if (shift == 0) block
-            else block.copy(rect = android.graphics.Rect(block.rect).apply { offset(0, shift) })
-        }
-    }
-
-    fun applyTranslationOverlay(itemView: View, position: Int) {
-        val overlay = itemView.findViewById<TranslationOverlayView>(R.id.imgProgTranslation)
-            ?: return
-        val image = pagesAtPosition(position).firstOrNull()
-        val page = image?.let { TranslatedPages[it.url.url] }
-        if (page == null) overlay.clear() else overlay.setBlocks(
-            stripGapShifted(image.url.url, page.blocks, page.pageWidth, itemView), page.pageWidth
-        )
-        // A page arriving on screen is the event automatic translation waits for, and this runs for
-        // every one of them whether or not it has a translation yet.
-        scheduleAutoTranslation()
-    }
-
-    private fun showImageDialog(
+    internal fun showImageDialog(
         pos: Int,
         img1: MangaImage,
         img2: MangaImage?,

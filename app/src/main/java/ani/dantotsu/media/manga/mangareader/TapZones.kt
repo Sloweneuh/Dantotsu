@@ -1,5 +1,8 @@
 package ani.dantotsu.media.manga.mangareader
 
+import ani.dantotsu.media.manga.mangareader.MangaReaderActivity.PressPos
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import java.util.Locale
 
 /**
@@ -7,6 +10,8 @@ import java.util.Locale
  * the menu (the reader's overlay); a tap outside every box opens the menu too. Box edges are
  * fractions of the reader's width and height, so a layout holds in both orientations. Stored in
  * ReaderCustomTapZones as `B:left,top,right,bottom;F:…;M:…`.
+ *
+ * Also where a tap in the paged reader lands, for every tap-zone layout: see [sideAt].
  */
 object TapZones {
 
@@ -61,6 +66,59 @@ object TapZones {
         Box(Zone.FORWARD, TWO_THIRDS, THIRD, 1f, TWO_THIRDS),
         Box(Zone.FORWARD, 0f, TWO_THIRDS, 1f, 1f),
     )
+
+    /**
+     * Which side of the screen a tap at ([x], [y]) in a [w] × [h] reader counts as for turning pages,
+     * by the chosen tap-zone layout (ReaderTapZones):
+     *  - 0 Edges: the left and right fifths, below a top strip the width of a fifth (the original).
+     *  - 1 Thirds: the left and right thirds; the middle third opens the menu.
+     *  - 2 L-shape: a 3 × 3 grid — the top row and the middle row's left cell go back, the bottom
+     *    row and the middle row's right cell go forward, the centre opens the menu.
+     *  - 3 Off: every tap opens the menu.
+     *  - 4 Custom: the user's own boxes (ReaderCustomTapZones, edited in TapZoneEditorActivity),
+     *    as back and forward rather than sides, whatever the direction.
+     * Inverted (ReaderTapZonesInverted) swaps the two sides.
+     */
+    fun sideAt(x: Int, y: Int, w: Int, h: Int): PressPos {
+        if (w <= 0 || h <= 0) return PressPos.CENTER
+        val side = when (PrefManager.getVal<Int>(PrefName.ReaderTapZones)) {
+            1 -> when {
+                x < w / 3 -> PressPos.LEFT
+                x > w - w / 3 -> PressPos.RIGHT
+                else -> PressPos.CENTER
+            }
+            2 -> when {
+                y < h / 3 -> PressPos.LEFT
+                y > h - h / 3 -> PressPos.RIGHT
+                x < w / 3 -> PressPos.LEFT
+                x > w - w / 3 -> PressPos.RIGHT
+                else -> PressPos.CENTER
+            }
+            3 -> PressPos.CENTER
+            4 -> when (
+                zoneAt(
+                    parse(PrefManager.getVal(PrefName.ReaderCustomTapZones)),
+                    x.toFloat() / w, y.toFloat() / h,
+                )
+            ) {
+                Zone.BACK -> PressPos.LEFT
+                Zone.FORWARD -> PressPos.RIGHT
+                Zone.MENU, null -> PressPos.CENTER
+            }
+            else -> when {
+                y <= w / 5 -> PressPos.CENTER
+                x < w / 5 -> PressPos.LEFT
+                x > w - w / 5 -> PressPos.RIGHT
+                else -> PressPos.CENTER
+            }
+        }
+        if (!PrefManager.getVal<Boolean>(PrefName.ReaderTapZonesInverted)) return side
+        return when (side) {
+            PressPos.LEFT -> PressPos.RIGHT
+            PressPos.RIGHT -> PressPos.LEFT
+            PressPos.CENTER -> PressPos.CENTER
+        }
+    }
 
     /** ReaderCustomTapZones' default: [EDGES]. */
     const val DEFAULT = "M:0.0000,0.0000,1.0000,0.1000;B:0.0000,0.1000,0.2000,1.0000;" +
