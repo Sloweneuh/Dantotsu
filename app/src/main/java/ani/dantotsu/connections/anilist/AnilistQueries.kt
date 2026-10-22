@@ -782,6 +782,10 @@ class AnilistQueries {
                 Anilist.userid?.let { MediaListCache.write(MediaListCache.homeKey(it), body) }
             }
         )
+        // executeQuery reports a failure as null. Built into rows, that read as every list being
+        // empty — "All caught up" on Continue Watching while AniList was simply down — and it
+        // replaced the rows already drawn from the stored copy.
+        if (response?.data == null) throw IllegalStateException("AniList home request failed")
         return buildHomePage(response, toShow)
     }
 

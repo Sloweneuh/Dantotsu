@@ -259,6 +259,7 @@ class AnilistHomeViewModel : ViewModel() {
             // did finish first, publishing here would put stale rows over fresh ones.
             if (homeNetworkPublished) return false
             publishHomePage(cached)
+            homeCachePublished = true
             true
         } catch (e: Exception) {
             ani.dantotsu.util.Logger.log("initHomePageCached: ${e.message}")
@@ -275,15 +276,29 @@ class AnilistHomeViewModel : ViewModel() {
         } catch (e: Exception) {
             // Posted first: see [homeDataError].
             homeDataError.postValue(true)
-            animeContinue.postValue(arrayListOf())
-            animeFav.postValue(arrayListOf())
-            animePlanned.postValue(arrayListOf())
-            mangaContinue.postValue(arrayListOf())
-            mangaFav.postValue(arrayListOf())
-            mangaPlanned.postValue(arrayListOf())
-            recommendation.postValue(arrayListOf())
-            hidden.postValue(arrayListOf())
+            emptyUnshownRows()
         }
+    }
+
+    /** Set once the stored home rows are on screen; see [emptyUnshownRows]. */
+    @Volatile
+    private var homeCachePublished = false
+
+    /**
+     * After a failed home request: an empty row for each row with nothing on screen, so no section
+     * is left on its spinner. Rows already drawn from the stored copy are left as they are — what
+     * the user had a moment ago is a better answer than "nothing here" while AniList is down.
+     */
+    private fun emptyUnshownRows() {
+        if (homeCachePublished) return
+        animeContinue.postValue(arrayListOf())
+        animeFav.postValue(arrayListOf())
+        animePlanned.postValue(arrayListOf())
+        mangaContinue.postValue(arrayListOf())
+        mangaFav.postValue(arrayListOf())
+        mangaPlanned.postValue(arrayListOf())
+        recommendation.postValue(arrayListOf())
+        hidden.postValue(arrayListOf())
     }
 
     /** Always posts every row, even an empty one, so a section's progress bar cannot be left up. */
@@ -330,14 +345,7 @@ class AnilistHomeViewModel : ViewModel() {
             // On error, post empty lists to ensure UI updates properly. Posted first: see
             // [homeDataError].
             homeDataError.postValue(true)
-            animeContinue.postValue(arrayListOf())
-            animeFav.postValue(arrayListOf())
-            animePlanned.postValue(arrayListOf())
-            mangaContinue.postValue(arrayListOf())
-            mangaFav.postValue(arrayListOf())
-            mangaPlanned.postValue(arrayListOf())
-            recommendation.postValue(arrayListOf())
-            hidden.postValue(arrayListOf())
+            emptyUnshownRows()
             userStatus.postValue(arrayListOf())
         }
     }

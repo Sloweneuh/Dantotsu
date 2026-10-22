@@ -71,6 +71,13 @@ import android.widget.LinearLayout
 
 
 class HomeFragment : Fragment() {
+    /**
+     * Which update the Continue Watching and Planned Anime rows are drawing. Both look entries up
+     * on MALSync before drawing, so an update can finish after a newer one; only the latest draws.
+     */
+    private var watchingGeneration = 0
+    private var plannedGeneration = 0
+
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private val unreadCacheReceiver = object : BroadcastReceiver() {
@@ -1081,6 +1088,8 @@ class HomeFragment : Fragment() {
                 binding.homeWatchingProgressBar.visibility = View.GONE
                 return@observe
             }
+            // Only the latest update draws: see watchingGeneration.
+            val watchingGen = ++watchingGeneration
             binding.homeWatchingRecyclerView.visibility = View.GONE
             binding.homeWatchingEmpty.visibility = View.GONE
             if (continueWatchingList != null) {
@@ -1120,6 +1129,8 @@ class HomeFragment : Fragment() {
                         }
 
                         withContext(Dispatchers.Main) {
+                            if (watchingGen != watchingGeneration) return@withContext
+                            binding.homeWatchingEmpty.visibility = View.GONE
                             if (unreleasedInfo.isNotEmpty()) {
                                 // Use the list as-is or sort by last watched
                                 val sortedList = continueWatchingList
@@ -1215,6 +1226,7 @@ class HomeFragment : Fragment() {
                 binding.homePlannedAnimeProgressBar.visibility = View.GONE
                 return@observe
             }
+            val plannedGen = ++plannedGeneration
             binding.homePlannedAnimeRecyclerView.visibility = View.GONE
             binding.homePlannedAnimeEmpty.visibility = View.GONE
             if (plannedList != null) {
@@ -1254,6 +1266,8 @@ class HomeFragment : Fragment() {
                         }
 
                         withContext(Dispatchers.Main) {
+                            if (plannedGen != plannedGeneration) return@withContext
+                            binding.homePlannedAnimeEmpty.visibility = View.GONE
                             if (plannedInfo.isNotEmpty()) {
                                 // Use the list as-is
                                 val sortedList = plannedList
