@@ -785,6 +785,9 @@ class MangaReaderActivity : AppCompatActivity() {
             trackProgressItem.isVisible = media.id >= 0
             trackProgressItem.isChecked =
                 PrefManager.getCustomVal("${media.id}_save_progress", true)
+            // The novel reader's; this menu is shared.
+            popup.menu.findItem(R.id.action_search).isVisible = false
+            popup.menu.findItem(R.id.action_bookmarks).isVisible = false
             popup.menu.findItem(R.id.action_translation_settings).apply {
                 isVisible = PageTranslationPipeline.enabled()
                 // The icon's own fill is transparent (it's stroke-drawn), unlike the other items'

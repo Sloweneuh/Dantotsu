@@ -3146,6 +3146,23 @@
     <string name="novel_font_sans">Sans empattements</string>
     <string name="novel_font_condensed">Condensée</string>
     <string name="novel_font_mono">Chasse fixe</string>
+    <string name="novel_font_failed">%1$s ne peut pas être utilisée dans les livres, une police standard est affichée à la place</string>
+    <string name="novel_search">Rechercher</string>
+    <string name="novel_search_hint_book">Rechercher dans ce livre</string>
+    <string name="novel_search_hint_chapter">Rechercher dans ce chapitre</string>
+    <string name="novel_searching">Recherche…</string>
+    <string name="novel_search_none">Aucun résultat</string>
+    <string name="novel_bookmarks">Marque-pages</string>
+    <string name="novel_bookmarks_empty">Aucun marque-page. Touchez le bouton marque-page en haut du lecteur pour garder votre place.</string>
+    <string name="novel_bookmark_add">Marquer cette page</string>
+    <string name="novel_bookmark_remove">Retirer le marque-page</string>
+    <string name="novel_bookmark_added">Page marquée</string>
+    <string name="novel_bookmark_removed">Marque-page retiré</string>
+    <string name="novel_bookmark_delete">Supprimer le marque-page</string>
+    <plurals name="novel_search_matches">
+        <item quantity="one">%1$d résultat</item>
+        <item quantity="other">%1$d résultats</item>
+    </plurals>
     <string name="novel_line_height">Hauteur de ligne</string>
     <string name="novel_margin">Marge</string>
     <string name="novel_max_inline_size">Taille en ligne maximale</string>

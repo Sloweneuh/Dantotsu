@@ -67,14 +67,14 @@ import ani.dantotsu.snackString
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.tryWith
 import com.google.android.material.slider.Slider
-import com.vipulog.ebookreader.Book
-import com.vipulog.ebookreader.EbookReaderEventListener
-import com.vipulog.ebookreader.EbookReaderView
-import com.vipulog.ebookreader.ReaderError
-import com.vipulog.ebookreader.ReaderFlow
-import com.vipulog.ebookreader.ReaderTheme
-import com.vipulog.ebookreader.RelocationInfo
-import com.vipulog.ebookreader.TocItem
+import ani.dantotsu.media.novel.ebook.Book
+import ani.dantotsu.media.novel.ebook.EbookReaderEventListener
+import ani.dantotsu.media.novel.ebook.EbookReaderView
+import ani.dantotsu.media.novel.ebook.ReaderError
+import ani.dantotsu.media.novel.ebook.ReaderFlow
+import ani.dantotsu.media.novel.ebook.ReaderTheme
+import ani.dantotsu.media.novel.ebook.RelocationInfo
+import ani.dantotsu.media.novel.ebook.TocItem
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -95,7 +95,6 @@ import java.util.TimerTask
 import kotlin.math.roundToInt
 import kotlin.math.min
 import kotlin.properties.Delegates
-import org.json.JSONObject
 import ani.dantotsu.settings.ReaderSettingsStore
 
 
@@ -343,6 +342,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
 
         setUpMoreMenu()
         setUpTts()
+        setUpFind()
 
         binding.novelReaderSlider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
             override fun onStartTrackingTouch(slider: Slider) {
@@ -390,6 +390,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             // The manga reader's OCR page-translation sheet has no novel equivalent; this menu is
             // shared between both readers.
             popup.menu.findItem(R.id.action_translation_settings).isVisible = false
+            popup.menu.findItem(R.id.action_search).isEnabled = loaded
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) popup.setForceShowIcon(true)
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
@@ -407,6 +408,8 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
                         )
                         true
                     }
+                    R.id.action_search -> { openSearch(); true }
+                    R.id.action_bookmarks -> { openBookmarks(); true }
                     R.id.action_reader_settings -> { openReaderSettings(); true }
                     else -> false
                 }
@@ -414,6 +417,128 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             popup.show()
         }
     }
+
+    // region Search and bookmarks
+
+    /** The start of the text on the page, for a bookmark made here. */
+    private var pageExcerpt = ""
+
+    /** A bookmark's position in a chapter still being opened, to go to once it has. */
+    private var pendingBookmarkCfi: String? = null
+
+    /** What bookmarks are kept under: the novel for a streamed one, the book otherwise. */
+    private val bookmarkScope get() = if (::settingsId.isInitialized) settingsId else null
+
+    /** Which chapter of a streamed novel is open; -1 for a book that holds them all. */
+    private val bookmarkChapter get() = if (LNReaderSession.isActive) LNReaderSession.currentIndex else -1
+
+    private fun setUpFind() {
+        binding.novelReaderBookmark.setSafeOnClickListener { toggleBookmark() }
+        binding.bookReader.onBookmarkState = ::showBookmarked
+        binding.bookReader.onFontFailed = {
+            snackString(getString(
+                R.string.novel_font_failed,
+                NovelFonts.label(this, defaultSettings.effectiveFontKey),
+            ))
+        }
+    }
+
+    private fun showBookmarked(bookmarked: Boolean) {
+        binding.novelReaderBookmark.setImageResource(
+            if (bookmarked) R.drawable.ic_round_bookmark_24 else R.drawable.ic_round_bookmark_border_24
+        )
+        binding.novelReaderBookmark.contentDescription = getString(
+            if (bookmarked) R.string.novel_bookmark_remove else R.string.novel_bookmark_add
+        )
+    }
+
+    /** Hands the open book its bookmarks, so each page can say whether it has one. */
+    private fun sendBookmarks() {
+        val scope = bookmarkScope ?: return
+        binding.bookReader.setBookmarks(NovelBookmarks.inChapter(scope, bookmarkChapter).map { it.cfi })
+    }
+
+    /** Bookmarks the page, or, if it has bookmarks already, takes them off. */
+    private fun toggleBookmark() {
+        val scope = bookmarkScope ?: return
+        val cfi = currentCfi ?: return
+        if (!loaded) return
+        binding.bookReader.bookmarksOnPage { onPage ->
+            val chapter = bookmarkChapter
+            if (onPage.isNotEmpty()) {
+                NovelBookmarks.inChapter(scope, chapter)
+                    .filter { it.cfi in onPage }
+                    .forEach { NovelBookmarks.remove(scope, it) }
+                snackString(getString(R.string.novel_bookmark_removed))
+            } else {
+                NovelBookmarks.add(
+                    scope,
+                    NovelBookmark(
+                        cfi = cfi,
+                        chapterIndex = chapter,
+                        chapterTitle = currentChapterTitle(),
+                        excerpt = pageExcerpt,
+                        createdAt = System.currentTimeMillis(),
+                    ),
+                )
+                snackString(getString(R.string.novel_bookmark_added))
+            }
+            sendBookmarks()
+        }
+    }
+
+    fun bookmarks(): List<NovelBookmark> = bookmarkScope?.let { NovelBookmarks.list(it) }.orEmpty()
+
+    fun removeBookmark(bookmark: NovelBookmark) {
+        val scope = bookmarkScope ?: return
+        NovelBookmarks.remove(scope, bookmark)
+        sendBookmarks()
+    }
+
+    /** Goes to [bookmark], opening its chapter first when it is in another one. */
+    fun openBookmark(bookmark: NovelBookmark) {
+        if (LNReaderSession.isActive && bookmark.chapterIndex >= 0 &&
+            bookmark.chapterIndex != LNReaderSession.currentIndex
+        ) {
+            pendingBookmarkCfi = bookmark.cfi
+            loadSessionChapter(bookmark.chapterIndex)
+        } else {
+            binding.bookReader.goto(bookmark.cfi)
+        }
+    }
+
+    private fun openBookmarks() {
+        if (supportFragmentManager.findFragmentByTag(NovelBookmarksSheet.TAG) != null) return
+        NovelBookmarksSheet().show(supportFragmentManager, NovelBookmarksSheet.TAG)
+    }
+
+    private fun openSearch() {
+        if (!loaded || supportFragmentManager.findFragmentByTag(NovelSearchSheet.TAG) != null) return
+        NovelSearchSheet().show(supportFragmentManager, NovelSearchSheet.TAG)
+    }
+
+    /** A streamed chapter is a book of its own, so searching it searches the chapter only. */
+    fun searchesWholeBook() = !LNReaderSession.isActive
+
+    fun search(
+        query: String,
+        onResults: (ani.dantotsu.media.novel.ebook.SearchResults) -> Unit,
+        onDone: () -> Unit,
+    ) {
+        binding.bookReader.onSearchResults = onResults
+        binding.bookReader.onSearchDone = onDone
+        binding.bookReader.search(query)
+    }
+
+    fun clearSearch() {
+        binding.bookReader.onSearchResults = null
+        binding.bookReader.onSearchDone = null
+        binding.bookReader.clearSearch()
+    }
+
+    fun goTo(cfi: String) = binding.bookReader.goto(cfi)
+
+    // endregion Search and bookmarks
 
     // region Text to speech
 
@@ -435,110 +560,31 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
     private var ttsHighlight: ((Int?) -> Unit)? = null
 
     /**
-     * Lights up the sentence being spoken, and puts out the one before it.
-     *
-     * The text is rendered inside the reader's page, so the change has to be made from script;
-     * there is no Kotlin-side handle on it. What is being marked was put there when the book was
-     * packaged — [ani.dantotsu.parsers.novel.lnreader.LNReaderEpub] tags every sentence — so this
-     * only has to name one.
-     *
-     * Reached through the reader's own `getContents()`, which hands back the document of each
-     * rendered section. Walking the page for frames instead finds nothing: the renderer keeps them
-     * in a shadow root opened in *closed* mode, which is unreachable from outside by design — not
-     * a permission problem, so there is no error to notice either. That was the first attempt, and
-     * it silently did nothing.
-     *
-     * The colour is set inline rather than through the linked stylesheet. Both would work, but the
-     * stylesheet route depends on the book's own CSS having loaded and on the renderer's injected
-     * styles not winning, and neither is something this can check. The class is kept only as the
-     * handle for finding what to put out again.
+     * The chosen typeface, as extra CSS for every chapter: the reader's bridge keeps it and adds it
+     * to each chapter's styles as it lays the chapter out. A font file travels inside its rule, so
+     * the view only sends it when it changes.
      */
-    /** The font key this page was last sent the rule for; see [applyFont]. */
-    private var sentFontKey: String? = null
-
-    /**
-     * The chosen typeface, added to the styles the ebook library gives each chapter. The library
-     * has no font setting and rewrites its styles whenever it lays out a chapter or changes its
-     * appearance, so the renderer's setStyles is wrapped once to append the font rule to whatever
-     * it is given — after a marker, so a rule already there is replaced rather than stacked. Run
-     * just before the appearance is set, which passes the chapter on screen its styles through it.
-     *
-     * A font file travels inside its rule, so the rule is only sent when the choice changes. If the
-     * page has lost it since (a reload starts the page afresh), the script says so and it is sent
-     * again, and the chapter on screen is restyled with it.
-     */
-    private fun applyFont(force: Boolean = false) {
-        val key = defaultSettings.effectiveFontKey
-        val rule = if (force || key != sentFontKey) NovelFonts.cssRule(this, key) else null
-        sentFontKey = key
-        val script = """
-            (function (key, rule) {
-              try {
-                var r = view && view.renderer;
-                if (!r || !r.setStyles) return 'none';
-                if (rule === null && window.dantotsuFontKey !== key) return 'resend';
-                var MARK = '/*dantotsu-font*/';
-                if (rule !== null) {
-                  window.dantotsuFontRule = rule;
-                  window.dantotsuFontKey = key;
-                }
-                if (!r.dantotsuFontWrapped) {
-                  var original = r.setStyles.bind(r);
-                  r.setStyles = function (styles) {
-                    r.dantotsuStyles = styles;
-                    var add = function (css) {
-                      return String(css || '').split(MARK)[0] + MARK + (window.dantotsuFontRule || '');
-                    };
-                    return original(Array.isArray(styles) ? [styles[0], add(styles[1])] : add(styles));
-                  };
-                  r.dantotsuFontWrapped = true;
-                }
-                if (rule !== null && r.dantotsuStyles) r.setStyles(r.dantotsuStyles);
-                return 'ok';
-              } catch (e) { return 'error'; }
-            })(${JSONObject.quote(key)}, ${rule?.let { JSONObject.quote(it) } ?: "null"});
-        """.trimIndent()
-        tryWith {
-            binding.bookReader.evaluateJavascript(script) { result ->
-                if (result == "\"resend\"" && !isDestroyed) applyFont(force = true)
-            }
-        }
+    private fun applyFont() {
+        binding.bookReader.setExtraStyles(NovelFonts.cssRule(this, defaultSettings.effectiveFontKey))
     }
 
+    /**
+     * Lights up the sentence being spoken, and puts out the one before it.
+     *
+     * The text is rendered inside the reader's page, so the bridge does it there; there is no
+     * Kotlin-side handle on it. What is being marked was put there when the book was packaged —
+     * [ani.dantotsu.parsers.novel.lnreader.LNReaderEpub] tags every sentence — so this only has to
+     * name one. See highlightSentence in assets/ebook-reader/android-interface.js.
+     */
     private fun highlightSentence(marker: Int?) {
         if (!loaded) return
         // An integer, so it cannot carry anything that needs escaping into the selector.
-        val selector =
-            if (marker == null) "null" else "'[${LNReaderEpub.SENTENCE_ATTRIBUTE}=\"$marker\"]'"
-        val css = LNReaderEpub.CURRENT_SENTENCE_CLASS
-        val script = """
-            (function (selector) {
-              try {
-                var contents = [];
-                try { contents = view.renderer.getContents() || []; } catch (e) { return; }
-                for (var i = 0; i < contents.length; i++) {
-                  var doc = contents[i] && contents[i].doc;
-                  if (!doc) continue;
-                  try {
-                    var lit = doc.getElementsByClassName('$css');
-                    while (lit.length) {
-                      lit[0].style.backgroundColor = '';
-                      lit[0].style.borderRadius = '';
-                      lit[0].classList.remove('$css');
-                    }
-                    if (!selector) continue;
-                    var now = doc.querySelectorAll(selector);
-                    for (var j = 0; j < now.length; j++) {
-                      now[j].classList.add('$css');
-                      now[j].style.backgroundColor = '$HIGHLIGHT_COLOUR';
-                      now[j].style.borderRadius = '2px';
-                    }
-                  } catch (e) {}
-                }
-              } catch (e) {}
-            })($selector);
-        """.trimIndent()
-        tryWith { binding.bookReader.evaluateJavascript(script, null) }
+        val selector = marker?.let { "[${LNReaderEpub.SENTENCE_ATTRIBUTE}=\"$it\"]" }
+        tryWith {
+            binding.bookReader.highlightSentence(
+                selector, LNReaderEpub.CURRENT_SENTENCE_CLASS, HIGHLIGHT_COLOUR,
+            )
+        }
     }
 
     private fun setUpTts() {
@@ -1048,7 +1094,10 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         val cfi = PrefManager.getNullableCustomVal(positionKey, null, String::class.java)
             ?: PrefManager.getNullableCustomVal("${sanitizedBookId}_progress", null, String::class.java)
 
-        cfi?.let { binding.bookReader.goto(it) }
+        val target = pendingBookmarkCfi ?: cfi
+        pendingBookmarkCfi = null
+        target?.let { binding.bookReader.goto(it) }
+        sendBookmarks()
         recordLocalProgress()
         Logger.log("Novel reader: loaded '${book.title}' (${toc.size} spine entries)")
     }
@@ -1058,6 +1107,8 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         // Anything that actually moved means the end is no longer where it was thought to be.
         if (info.cfi != currentCfi) reachedEnd = false
         currentCfi = info.cfi
+        pageExcerpt = info.excerpt
+        showBookmarked(info.bookmarked)
         // Where speech would start from if it were switched on now — which is the only thing this
         // is for, so it is left alone once speech is running. That also settles the feedback
         // question: every move while reading aloud is either the voice's own or a seek that has

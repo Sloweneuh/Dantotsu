@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".media.novel.novelreader.NovelReaderActivity">
 
-    <com.vipulog.ebookreader.EbookReaderView
+    <ani.dantotsu.media.novel.ebook.EbookReaderView
         android:id="@+id/bookReader"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
@@ -96,6 +96,18 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
+
+                        <!-- Bookmarks the page, or un-bookmarks it; filled while it has one. -->
+                        <ImageButton
+                            android:id="@+id/novelReaderBookmark"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:backgroundTint="#00FFFFFF"
+                            android:contentDescription="@string/novel_bookmark_add"
+                            android:scaleType="center"
+                            android:src="@drawable/ic_round_bookmark_border_24"
+                            app:tint="#fff"
+                            tools:ignore="ImageContrastCheck" />
 
                         <ImageButton
                             android:id="@+id/novelReaderTts"

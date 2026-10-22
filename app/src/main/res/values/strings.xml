@@ -3269,6 +3269,23 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="novel_font_sans">Sans serif</string>
     <string name="novel_font_condensed">Condensed</string>
     <string name="novel_font_mono">Monospace</string>
+    <string name="novel_font_failed">%1$s can\'t be used in books, so a standard font is shown instead</string>
+    <string name="novel_search">Search</string>
+    <string name="novel_search_hint_book">Search this book</string>
+    <string name="novel_search_hint_chapter">Search this chapter</string>
+    <string name="novel_searching">Searching…</string>
+    <string name="novel_search_none">No matches</string>
+    <string name="novel_bookmarks">Bookmarks</string>
+    <string name="novel_bookmarks_empty">No bookmarks yet. Tap the bookmark button at the top of the reader to keep your place.</string>
+    <string name="novel_bookmark_add">Bookmark this page</string>
+    <string name="novel_bookmark_remove">Remove bookmark</string>
+    <string name="novel_bookmark_added">Page bookmarked</string>
+    <string name="novel_bookmark_removed">Bookmark removed</string>
+    <string name="novel_bookmark_delete">Delete bookmark</string>
+    <plurals name="novel_search_matches">
+        <item quantity="one">%1$d match</item>
+        <item quantity="other">%1$d matches</item>
+    </plurals>
     <string name="novel_line_height">Line height</string>
     <string name="novel_margin">Margin</string>
     <string name="novel_max_inline_size">Maximum inline size</string>

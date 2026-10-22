@@ -30,6 +30,19 @@
         android:checkable="true"
         app:showAsAction="never" />
 
+    <!-- Novel-only: search and bookmarks; hidden in the manga reader. -->
+    <item
+        android:id="@+id/action_search"
+        android:icon="@drawable/ic_round_search_24"
+        android:iconTint="@color/bg_opp"
+        android:title="@string/novel_search" />
+
+    <item
+        android:id="@+id/action_bookmarks"
+        android:icon="@drawable/ic_round_bookmarks_24"
+        android:iconTint="@color/bg_opp"
+        android:title="@string/novel_bookmarks" />
+
     <item
         android:id="@+id/action_reader_settings"
         android:icon="@drawable/ic_round_settings_24"

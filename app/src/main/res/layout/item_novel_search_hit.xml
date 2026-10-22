@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A search match (NovelSearchSheet): the text around it, the match in bold. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:ellipsize="end"
+    android:fontFamily="@font/poppins"
+    android:maxLines="3"
+    android:minHeight="48dp"
+    android:paddingHorizontal="4dp"
+    android:paddingVertical="10dp"
+    android:textColor="?attr/colorOnSurface"
+    android:textSize="14sp"
+    tools:text="…she was hiding something, but Amane had no intention to probe further…" />

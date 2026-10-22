@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E-Book Reader</title>
+<style>
+html {
+    height: 100%;
+}
+body {
+    margin: 0 auto;
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+}
+.invert.dark foliate-view::part(filter) {
+    color-scheme: light; /* required to make the iframe bg transparent */
+    filter: invert(1) hue-rotate(180deg);
+}
+}
+</style>
+<script src="reader.js" type="module"></script>
+<script src="android-interface.js"></script>

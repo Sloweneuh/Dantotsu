@@ -97,6 +97,28 @@ object NovelTts {
     private var index = 0
     private var queuedTo = -1
 
+    /**
+     * Where in sentence [index] the word being spoken starts, as the engine reports it (see
+     * onRangeStart); 0 for an engine that doesn't, or before the first word.
+     */
+    private var wordOffset = 0
+
+    /**
+     * Where the next play picks sentence [index] up from. An engine can't pause, only stop, so
+     * pausing used to start the sentence again on resume; it now carries on from the word it was
+     * on. Set as speech stops mid-sentence (see [holdPlace]), dropped by any move elsewhere.
+     */
+    private var resumeFrom = 0
+
+    // For engines that never report words (the Windows engine WSA uses, some third-party ones):
+    // where the pause fell is estimated from how long the sentence had been playing and how fast
+    // this voice gets through text, measured on the sentences it has finished.
+    private var rangeReported = false
+    private var utteranceBase = 0
+    private var utteranceStartedAt = 0L
+    private var utteranceLength = 0
+    private var charsPerMs = 0f
+
     /** What the user last asked for, which survives the pauses the system imposes. */
     private var wantPlaying = false
 
@@ -158,6 +180,7 @@ object NovelTts {
         this.locale = locale
         index = script.indexAtFraction(fraction)
         queuedTo = index - 1
+        dropPlace()
         lastFollowedFraction = -1.0
         _state.update {
             it.copy(
@@ -192,6 +215,7 @@ object NovelTts {
     fun pause() {
         wantPlaying = false
         pausedByFocus = false
+        holdPlace()
         tts?.stop()
         queuedTo = index - 1
         abandonFocus()
@@ -219,6 +243,7 @@ object NovelTts {
         }
         index = target
         queuedTo = index - 1
+        dropPlace()
         publishSentence()
         tts?.stop()
         if (wantPlaying) withEngine { enqueueAhead() } else followAlong()
@@ -251,6 +276,7 @@ object NovelTts {
         bookKey = ""
         index = 0
         queuedTo = -1
+        dropPlace()
         abandonFocus()
         // Nothing is being read, so nothing on the page should still look like it is.
         onHighlight?.invoke(null)
@@ -286,6 +312,7 @@ object NovelTts {
         this.locale = locale
         index = 0
         queuedTo = -1
+        dropPlace()
         advancing = false
         lastFollowedFraction = -1.0
         _state.update {
@@ -308,10 +335,12 @@ object NovelTts {
     /** Re-reads speed and pitch, and says the current sentence again in the new voice. */
     fun applySettings() {
         val engine = tts ?: return
+        charsPerMs = 0f
         engine.setSpeechRate(speed())
         engine.setPitch(pitch())
         applyVoice(engine)
         if (_state.value.playing) {
+            holdPlace()
             engine.stop()
             queuedTo = index - 1
             enqueueAhead()
@@ -326,6 +355,7 @@ object NovelTts {
      */
     fun restartEngine() {
         val wasPlaying = _state.value.playing
+        holdPlace()
         tts?.stop()
         tts?.shutdown()
         tts = null
@@ -445,9 +475,14 @@ object NovelTts {
 
     private val progressListener = object : UtteranceProgressListener() {
         override fun onStart(utteranceId: String?) {
-            val spoken = utteranceId?.toIntOrNull() ?: return
+            val (spoken, base) = parseUtterance(utteranceId) ?: return
             main.post {
                 index = spoken
+                wordOffset = base
+                rangeReported = false
+                utteranceBase = base
+                utteranceStartedAt = android.os.SystemClock.elapsedRealtime()
+                utteranceLength = (script.getOrNull(spoken)?.text?.length ?: base) - base
                 publishSentence()
                 // Before moving the page: the highlight is what makes the move legible, and a page
                 // that turns before the new sentence is marked shows the old one lit up for an
@@ -457,8 +492,19 @@ object NovelTts {
             }
         }
 
+        override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
+            val (spoken, base) = parseUtterance(utteranceId) ?: return
+            main.post {
+                if (spoken == index) {
+                    wordOffset = base + start
+                    rangeReported = true
+                }
+            }
+        }
+
         override fun onDone(utteranceId: String?) {
-            val spoken = utteranceId?.toIntOrNull() ?: return
+            val spoken = parseUtterance(utteranceId)?.first ?: return
+            main.post { measurePace(spoken) }
             main.post { carryOnAfter(spoken) }
         }
 
@@ -469,7 +515,7 @@ object NovelTts {
 
         override fun onError(utteranceId: String?, errorCode: Int) {
             Logger.log("Novel TTS: engine error $errorCode on utterance $utteranceId")
-            val failed = utteranceId?.toIntOrNull() ?: return
+            val failed = parseUtterance(utteranceId)?.first ?: return
             // One sentence the engine cannot say should not end the chapter.
             main.post { carryOnAfter(failed) }
         }
@@ -504,8 +550,63 @@ object NovelTts {
             val params = Bundle().apply {
                 putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1f)
             }
-            engine.speak(sentence.text, TextToSpeech.QUEUE_ADD, params, queuedTo.toString())
+            // The sentence that was paused part-way picks up at the word it was on.
+            val from = if (queuedTo == index) resumeFrom.takeIf { it in 1 until sentence.text.length } ?: 0 else 0
+            if (queuedTo == index) resumeFrom = 0
+            engine.speak(
+                sentence.text.substring(from), TextToSpeech.QUEUE_ADD, params,
+                if (from == 0) queuedTo.toString() else "$queuedTo@$from",
+            )
         }
+    }
+
+    /** Keeps the word being spoken, for the next play to start from; see [resumeFrom]. */
+    private fun holdPlace() {
+        if (!_state.value.playing) return
+        resumeFrom = if (rangeReported) wordOffset else estimatedOffset()
+    }
+
+    /**
+     * Where in sentence [index] the voice probably is, for an engine that doesn't say: the time
+     * since the sentence started at the pace measured so far, moved back to the start of the word
+     * before — a word heard twice is better than one missed.
+     */
+    private fun estimatedOffset(): Int {
+        val text = script.getOrNull(index)?.text ?: return 0
+        if (utteranceStartedAt == 0L) return 0
+        // About 14 characters a second at normal speed until a sentence has been measured.
+        val pace = charsPerMs.takeIf { it > 0f } ?: (0.014f * speed())
+        val elapsed = android.os.SystemClock.elapsedRealtime() - utteranceStartedAt
+        val at = (utteranceBase + elapsed * pace).toInt()
+        if (at <= utteranceBase || at >= text.length) return utteranceBase.coerceIn(0, text.length)
+        var i = text.lastIndexOf(' ', at - 1)
+        if (i > utteranceBase) i = text.lastIndexOf(' ', i - 1)
+        return if (i < utteranceBase) utteranceBase else i + 1
+    }
+
+    /** Learns this voice's pace from a sentence it finished, for [estimatedOffset]. */
+    private fun measurePace(spoken: Int) {
+        if (spoken != index || utteranceStartedAt == 0L || utteranceLength < 20) return
+        val took = android.os.SystemClock.elapsedRealtime() - utteranceStartedAt
+        if (took <= 0) return
+        val pace = utteranceLength.toFloat() / took
+        charsPerMs = if (charsPerMs == 0f) pace else charsPerMs * 0.7f + pace * 0.3f
+    }
+
+    private fun dropPlace() {
+        resumeFrom = 0
+        wordOffset = 0
+        utteranceStartedAt = 0L
+    }
+
+    /**
+     * A sentence's index and the offset its text was started at, from the utterance id it was
+     * queued under: "12" for the whole of sentence 12, "12@37" for it from character 37.
+     */
+    private fun parseUtterance(id: String?): Pair<Int, Int>? {
+        id ?: return null
+        val index = id.substringBefore('@').toIntOrNull() ?: return null
+        return index to (id.substringAfter('@', "0").toIntOrNull() ?: 0)
     }
 
     private fun publishSentence() {
@@ -567,6 +668,7 @@ object NovelTts {
         _state.update { it.copy(preparing = true) }
         tts?.stop()
         queuedTo = index - 1
+        dropPlace()
 
         // With the reader on screen it does the loading, so the page and the voice arrive at the
         // same chapter together and its own progress handling runs. [adopt] picks the text back up.
@@ -700,6 +802,7 @@ object NovelTts {
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
                 if (_state.value.playing) {
                     pausedByFocus = true
+                    holdPlace()
                     tts?.stop()
                     queuedTo = index - 1
                     wantPlaying = false
