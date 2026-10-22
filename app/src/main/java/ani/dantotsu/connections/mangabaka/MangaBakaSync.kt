@@ -241,6 +241,7 @@ object MangaBakaSync {
                     hasAnime = filters?.hasAnime,
                     fromYear = filters?.fromYear, toYear = filters?.toYear,
                     sort = filters?.sort, allowAdult = allowAdult,
+                    counts = filters?.counts ?: MangaBakaApi.CountFilters(),
                 )
                 .build()
             val request = Request.Builder().url(url)

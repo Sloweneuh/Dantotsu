@@ -288,6 +288,10 @@ data class SavedMangaBakaFilter(
     val toYear: Int? = null,
     val sort: String? = null,
     val hasAnime: Boolean? = null,
+    val chaptersMin: Int? = null,
+    val chaptersMax: Int? = null,
+    val volumesMin: Int? = null,
+    val volumesMax: Int? = null,
 ) : Serializable {
     companion object {
         private const val serialVersionUID: Long = 1L
@@ -308,6 +312,10 @@ data class SavedMangaBakaFilter(
             toYear = r.toYear,
             sort = r.sort,
             hasAnime = r.hasAnime,
+            chaptersMin = r.chaptersMin,
+            chaptersMax = r.chaptersMax,
+            volumesMin = r.volumesMin,
+            volumesMax = r.volumesMax,
         )
     }
 
@@ -326,11 +334,17 @@ data class SavedMangaBakaFilter(
         r.fromYear = fromYear
         r.toYear = toYear
         r.sort = sort
+        r.chaptersMin = chaptersMin
+        r.chaptersMax = chaptersMax
+        r.volumesMin = volumesMin
+        r.volumesMax = volumesMax
     }
 
     fun chips(): List<String> {
         val out = mutableListOf<String>()
         sort?.takeIf { it.isNotBlank() }?.let { out += "Sort : ${it.replace('_', ' ')}" }
+        if (chaptersMin != null || chaptersMax != null) out += "Chapters: ${chaptersMin ?: "?"}-${chaptersMax ?: "?"}"
+        if (volumesMin != null || volumesMax != null) out += "Volumes: ${volumesMin ?: "?"}-${volumesMax ?: "?"}"
         types?.forEach { out += "Format: $it" }
         excludedTypes?.forEach { out += excludeLabel(it) }
         statuses?.forEach { out += "Status: ${it.replace('_', ' ')}" }

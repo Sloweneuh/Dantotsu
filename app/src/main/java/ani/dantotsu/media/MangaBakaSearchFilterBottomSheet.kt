@@ -129,6 +129,10 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         setupEnumFilters()
         setupSortButton()
         setupYearSlider(r.fromYear, r.toYear)
+        binding.mbFilterChaptersMin.setText(r.chaptersMin?.toString().orEmpty())
+        binding.mbFilterChaptersMax.setText(r.chaptersMax?.toString().orEmpty())
+        binding.mbFilterVolumesMin.setText(r.volumesMin?.toString().orEmpty())
+        binding.mbFilterVolumesMax.setText(r.volumesMax?.toString().orEmpty())
         setupGenreSection()
         setupTagSection()
         loadOptions()
@@ -383,6 +387,19 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
             r.fromYear = from
             r.toYear = to
         }
+        val (chaptersMin, chaptersMax) = countBounds(binding.mbFilterChaptersMin, binding.mbFilterChaptersMax)
+        r.chaptersMin = chaptersMin
+        r.chaptersMax = chaptersMax
+        val (volumesMin, volumesMax) = countBounds(binding.mbFilterVolumesMin, binding.mbFilterVolumesMax)
+        r.volumesMin = volumesMin
+        r.volumesMax = volumesMax
+    }
+
+    /** A min/max pair from two fields; blank is no bound, and a reversed pair is put the right way round. */
+    private fun countBounds(min: android.widget.EditText, max: android.widget.EditText): Pair<Int?, Int?> {
+        val low = min.text?.toString()?.trim()?.toIntOrNull()
+        val high = max.text?.toString()?.trim()?.toIntOrNull()
+        return if (low != null && high != null && low > high) high to low else low to high
     }
 
     private fun applyFilters() {
@@ -422,6 +439,10 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         binding.mbGenreSearchText.setText("")
         binding.mbTagSearchText.setText("")
         binding.mbFilterYearRange.values = listOf(yearRangeMin.toFloat(), yearRangeMax.toFloat())
+        binding.mbFilterChaptersMin.setText("")
+        binding.mbFilterChaptersMax.setText("")
+        binding.mbFilterVolumesMin.setText("")
+        binding.mbFilterVolumesMax.setText("")
         setupEnumFilters()
         updateGenreResults(allGenres)
         updateTagResults(emptyList())

@@ -464,7 +464,15 @@ data class MangaBakaSearchResults(
     var fromYear: Int? = null,
     var toYear: Int? = null,
     var sort: String? = null,
+    /** Chapter and volume count bounds (`chapters_lower` …), inclusive. */
+    var chaptersMin: Int? = null,
+    var chaptersMax: Int? = null,
+    var volumesMin: Int? = null,
+    var volumesMax: Int? = null,
 ) : SearchResults<MangaBakaApi.Series>, Serializable {
+
+    val counts: MangaBakaApi.CountFilters
+        get() = MangaBakaApi.CountFilters(chaptersMin, chaptersMax, volumesMin, volumesMax)
 
     fun toChipList(): List<AniMangaSearchResults.SearchChip> {
         val list = mutableListOf<AniMangaSearchResults.SearchChip>()
@@ -485,7 +493,21 @@ data class MangaBakaSearchResults(
         if (fromYear != null || toYear != null) {
             list.add(AniMangaSearchResults.SearchChip("MB_YEAR_RANGE", context.getString(R.string.filter_year_range, "${fromYear ?: "?"} - ${toYear ?: "?"}")))
         }
+        countRange(chaptersMin, chaptersMax)?.let {
+            list.add(AniMangaSearchResults.SearchChip("MB_CHAPTERS", context.getString(R.string.filter_count_range, context.getString(R.string.filter_chapters), it)))
+        }
+        countRange(volumesMin, volumesMax)?.let {
+            list.add(AniMangaSearchResults.SearchChip("MB_VOLUMES", context.getString(R.string.filter_count_range, context.getString(R.string.volumes), it)))
+        }
         return list
+    }
+
+    /** "10–50", "≥ 10" or "≤ 50"; null when neither bound is set. */
+    private fun countRange(min: Int?, max: Int?): String? = when {
+        min != null && max != null -> "$min–$max"
+        min != null -> "≥ $min"
+        max != null -> "≤ $max"
+        else -> null
     }
 
     fun removeChip(chip: AniMangaSearchResults.SearchChip) {
@@ -521,6 +543,8 @@ data class MangaBakaSearchResults(
             }
             "MB_HAS_ANIME" -> hasAnime = null
             "MB_YEAR_RANGE" -> { fromYear = null; toYear = null }
+            "MB_CHAPTERS" -> { chaptersMin = null; chaptersMax = null }
+            "MB_VOLUMES" -> { volumesMin = null; volumesMax = null }
         }
     }
 

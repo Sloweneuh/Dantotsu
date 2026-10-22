@@ -1071,6 +1071,7 @@ class AnilistSearch : ViewModel() {
             toYear = r.toYear,
             sort = r.sort,
             allowAdult = PrefManager.getVal(PrefName.AdultOnly),
+            counts = r.counts,
         )
         return MangaBakaSearchResults(
             search = r.search,
@@ -1091,6 +1092,10 @@ class AnilistSearch : ViewModel() {
             fromYear = r.fromYear,
             toYear = r.toYear,
             sort = r.sort,
+            chaptersMin = r.chaptersMin,
+            chaptersMax = r.chaptersMax,
+            volumesMin = r.volumesMin,
+            volumesMax = r.volumesMax,
         )
     }
 

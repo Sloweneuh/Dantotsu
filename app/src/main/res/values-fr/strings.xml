@@ -2226,6 +2226,10 @@
     <string name="not_licensed">Non licencié</string>
     <string name="filter_year">Année : %1$d</string>
     <string name="filter_year_range">Années : %1$s</string>
+    <string name="filter_chapters">Chapitres</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <string name="filter_count_range">%1$s : %2$s</string>
     <string name="ui_show_system_bars">Afficher les barres système sur les pages des médias</string>
     <string name="search_equivalents_confirm_title">Rechercher des équivalents sur Anilist</string>
     <string name="discord_dantotsu_mode">Mode Dantotsu</string>

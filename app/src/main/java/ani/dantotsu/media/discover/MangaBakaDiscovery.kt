@@ -145,6 +145,10 @@ object MangaBakaDiscovery : DiscoverySource {
         val fromYear: Int? = null,
         val toYear: Int? = null,
         val sort: String? = null,
+        val chaptersMin: Int? = null,
+        val chaptersMax: Int? = null,
+        val volumesMin: Int? = null,
+        val volumesMax: Int? = null,
     )
 
     /** The filter sheet's state, encoded for the queue; null when nothing is set. */
@@ -156,6 +160,7 @@ object MangaBakaDiscovery : DiscoverySource {
                 state.types, state.excludedTypes, state.statuses, state.excludedStatuses,
                 state.contentRatings, state.excludedContentRatings, state.hasAnime,
                 state.fromYear, state.toYear, state.sort,
+                state.chaptersMin, state.chaptersMax, state.volumesMin, state.volumesMax,
             )
         )
     }
@@ -173,6 +178,8 @@ object MangaBakaDiscovery : DiscoverySource {
             excludedContentRatings = f?.excludedContentRatings?.toMutableList(),
             hasAnime = f?.hasAnime,
             fromYear = f?.fromYear, toYear = f?.toYear, sort = f?.sort,
+            chaptersMin = f?.chaptersMin, chaptersMax = f?.chaptersMax,
+            volumesMin = f?.volumesMin, volumesMax = f?.volumesMax,
         )
     }
 
@@ -195,13 +202,22 @@ object MangaBakaDiscovery : DiscoverySource {
         val years = if (f.fromYear != null || f.toYear != null) listOf(
             DiscoverySource.FilterLabel("${f.fromYear ?: "…"}–${f.toYear ?: "…"}") to { f.fromYear = null; f.toYear = null }
         ) else emptyList()
+        fun count(label: Int, min: Int?, max: Int?, clear: () -> Unit) =
+            if (min != null || max != null) listOf(
+                DiscoverySource.FilterLabel("${ani.dantotsu.currContext()?.getString(label).orEmpty()} ${min ?: "…"}–${max ?: "…"}") to clear
+            ) else emptyList()
+        val counts = count(R.string.filter_chapters, f.chaptersMin, f.chaptersMax) {
+            f.chaptersMin = null; f.chaptersMax = null
+        } + count(R.string.volumes, f.volumesMin, f.volumesMax) {
+            f.volumesMin = null; f.volumesMax = null
+        }
         return labels(f.types, f.excludedTypes, f::labelForType) +
             labels(f.statuses, f.excludedStatuses, f::labelForStatus) +
             labels(f.contentRatings, f.excludedContentRatings, f::titleCase) +
             listOfNotNull(f.hasAnime?.let { DiscoverySource.FilterLabel(f.hasAnimeLabel()) to { f.hasAnime = null } }) +
             labels(f.genres, f.excludedGenres, MangaBakaApi::resolveGenreName) +
             labels(f.tags, f.excludedTags) { it } +
-            years
+            years + counts
     }
 
     private fun MangaBakaSync.Recommendation.toItem(context: Context) = DiscoveryQueue.Item(

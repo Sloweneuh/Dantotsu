@@ -439,6 +439,7 @@ object MangaBakaApi {
         toYear: Int? = null,
         sort: String? = null,
         allowAdult: Boolean = true,
+        counts: CountFilters = CountFilters(),
     ): SearchPage? = tryWithSuspend {
         val q = query?.trim()?.takeIf { it.isNotBlank() }
 
@@ -451,7 +452,7 @@ object MangaBakaApi {
         urlBuilder.addSeriesFilters(
             genres, excludedGenres, tags, excludedTags, tagMode, types, excludedTypes,
             statuses, excludedStatuses, contentRatings, excludedContentRatings,
-            hasAnime, fromYear, toYear, sort, allowAdult,
+            hasAnime, fromYear, toYear, sort, allowAdult, counts,
         )
 
         val request = Request.Builder().url(urlBuilder.build()).get().build()
@@ -465,6 +466,14 @@ object MangaBakaApi {
         val results = parsed.data.orEmpty().filter { it.state != "deleted" }
         SearchPage(results, parsed.pagination?.next != null)
     }
+
+    /** How many chapters and volumes a series must have; each bound optional and inclusive. */
+    data class CountFilters(
+        val chaptersMin: Int? = null,
+        val chaptersMax: Int? = null,
+        val volumesMin: Int? = null,
+        val volumesMax: Int? = null,
+    )
 
     /**
      * The series filter parameters `/v1/series/search` and `/v1/my/series/recommendations` share
@@ -489,6 +498,7 @@ object MangaBakaApi {
         toYear: Int? = null,
         sort: String? = null,
         allowAdult: Boolean = true,
+        counts: CountFilters = CountFilters(),
     ): HttpUrl.Builder = apply {
         genres?.filter { it.isNotBlank() }?.forEach { addQueryParameter("genre", it) }
         excludedGenres?.filter { it.isNotBlank() }?.forEach { addQueryParameter("genre_not", it) }
@@ -506,6 +516,11 @@ object MangaBakaApi {
         fromYear?.let { addQueryParameter("published_start_date_lower", it.toString()) }
         toYear?.let { addQueryParameter("published_start_date_upper", it.toString()) }
         sort?.takeIf { it.isNotBlank() }?.let { addQueryParameter("sort_by", it) }
+        // Inclusive; a series with no recorded count never matches one of these.
+        counts.chaptersMin?.let { addQueryParameter("chapters_lower", it.toString()) }
+        counts.chaptersMax?.let { addQueryParameter("chapters_upper", it.toString()) }
+        counts.volumesMin?.let { addQueryParameter("volumes_lower", it.toString()) }
+        counts.volumesMax?.let { addQueryParameter("volumes_upper", it.toString()) }
 
         val picked = contentRatings?.filter { it.isNotBlank() }.orEmpty()
         val ratings = when {
