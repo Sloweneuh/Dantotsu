@@ -127,7 +127,8 @@ class UnreadChapterNotificationTask : Task {
                             }
                             handleUnreadResult(
                                 context, reconciled, mangaList,
-                                answeredIds = mangaList.mapTo(HashSet()) { it.id }
+                                answeredIds = mangaList.mapTo(HashSet()) { it.id },
+                                knownLatest = anilistKnownLatest,
                             )
                             return@anilistCheck
                         }
@@ -238,7 +239,8 @@ class UnreadChapterNotificationTask : Task {
                         }.toMap()
                         handleUnreadResult(
                             context, unreadInfo, mangaList,
-                            answeredIds = batchResults.keys
+                            answeredIds = batchResults.keys,
+                            knownLatest = anilistKnownLatest,
                         )
 
                         if (progressNotification != null) {
@@ -310,7 +312,10 @@ class UnreadChapterNotificationTask : Task {
                     Logger.log("UnreadChapterNotificationTask: found ${unreadInfo.size} anime with unread episodes")
                     handleUnreadResult(
                         context, unreadInfo, animeList, isAnime = true,
-                        answeredIds = batchResults.keys
+                        answeredIds = batchResults.keys,
+                        knownLatest = animeList.mapNotNull { media ->
+                            batchResults[media.id]?.lastEp?.total?.let { media.id to it }
+                        }.toMap(),
                     )
                 }
 
@@ -367,6 +372,12 @@ class UnreadChapterNotificationTask : Task {
         isAnime: Boolean = false,
         /** Which of [mediaList] this run actually got an answer for. See [UnreadCache.save]. */
         answeredIds: Set<Int> = emptySet(),
+        /**
+         * The newest chapter MALSync gave for each title it gave one for. An announcement past it
+         * has been taken back at the source, and is taken back here ([ReleaseRetraction]); a title
+         * missing from it said nothing either way.
+         */
+        knownLatest: Map<Int, Int> = emptyMap(),
     ) {
         // The map passed in may have come from another device via UnreadSync (a cached result
         // computed under that device's exclude list at that time), so re-filter against this
@@ -386,6 +397,19 @@ class UnreadChapterNotificationTask : Task {
         val notifiedKey = if (isAnime) "notified_unread_episodes" else "notified_unread_chapters"
         val notified = getNotifiedSet(context, notifiedKey)
         pruneNotified(notified, mediaList.associate { it.id.toString() to (it.userProgress ?: 0) })
+        // The keys this check announced itself. [notified] holds the Comick check's too — so a
+        // chapter it announced isn't announced again from here — and MALSync lagging behind Comick
+        // is no retraction.
+        val ownKey = if (isAnime) OWN_NOTIFIED_EPISODES else OWN_NOTIFIED_CHAPTERS
+        val own = getNotifiedSet(context, ownKey).apply { retainAll(notified) }
+        val retractedKeys = own.filter { key ->
+            val (id, chapter) = ReleaseRetraction.parseKey(key) ?: return@filter false
+            val latest = id.toIntOrNull()?.let { knownLatest[it] } ?: return@filter false
+            chapter > latest
+        }.toSet()
+        // Forgotten, so the chapter announces itself again if it comes back.
+        notified.removeAll(retractedKeys)
+        own.removeAll(retractedKeys)
         val newNotifications = mutableListOf<Pair<Media, UnreadChapterInfo>>()
 
         filteredUnreadInfo.forEach { (mediaId, info) ->
@@ -399,9 +423,39 @@ class UnreadChapterNotificationTask : Task {
             }
         }
 
+        newNotifications.forEach { (media, info) -> own += "${media.id}:${info.lastChapter}" }
         saveNotifiedSet(context, notifiedKey, notified)
+        saveNotifiedSet(context, ownKey, own)
 
         Logger.log("UnreadChapterNotificationTask: ${newNotifications.size} new ${if (isAnime) "episodes" else "chapters"} to notify")
+
+        if (retractedKeys.isNotEmpty()) {
+            Logger.log("UnreadChapterNotificationTask: taking back $retractedKeys")
+            val onScreen = ReleaseRetraction.retract(
+                context,
+                retractedKeys.mapNotNull { key ->
+                    val (id, chapter) = ReleaseRetraction.parseKey(key) ?: return@mapNotNull null
+                    id.toIntOrNull()?.let { ReleaseRetraction.Retracted(it, chapter) }
+                },
+                if (isAnime) "UnreadEpisode" else "UnreadChapter",
+            )
+            // Still behind at a chapter already announced: shown again at that chapter, silently.
+            // One behind at a chapter not yet announced is in [newNotifications], which replaces it.
+            val newIds = newNotifications.mapTo(HashSet()) { it.first.id }
+            val reposts = onScreen.filter { it !in newIds }.mapNotNull { id ->
+                val info = filteredUnreadInfo[id] ?: return@mapNotNull null
+                if ("$id:${info.lastChapter}" !in notified) return@mapNotNull null
+                mediaList.find { it.id == id }?.let { it to info }
+            }
+            val repostIds = reposts.mapTo(HashSet()) { it.first.id }
+            val icons = reposts.associate { (media, _) -> media.id to NotificationImageLoader.loadBitmap(media.cover) }
+            withContext(Dispatchers.Main) {
+                if (reposts.isNotEmpty() && hasNotificationPermission(context)) {
+                    sendNotifications(context, reposts, icons, isAnime, silent = true)
+                }
+                ReleaseRetraction.cancel(context, onScreen - repostIds - newIds)
+            }
+        }
 
         if (newNotifications.isNotEmpty()) {
             // Fetched here, on the IO dispatcher this whole method already runs on — sendNotifications
@@ -422,6 +476,8 @@ class UnreadChapterNotificationTask : Task {
         newChapters: List<Pair<Media, UnreadChapterInfo>>,
         icons: Map<Int, Bitmap?>,
         isAnime: Boolean = false,
+        /** A repost of one already announced ([ReleaseRetraction]): no sound or vibration. */
+        silent: Boolean = false,
     ) {
         val notificationManager = NotificationManagerCompat.from(context)
         // Computed once for the whole batch rather than per item: checking "is anyone else
@@ -494,6 +550,7 @@ class UnreadChapterNotificationTask : Task {
                 .addAction(markAsReadAction(context, media, info.lastChapter, isAnime))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
+                .setSilent(silent)
             // A cover that failed to load gets a placeholder rather than the plain text layout,
             // which stood out as the one unstyled notification in the group.
             val cover = icons[media.id] ?: MediaCoverNotificationStyle.placeholderCover(context)
@@ -503,7 +560,9 @@ class UnreadChapterNotificationTask : Task {
             )
 
             notificationManager.notify(media.id, builder.build())
-            notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))
+            // A repost's summary is already out with the notification it replaces; posting it
+            // again would sound, the summary not being silent.
+            if (!silent) notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))
         }
     }
 
@@ -705,6 +764,10 @@ class UnreadChapterNotificationTask : Task {
         private var currentlyPerforming = false
 
         private const val TEST_MEDIA_ID = -999
+
+        /** The part of the "already announced" sets this check announced itself; see [handleUnreadResult]. */
+        private const val OWN_NOTIFIED_CHAPTERS = "notified_unread_chapters_own"
+        private const val OWN_NOTIFIED_EPISODES = "notified_unread_episodes_own"
         private const val TEST_IMAGE_URL =
             "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx21-YCDoj1EkAxFn.jpg"
     }

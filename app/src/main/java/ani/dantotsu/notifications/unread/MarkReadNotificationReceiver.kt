@@ -1,6 +1,5 @@
 package ani.dantotsu.notifications.unread
 
-import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -195,20 +194,6 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
         NotificationReadState.markRead(removed.map { NotificationReadState.keyOf(it) })
     }
 
-    /**
-     * Cancels the shared new-chapters group summary once its last child is gone. Android leaves a
-     * lone summary on screen otherwise — see the summary's own doc in [UnreadChapterNotificationTask].
-     */
-    private fun clearGroupSummaryIfEmpty(context: Context) {
-        try {
-            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val childrenLeft = nm.activeNotifications.any {
-                it.notification.group == Notifications.GROUP_NEW_CHAPTERS &&
-                    it.id != Notifications.ID_NEW_CHAPTERS
-            }
-            if (!childrenLeft) nm.cancel(Notifications.ID_NEW_CHAPTERS)
-        } catch (e: Exception) {
-            Logger.log("MarkReadNotificationReceiver: group summary cleanup failed: ${e.message}")
-        }
-    }
+    /** See [ReleaseRetraction.clearGroupSummaryIfEmpty]. */
+    private fun clearGroupSummaryIfEmpty(context: Context) = ReleaseRetraction.clearGroupSummaryIfEmpty(context)
 }

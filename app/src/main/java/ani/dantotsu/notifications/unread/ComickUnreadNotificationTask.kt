@@ -204,7 +204,8 @@ class ComickUnreadNotificationTask : Task {
             clearRow(context)
             return@withContext
         }
-        val (unread, savedByHid) = currentUnread(anilistKnownLatest, muKnownLatest) ?: return@withContext
+        val (unread, savedByHid, latestByHid) = currentUnread(anilistKnownLatest, muKnownLatest)
+            ?: return@withContext
 
         UnreadCache.saveComick(unread.map { it.toEntry() })
         UnreadCache.broadcastUpdate(context)
@@ -222,6 +223,13 @@ class ComickUnreadNotificationTask : Task {
                 val id = e.substringAfterLast('=', "").toIntOrNull() ?: return@mapNotNull null
                 e.substringBeforeLast('=') to id
             }.toMap().toMutableMap()
+        val retracted = retractions(notified, announcedIds, latestByHid)
+        if (retracted.isNotEmpty()) {
+            Logger.log("ComickUnreadNotificationTask: taking back ${retracted.keys}")
+            // Forgotten, so the chapter announces itself again if it comes back.
+            notified.removeAll(retracted.keys)
+            announcedIds.keys.removeAll(retracted.keys)
+        }
         // Announced already, but shown as something else now — converted from MangaUpdates to
         // AniList since — so the notification still out moves over to the new id, by its old one.
         val moved = unread.mapNotNull { item ->
@@ -244,6 +252,18 @@ class ComickUnreadNotificationTask : Task {
         // count reaches it. Their keys are "<id>:<chapter>" too.
         val anilistNotified = prefs.getStringSet(ANILIST_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
         val muNotified = prefs.getStringSet(MU_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
+        // What this check marked announced for the other two, released where their own count is
+        // short of it too — so a chapter that comes back there isn't left unannounced. Where it isn't
+        // short, that check still lists the chapter, and its key stands.
+        retracted.values.mapNotNull { it.item }.forEach { item ->
+            item.anilistId?.let { id ->
+                val key = "$id:${item.latestChapter}"
+                if ((anilistKnownLatest[id] ?: Int.MIN_VALUE) < item.latestChapter) anilistNotified -= key
+            }
+            item.muSeriesIds.forEach { id ->
+                if ((muKnownLatest[id] ?: Int.MIN_VALUE) < item.latestChapter) muNotified -= "$id:${item.latestChapter}"
+            }
+        }
         newItems.forEach { item ->
             item.anilistId?.let { anilistNotified += "$it:${item.latestChapter}" }
             item.muSeriesIds.forEach { muNotified += "$it:${item.latestChapter}" }
@@ -257,12 +277,106 @@ class ComickUnreadNotificationTask : Task {
         Logger.log("ComickUnreadNotificationTask: ${newItems.size} new chapters to notify, ${moved.size} moved")
 
         if (moved.isNotEmpty()) moveNotifications(context, moved)
+        if (retracted.isNotEmpty()) takeBack(context, retracted.values, unread, notified, newItems)
         if (newItems.isEmpty() || !hasNotificationPermission(context)) return@withContext
         val announced = withMuCovers(newItems)
         val icons = announced.associate { it.notifId to NotificationImageLoader.loadBitmap(it.coverUrl) }
         withContext(Dispatchers.Main) {
             sendNotifications(context, announced, icons)
             storeNotifications(announced)
+        }
+    }
+
+    /**
+     * One announced chapter Comick no longer lists, under the id it went out as ([notifId], -1 when
+     * nothing is to be taken down). [item] is the ids it was marked announced under for the other
+     * checks — null when another entry of the series still lists it, and those marks stand.
+     */
+    private data class Retracted(val notifId: Int, val chapter: Int, val item: Announced?)
+
+    /** The ids an announcement was marked under for the other checks; see [checkComickUnread]. */
+    private data class Announced(val anilistId: Int?, val muSeriesIds: Set<Long>, val latestChapter: Int)
+
+    /**
+     * The "<hid>:<chapter>" keys in [notified] whose chapter is past the newest Comick now gives for
+     * that title, by key. Only titles in [latestByHid] — ones Comick answered for this run — are
+     * judged; and a series followed as several entries is kept while any of them still lists the
+     * chapter, its notification standing for all of them.
+     */
+    private fun retractions(
+        notified: Set<String>,
+        announcedIds: Map<String, Int>,
+        latestByHid: Map<String, Int>,
+    ): Map<String, Retracted> {
+        val gone = notified.filter { key ->
+            val (hid, chapter) = ReleaseRetraction.parseKey(key) ?: return@filter false
+            val latest = latestByHid[hid] ?: return@filter false
+            chapter > latest
+        }.toSet()
+        if (gone.isEmpty()) return emptyMap()
+        val stillListed = (notified - gone).mapNotNullTo(HashSet()) { key ->
+            val chapter = ReleaseRetraction.parseKey(key)?.second ?: return@mapNotNullTo null
+            announcedIds[key]?.let { it to chapter }
+        }
+        return gone.mapNotNull { key ->
+            val (hid, chapter) = ReleaseRetraction.parseKey(key) ?: return@mapNotNull null
+            val notifId = announcedIds[key]
+            // Another entry of the series still has it: only this entry's key goes.
+            if (notifId != null && (notifId to chapter) in stillListed) {
+                return@mapNotNull key to Retracted(-1, chapter, null)
+            }
+            val announced = announcedFor(hid, chapter)
+            // Announced before the ids were recorded: the id it would have gone out under, if not
+            // as a MangaUpdates series.
+            val id = notifId ?: announced.anilistId ?: (("comick:$hid").hashCode() and 0x7FFFFFFF)
+            key to Retracted(id, chapter, announced)
+        }.toMap()
+    }
+
+    /**
+     * The AniList and MangaUpdates ids the title behind [hid] goes by, from the links stored by
+     * [comickLinksFor] — the announcement's own item is gone with the chapter.
+     */
+    private fun announcedFor(hid: String, chapter: Int): Announced {
+        val links = Links(
+            anilistId = IdCache["$LINKS_KEY_AL$hid"]?.toIntOrNull(),
+            mangaUpdates = IdCache["$LINKS_KEY_MU$hid"]?.takeIf { it.isNotBlank() },
+            coverUrl = null,
+        )
+        return Announced(links.anilistId, links.mangaUpdatesIds, chapter)
+    }
+
+    /**
+     * Takes [retracted] down ([ReleaseRetraction]). A title still behind, at a chapter announced
+     * already, is shown again at that chapter without sound; one behind at a chapter not announced
+     * yet is in [newItems], whose notification replaces it.
+     */
+    private suspend fun takeBack(
+        context: Context,
+        retracted: Collection<Retracted>,
+        unread: List<UnreadItem>,
+        notified: Set<String>,
+        newItems: List<UnreadItem>,
+    ) {
+        val onScreen = ReleaseRetraction.retract(
+            context,
+            retracted.filter { it.notifId != -1 }.map { ReleaseRetraction.Retracted(it.notifId, it.chapter) },
+            "UnreadChapter",
+        )
+        if (onScreen.isEmpty()) return
+        val newIds = newItems.mapTo(HashSet()) { it.notifId }
+        val reposts = withMuCovers(
+            unread.filter { item ->
+                item.notifId in onScreen && item.notifId !in newIds &&
+                    item.seriesHids.any { "$it:${item.latestChapter}" in notified }
+            }
+        )
+        val icons = reposts.associate { it.notifId to NotificationImageLoader.loadBitmap(it.coverUrl) }
+        withContext(Dispatchers.Main) {
+            if (reposts.isNotEmpty() && hasNotificationPermission(context)) {
+                sendNotifications(context, reposts, icons, silent = true)
+            }
+            ReleaseRetraction.cancel(context, onScreen - reposts.mapTo(HashSet()) { it.notifId } - newIds)
         }
     }
 
@@ -349,7 +463,12 @@ class ComickUnreadNotificationTask : Task {
      * the "already announced" keys. A title without saved progress anywhere maps to
      * [Int.MIN_VALUE], so its keys are kept.
      */
-    private data class UnreadResult(val items: List<UnreadItem>, val savedByHid: Map<String, Int>)
+    private data class UnreadResult(
+        val items: List<UnreadItem>,
+        val savedByHid: Map<String, Int>,
+        /** The newest whole chapter Comick gave for each title it answered for; see [titlesBehind]. */
+        val latestByHid: Map<String, Int>,
+    )
 
     /**
      * Every followed title with a chapter past the furthest saved progress, before the "already
@@ -448,7 +567,8 @@ class ComickUnreadNotificationTask : Task {
             Candidate(entry, links, floor(saved).toInt(), media, muEntry)
         }
 
-        val behind = titlesBehind(candidates).filter { b ->
+        val latestByHid = HashMap<String, Int>()
+        val behind = titlesBehind(candidates, latestByHid).filter { b ->
             val links = b.candidate.links
             // The newest chapter the AniList or MangaUpdates check already knows for this title.
             val known = listOfNotNull(links.anilistId?.let { anilistKnownLatest[it] })
@@ -526,7 +646,7 @@ class ComickUnreadNotificationTask : Task {
                 val best = sameSeries.maxBy { it.latestChapter }
                 best.copy(seriesHids = sameSeries.map { it.entry.hid }.distinct())
             }
-        return UnreadResult(items, savedByHid)
+        return UnreadResult(items, savedByHid, latestByHid)
     }
 
     /**
@@ -559,6 +679,11 @@ class ComickUnreadNotificationTask : Task {
      */
     private suspend fun titlesBehind(
         candidates: List<Candidate>,
+        /**
+         * Filled with the newest whole chapter of every title Comick gave a definite answer for,
+         * behind or not; a failed lookup leaves its title out. See [retractions].
+         */
+        latestByHid: MutableMap<String, Int>,
     ): List<Behind> = coroutineScope {
         val slots = Semaphore(2)
         candidates.map { candidate ->
@@ -566,16 +691,27 @@ class ComickUnreadNotificationTask : Task {
                 // The library already names the newest release; a title it puts at or before the
                 // saved chapter costs no catalog request. Its languages are unspecified, so it only
                 // ever rules a title out — the chapter list below has the final say.
+                val hid = candidate.entry.hid
                 val listed = candidate.entry.last_released_number?.toDoubleOrNull()
-                if (listed != null && floor(listed).toInt() <= candidate.savedWhole) return@async null
-                val chapter = slots.withPermit {
-                    ComickApi.getLatestChapter(candidate.entry.hid).also { delay(REQUEST_SPACING_MS) }
-                } ?: return@async null
+                if (listed != null && floor(listed).toInt() <= candidate.savedWhole) {
+                    // In every language, so the newest one counted is no later than this either.
+                    synchronized(latestByHid) { latestByHid[hid] = floor(listed).toInt() }
+                    return@async null
+                }
+                val lookup = slots.withPermit {
+                    ComickApi.latestChapterLookup(hid).also { delay(REQUEST_SPACING_MS) }
+                }
+                val chapter = lookup.getOrNull() ?: run {
+                    // Listing no chapters at all is an answer: nothing past the saved one.
+                    if (lookup.isSuccess) synchronized(latestByHid) { latestByHid[hid] = candidate.savedWhole }
+                    return@async null
+                }
                 val latestText = chapter.chap?.trim() ?: return@async null
                 val latest = latestText.toDoubleOrNull() ?: return@async null
                 // Whole chapters only, as everywhere else new chapters are counted: a ".5" extra
                 // past the saved chapter doesn't announce itself.
                 val latestWhole = floor(latest).toInt()
+                synchronized(latestByHid) { latestByHid[hid] = latestWhole }
                 if (latestWhole <= candidate.savedWhole) return@async null
                 val group = chapter.group_name.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }
                     .distinct().joinToString(", ").ifEmpty { null }

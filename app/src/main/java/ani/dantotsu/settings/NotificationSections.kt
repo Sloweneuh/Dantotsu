@@ -12,6 +12,7 @@ import androidx.fragment.app.FragmentActivity
 import ani.dantotsu.BuildConfig
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ItemSettingsBinding
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.TaskScheduler
 import ani.dantotsu.notifications.anilist.AnilistNotificationWorker
 import ani.dantotsu.notifications.comment.CommentNotificationWorker
@@ -334,11 +335,15 @@ fun AppCompatActivity.malSyncRows(onChanged: () -> Unit): List<Settings> {
                         PrefManager.setVal(
                             PrefName.UnreadChapterNotificationStore, listOf<UnreadChapterStore>()
                         )
+                        // Their unread marks too, or the badge keeps counting entries now gone.
+                        NotificationReadState.reconcileChapters(emptyList())
+                        // Every check's "already announced" sets — AniList/MALSync, MangaUpdates,
+                        // Comick, and the marks each makes for the others — and nothing else is kept
+                        // there, so all of it goes: whatever is unread now is announced again on the
+                        // next check, whichever source has it.
                         context.getSharedPreferences("unread_notifications", Context.MODE_PRIVATE)
                             .edit()
-                            .remove("notified_unread_chapters")
-                            .remove("notified_unread_episodes")
-                            .remove("notified_comick_chapters")
+                            .clear()
                             .apply()
                         Toast.makeText(
                             context, R.string.clear_unread_chapter_history_success, Toast.LENGTH_SHORT

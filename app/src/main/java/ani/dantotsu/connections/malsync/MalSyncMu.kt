@@ -136,11 +136,23 @@ object MalSyncMu {
      * Ids are resolved through MangaBaka's mapping only — the Comick fallback costs a search plus a
      * details call per entry, which is the same reason the list-compare screen skips it. Entries
      * that don't resolve are left out, so callers keep MangaUpdates' own chapter count for them.
+     *
+     * [settled], when given, collects the series whose newest chapter this pass fully accounts for:
+     * MALSync isn't asked about them (switched off, or no MAL entry), or it answered with a chapter.
+     * The rest — a lookup that failed along the way — may have a chapter only MALSync knows about,
+     * so MangaUpdates' count alone says nothing about whether it's still there.
      */
-    suspend fun unreadInfo(items: List<MUMedia>): Map<Int, UnreadChapterInfo> {
-        if (!enabledForManga() || items.isEmpty()) return emptyMap()
+    suspend fun unreadInfo(
+        items: List<MUMedia>,
+        settled: MutableSet<Long>? = null,
+    ): Map<Int, UnreadChapterInfo> {
+        if (!enabledForManga() || items.isEmpty()) {
+            settled?.addAll(items.map { it.id })
+            return emptyMap()
+        }
         return withContext(Dispatchers.IO) {
             val semaphore = Semaphore(RESOLVE_CONCURRENCY)
+            items.filter { recentlyUnlinkable(it.id) }.forEach { settled?.add(it.id) }
             val attempted = coroutineScope {
                 items.filterNot { recentlyUnlinkable(it.id) }.map { item ->
                     async {
@@ -165,6 +177,9 @@ object MalSyncMu {
             // week of silence for the whole list is not a thing to conclude from one failed request.
             if (withMalIds.isNotEmpty()) {
                 attempted.forEach { (item, malId) -> recordUnlinkable(item.id, malId == null) }
+                // On the same evidence: MangaBaka was answering, so a miss is a series with no MAL
+                // entry, which MALSync has nothing to add to.
+                attempted.forEach { (item, malId) -> if (malId == null) settled?.add(item.id) }
             }
             if (withMalIds.isEmpty()) return@withContext emptyMap()
 
@@ -180,6 +195,7 @@ object MalSyncMu {
                 val key = muMediaKey(item.id)
                 val result = results[key] ?: return@mapNotNull null
                 val lastEp = result.lastEp ?: return@mapNotNull null
+                settled?.add(item.id)
                 key to UnreadChapterInfo(
                     mediaId = key,
                     lastChapter = lastEp.total,

@@ -41,6 +41,9 @@ class MuUnreadNotificationTask : Task {
         private var currentlyPerforming = false
 
         private const val TEST_MEDIA_ID = -999L
+
+        /** The part of "notified_mu_chapters" this check announced itself; see [checkMangaUpdatesUnread]. */
+        private const val OWN_NOTIFIED_KEY = "notified_mu_chapters_own"
         private const val TEST_IMAGE_URL =
             "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx21-YCDoj1EkAxFn.jpg"
     }
@@ -93,7 +96,29 @@ class MuUnreadNotificationTask : Task {
             saveNotifiedSet(context, notifiedKey, notified)
         }
 
-        if (unreadItems.isEmpty()) return readingListLatest
+        // The keys this check announced itself: [notified] holds the Comick check's too, so a
+        // chapter it announced isn't announced again from here — and MangaUpdates trailing Comick
+        // is no retraction. Judged only for series this run fully accounts for ([settledIds]).
+        val own = getNotifiedSet(context, OWN_NOTIFIED_KEY).apply { retainAll(notified) }
+        val retractedKeys = own.filter { key ->
+            val (id, chapter) = ReleaseRetraction.parseKey(key) ?: return@filter false
+            val seriesId = id.toLongOrNull()?.takeIf { it in settledIds } ?: return@filter false
+            val latest = readingListLatest[seriesId] ?: return@filter false
+            chapter > latest
+        }.toSet()
+        if (retractedKeys.isNotEmpty()) {
+            Logger.log("MuUnreadNotificationTask: taking back $retractedKeys")
+            // Forgotten, so the chapter announces itself again if it comes back.
+            notified.removeAll(retractedKeys)
+            own.removeAll(retractedKeys)
+            saveNotifiedSet(context, notifiedKey, notified)
+            saveNotifiedSet(context, OWN_NOTIFIED_KEY, own)
+        }
+
+        if (unreadItems.isEmpty()) {
+            takeBack(context, retractedKeys, emptyList(), notified, emptyList())
+            return readingListLatest
+        }
 
         val newItems = mutableListOf<UnreadItem>()
 
@@ -105,9 +130,12 @@ class MuUnreadNotificationTask : Task {
             }
         }
 
+        newItems.forEach { own += "${it.media.id}:${it.latestChapter}" }
         saveNotifiedSet(context, notifiedKey, notified)
+        saveNotifiedSet(context, OWN_NOTIFIED_KEY, own)
 
         Logger.log("MuUnreadNotificationTask: ${newItems.size} new chapters to notify")
+        takeBack(context, retractedKeys, unreadItems, notified, newItems)
 
         if (newItems.isNotEmpty() && hasNotificationPermission(context)) {
             // MUMedia.coverUrl is only ever populated by getSeriesDetails — the reading-list fetch
@@ -139,6 +167,47 @@ class MuUnreadNotificationTask : Task {
     }
 
     /**
+     * Takes [retractedKeys] down ([ReleaseRetraction]). A series still behind, at a chapter
+     * announced already, is shown again at that chapter without sound; one behind at a chapter not
+     * announced yet is in [newItems], whose notification replaces it.
+     */
+    private suspend fun takeBack(
+        context: Context,
+        retractedKeys: Set<String>,
+        unreadItems: List<UnreadItem>,
+        notified: Set<String>,
+        newItems: List<UnreadItem>,
+    ) {
+        if (retractedKeys.isEmpty()) return
+        val onScreen = ReleaseRetraction.retract(
+            context,
+            retractedKeys.mapNotNull { key ->
+                val (id, chapter) = ReleaseRetraction.parseKey(key) ?: return@mapNotNull null
+                id.toLongOrNull()?.let { ReleaseRetraction.Retracted(muMediaKey(it), chapter) }
+            },
+            "UnreadChapter",
+        )
+        if (onScreen.isEmpty()) return
+        val newIds = newItems.mapTo(HashSet()) { muMediaKey(it.media.id) }
+        val reposts = unreadItems.filter { item ->
+            val notifId = muMediaKey(item.media.id)
+            notifId in onScreen && notifId !in newIds && "${item.media.id}:${item.latestChapter}" in notified
+        }.map { item ->
+            val coverUrl = item.media.coverUrl ?: MUDetailsCache.ensure(item.media.id)?.coverUrl
+            if (coverUrl != null) item.copy(media = item.media.copy(coverUrl = coverUrl)) else item
+        }
+        val icons = reposts.associate { it.media.id to NotificationImageLoader.loadBitmap(it.media.coverUrl) }
+        withContext(Dispatchers.Main) {
+            if (reposts.isNotEmpty() && hasNotificationPermission(context)) {
+                sendNotifications(context, reposts, icons, silent = true)
+            }
+            ReleaseRetraction.cancel(
+                context, onScreen - reposts.mapTo(HashSet()) { muMediaKey(it.media.id) } - newIds
+            )
+        }
+    }
+
+    /**
      * The scanlation group(s) behind [chapter], from the series' newest releases — shown as the
      * source when MangaUpdates is the one reporting the chapter, in place of the bare "MangaUpdates".
      * Asked fresh rather than through [MUDetailsCache], whose stored release may predate the chapter
@@ -164,6 +233,12 @@ class MuUnreadNotificationTask : Task {
 
     /** Saved chapter by series id, as [pruneNotified] takes it; null until a fetch succeeds. */
     private var readingListProgress: Map<String, Int>? = null
+
+    /**
+     * The reading-list series whose [readingListLatest] the last fetch fully accounts for — see
+     * [MalSyncMu.unreadInfo]. Only these can have an announced chapter taken back.
+     */
+    private var settledIds: Set<Long> = emptySet()
 
     /** A MangaUpdates entry with unread chapters, over both sources that can know about them. */
     private data class UnreadItem(
@@ -202,12 +277,16 @@ class MuUnreadNotificationTask : Task {
 
         // What MALSync knows about the series that could be linked to a MAL entry — often a chapter
         // ahead of MangaUpdates' own count, and with the source it landed on. The rest are unchanged.
+        val settled = java.util.Collections.synchronizedSet(HashSet<Long>())
         val malSyncInfo = try {
-            MalSyncMu.unreadInfo(readingList)
+            MalSyncMu.unreadInfo(readingList, settled)
         } catch (e: Exception) {
             Logger.log("MuUnreadNotificationTask: MALSync lookup failed: ${e.message}")
+            settled.clear()
             emptyMap()
         }
+        // Only from a reading list that actually came back.
+        settledIds = if (allLists.containsKey("Reading")) settled.toSet() else emptySet()
         val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         readingListLatest = readingList.mapNotNull { muMedia ->
             val info = malSyncInfo[muMediaKey(muMedia.id)]
@@ -231,7 +310,13 @@ class MuUnreadNotificationTask : Task {
     }
 
     @SuppressLint("MissingPermission")
-    private fun sendNotifications(context: Context, items: List<UnreadItem>, icons: Map<Long, Bitmap?>) {
+    private fun sendNotifications(
+        context: Context,
+        items: List<UnreadItem>,
+        icons: Map<Long, Bitmap?>,
+        /** A repost of one already announced ([ReleaseRetraction]): no sound or vibration. */
+        silent: Boolean = false,
+    ) {
         val notificationManager = NotificationManagerCompat.from(context)
         // Computed once for the whole batch rather than per item: checking "is anyone else
         // active" before any of *this* batch has posted would otherwise miss that the batch
@@ -288,6 +373,7 @@ class MuUnreadNotificationTask : Task {
                 .addAction(markAsReadAction(context, muMedia, latestChapter, notifId))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
+                .setSilent(silent)
             // A cover that failed to load gets a placeholder rather than the plain text layout.
             val cover = icons[muMedia.id] ?: MediaCoverNotificationStyle.placeholderCover(context)
             MediaCoverNotificationStyle.apply(
@@ -296,7 +382,9 @@ class MuUnreadNotificationTask : Task {
             )
 
             notificationManager.notify(notifId, builder.build())
-            notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))
+            // A repost's summary is already out with the notification it replaces; posting it
+            // again would sound, the summary not being silent.
+            if (!silent) notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))
         }
     }
 

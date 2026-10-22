@@ -950,13 +950,26 @@ object ComickApi {
         hid: String,
         lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
         nearChapter: Double? = null
-    ): ComickChapter? = withContext(Dispatchers.IO) {
-        val chapter = fetchLatestChapterForLang(hid, lang, nearChapter)
-        if (chapter != null || lang.equals("en", ignoreCase = true)) chapter
-        else fetchLatestChapterForLang(hid, "en", nearChapter)
+    ): ComickChapter? = latestChapterLookup(hid, lang, nearChapter).getOrNull()
+
+    /**
+     * [getLatestChapter], telling "Comick lists no chapters" (success, null) apart from "couldn't
+     * ask" (failure). The unread check takes back an announced chapter on the first and must not on
+     * the second: a timeout says nothing about whether the chapter is still there.
+     */
+    suspend fun latestChapterLookup(
+        hid: String,
+        lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
+        nearChapter: Double? = null
+    ): Result<ComickChapter?> = withContext(Dispatchers.IO) {
+        val preferred = fetchLatestChapterForLang(hid, lang, nearChapter)
+        if (preferred.getOrNull() != null || lang.equals("en", ignoreCase = true)) return@withContext preferred
+        val english = fetchLatestChapterForLang(hid, "en", nearChapter)
+        // Nothing in English either: only an answer if the preferred language was one as well.
+        if (english.getOrNull() == null && preferred.isFailure) preferred else english
     }
 
-    private fun fetchLatestChapterForLang(hid: String, lang: String, nearChapter: Double?): ComickChapter? {
+    private fun fetchLatestChapterForLang(hid: String, lang: String, nearChapter: Double?): Result<ComickChapter?> {
         try {
             val chapParam = nearChapter?.let {
                 "&chap=${if (it % 1.0 == 0.0) it.toInt() else it}"
@@ -964,18 +977,19 @@ object ComickApi {
             val url = "${chaptersUrl(hid)}?lang=$lang&limit=10$chapParam&chap-order=0"
             val request = request(url)
             val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return null
+            if (!response.isSuccessful) return Result.failure(Exception("HTTP ${response.code}"))
             val body = response.body.string()
-            if (body.isBlank()) return null
-            val obj = gson.fromJson(body, com.google.gson.JsonObject::class.java) ?: return null
-            val arr = obj.getAsJsonArray("chapters") ?: return null
-            if (arr.size() == 0) return null
+            if (body.isBlank()) return Result.failure(Exception("empty body"))
+            val obj = gson.fromJson(body, com.google.gson.JsonObject::class.java)
+                ?: return Result.failure(Exception("unreadable body"))
+            val arr = obj.getAsJsonArray("chapters") ?: return Result.failure(Exception("no chapters field"))
+            if (arr.size() == 0) return Result.success(null)
             val chapters = gson.fromJson(arr, Array<ComickChapter>::class.java).toList()
             // Take the chapter with the highest chapter number in the returned window
-            return chapters.maxByOrNull { it.chap?.toDoubleOrNull() ?: -1.0 }
+            return Result.success(chapters.maxByOrNull { it.chap?.toDoubleOrNull() ?: -1.0 })
         } catch (e: Exception) {
             Logger.log("Error fetching latest chapter for hid $hid (lang=$lang): ${e.message}")
-            return null
+            return Result.failure(e)
         }
     }
 
