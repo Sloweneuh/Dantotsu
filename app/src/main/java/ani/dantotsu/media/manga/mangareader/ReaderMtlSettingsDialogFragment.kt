@@ -9,6 +9,8 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
+import ani.dantotsu.snackString
+import ani.dantotsu.util.customAlertDialog
 import ani.dantotsu.databinding.BottomSheetReaderMtlSettingsBinding
 import ani.dantotsu.media.manga.translation.MtlChoices
 import ani.dantotsu.media.manga.translation.MtlSettings
@@ -111,6 +113,57 @@ class ReaderMtlSettingsDialogFragment : BottomSheetDialogFragment() {
         binding.readerMtlLongClickImage.setOnCheckedChangeListener { _, isChecked ->
             activity.defaultSettings.longClickImage = isChecked
             activity.applySettings()
+        }
+
+        binding.readerMtlDelete.setOnClickListener { confirmDelete(activity) }
+    }
+
+    /**
+     * Deletes the translations kept this session, after asking: they cost requests to make, and
+     * re-reading them is free until then.
+     *
+     * What OCR found on the pages is a separate thing and stays unless asked, so a page translated
+     * again goes out with the same bubbles without being read again. The boxes drawn over missed
+     * text belong to that reading, so they can only go along with it — and only when asked too,
+     * since they took work to draw.
+     */
+    private fun confirmDelete(activity: MangaReaderActivity) {
+        val context = requireContext()
+        val dp = resources.displayMetrics.density
+        fun box(text: Int, indent: Int) = com.google.android.material.checkbox.MaterialCheckBox(context).apply {
+            setText(text)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = ((20 + indent) * dp).toInt(); marginEnd = (20 * dp).toInt() }
+        }
+        val detected = box(R.string.mtl_delete_detected_too, 0)
+        val boxes = box(R.string.mtl_delete_boxes_too, 32).apply { isEnabled = false }
+        detected.setOnCheckedChangeListener { _, checked ->
+            boxes.isEnabled = checked
+            if (!checked) boxes.isChecked = false
+        }
+        context.customAlertDialog().apply {
+            setTitle(R.string.mtl_delete_translations)
+            setMessage(R.string.mtl_delete_translations_desc)
+            setCustomView(android.widget.LinearLayout(context).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                addView(detected)
+                addView(boxes)
+            })
+            setPosButton(R.string.delete) {
+                ani.dantotsu.media.manga.translation.TranslatedPages.clear()
+                if (detected.isChecked) ani.dantotsu.media.manga.translation.DetectedPages.clear()
+                if (detected.isChecked && boxes.isChecked) {
+                    ani.dantotsu.media.manga.translation.DrawnRegions.clear()
+                }
+                activity.refreshTranslationOverlays()
+                // Automatic translation starts again from what is on screen.
+                activity.onMtlSettingsChanged()
+                snackString(getString(R.string.mtl_translations_deleted))
+            }
+            setNegButton(R.string.cancel)
+            show()
         }
     }
 

@@ -425,6 +425,7 @@ class ReaderTranslation(private val activity: MangaReaderActivity) {
             PageTranslationPipeline.run(
                 bitmap, activeScript(), sourceLanguageCode(), mtlSettings(), before, after,
                 regions = DrawnRegions[image.url.url],
+                pageKey = image.url.url,
             )
         }
     }

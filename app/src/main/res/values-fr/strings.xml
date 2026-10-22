@@ -2947,6 +2947,11 @@
     <string name="mtl_auto_off">Les pages ne seront traduites que sur demande</string>
     <string name="mtl_auto_stopped">Traduction au défilement arrêtée — trop de pages en échec</string>
     <string name="mtl_stitch">Lire par-dessus les coupures de page</string>
+    <string name="mtl_delete_translations">Supprimer les traductions</string>
+    <string name="mtl_delete_translations_desc">Supprime les traductions faites pendant cette session. Les dialogues trouvés sur chaque page sont conservés, donc retraduire une page ne nécessite pas de la relire.</string>
+    <string name="mtl_delete_detected_too">Supprimer aussi les dialogues détectés</string>
+    <string name="mtl_delete_boxes_too">Supprimer aussi les zones que j\'ai dessinées</string>
+    <string name="mtl_translations_deleted">Traductions supprimées</string>
     <string name="mtl_novel">Traduire les chapitres de romans</string>
     <string name="mtl_novel_desc">Traduit automatiquement un chapitre à son ouverture, avec le moteur et la langue réglés ci-dessus</string>
     <string name="mtl_novel_translating">Traduction du chapitre…</string>

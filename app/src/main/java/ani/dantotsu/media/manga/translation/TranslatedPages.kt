@@ -52,6 +52,34 @@ object TranslatedPages {
 }
 
 /**
+ * What OCR found on each page — its text blocks and what the scoring made of each — kept apart from
+ * the translations made of them.
+ *
+ * Reading a page is the slow half of translating it, and it gives the same answer every time for
+ * the same pixels and settings; translating does not (see [TranslatedPages]). Keeping this means a
+ * page translated again — after deleting its translation, or with another engine — goes out with
+ * the very same bubbles, without the wait.
+ *
+ * Keyed by everything the reading depends on (see [PageTranslationPipeline.run]): the page, the
+ * recognizer, whether the neighbours were read across the seam, the boxes drawn on it and the
+ * detection thresholds. Change any and the page is read again.
+ */
+object DetectedPages {
+
+    private const val CAPACITY = 60
+
+    private val cache = LruCache<String, List<ScoredBlock>>(CAPACITY)
+
+    operator fun get(key: String): List<ScoredBlock>? = cache.get(key)
+
+    fun put(key: String, blocks: List<ScoredBlock>) {
+        cache.put(key, blocks)
+    }
+
+    fun clear() = cache.evictAll()
+}
+
+/**
  * A box the reader drew by hand, and whether they overruled what the scoring made of it.
  *
  * [trusted] is off by default and that is the whole point of it: a drawn box says where to look,
@@ -80,6 +108,8 @@ object DrawnRegions {
     fun put(pageUrl: String, regions: List<DrawnRegion>) {
         if (regions.isEmpty()) cache.remove(pageUrl) else cache.put(pageUrl, regions)
     }
+
+    fun clear() = cache.evictAll()
 }
 
 /**
@@ -116,86 +146,117 @@ object PageTranslationPipeline {
         before: Bitmap? = null,
         after: Bitmap? = null,
         regions: List<DrawnRegion> = emptyList(),
+        /** Identifies the page for [DetectedPages]; without one the page is always read afresh. */
+        pageKey: String? = null,
     ): TranslatedPage? {
         val seam = Seam.of(page, before, after, settings.stitch)
         try {
-            val detector = PageTextDetector(script)
-            val runs = detector.read(seam.image)
-            val (hand, taken) = handRuns(detector, seam, regions)
-            // What the page pass found inside a drawn box gives way to what the box itself read:
-            // both are the same words, and carrying two copies into the merge would put the
-            // bubble's line in twice. A region that read nothing takes nothing with it — that is
-            // how a bubble the pass *had* found went missing from the very page somebody was
-            // drawing boxes on to improve.
-            val kept = runs.filterNot { superseded(it.box, taken) }
-            // Drawn and found alike, merged together. A box drawn over the column the page pass
-            // dropped is then simply the missing piece of its bubble, rather than a second block
-            // standing beside it — which is what it was for as long as merging ran before the
-            // drawn regions were read at all.
-            val blocks = detector.blocks(kept + hand, merge = true, page = seam.image)
-            if (blocks.isEmpty()) return null
-
-            val scored = BlockScorer
-                .score(blocks, seam.image, DetectionThresholds.fromPrefs())
-                .map { seam.assign(it) }
-                .map { trustDrawn(it) }
-            val wanted = scored.filter { it.verdict.translatable }
-            if (wanted.isEmpty()) return null
-
-            val from = sourceCode(script, sourceLanguage)
-            val to = settings.targetLanguage()
-            val translations = settings.engine
-                .build(from, to, targetLabel(to), model = settings.modelName())
-                .use { translator ->
-                translator.prepare()
-                // One call for the whole page. The batch is what lets a language model see the
-                // bubbles as a conversation rather than as unrelated fragments.
-                translator.translate(wanted.map { it.block.sourceText(script) })
+            val thresholds = DetectionThresholds.fromPrefs()
+            val detectedKey = pageKey?.let {
+                "$it|$script|${settings.stitch}|${before != null}|${after != null}|" +
+                    "${regions.hashCode()}|${thresholds.hashCode()}"
             }
-
-            val byId = wanted.mapIndexed { index, entry ->
-                val source = entry.block.sourceText(script)
-                val answer = translations.getOrElse(index) { source }
-                // An engine that cannot translate an entry returns it unchanged — the comic prompt
-                // asks for exactly that where a value reads as garbled or as a watermark, the
-                // keyless engines fall back to it on a failed request, and a missing key in a
-                // model's reply falls back to it here. Painting that back over the bubble it came
-                // from replaces the artist's lettering with system type saying the same words, and
-                // hides the original while doing it. Treated as no translation, so the block is
-                // left alone — which is what the blank case already does and for the same reason.
-                entry.block.id to if (answer.trim() == source.trim()) "" else answer
-            }.toMap()
-            // A block the scorer wanted translated and that has no words to show for it is not
-            // painted at all, which from the outside is a bubble the pass plainly found and then
-            // did nothing about. Silent, and the one symptom hardest to tell from a detection
-            // failure, so it is said here rather than guessed at from a screenshot.
-            val silent = wanted.count { byId[it.block.id].isNullOrBlank() }
-            if (silent > 0) {
-                Logger.log("MTL: $silent of ${wanted.size} blocks came back untranslated")
-            }
-            val finished = scored.map { entry ->
-                byId[entry.block.id]?.let { entry.copy(block = entry.block.copy(translation = it)) }
-                    ?: entry
-            }
-            val painted = seam.toPage(
-                TranslationLayout.paint(
-                    finished,
-                    seam.image.width,
-                    seam.image.height,
-                    seam.image,
-                ),
-                page.width,
-                page.height,
-            )
-            if (painted.isEmpty()) return null
-            return TranslatedPage(
-                blocks = painted,
-                pageWidth = page.width,
-                pageHeight = page.height,
-            )
+            val scored = detectedKey?.let { DetectedPages[it] }
+                ?: detect(seam, script, regions, thresholds)
+                    .also { found -> if (detectedKey != null) DetectedPages.put(detectedKey, found) }
+            return translateDetected(page, seam, script, sourceLanguage, settings, scored)
         } finally {
             seam.recycle()
         }
+    }
+
+    /** OCR: the page's text blocks, drawn boxes included, scored. Empty when it found nothing. */
+    private suspend fun detect(
+        seam: Seam,
+        script: TextScript,
+        regions: List<DrawnRegion>,
+        thresholds: DetectionThresholds,
+    ): List<ScoredBlock> {
+        val detector = PageTextDetector(script)
+        val runs = detector.read(seam.image)
+        val (hand, taken) = handRuns(detector, seam, regions)
+        // What the page pass found inside a drawn box gives way to what the box itself read:
+        // both are the same words, and carrying two copies into the merge would put the
+        // bubble's line in twice. A region that read nothing takes nothing with it — that is
+        // how a bubble the pass *had* found went missing from the very page somebody was
+        // drawing boxes on to improve.
+        val kept = runs.filterNot { superseded(it.box, taken) }
+        // Drawn and found alike, merged together. A box drawn over the column the page pass
+        // dropped is then simply the missing piece of its bubble, rather than a second block
+        // standing beside it — which is what it was for as long as merging ran before the
+        // drawn regions were read at all.
+        val blocks = detector.blocks(kept + hand, merge = true, page = seam.image)
+        if (blocks.isEmpty()) return emptyList()
+
+        return BlockScorer
+            .score(blocks, seam.image, thresholds)
+            .map { seam.assign(it) }
+            .map { trustDrawn(it) }
+    }
+
+    /** Translation: the scored blocks worth translating, translated and laid out for painting. */
+    private suspend fun translateDetected(
+        page: Bitmap,
+        seam: Seam,
+        script: TextScript,
+        sourceLanguage: String?,
+        settings: MtlSettings,
+        scored: List<ScoredBlock>,
+    ): TranslatedPage? {
+        val wanted = scored.filter { it.verdict.translatable }
+        if (wanted.isEmpty()) return null
+
+        val from = sourceCode(script, sourceLanguage)
+        val to = settings.targetLanguage()
+        val translations = settings.engine
+            .build(from, to, targetLabel(to), model = settings.modelName())
+            .use { translator ->
+            translator.prepare()
+            // One call for the whole page. The batch is what lets a language model see the
+            // bubbles as a conversation rather than as unrelated fragments.
+            translator.translate(wanted.map { it.block.sourceText(script) })
+        }
+
+        val byId = wanted.mapIndexed { index, entry ->
+            val source = entry.block.sourceText(script)
+            val answer = translations.getOrElse(index) { source }
+            // An engine that cannot translate an entry returns it unchanged — the comic prompt
+            // asks for exactly that where a value reads as garbled or as a watermark, the
+            // keyless engines fall back to it on a failed request, and a missing key in a
+            // model's reply falls back to it here. Painting that back over the bubble it came
+            // from replaces the artist's lettering with system type saying the same words, and
+            // hides the original while doing it. Treated as no translation, so the block is
+            // left alone — which is what the blank case already does and for the same reason.
+            entry.block.id to if (answer.trim() == source.trim()) "" else answer
+        }.toMap()
+        // A block the scorer wanted translated and that has no words to show for it is not
+        // painted at all, which from the outside is a bubble the pass plainly found and then
+        // did nothing about. Silent, and the one symptom hardest to tell from a detection
+        // failure, so it is said here rather than guessed at from a screenshot.
+        val silent = wanted.count { byId[it.block.id].isNullOrBlank() }
+        if (silent > 0) {
+            Logger.log("MTL: $silent of ${wanted.size} blocks came back untranslated")
+        }
+        val finished = scored.map { entry ->
+            byId[entry.block.id]?.let { entry.copy(block = entry.block.copy(translation = it)) }
+                ?: entry
+        }
+        val painted = seam.toPage(
+            TranslationLayout.paint(
+                finished,
+                seam.image.width,
+                seam.image.height,
+                seam.image,
+            ),
+            page.width,
+            page.height,
+        )
+        if (painted.isEmpty()) return null
+        return TranslatedPage(
+            blocks = painted,
+            pageWidth = page.width,
+            pageHeight = page.height,
+        )
     }
 
     /**

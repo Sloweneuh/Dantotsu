@@ -181,6 +181,16 @@
                 app:thumbTint="@color/button_switch_track" />
         </ani.dantotsu.others.FormSection>
 
+        <!-- Clears the translations kept for this session, after asking. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/readerMtlDelete"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/mtl_delete_translations"
+            app:icon="@drawable/ic_round_delete_24" />
+
     </LinearLayout>
 
 </androidx.core.widget.NestedScrollView>

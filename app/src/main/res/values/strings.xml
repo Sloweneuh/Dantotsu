@@ -3071,6 +3071,11 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="mtl_auto_off">Pages will only be translated when you ask</string>
     <string name="mtl_auto_stopped">Stopped translating as you scroll — too many pages failed</string>
     <string name="mtl_stitch">Read across page seams</string>
+    <string name="mtl_delete_translations">Delete translations</string>
+    <string name="mtl_delete_translations_desc">Removes the translations made this session. The dialogue found on each page is kept, so translating a page again doesn\'t need to read it again.</string>
+    <string name="mtl_delete_detected_too">Also delete detected dialogue</string>
+    <string name="mtl_delete_boxes_too">Also delete the boxes I drew</string>
+    <string name="mtl_translations_deleted">Translations deleted</string>
     <string name="mtl_novel">Translate novel chapters</string>
     <string name="mtl_novel_desc">Machine-translates a chapter as it is opened, with the engine and language set above</string>
     <string name="mtl_novel_translating">Translating this chapter…</string>
