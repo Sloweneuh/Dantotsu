@@ -3272,7 +3272,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="novel_font_failed">%1$s can\'t be used in books, so a standard font is shown instead</string>
     <string name="novel_search">Search</string>
     <string name="novel_search_hint_book">Search this book</string>
-    <string name="novel_search_hint_chapter">Search this chapter</string>
+    <string name="novel_search_hint_novel">Search this novel</string>
+    <string name="novel_search_coverage">%1$s · %2$d of %3$d chapters searched (the ones on this device)</string>
     <string name="novel_searching">Searching…</string>
     <string name="novel_search_none">No matches</string>
     <string name="novel_bookmarks">Bookmarks</string>

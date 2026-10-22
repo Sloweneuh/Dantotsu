@@ -65,10 +65,6 @@ class EbookReaderView : WebView {
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebViewSettings() {
         settings.javaScriptEnabled = true
-        // Debug builds only: lets the page be inspected from a desktop browser over adb.
-        if (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
-            setWebContentsDebuggingEnabled(true)
-        }
         setBackgroundColor(Color.TRANSPARENT)
 
         val assetLoader = WebViewAssetLoader.Builder()

@@ -230,6 +230,13 @@ object LNReaderEpub {
         }
     }
 
+    /**
+     * The book [buildChapter] already wrote for this chapter, if it is still in the cache: what
+     * searching the chapters not open in the reader reads from.
+     */
+    fun cachedChapter(context: Context, novelTitle: String, chapterTitle: String): File? =
+        File(cacheDir(context), "${slug(novelTitle)}-${slug(chapterTitle)}.epub").takeIf { it.isFile }
+
     /** Cached books are disposable; clearing keeps the directory from growing without bound. */
     fun clearCache(context: Context) {
         cacheDir(context).listFiles()?.forEach { it.delete() }

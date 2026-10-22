@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
  *  - the user's per-media choices: which source is selected (`SelectedSource-<id>`, plus the
  *    `Selected-<id>` blob holding language/scanlators/dub preference), and the per-media lookups
  *    `comick_slug_<id>` / `subLang_<id>`
+ *  - novel bookmarks (`lnreader_bm-<id>-<novel>`), alongside the novel reading positions
  *  - which entry on that source the media was matched to (`ShowResponse-<id>-<extension>`, see
  *    [ani.dantotsu.parsers.SavedShowResponse]) — without it the other device knows the extension
  *    but still has to re-search and re-pick the series by hand
@@ -79,8 +80,14 @@ object ProgressSync {
     private val COMICK_RE =
         Regex("""^(?:comick_anime_slug|comick_slug_mu_series|comick_not_on_comick_(?:manga|anime|mu))_(\d+)$""")
 
+    /**
+     * Novel bookmarks: one list per novel (see [ani.dantotsu.media.novel.novelreader.NovelBookmarks]).
+     * Its own family, like [COMICK_RE], so a peer that doesn't know bookmarks can't prune them away.
+     */
+    private val BOOKMARK_RE = Regex("""^lnreader_bm-(\d+)-.+$""")
+
     /** The families above, kept apart so a pull only prunes within one it can see (see [applyMedia]). */
-    private enum class Kind { PROGRESS, SELECTION, SHOW, NOVEL, COMICK }
+    private enum class Kind { PROGRESS, SELECTION, SHOW, NOVEL, COMICK, BOOKMARK }
 
     private fun kindOf(key: String): Kind? = when {
         PROGRESS_RE.matches(key) -> Kind.PROGRESS
@@ -88,6 +95,7 @@ object ProgressSync {
         SHOW_RE.matches(key) -> Kind.SHOW
         NOVEL_RE.matches(key) -> Kind.NOVEL
         COMICK_RE.matches(key) -> Kind.COMICK
+        BOOKMARK_RE.matches(key) -> Kind.BOOKMARK
         else -> null
     }
 
@@ -98,6 +106,7 @@ object ProgressSync {
     private fun mediaIdOf(key: String): String? {
         val match = PROGRESS_RE.matchEntire(key) ?: SELECTION_RE.matchEntire(key)
             ?: SHOW_RE.matchEntire(key) ?: NOVEL_RE.matchEntire(key) ?: COMICK_RE.matchEntire(key)
+            ?: BOOKMARK_RE.matchEntire(key)
             ?: return null
         // SELECTION_RE is an alternation, so the id lands in whichever branch matched.
         return match.groupValues.drop(1).firstOrNull { it.isNotEmpty() }

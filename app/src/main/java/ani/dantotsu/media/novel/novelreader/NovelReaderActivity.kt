@@ -426,8 +426,17 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
     /** A bookmark's position in a chapter still being opened, to go to once it has. */
     private var pendingBookmarkCfi: String? = null
 
-    /** What bookmarks are kept under: the novel for a streamed one, the book otherwise. */
-    private val bookmarkScope get() = if (::settingsId.isInitialized) settingsId else null
+    /** A search match in a chapter still being opened: its query and which match it is. */
+    private var pendingSearchHit: Pair<String, Int>? = null
+
+    /**
+     * What bookmarks are kept under: the novel for a streamed one, the book otherwise, filed under
+     * the media when there is one so they sync (see [NovelBookmarks]).
+     */
+    private val bookmarkScope: NovelBookmarks.Owner?
+        get() = if (::settingsId.isInitialized) {
+            NovelBookmarks.Owner(LNReaderSession.media?.id?.takeIf { it >= 0 }, settingsId)
+        } else null
 
     /** Which chapter of a streamed novel is open; -1 for a book that holds them all. */
     private val bookmarkChapter get() = if (LNReaderSession.isActive) LNReaderSession.currentIndex else -1
@@ -537,6 +546,32 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
     }
 
     fun goTo(cfi: String) = binding.bookReader.goto(cfi)
+
+    /**
+     * Goes to the [occurrence]-th match of [query] in chapter [chapterIndex] of a streamed novel,
+     * opening the chapter first when it isn't the open one. Found by searching the chapter in the
+     * page once it is there: the cached book [NovelChapterSearch] read it from has no positions
+     * the reader shares, but both count matches the same way.
+     */
+    fun openSearchHit(chapterIndex: Int, query: String, occurrence: Int) {
+        if (chapterIndex == LNReaderSession.currentIndex) {
+            jumpToMatch(query, occurrence)
+        } else {
+            pendingSearchHit = query to occurrence
+            loadSessionChapter(chapterIndex)
+        }
+    }
+
+    private fun jumpToMatch(query: String, occurrence: Int) {
+        val found = mutableListOf<String>()
+        binding.bookReader.onSearchResults = { results -> found += results.items.map { it.cfi } }
+        binding.bookReader.onSearchDone = {
+            binding.bookReader.onSearchResults = null
+            binding.bookReader.onSearchDone = null
+            (found.getOrNull(occurrence) ?: found.lastOrNull())?.let { binding.bookReader.goto(it) }
+        }
+        binding.bookReader.search(query)
+    }
 
     // endregion Search and bookmarks
 
@@ -1097,6 +1132,8 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         val target = pendingBookmarkCfi ?: cfi
         pendingBookmarkCfi = null
         target?.let { binding.bookReader.goto(it) }
+        pendingSearchHit?.let { (query, occurrence) -> jumpToMatch(query, occurrence) }
+        pendingSearchHit = null
         sendBookmarks()
         recordLocalProgress()
         Logger.log("Novel reader: loaded '${book.title}' (${toc.size} spine entries)")

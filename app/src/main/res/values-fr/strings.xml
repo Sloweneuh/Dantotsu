@@ -3149,7 +3149,8 @@
     <string name="novel_font_failed">%1$s ne peut pas être utilisée dans les livres, une police standard est affichée à la place</string>
     <string name="novel_search">Rechercher</string>
     <string name="novel_search_hint_book">Rechercher dans ce livre</string>
-    <string name="novel_search_hint_chapter">Rechercher dans ce chapitre</string>
+    <string name="novel_search_hint_novel">Rechercher dans ce roman</string>
+    <string name="novel_search_coverage">%1$s · %2$d chapitres sur %3$d parcourus (ceux présents sur l\'appareil)</string>
     <string name="novel_searching">Recherche…</string>
     <string name="novel_search_none">Aucun résultat</string>
     <string name="novel_bookmarks">Marque-pages</string>

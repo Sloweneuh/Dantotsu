@@ -22,35 +22,60 @@ data class NovelBookmark(
 )
 
 /**
- * The bookmarks of each novel, under the same id its reader settings use: per novel for a
- * streamed one, per book otherwise. Kept on this device.
+ * The bookmarks of each novel, under the same id its reader settings use ([scope]: per novel for a
+ * streamed one, per book otherwise).
+ *
+ * Filed under the media when there is one — `lnreader_bm-<mediaId>-<scope>` — which is what lets
+ * [ani.dantotsu.connections.sync.ProgressSync] carry them to the user's other devices, as it does
+ * reading positions. A book with no media to file under keeps them on this device only.
  */
 object NovelBookmarks {
 
+    class Owner(val mediaId: Int?, val scope: String)
+
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun key(scope: String) = "novel_bookmarks-$scope"
+    private fun localKey(scope: String) = "novel_bookmarks-$scope"
 
-    fun list(scope: String): List<NovelBookmark> {
-        val stored = PrefManager.getNullableCustomVal(key(scope), null, String::class.java)
-            ?: return emptyList()
-        return runCatching { json.decodeFromString<List<NovelBookmark>>(stored) }.getOrDefault(emptyList())
+    private fun key(owner: Owner) =
+        owner.mediaId?.takeIf { it >= 0 }?.let { "lnreader_bm-$it-${owner.scope}" } ?: localKey(owner.scope)
+
+    private fun read(key: String): List<NovelBookmark>? =
+        PrefManager.getNullableCustomVal(key, null, String::class.java)
+            ?.let { runCatching { json.decodeFromString<List<NovelBookmark>>(it) }.getOrNull() }
+
+    fun list(owner: Owner): List<NovelBookmark> {
+        val key = key(owner)
+        read(key)?.let { return it }
+        // Made before bookmarks were filed under the media: moved there the first time they are read.
+        val local = localKey(owner.scope)
+        if (key == local) return emptyList()
+        val earlier = read(local) ?: return emptyList()
+        save(owner, earlier)
+        PrefManager.removeCustomVal(local)
+        return earlier
     }
 
-    private fun save(scope: String, bookmarks: List<NovelBookmark>) {
-        if (bookmarks.isEmpty()) PrefManager.removeCustomVal(key(scope))
-        else PrefManager.setCustomVal(key(scope), json.encodeToString(bookmarks))
+    /**
+     * An emptied list is stored as one rather than removed when it syncs, so deleting the last
+     * bookmark reaches the other devices too: sync carries what is there, and a key that is simply
+     * gone says nothing.
+     */
+    private fun save(owner: Owner, bookmarks: List<NovelBookmark>) {
+        val key = key(owner)
+        if (bookmarks.isEmpty() && key == localKey(owner.scope)) PrefManager.removeCustomVal(key)
+        else PrefManager.setCustomVal(key, json.encodeToString(bookmarks))
     }
 
     /** Newest first. */
-    fun add(scope: String, bookmark: NovelBookmark) =
-        save(scope, listOf(bookmark) + list(scope).filterNot { it.sameAs(bookmark) })
+    fun add(owner: Owner, bookmark: NovelBookmark) =
+        save(owner, listOf(bookmark) + list(owner).filterNot { it.sameAs(bookmark) })
 
-    fun remove(scope: String, bookmark: NovelBookmark) =
-        save(scope, list(scope).filterNot { it.sameAs(bookmark) })
+    fun remove(owner: Owner, bookmark: NovelBookmark) =
+        save(owner, list(owner).filterNot { it.sameAs(bookmark) })
 
     /** The bookmarks in chapter [chapterIndex] — the ones the open book can place. */
-    fun inChapter(scope: String, chapterIndex: Int) = list(scope).filter { it.chapterIndex == chapterIndex }
+    fun inChapter(owner: Owner, chapterIndex: Int) = list(owner).filter { it.chapterIndex == chapterIndex }
 
     private fun NovelBookmark.sameAs(other: NovelBookmark) =
         cfi == other.cfi && chapterIndex == other.chapterIndex
