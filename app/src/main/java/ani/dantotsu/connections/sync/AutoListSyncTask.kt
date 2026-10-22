@@ -30,12 +30,17 @@ import kotlinx.coroutines.withContext
  *  - **A failed section is skipped, not guessed at.** [ListCompare.compareStreaming] reports each
  *    section separately, so a tracker that couldn't be fetched contributes nothing rather than
  *    contributing an empty list — which would otherwise read as "everything here is a removal".
+ *  - **Mass removals are held back** even with removals on (see [massRemovalGuard]).
  */
 class AutoListSyncTask : Task {
 
     companion object {
         @Volatile
         private var currentlyPerforming = false
+
+        /** See [massRemovalGuard]: more than this many removals, making up this share of the list. */
+        private const val MASS_REMOVAL_MIN = 10
+        private const val MASS_REMOVAL_PERCENT = 20
     }
 
     override suspend fun execute(context: Context): Boolean = withContext(Dispatchers.IO) {
@@ -86,7 +91,9 @@ class AutoListSyncTask : Task {
             ListCompare.compareStreaming(
                 sections = sections,
                 onStats = { _, _ -> },
-                onSection = { _, result -> synchronized(lock) { entries += result.diffs } },
+                onSection = { section, result ->
+                    synchronized(lock) { entries += massRemovalGuard(section, result) }
+                },
                 onError = { section, e ->
                     synchronized(lock) { failedSections++ }
                     Logger.log("AutoListSyncTask: $section comparison failed: ${e.message}")
@@ -117,6 +124,27 @@ class AutoListSyncTask : Task {
         } finally {
             currentlyPerforming = false
         }
+    }
+
+    /**
+     * Drops a section's removals when they'd take out a large share of the destination list in one
+     * go. Removals only make sense in ones and twos — what someone deleted on AniList since the last
+     * run — so a pass that wants to clear most of a tracker is far likelier to be reading a source
+     * list that came back short (an outage, a half-fetched custom list) than a real mass deletion,
+     * and getting that wrong is unrecoverable. The manual compare screen still offers them.
+     */
+    private fun massRemovalGuard(
+        section: ListCompare.Section,
+        result: ListCompare.SubsectionResult,
+    ): List<ListCompare.DiffEntry> {
+        val removals = result.diffs.count { it.delete }
+        val destTotal = result.dest.total
+        if (removals < MASS_REMOVAL_MIN || removals * 100 < destTotal * MASS_REMOVAL_PERCENT) return result.diffs
+        Logger.log(
+            "AutoListSyncTask: $section wants to remove $removals of $destTotal entries; " +
+                    "holding its removals back"
+        )
+        return result.diffs.filterNot { it.delete }
     }
 
     /** Whether the tracker a section targets is one the user has left sync switched on for. */

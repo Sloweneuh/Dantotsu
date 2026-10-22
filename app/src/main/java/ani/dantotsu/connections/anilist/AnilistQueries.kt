@@ -1046,17 +1046,32 @@ plannedManga: ${plannedMediaQuery("MANGA")}
         anime: Boolean,
         userId: Int,
         sortOrder: String? = null
-    ): MutableMap<String, ArrayList<Media>> {
-        val response =
-            executeQuery<Query.MediaListCollection>(
-                onRawResponse = { body ->
-                    // Only the signed-in user's own lists; another profile's is a one-off visit.
-                    if (userId == Anilist.userid) MediaListCache.write(MediaListCache.listKey(userId, anime), body)
-                },
-                query = """{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress progressVolumes private score(format:POINT_100) updatedAt startedAt{year month day} completedAt{year month day} media { id idMal isAdult type status(version: 2) chapters volumes episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} title {english romaji userPreferred } synonyms tags { name } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }"""
-            )
-        return buildMediaLists(response, anime, sortOrder)
+    ): MutableMap<String, ArrayList<Media>> =
+        buildMediaLists(fetchMediaListCollection(anime, userId), anime, sortOrder)
+
+    /**
+     * Like [getMediaLists], but null when the collection didn't come back at all — an outage,
+     * maintenance, a rate limit or an error body — instead of the empty lists [getMediaLists] builds
+     * from that. Anything that acts on the *absence* of an entry (the list sync's removals) has to
+     * use this: an empty "All" from a failed fetch reads exactly like "the user removed everything".
+     */
+    suspend fun getMediaListsOrNull(
+        anime: Boolean,
+        userId: Int,
+    ): MutableMap<String, ArrayList<Media>>? {
+        val response = fetchMediaListCollection(anime, userId)
+        if (response?.data?.mediaListCollection?.lists == null) return null
+        return buildMediaLists(response, anime, null)
     }
+
+    private suspend fun fetchMediaListCollection(anime: Boolean, userId: Int): Query.MediaListCollection? =
+        executeQuery<Query.MediaListCollection>(
+            onRawResponse = { body ->
+                // Only the signed-in user's own lists; another profile's is a one-off visit.
+                if (userId == Anilist.userid) MediaListCache.write(MediaListCache.listKey(userId, anime), body)
+            },
+            query = """{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress progressVolumes private score(format:POINT_100) updatedAt startedAt{year month day} completedAt{year month day} media { id idMal isAdult type status(version: 2) chapters volumes episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} title {english romaji userPreferred } synonyms tags { name } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }"""
+        )
 
     /** Turns a list-collection response — live or stored — into the screen's per-list buckets. */
     private fun buildMediaLists(

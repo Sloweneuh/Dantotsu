@@ -238,9 +238,14 @@ object ListCompare {
         }
     }
 
-    /** The user's whole AniList list for one media type. */
+    /**
+     * The user's whole AniList list for one media type. Throws when it couldn't be fetched, so the
+     * sections reading it fail instead of comparing against an empty list — which would offer every
+     * entry on the destination for removal (as an AniList maintenance window once did).
+     */
     private suspend fun anilistList(isAnime: Boolean, userId: Int): List<Media> =
-        Anilist.query.getMediaLists(isAnime, userId)["All"] ?: arrayListOf()
+        Anilist.query.getMediaListsOrNull(isAnime, userId)?.get("All")
+            ?: throw Exception("Couldn't fetch the AniList ${if (isAnime) "anime" else "manga"} list")
 
     // ---- MAL vs AniList (+ MangaUpdates) ----
 
