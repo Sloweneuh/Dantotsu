@@ -1575,9 +1575,25 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
+        // The sections below always come in this order: recommendations, custom lists, reviews,
+        // comments. Each gets its slot now, in that order, and fills it when its data arrives —
+        // inserting a late section next to whichever neighbour happened to be there already put it
+        // in a different place depending on what loaded first.
+
         // Add Recommendations - Show Comick's recommendations but reuse AniList data for matches
         val recommendations = comic.recommendations
-        if (!recommendations.isNullOrEmpty() &&
+        val recommendationsPlaceholder = parent.findViewWithTag<android.widget.FrameLayout>(
+            "recommendations_comick_placeholder"
+        ) ?: if (!recommendations.isNullOrEmpty()) {
+            android.widget.FrameLayout(requireContext()).apply {
+                tag = "recommendations_comick_placeholder"
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }.also { parent.addView(it) }
+        } else null
+        if (!recommendations.isNullOrEmpty() && recommendationsPlaceholder != null &&
                         parent.findViewWithTag<View>("recommendations_comick") == null
         ) {
             viewLifecycleOwner.lifecycleScope.launch {
@@ -1719,32 +1735,11 @@ class ComickInfoFragment : Fragment() {
                                         )
                                         }
                                         root.tag = "recommendations_comick"
-                                        // Insert before custom lists placeholder (which sits before reviews)
-                                        val anchor = parent.findViewWithTag<View>("custom_lists_comick_placeholder")
-                                            ?: parent.findViewWithTag<View>("reviews_comick_placeholder")
-                                        if (anchor != null) {
-                                            val idx = parent.indexOfChild(anchor)
-                                            parent.addView(root, idx)
-                                        } else {
-                                            parent.addView(root)
-                                        }
+                                        recommendationsPlaceholder.addView(root)
                                 }
                     }
                 }
             }
-        }
-
-        // Comments on the entry, above the custom lists and reviews that follow.
-        comic.hid?.takeIf { it.isNotBlank() }?.let { commentsHid ->
-            ComickCommentViews.addSection(
-                context = requireContext(),
-                scope = viewLifecycleOwner.lifecycleScope,
-                fragmentManager = parentFragmentManager,
-                parent = parent,
-                hid = commentsHid,
-                heading = comic.title ?: getString(R.string.comick_comments),
-                isAlive = { _binding != null },
-            )
         }
 
         // Custom Lists — placeholder added synchronously so it sits between recommendations and reviews
@@ -1851,6 +1846,19 @@ class ComickInfoFragment : Fragment() {
                     }
                 }
             }
+        }
+
+        // Comments on the entry, last of the sections: after recommendations, lists and reviews.
+        comic.hid?.takeIf { it.isNotBlank() }?.let { commentsHid ->
+            ComickCommentViews.addSection(
+                context = requireContext(),
+                scope = viewLifecycleOwner.lifecycleScope,
+                fragmentManager = parentFragmentManager,
+                parent = parent,
+                hid = commentsHid,
+                heading = comic.title ?: getString(R.string.comick_comments),
+                isAlive = { _binding != null },
+            )
         }
 
         // Defer unlink button placement to the end to guarantee it's the last child.
