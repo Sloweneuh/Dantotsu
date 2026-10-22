@@ -269,6 +269,9 @@ class ExoplayerView :
         var initialized = false
         lateinit var media: Media
 
+        /** The next start resumes without asking; set by restartForSettings, which recreates. */
+        private var resumeSilently = false
+
         private const val DEFAULT_MIN_BUFFER_MS = 900000
         private const val DEFAULT_MAX_BUFFER_MS = 900000
 
@@ -341,6 +344,7 @@ class ExoplayerView :
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var cast: PlayerCast
     private lateinit var bottomBar: PlayerBottomBar
+    private lateinit var gestures: PlayerGestures
     val model: MediaDetailsViewModel by viewModels()
 
     private lateinit var skipStamps: PlayerSkipStamps
@@ -585,13 +589,10 @@ class ExoplayerView :
             }
         }
 
-        // Picture-in-picture
+        // Picture-in-picture: the button is the choice, so it is there wherever PiP is supported;
+        // going there on Home is PlayerHomeAction's to decide.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            pipEnabled =
-                packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) &&
-                        PrefManager.getVal(
-                            PrefName.Pip,
-                        )
+            pipEnabled = packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
             if (pipEnabled) {
                 exoPip.visibility = View.VISIBLE
                 exoPip.setOnClickListener {
@@ -628,12 +629,12 @@ class ExoplayerView :
             override val isInitialized: Boolean get() = this@ExoplayerView.isInitialized
         })
 
-        PlayerGestures(this, playerView, keyMap, object : PlayerGestures.Host {
+        gestures = PlayerGestures(this, playerView, keyMap, object : PlayerGestures.Host {
             override val exoPlayer: ExoPlayer get() = this@ExoplayerView.exoPlayer
             override val isInitialized: Boolean get() = this@ExoplayerView.isInitialized
             override val locked: Boolean get() = this@ExoplayerView.locked
             override fun checkNotch() = this@ExoplayerView.checkNotch()
-        }).setUp()
+        }).also { it.setUp() }
 
         // Handle Media
         if (!initialized) return startMainActivity(this)
@@ -1331,7 +1332,10 @@ class ExoplayerView :
         }
         trackSelector.setParameters(parameters)
 
-        if (playbackPosition != 0L && !changingServer && !PrefManager.getVal<Boolean>(PrefName.AlwaysContinue)) {
+        // A restart for settings picks up where it was without asking; see restartForSettings.
+        val silent = resumeSilently
+        resumeSilently = false
+        if (playbackPosition != 0L && !changingServer && !silent && !PrefManager.getVal<Boolean>(PrefName.AlwaysContinue)) {
             val time =
                 String.format(
                     "%02d:%02d:%02d",
@@ -1651,7 +1655,11 @@ class ExoplayerView :
      * (or was until focus went a moment ago), and it isn't going to a TV or a PiP window instead.
      */
     private fun shouldPlayInBackground(): Boolean {
-        if (!PrefManager.getVal<Boolean>(PrefName.PlayerBackgroundPlay)) return false
+        // Home follows its own setting; the screen going off (or anything else covering the
+        // player) follows background playback's.
+        val wanted = if (leftByHome) PlayerHomeAction.current() == PlayerHomeAction.BACKGROUND
+        else PrefManager.getVal<Boolean>(PrefName.PlayerBackgroundPlay)
+        if (!wanted) return false
         if (!isInitialized || mediaSession == null || isFinishing) return false
         if (cast.isCasting || isEnteringPip || isInPictureInPictureMode) return false
         val justFocusPaused = wasPlaying && SystemClock.elapsedRealtime() - focusPausedAt < 1000
@@ -1720,17 +1728,23 @@ class ExoplayerView :
             ?.setImageResource(ScreenshotUtil.screenshotIcon(this))
     }
 
+    /** Left by the Home button or the recents gesture, as opposed to the screen going off. */
+    private var leftByHome = false
+
     override fun onUserLeaveHint() {
-        // If PiP is enabled in settings and supported, enter PiP when user leaves (home button)
-        if (pipEnabled && SystemClock.elapsedRealtime() >= suppressPipUntil) {
+        // A share sheet this player opened is not the user leaving; see suppressPipForChooser.
+        if (SystemClock.elapsedRealtime() < suppressPipUntil) return super.onUserLeaveHint()
+        if (pipEnabled && PlayerHomeAction.current() == PlayerHomeAction.PIP) {
             enterPipMode()
         } else {
+            leftByHome = true
             super.onUserLeaveHint()
         }
     }
 
     override fun onResume() {
         super.onResume()
+        leftByHome = false
         leaveBackground()
         orientationListener?.enable()
         hideSystemBars()
@@ -1777,7 +1791,9 @@ class ExoplayerView :
                 handler.removeCallbacks(focusPause)
                 if (isInitialized && wasPlaying) exoPlayer.play()
             } else if (isInitialized) {
-                if (PrefManager.getVal(PrefName.PlayerBackgroundPlay)) {
+                if (PrefManager.getVal(PrefName.PlayerBackgroundPlay) ||
+                    PlayerHomeAction.current() == PlayerHomeAction.BACKGROUND
+                ) {
                     handler.postDelayed(focusPause, 500)
                 } else {
                     focusPause.run()
@@ -1963,8 +1979,40 @@ class ExoplayerView :
         }
     }
 
+    /**
+     * Settings the player only reads as it starts — the buttons it sets up, the decoder, the track
+     * preferences — which a change on the full page would otherwise leave waiting for the next
+     * time the player is opened. Noted before the page opens; if any differ on the way back, the
+     * player restarts itself where it was (see [restartForSettings]).
+     */
+    private val restartPrefs = listOf(
+        PrefName.Cast, PrefName.UseInternalCast, PrefName.SkipTime, PrefName.RotationPlayer,
+        PrefName.Resize, PrefName.CursedSpeeds, PrefName.DefaultSpeed, PrefName.UseAdditionalCodec,
+        PrefName.TimeStampsEnabled, PrefName.UseProxyForTimeStamps, PrefName.SettingsPreferDub,
+        PrefName.SubLanguage,
+    )
+
+    private fun restartPrefValues(): Map<PrefName, Any?> =
+        restartPrefs.associateWith { PrefManager.getVal<Any?>(it) }
+
+    private var settingsBefore: Map<PrefName, Any?>? = null
+
+    /**
+     * Starts the player afresh on the same episode and position, so settings read at start take
+     * effect — without the "continue from" question, which the user didn't ask for here.
+     */
+    private fun restartForSettings() {
+        if (isInitialized) {
+            PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", exoPlayer.currentPosition)
+        }
+        resumeSilently = true
+        toast(getString(R.string.player_restarted_for_settings))
+        recreate()
+    }
+
     /** The full Player settings page, from the settings sheet; the episode waits for it. */
     fun openFullPlayerSettings() {
+        settingsBefore = restartPrefValues()
         if (isInitialized) {
             PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", exoPlayer.currentPosition)
             exoPlayer.pause()
@@ -1982,6 +2030,11 @@ class ExoplayerView :
     fun onSettingsSheetClosed() {
         settingsSheetOpen = false
         settingsSheetClosedAt = SystemClock.elapsedRealtime()
+    }
+
+    /** Sets up the gesture areas if gestures were switched on; for the sheet's switches. */
+    fun refreshGestures() {
+        if (::gestures.isInitialized) gestures.refresh()
     }
 
     /** The OP/ED skip button shows whether auto-skip is on; for the sheet's switch of it. */
@@ -2019,7 +2072,14 @@ class ExoplayerView :
             ActivityResultContracts.StartActivityForResult(),
         ) { _: ActivityResult ->
             applySubtitlePrefs()
-            if (isInitialized) exoPlayer.play()
+            refreshGestures()
+            val before = settingsBefore
+            settingsBefore = null
+            if (before != null && before != restartPrefValues()) {
+                restartForSettings()
+            } else if (isInitialized) {
+                exoPlayer.play()
+            }
         }
 
     override fun onPlayerError(error: PlaybackException) {
@@ -2194,7 +2254,9 @@ class ExoplayerView :
         if (::cast.isInitialized) cast.release()
 
         super.onDestroy()
-        finishAndRemoveTask()
+        // Not when this is a restart (restartForSettings recreates the activity): removing the
+        // task would take the new player with it.
+        if (!isChangingConfigurations) finishAndRemoveTask()
     }
 
     /** Hands the episode to Web Video Caster, with the selected external subtitle. */

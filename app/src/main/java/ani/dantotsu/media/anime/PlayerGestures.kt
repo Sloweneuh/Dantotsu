@@ -315,7 +315,13 @@ class PlayerGestures(
         keyMap[KEYCODE_DPAD_LEFT] = { seek(false) }
 
         // Screen Gestures
-        if (PrefManager.getVal<Boolean>(PrefName.Gestures) || PrefManager.getVal<Boolean>(PrefName.DoubleTap)) {
+        // The touch areas over each half, only while a gesture needs them: without, a tap goes
+        // straight to the controller instead of waiting to see whether it is a double tap. Set up
+        // later if a gesture is switched on mid-episode (see refresh).
+        var touchAreasInstalled = false
+        fun installTouchAreas() {
+            if (touchAreasInstalled) return
+            touchAreasInstalled = true
             fun doubleTap(
                 forward: Boolean,
                 event: MotionEvent,
@@ -518,6 +524,19 @@ class PlayerGestures(
                 true
             }
         }
+        installIfWanted = {
+            if (PrefManager.getVal<Boolean>(PrefName.Gestures) || PrefManager.getVal<Boolean>(PrefName.DoubleTap)) {
+                installTouchAreas()
+            }
+        }
+        refresh()
+    }
+
+    private var installIfWanted: (() -> Unit)? = null
+
+    /** Sets the touch areas up if a gesture has been switched on since; the settings sheet calls it. */
+    fun refresh() {
+        installIfWanted?.invoke()
     }
 
     companion object {

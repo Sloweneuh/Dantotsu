@@ -429,6 +429,7 @@ object BackupTree {
                         BackupItem(PrefName.Cast, R.string.show_cast_button),
                         BackupItem(PrefName.UseInternalCast, R.string.try_internal_cast_experimental),
                         BackupItem(PrefName.Pip, R.string.picture_in_picture),
+                        BackupItem(PrefName.PlayerHomeAction, R.string.player_home_action),
                         BackupItem(PrefName.RotationPlayer, R.string.lock_screen_rotation),
                         BackupItem(PrefName.UseAdditionalCodec, R.string.use_additional_codec),
                     )

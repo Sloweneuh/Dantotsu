@@ -302,6 +302,8 @@ enum class PrefName(val data: Pref) {
     FocusPause(Pref(Location.Player, Boolean::class, true)),
     // Leaving the player or turning the screen off keeps the audio going, controlled from the notification.
     PlayerBackgroundPlay(Pref(Location.Player, Boolean::class, false)),
+    // What Home does to an episode playing; see PlayerHomeAction. -1 until chosen: read from Pip.
+    PlayerHomeAction(Pref(Location.Player, Int::class, -1)),
     Gestures(Pref(Location.Player, Boolean::class, true)),
     DoubleTap(Pref(Location.Player, Boolean::class, true)),
     FastForward(Pref(Location.Player, Boolean::class, true)),

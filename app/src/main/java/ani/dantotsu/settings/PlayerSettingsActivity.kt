@@ -42,6 +42,12 @@ import com.google.android.material.slider.Slider.OnChangeListener
 import eltos.simpledialogfragment.SimpleDialog
 import eltos.simpledialogfragment.color.SimpleColorWheelDialog
 import kotlin.math.roundToInt
+import com.google.android.material.color.MaterialColors
+import ani.dantotsu.media.anime.PlayerHomeAction
+import android.text.style.RelativeSizeSpan
+import android.text.style.ForegroundColorSpan
+import android.text.Spanned
+import android.text.SpannableStringBuilder
 
 class PlayerSettingsActivity :
     AppCompatActivity(),
@@ -241,6 +247,8 @@ class PlayerSettingsActivity :
             PrefManager.setVal(PrefName.FocusPause, isChecked)
         }
 
+        bindHomeAction()
+
         binding.playerSettingsBackgroundPlay.isChecked = PrefManager.getVal(PrefName.PlayerBackgroundPlay)
         binding.playerSettingsBackgroundPlay.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.PlayerBackgroundPlay, isChecked)
@@ -282,18 +290,6 @@ class PlayerSettingsActivity :
         }
 
         // Other
-        binding.playerSettingsPiP.apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                visibility = View.VISIBLE
-                isChecked = PrefManager.getVal(PrefName.Pip)
-                setOnCheckedChangeListener { _, isChecked ->
-                    PrefManager.setVal(PrefName.Pip, isChecked)
-                }
-            } else {
-                visibility = View.GONE
-            }
-        }
-
         binding.playerSettingsCast.isChecked = PrefManager.getVal(PrefName.Cast)
         binding.playerSettingsCast.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.Cast, isChecked)
@@ -360,6 +356,33 @@ class PlayerSettingsActivity :
             return true
         }
         return false
+    }
+
+    /** The Home button row: its title over the current choice, which a tap picks from. */
+    private fun bindHomeAction() {
+        val names = PlayerHomeAction.names.map { getString(it) }
+        val row = binding.playerSettingsHomeAction
+        fun render() {
+            val title = getString(R.string.player_home_action)
+            row.text = SpannableStringBuilder(title).append("\n").apply {
+                val start = length
+                append(names[PlayerHomeAction.current()])
+                setSpan(RelativeSizeSpan(0.85f), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(
+                    ForegroundColorSpan(
+                        MaterialColors.getColor(row, com.google.android.material.R.attr.colorOnSurfaceVariant)
+                    ),
+                    start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
+        }
+        render()
+        row.setOnClickListener {
+            choiceBottomSheet(getString(R.string.player_home_action), names, PlayerHomeAction.current()) { index ->
+                PlayerHomeAction.set(index)
+                render()
+            }
+        }
     }
 
     // -----------------------------------------------------------------------------------------

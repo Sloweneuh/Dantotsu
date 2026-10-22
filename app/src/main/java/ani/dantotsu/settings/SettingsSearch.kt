@@ -439,7 +439,7 @@ object SettingsSearch {
 
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.double_tap, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsDoubleTap, keywordsRes = R.string.search_kw_double_tap)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.picture_in_picture, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsPiP, keywordsRes = R.string.search_kw_picture_in_picture)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.player_home_action, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsHomeAction, keywordsRes = R.string.search_kw_picture_in_picture)
 
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.show_cast_button, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsCast, keywordsRes = R.string.search_kw_show_cast_button)
 

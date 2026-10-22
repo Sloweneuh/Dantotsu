@@ -15,6 +15,7 @@ import ani.dantotsu.settings.SettingsRows
 import ani.dantotsu.settings.SliderConfig
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.util.customAlertDialog
 import kotlin.math.roundToInt
 
 /**
@@ -101,7 +102,8 @@ class PlayerSettingsSheet : BottomSheetDialogFragment() {
             )
         }
 
-        bind(binding.playerPlaybackRows) { _ ->
+        bind(binding.playerPlaybackRows) { refresh ->
+            homeActionRefresh = refresh
             listOf(
                 pref(PrefName.AutoPlay, R.string.auto_play_next_episode, R.drawable.ic_round_play_arrow_24),
                 pref(PrefName.AlwaysContinue, R.string.always_continue, R.drawable.ic_round_replay_10_24),
@@ -111,6 +113,7 @@ class PlayerSettingsSheet : BottomSheetDialogFragment() {
                 pref(PrefName.AutoSkipRecap, R.string.auto_skip_recap, R.drawable.ic_round_fast_forward_24),
                 pref(PrefName.ShowTimeStampButton, R.string.show_skip_time_stamp_button,
                     R.drawable.ic_round_touch_app_24),
+                homeActionRow(),
                 pref(PrefName.PlayerBackgroundPlay, R.string.player_background_play,
                     R.drawable.ic_round_headphones_24, R.string.player_background_play_desc),
             )
@@ -118,8 +121,12 @@ class PlayerSettingsSheet : BottomSheetDialogFragment() {
 
         bind(binding.playerControlsRows) { _ ->
             listOf(
-                pref(PrefName.Gestures, R.string.gestures, R.drawable.ic_round_swipe_vertical_24),
-                pref(PrefName.DoubleTap, R.string.double_tap, R.drawable.ic_round_touch_app_24),
+                pref(PrefName.Gestures, R.string.gestures, R.drawable.ic_round_swipe_vertical_24) {
+                    player.refreshGestures()
+                },
+                pref(PrefName.DoubleTap, R.string.double_tap, R.drawable.ic_round_touch_app_24) {
+                    player.refreshGestures()
+                },
                 pref(PrefName.FastForward, R.string.fast_forward, R.drawable.ic_round_fast_forward_24),
                 SettingsRows.slider(ctx, R.string.seek_time, R.drawable.ic_round_forward_10_24, SliderConfig(
                     from = 1f, to = 50f, stepSize = 1f,
@@ -146,6 +153,29 @@ class PlayerSettingsSheet : BottomSheetDialogFragment() {
             )
         }
     }
+
+    /** What Home does: pause, picture-in-picture or keep playing; picked from a list. */
+    private fun homeActionRow(): Settings {
+        val names = PlayerHomeAction.names.map { getString(it) }.toTypedArray()
+        return Settings(
+            type = 1,
+            name = getString(R.string.player_home_action),
+            desc = names[PlayerHomeAction.current()],
+            icon = R.drawable.ic_round_picture_in_picture_alt_24,
+            onClick = {
+                requireContext().customAlertDialog().apply {
+                    setTitle(R.string.player_home_action)
+                    singleChoiceItems(names, PlayerHomeAction.current()) { i ->
+                        PlayerHomeAction.set(i)
+                        homeActionRefresh?.invoke()
+                    }
+                    show()
+                }
+            },
+        )
+    }
+
+    private var homeActionRefresh: (() -> Unit)? = null
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
