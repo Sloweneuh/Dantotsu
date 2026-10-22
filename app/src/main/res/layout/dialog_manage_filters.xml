@@ -4,46 +4,23 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
+    android:paddingStart="20dp"
     android:paddingTop="8dp"
+    android:paddingEnd="20dp"
     android:paddingBottom="8dp">
 
-    <LinearLayout
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/manageFiltersClearAll"
+        style="@style/Widget.Material3.Button.TonalButton.Icon"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?attr/selectableItemBackground"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="20dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="20dp"
-        android:paddingBottom="14dp">
-
-        <ImageView
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginEnd="14dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_round_delete_24"
-            app:tint="?attr/colorPrimary" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/poppins_semi_bold"
-            android:text="@string/clear_all"
-            android:textColor="?attr/colorPrimary"
-            android:textSize="15sp" />
-    </LinearLayout>
-
-    <View
-        android:id="@+id/manageFiltersDivider"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:alpha="0.12"
-        android:background="?attr/colorOnBackground" />
+        android:layout_height="52dp"
+        android:fontFamily="@font/poppins_bold"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="@string/clear_all"
+        android:textSize="15sp"
+        app:cornerRadius="16dp"
+        app:icon="@drawable/ic_round_delete_24" />
 
     <TextView
         android:id="@+id/manageFiltersEmpty"
@@ -54,20 +31,31 @@
         android:paddingTop="20dp"
         android:paddingBottom="20dp"
         android:text="@string/no_active_filters"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="14sp"
         android:visibility="gone" />
 
-    <androidx.core.widget.NestedScrollView
+    <!-- The filters, in a card like the filter sheets' sections; filled from code with the same
+         surface those use. -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/manageFiltersCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp">
+        android:layout_marginTop="12dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
 
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/manageFiltersChipGroup"
+        <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            app:singleLine="false" />
-    </androidx.core.widget.NestedScrollView>
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/manageFiltersChipGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                app:singleLine="false" />
+        </androidx.core.widget.NestedScrollView>
+    </com.google.android.material.card.MaterialCardView>
 </LinearLayout>

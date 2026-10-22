@@ -144,6 +144,17 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
         loadGenresAndCategories()
         setupCategories()
 
+        // A closed card says what is set in it.
+        val ctx = requireContext()
+        binding.muSectionFormat.summarizeWhenClosed {
+            FilterSummary.join(
+                binding.muFilterFormat.text, binding.muFilterYear.text, binding.muFilterLicensed.text,
+                FilterSummary.choices(ctx, selectedStatusFilters.size),
+            )
+        }
+        binding.muSectionGenres.summarizeWhenClosed { FilterSummary.choices(ctx, selectedGenres.size, excludedGenres.size) }
+        binding.muSectionCategories.summarizeWhenClosed { FilterSummary.choices(ctx, selectedCategories.size) }
+
         binding.muFilterReset.setOnClickListener { resetAll() }
         binding.muFilterCancel.setOnClickListener { dismiss() }
         binding.muFilterApply.setOnClickListener {
@@ -438,6 +449,8 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
         binding.muFilterGenresRecycler.adapter?.notifyDataSetChanged()
         @Suppress("NotifyDataSetChanged")
         binding.muFilterStatusRecycler.adapter?.notifyDataSetChanged()
+        listOf(binding.muSectionFormat, binding.muSectionGenres, binding.muSectionCategories)
+            .forEach { it.refreshSummary() }
     }
 
     class FilterChipAdapter(

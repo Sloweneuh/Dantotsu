@@ -1,27 +1,34 @@
 package ani.dantotsu.settings
 
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.widget.TextViewCompat
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.databinding.BottomSheetExtensionFilterBinding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import ani.dantotsu.databinding.ItemExtensionFilterCheckboxBinding
-import ani.dantotsu.databinding.ItemExtensionFilterSectionHeaderBinding
 import ani.dantotsu.databinding.ItemExtensionFilterSelectBinding
 import ani.dantotsu.databinding.ItemExtensionFilterSeparatorBinding
 import ani.dantotsu.databinding.ItemExtensionFilterSortBinding
 import ani.dantotsu.databinding.ItemExtensionFilterTextBinding
 import ani.dantotsu.databinding.ItemExtensionFilterTristateBinding
-import ani.dantotsu.dismissKeyboard
+import ani.dantotsu.media.FilterSummary
 import ani.dantotsu.media.savedfilters.SavedExtensionFilter
 import ani.dantotsu.media.savedfilters.SavedFilterEntry
 import ani.dantotsu.media.savedfilters.SavedFiltersDialog
 import ani.dantotsu.media.savedfilters.SavedFiltersStore
+import ani.dantotsu.others.Xpandable
+import ani.dantotsu.px
 import ani.dantotsu.snackString
+import com.google.android.material.color.MaterialColors
 import eu.kanade.tachiyomi.animesource.model.AnimeFilter
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.source.model.Filter
@@ -192,6 +199,7 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
 
     private fun render(fl: Any) {
         binding.extensionFilterContainer.removeAllViews()
+        sectionFilters.clear()
         when (fl) {
             is FilterList -> renderSections(fl.list, binding.extensionFilterContainer)
             is AnimeFilterList -> renderAnimeSections(fl.list, binding.extensionFilterContainer)
@@ -202,142 +210,152 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
         // Every non-header/group filter lives inside a collapsible section. A Header
         // starts a new section; filters before the first Header go in an untitled one.
         var current: LinearLayout = createSection(root, getString(ani.dantotsu.R.string.filter))
-        var usedCurrent = false
         filters.forEach { f ->
             when (f) {
                 is Filter.Header -> {
                     // Drop the empty placeholder section if nothing landed in it.
-                    if (!usedCurrent) (current.parent as? ViewGroup)?.let { p ->
-                        (p.parent as? ViewGroup)?.removeView(p)
-                    }
+                    dropIfEmpty(current)
                     current = createSection(root, f.name)
-                    usedCurrent = false
                 }
                 is Filter.Group<*> -> {
                     val children = f.state as? List<*> ?: emptyList<Any>()
                     val inner = createSection(root, f.name, searchable = children.size > SEARCH_THRESHOLD)
                     children.forEach { child ->
-                        if (child is Filter<*>) renderFilter(child, inner)
+                        if (child is Filter<*>) {
+                            renderFilter(child, inner)
+                            track(inner, child)
+                        }
                     }
                 }
                 else -> {
                     renderFilter(f, current)
-                    usedCurrent = true
+                    track(current, f)
                 }
             }
         }
-        if (!usedCurrent) (current.parent as? ViewGroup)?.let { p ->
-            (p.parent as? ViewGroup)?.removeView(p)
-        }
+        dropIfEmpty(current)
     }
 
     private fun renderAnimeSections(filters: List<AnimeFilter<*>>, root: LinearLayout) {
         var current: LinearLayout = createSection(root, getString(ani.dantotsu.R.string.filter))
-        var usedCurrent = false
         filters.forEach { f ->
             when (f) {
                 is AnimeFilter.Header -> {
-                    if (!usedCurrent) (current.parent as? ViewGroup)?.let { p ->
-                        (p.parent as? ViewGroup)?.removeView(p)
-                    }
+                    dropIfEmpty(current)
                     current = createSection(root, f.name)
-                    usedCurrent = false
                 }
                 is AnimeFilter.Group<*> -> {
                     val children = f.state as? List<*> ?: emptyList<Any>()
                     val inner = createSection(root, f.name, searchable = children.size > SEARCH_THRESHOLD)
                     children.forEach { child ->
-                        if (child is AnimeFilter<*>) renderAnimeFilter(child, inner)
+                        if (child is AnimeFilter<*>) {
+                            renderAnimeFilter(child, inner)
+                            track(inner, child)
+                        }
                     }
                 }
                 else -> {
                     renderAnimeFilter(f, current)
-                    usedCurrent = true
+                    track(current, f)
                 }
             }
         }
-        if (!usedCurrent) (current.parent as? ViewGroup)?.let { p ->
-            (p.parent as? ViewGroup)?.removeView(p)
+        dropIfEmpty(current)
+    }
+
+    /** The filters rendered into each section's body, for the line its card shows while closed. */
+    private val sectionFilters = HashMap<LinearLayout, MutableList<Any>>()
+
+    private fun track(section: LinearLayout, filter: Any) {
+        sectionFilters.getOrPut(section) { mutableListOf() }.add(filter)
+    }
+
+    /** Whether a filter is away from its default; sorting is not counted, being an order not a filter. */
+    private fun isSet(f: Any?): Boolean = when (f) {
+        is Filter.Select<*> -> f.state != 0
+        is Filter.Text -> f.state.isNotBlank()
+        is Filter.CheckBox -> f.state
+        is Filter.TriState -> f.state != Filter.TriState.STATE_IGNORE
+        is Filter.Group<*> -> (f.state as? List<*>)?.any { isSet(it) } == true
+        is AnimeFilter.Select<*> -> f.state != 0
+        is AnimeFilter.Text -> f.state.isNotBlank()
+        is AnimeFilter.CheckBox -> f.state
+        is AnimeFilter.TriState -> f.state != AnimeFilter.TriState.STATE_IGNORE
+        is AnimeFilter.Group<*> -> (f.state as? List<*>)?.any { isSet(it) } == true
+        else -> false
+    }
+
+    /** Removes a section whose body stayed empty, card and all. */
+    private fun dropIfEmpty(section: LinearLayout) {
+        if (sectionFilters[section].isNullOrEmpty()) (section.parent as? ViewGroup)?.let { card ->
+            (card.parent as? ViewGroup)?.removeView(card)
         }
     }
 
+    /**
+     * A collapsible card like the other filter sheets' sections. A long one gets a search box at
+     * the top of its body, matching its entries by label.
+     */
     private fun createSection(root: LinearLayout, title: String, searchable: Boolean = false): LinearLayout {
         val ctx = root.context
-        val wrapper = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
+        val card = Xpandable(ctx).apply {
+            setHeader(title, ani.dantotsu.R.drawable.ic_round_filter_alt_24)
+            accordion = true
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+            ).apply { topMargin = if (root.childCount == 0) 8f.px else 12f.px }
         }
-        val header = ItemExtensionFilterSectionHeaderBinding.inflate(layoutInflater, wrapper, false)
-        header.filterSectionTitle.text = title
         val content = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
+            setPadding(16f.px, 0, 16f.px, 0)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
         }
-        wrapper.addView(header.root)
-        wrapper.addView(content)
-        root.addView(wrapper)
-
-        // Force collapsed initial state after the views are attached to the tree.
-        content.visibility = View.GONE
-        header.filterSectionArrow.rotation = 0f
-
-        // Tracked here rather than read off the content's visibility: a closing section stays
-        // visible while it shrinks, and a tap during that must count as reopening it.
-        var sectionOpen = false
-        header.root.setOnClickListener {
-            val expanded = sectionOpen
-            sectionOpen = !sectionOpen
-            SectionCard.setExpanded(content, sectionOpen)
-            header.filterSectionArrow.animate()
-                .rotation(if (expanded) 0f else 180f)
-                .setDuration(180)
-                .start()
-            if (searchable) {
-                header.filterSectionSearch.visibility = if (expanded) View.GONE else View.VISIBLE
-                if (expanded) {
-                    // Collapsing the section takes its search box away without the user ever
-                    // touching the search icon, so it has to dismiss the keyboard too.
-                    header.filterSectionSearchLayout.visibility = View.GONE
-                    header.filterSectionSearch.setImageResource(ani.dantotsu.R.drawable.ic_round_search_24)
-                    header.filterSectionSearchText.setText("")
-                    header.filterSectionSearchText.dismissKeyboard()
-                }
-            }
-        }
-
         if (searchable) {
-            header.filterSectionSearch.setOnClickListener {
-                val isVisible = header.filterSectionSearchLayout.visibility == View.VISIBLE
-                SectionCard.setExpanded(header.filterSectionSearchLayout, !isVisible)
-                header.filterSectionSearch.setImageResource(
-                    if (isVisible) ani.dantotsu.R.drawable.ic_round_search_24
-                    else ani.dantotsu.R.drawable.ic_round_search_off_24
+            val search = EditText(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 40f.px).apply {
+                    marginStart = 16f.px
+                    marginEnd = 16f.px
+                    topMargin = 4f.px
+                    bottomMargin = 4f.px
+                }
+                setBackgroundResource(ani.dantotsu.R.drawable.bg_filter_number_field)
+                setPadding(12f.px, 0, 12f.px, 0)
+                setCompoundDrawablesRelativeWithIntrinsicBounds(ani.dantotsu.R.drawable.ic_round_search_24, 0, 0, 0)
+                compoundDrawablePadding = 8f.px
+                TextViewCompat.setCompoundDrawableTintList(
+                    this,
+                    ColorStateList.valueOf(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant))
                 )
-                if (isVisible) {
-                    header.filterSectionSearchText.setText("")
-                    header.filterSectionSearchText.dismissKeyboard()
-                }
-            }
-            header.filterSectionSearchText.addTextChangedListener(object : android.text.TextWatcher {
-                override fun afterTextChanged(s: android.text.Editable?) {
-                    val query = s?.toString()?.trim()?.lowercase() ?: ""
-                    for (i in 0 until content.childCount) {
-                        val child = content.getChildAt(i)
-                        child.visibility = if (query.isEmpty() || findLabel(child).lowercase().contains(query))
-                            View.VISIBLE else View.GONE
+                hint = getString(ani.dantotsu.R.string.search)
+                typeface = ResourcesCompat.getFont(ctx, ani.dantotsu.R.font.poppins_bold)
+                textSize = 14f
+                isSingleLine = true
+                imeOptions = EditorInfo.IME_ACTION_DONE
+                importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+                addTextChangedListener(object : android.text.TextWatcher {
+                    override fun afterTextChanged(s: android.text.Editable?) {
+                        val query = s?.toString()?.trim()?.lowercase() ?: ""
+                        for (i in 0 until content.childCount) {
+                            val child = content.getChildAt(i)
+                            child.visibility = if (query.isEmpty() || findLabel(child).lowercase().contains(query))
+                                View.VISIBLE else View.GONE
+                        }
                     }
-                }
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            })
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                })
+            }
+            card.addView(search)
         }
-
+        card.addView(content)
+        root.addView(card)
+        card.summarizeWhenClosed {
+            FilterSummary.choices(ctx, sectionFilters[content].orEmpty().count { isSet(it) })
+        }
         return content
     }
 

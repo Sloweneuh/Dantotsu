@@ -14,13 +14,23 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingBottom="16dp">
 
+            <View
+                android:layout_width="32dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="14dp"
+                android:alpha="0.4"
+                android:background="@drawable/bg_top_banner_handle" />
+
+            <!-- Header -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                    android:layout_marginTop="17dp"
-                    android:layout_marginBottom="10dp">
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="4dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -119,199 +129,361 @@
                         android:textSize="20sp" />
             </FrameLayout>
 
-            <LinearLayout
+            <ani.dantotsu.others.Xpandable
+                android:id="@+id/comickSectionFormat"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/status_title"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/comickFilterStatus"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:paddingBottom="4dp"
-                        android:singleLine="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/translation"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/comickFilterCompleted"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:paddingBottom="4dp"
-                        android:singleLine="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/comick_content_rating"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/comickFilterContentRating"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:paddingBottom="4dp"
-                        android:singleLine="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/comick_time_days_label"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/comickFilterTime"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:paddingBottom="4dp"
-                        android:singleLine="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
                 android:layout_marginTop="8dp"
-                android:alpha="0.5"
-                android:background="?attr/colorOutlineVariant" />
+                android:orientation="vertical"
+                android:paddingBottom="8dp"
+                app:accordion="true"
+                app:cardInset="false"
+                app:icon="@drawable/ic_round_filter_alt_24"
+                app:isExpanded="true"
+                app:title="@string/filter_section_format">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="4dp"
-                android:layout_marginEnd="32dp"
-                android:orientation="horizontal">
+                <!-- Format -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/status_title"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/comickFilterStatus"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:paddingBottom="4dp"
+                            android:singleLine="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/translation"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/comickFilterCompleted"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:paddingBottom="4dp"
+                            android:singleLine="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:baselineAligned="false"
                     android:orientation="horizontal">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/comick_content_rating"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/comickFilterContentRating"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:paddingBottom="4dp"
+                            android:singleLine="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/comick_time_days_label"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/comickFilterTime"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:paddingBottom="4dp"
+                            android:singleLine="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="center_vertical"
-                        android:layout_marginEnd="8dp"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp"
                         android:fontFamily="@font/poppins_bold"
-                        android:text="@string/genres"
+                        android:text="@string/demographic"
                         android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp" />
+                        android:textSize="15sp" />
 
-                    <ImageButton
-                        android:id="@+id/comickFilterGenresSearch"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
+                    <ani.dantotsu.FadingEdgeRecyclerView
+                    android:requiresFadingEdge="horizontal"
+                        android:id="@+id/comickFilterDemographicRecycler"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clipToPadding="false"
+                        android:nestedScrollingEnabled="false"
+                            android:paddingStart="16dp"
+                        android:paddingTop="6dp"
+                            android:paddingEnd="16dp"
+                        android:paddingBottom="6dp"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:listitem="@layout/item_chip" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/comick_type_label"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp" />
+
+                    <ani.dantotsu.FadingEdgeRecyclerView
+                    android:requiresFadingEdge="horizontal"
+                        android:id="@+id/comickFilterCountryRecycler"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clipToPadding="false"
+                        android:nestedScrollingEnabled="false"
+                            android:paddingStart="16dp"
+                        android:paddingTop="6dp"
+                            android:paddingEnd="16dp"
+                        android:paddingBottom="6dp"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:listitem="@layout/item_chip" />
+                </LinearLayout>
+            </ani.dantotsu.others.Xpandable>
+
+            <ani.dantotsu.others.Xpandable
+                android:id="@+id/comickSectionGenres"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:paddingBottom="8dp"
+                app:accordion="true"
+                app:cardInset="false"
+                app:icon="@drawable/ic_round_menu_book_24"
+                app:isExpanded="false"
+                app:title="@string/genres">
+
+                <!-- Genres -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="16dp"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
+                        android:layout_weight="1"
+                        android:orientation="horizontal">
+
+                        <ImageButton
+                            android:id="@+id/comickFilterGenresSearch"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_gravity="center_vertical"
+                            android:layout_marginEnd="10dp"
+                            android:background="?android:attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/search"
+                            app:srcCompat="@drawable/ic_round_search_24"
+                            app:tint="?attr/colorOnBackground" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/comickFilterGenreSearchLayout"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_gravity="center_vertical"
+                            android:layout_marginEnd="10dp"
+                            android:layout_weight="1"
+                            android:maxWidth="140dp"
+                            android:minHeight="0dp"
+                            android:visibility="gone"
+                            app:boxCornerRadiusBottomEnd="12dp"
+                            app:boxCornerRadiusBottomStart="12dp"
+                            app:boxCornerRadiusTopEnd="12dp"
+                            app:boxCornerRadiusTopStart="12dp"
+                            app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                            app:hintEnabled="false">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/comickFilterGenreSearchText"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="@font/poppins_bold"
+                                android:gravity="center_vertical"
+                                android:hint="@string/search"
+                                android:imeOptions="actionDone"
+                                android:inputType="text"
+                                android:maxLines="1"
+                                android:minHeight="0dp"
+                                android:paddingTop="0dp"
+                                android:paddingBottom="0dp"
+                                android:textSize="14sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
                         android:layout_marginEnd="10dp"
-                        android:background="?android:attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/search"
-                        app:srcCompat="@drawable/ic_round_search_24"
-                        app:tint="?attr/colorOnBackground" />
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:text="@string/grid"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/comickFilterGenresGrid"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <ani.dantotsu.FadingEdgeRecyclerView
+                    android:requiresFadingEdge="horizontal"
+                    android:id="@+id/comickFilterGenresRecycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="8dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+            </ani.dantotsu.others.Xpandable>
+
+            <ani.dantotsu.others.Xpandable
+                android:id="@+id/comickSectionTags"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:paddingBottom="8dp"
+                app:accordion="true"
+                app:cardInset="false"
+                app:icon="@drawable/ic_round_bookmark_border_24"
+                app:isExpanded="false"
+                app:title="@string/tags">
+
+                <!-- Tags -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="16dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
                     <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/comickFilterGenreSearchLayout"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
                         android:layout_width="0dp"
                         android:layout_height="40dp"
-                        android:layout_gravity="center_vertical"
-                        android:layout_marginEnd="10dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="0dp"
                         android:layout_weight="1"
-                        android:maxWidth="140dp"
                         android:minHeight="0dp"
-                        android:visibility="gone"
                         app:boxCornerRadiusBottomEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
                         app:boxCornerRadiusTopStart="12dp"
                         app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                        app:hintEnabled="false">
+                        app:endIconMode="clear_text"
+                        app:hintEnabled="false"
+                        app:startIconDrawable="@drawable/ic_round_search_24">
 
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/comickFilterGenreSearchText"
+                            android:id="@+id/comickFilterCategorySearch"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:fontFamily="@font/poppins_bold"
@@ -327,273 +499,146 @@
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <ani.dantotsu.FadingEdgeRecyclerView
+                    android:requiresFadingEdge="horizontal"
+                    android:id="@+id/comickFilterCategoryResultsRecycler"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="10dp"
-                    android:fontFamily="@font/poppins_semi_bold"
-                    android:text="@string/grid"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:clipToPadding="false"
+                    android:orientation="vertical"
+                    android:paddingStart="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="12dp" />
+            </ani.dantotsu.others.Xpandable>
 
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/comickFilterGenresGrid"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
-
-            <ani.dantotsu.FadingEdgeRecyclerView
-                android:requiresFadingEdge="horizontal"
-                android:id="@+id/comickFilterGenresRecycler"
+            <ani.dantotsu.others.Xpandable
+                android:id="@+id/comickSectionRelease"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:clipToPadding="false"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="8dp"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="16dp"
-                android:alpha="0.5"
-                android:background="?attr/colorOutlineVariant" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/tags"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="0dp"
-                    android:layout_weight="1"
-                    android:minHeight="0dp"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:endIconMode="clear_text"
-                    app:hintEnabled="false"
-                    app:startIconDrawable="@drawable/ic_round_search_24">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/comickFilterCategorySearch"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:fontFamily="@font/poppins_bold"
-                        android:gravity="center_vertical"
-                        android:hint="@string/search"
-                        android:imeOptions="actionDone"
-                        android:inputType="text"
-                        android:maxLines="1"
-                        android:minHeight="0dp"
-                        android:paddingTop="0dp"
-                        android:paddingBottom="0dp"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <ani.dantotsu.FadingEdgeRecyclerView
-                android:requiresFadingEdge="horizontal"
-                android:id="@+id/comickFilterCategoryResultsRecycler"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:clipToPadding="false"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
                 android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="12dp" />
+                android:paddingBottom="8dp"
+                app:accordion="true"
+                app:cardInset="false"
+                app:icon="@drawable/ic_round_date_range_24"
+                app:isExpanded="false"
+                app:title="@string/filter_section_release">
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="8dp"
-                android:alpha="0.5"
-                android:background="?attr/colorOutlineVariant" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="32dp"
-                    android:layout_marginEnd="32dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/demographic"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp" />
-
-                <ani.dantotsu.FadingEdgeRecyclerView
-                android:requiresFadingEdge="horizontal"
-                    android:id="@+id/comickFilterDemographicRecycler"
+                <!-- Release -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:clipToPadding="false"
-                    android:nestedScrollingEnabled="false"
-                        android:paddingStart="16dp"
-                    android:paddingTop="6dp"
-                        android:paddingEnd="16dp"
-                    android:paddingBottom="6dp"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    tools:listitem="@layout/item_chip" />
-            </LinearLayout>
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="16dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="vertical">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/comick_minimum_chapters"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="32dp"
-                    android:layout_marginEnd="32dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/comick_type_label"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp" />
-
-                <ani.dantotsu.FadingEdgeRecyclerView
-                android:requiresFadingEdge="horizontal"
-                    android:id="@+id/comickFilterCountryRecycler"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:clipToPadding="false"
-                    android:nestedScrollingEnabled="false"
-                        android:paddingStart="16dp"
-                    android:paddingTop="6dp"
-                        android:paddingEnd="16dp"
-                    android:paddingBottom="6dp"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    tools:listitem="@layout/item_chip" />
-            </LinearLayout>
-
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/comick_minimum_chapters"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <com.google.android.material.textfield.TextInputEditText
+                    <EditText
                         android:id="@+id/comickFilterMinimum"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="48dp"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_filter_number_field"
+                        android:fontFamily="@font/poppins_bold"
+                        android:gravity="center"
+                        android:hint="@string/filter_min"
+                        android:imeOptions="actionNext"
+                        android:importantForAutofill="no"
                         android:inputType="number"
-                        android:singleLine="true"
+                        android:maxLength="6"
+                        android:maxLines="1"
+                        android:paddingHorizontal="8dp"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textColorHint="?attr/colorOnSurfaceVariant"
                         android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/comick_minimum_rating"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/comickFilterMinimumRating"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="48dp"
-                        android:inputType="numberDecimal"
-                        android:singleLine="true"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/comickFilterYearRangeValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/year_range"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp" />
-
-                <com.google.android.material.slider.RangeSlider
-                    android:id="@+id/comickFilterYearRange"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:stepSize="1"
-                    android:valueFrom="1900"
-                    android:valueTo="2030" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginEnd="32dp"
-                android:gravity="end|center_vertical"
-                android:orientation="horizontal">
+                </LinearLayout>
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/comickFilterShowAll"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
                     android:layout_marginTop="4dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="@string/comick_show_all" />
-            </LinearLayout>
+                    android:layout_marginEnd="16dp"
+                    android:fontFamily="@font/poppins_bold"
+                    android:text="@string/comick_show_all"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="16dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/comick_minimum_rating"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp" />
+
+                    <EditText
+                        android:id="@+id/comickFilterMinimumRating"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_filter_number_field"
+                        android:fontFamily="@font/poppins_bold"
+                        android:gravity="center"
+                        android:hint="@string/filter_min"
+                        android:imeOptions="actionDone"
+                        android:importantForAutofill="no"
+                        android:inputType="numberDecimal"
+                        android:maxLength="6"
+                        android:maxLines="1"
+                        android:paddingHorizontal="8dp"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textColorHint="?attr/colorOnSurfaceVariant"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="16dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/comickFilterYearRangeValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/year_range"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp" />
+
+                    <com.google.android.material.slider.RangeSlider
+                        android:id="@+id/comickFilterYearRange"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:stepSize="1"
+                        android:valueFrom="1900"
+                        android:valueTo="2030" />
+                </LinearLayout>
+            </ani.dantotsu.others.Xpandable>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

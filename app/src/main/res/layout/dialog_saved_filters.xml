@@ -7,42 +7,19 @@
     android:paddingTop="8dp"
     android:paddingBottom="8dp">
 
-    <LinearLayout
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/savedFiltersSaveCurrent"
+        style="@style/Widget.Material3.Button.TonalButton.Icon"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?attr/selectableItemBackground"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="20dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="20dp"
-        android:paddingBottom="14dp">
-
-        <ImageView
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginEnd="14dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_save_as_24"
-            app:tint="?attr/colorPrimary" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/poppins_semi_bold"
-            android:text="@string/saved_filters_save_current"
-            android:textColor="?attr/colorPrimary"
-            android:textSize="15sp" />
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:alpha="0.12"
-        android:background="?attr/colorOnBackground" />
+        android:layout_height="52dp"
+        android:layout_marginHorizontal="20dp"
+        android:fontFamily="@font/poppins_bold"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="@string/saved_filters_save_current"
+        android:textSize="15sp"
+        app:cornerRadius="16dp"
+        app:icon="@drawable/ic_save_as_24" />
 
     <TextView
         android:id="@+id/savedFiltersEmpty"
@@ -53,6 +30,7 @@
         android:paddingTop="20dp"
         android:paddingBottom="20dp"
         android:text="@string/saved_filters_empty"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="14sp"
         android:visibility="gone" />
 
@@ -60,7 +38,10 @@
         android:id="@+id/savedFiltersList"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:clipToPadding="false"
         android:nestedScrollingEnabled="true"
         android:overScrollMode="ifContentScrolls"
+        android:paddingHorizontal="20dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 </LinearLayout>

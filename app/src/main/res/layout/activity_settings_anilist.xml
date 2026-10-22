@@ -65,6 +65,7 @@
         </LinearLayout>
 
         <ani.dantotsu.others.Xpandable
+            app:accordion="true"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -193,6 +194,7 @@
         </ani.dantotsu.others.Xpandable>
 
         <ani.dantotsu.others.Xpandable
+            app:accordion="true"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -334,6 +336,7 @@
 
         </ani.dantotsu.others.Xpandable>
         <ani.dantotsu.others.Xpandable
+            app:accordion="true"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"

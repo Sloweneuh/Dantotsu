@@ -7,7 +7,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.TextView
 import ani.dantotsu.R
+import ani.dantotsu.settings.SectionCard
 import ani.dantotsu.util.customAlertDialog
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 
@@ -41,12 +43,15 @@ object ManageFiltersDialog {
         val clearAllRow = view.findViewById<View>(R.id.manageFiltersClearAll)
         val empty = view.findViewById<TextView>(R.id.manageFiltersEmpty)
         val chipGroup = view.findViewById<ChipGroup>(R.id.manageFiltersChipGroup)
+        val card = view.findViewById<MaterialCardView>(R.id.manageFiltersCard)
+        card.setCardBackgroundColor(SectionCard.fill(card, open = false))
 
         var dialog: androidx.appcompat.app.AlertDialog? = null
 
         fun onEmptied() {
             empty.visibility = View.VISIBLE
             clearAllRow.visibility = View.GONE
+            card.visibility = View.GONE
         }
 
         chips.forEach { item ->

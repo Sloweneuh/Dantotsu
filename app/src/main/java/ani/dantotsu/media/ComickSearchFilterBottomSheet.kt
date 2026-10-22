@@ -117,6 +117,29 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
         setupAdvancedFilters()
         loadFilterOptions()
 
+        // A closed card says what is set in it.
+        val ctx = requireContext()
+        binding.comickSectionFormat.summarizeWhenClosed {
+            FilterSummary.choices(ctx, listOfNotNull(selectedStatus, selectedContentRating, selectedCompleted, selectedTime)
+                .size + selectedDemographic.size + selectedCountry.size)
+        }
+        binding.comickSectionGenres.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedGenres.size, excludedGenres.size)
+        }
+        binding.comickSectionTags.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedCategories.size, excludedCategories.size)
+        }
+        binding.comickSectionRelease.summarizeWhenClosed {
+            FilterSummary.join(
+                FilterSummary.years(binding.comickFilterYearRange.values, yearRangeMin.toFloat(), yearRangeMax.toFloat()),
+                FilterSummary.labelled(ctx, getString(R.string.filter_chapters),
+                    binding.comickFilterMinimum.text?.toString()?.trim()?.toIntOrNull(), null),
+                FilterSummary.labelled(ctx, getString(R.string.score),
+                    binding.comickFilterMinimumRating.text?.toString()?.trim()?.toDoubleOrNull(), null),
+                getString(R.string.comick_show_all).takeIf { binding.comickFilterShowAll.isChecked },
+            )
+        }
+
         binding.comickFilterReset.setOnClickListener { resetAll() }
         binding.comickFilterCancel.setOnClickListener { dismiss() }
         binding.comickFilterApply.setOnClickListener {
@@ -341,7 +364,7 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
             binding.comickFilterCompleted.setText("", false)
             binding.comickFilterMinimum.setText("")
             inputLayoutOf(binding.comickFilterCompleted)?.visibility = View.GONE
-            inputLayoutOf(binding.comickFilterMinimum)?.visibility = View.GONE
+            (binding.comickFilterMinimum.parent as View).visibility = View.GONE
         }
 
         // Show all switch
@@ -640,6 +663,8 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
         updateYearRangeLabel(yearRangeMin, yearRangeMax)
 
         setupAdvancedFilters()
+        listOf(binding.comickSectionFormat, binding.comickSectionGenres, binding.comickSectionTags,
+            binding.comickSectionRelease).forEach { it.refreshSummary() }
     }
 
     override fun onDestroyView() {

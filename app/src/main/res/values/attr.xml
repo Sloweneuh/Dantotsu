@@ -7,6 +7,9 @@
 
     <declare-styleable name="Xpandable">
         <attr name="isExpanded" format="boolean" />
+        <!-- Opening this group closes its open siblings that also have it set, so a sheet of
+             cards shows one at a time. -->
+        <attr name="accordion" format="boolean" />
         <!-- Remembers whether this group is open, under "settings_expanded_<stateKey>" — the same
              preference scheme SettingsSectionAdapter uses. Without one the group reverts to
              isExpanded on every entry, and the Player and Reader screens restart the activity for

@@ -99,6 +99,17 @@ class KitsuSearchFilterBottomSheet : BottomSheetDialogFragment() {
         setupCategorySection()
         loadOptions()
 
+        // A closed card says what is set in it.
+        val ctx = requireContext()
+        binding.kitsuSectionFormat.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedSubtypes.size + selectedStatuses.size +
+                selectedAgeRatings.size + (if (selectedSeason != null) 1 else 0))
+        }
+        binding.kitsuSectionCategories.summarizeWhenClosed { FilterSummary.choices(ctx, selectedCategories.size) }
+        binding.kitsuSectionYear.summarizeWhenClosed {
+            FilterSummary.years(binding.kitsuFilterYearRange.values, yearRangeMin.toFloat(), yearRangeMax.toFloat())
+        }
+
         binding.kitsuFilterReset.setOnClickListener { resetAll() }
         binding.kitsuFilterCancel.setOnClickListener { dismiss() }
         binding.kitsuFilterApply.setOnClickListener { applyFilters(); dismiss() }
@@ -306,6 +317,8 @@ class KitsuSearchFilterBottomSheet : BottomSheetDialogFragment() {
         setupEnumFilters()
         setupSeasonSection()
         updateCategoryResults(allCategories)
+        listOf(binding.kitsuSectionFormat, binding.kitsuSectionCategories, binding.kitsuSectionYear)
+            .forEach { it.refreshSummary() }
     }
 
     override fun onDestroyView() {

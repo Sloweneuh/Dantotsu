@@ -14,14 +14,23 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="-5dp"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingBottom="16dp">
 
+            <View
+                android:layout_width="32dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="14dp"
+                android:alpha="0.4"
+                android:background="@drawable/bg_top_banner_handle" />
+
+            <!-- Header -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                    android:layout_marginTop="17dp"
-                    android:layout_marginBottom="10dp">
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="4dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -130,344 +139,242 @@
                         android:textSize="20sp" />
             </FrameLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_margin="8dp"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/source"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/searchSource"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:singleLine="true"
-                        android:textAllCaps="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/format"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/searchFormat"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:singleLine="true"
-                        android:textAllCaps="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_margin="8dp"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
-
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/searchStatusCont"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/status_title"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/searchStatus"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:singleLine="true"
-                        android:textAllCaps="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/searchSeasonCont"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/season"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/searchSeason"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:singleLine="true"
-                        android:textAllCaps="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/searchYearRangeCont"
+            <ani.dantotsu.others.Xpandable
+                android:id="@+id/searchSectionFormat"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
+                android:layout_marginHorizontal="16dp"
                 android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:paddingBottom="8dp"
+                app:accordion="true"
+                app:cardInset="false"
+                app:icon="@drawable/ic_round_filter_alt_24"
+                app:isExpanded="true"
+                app:title="@string/filter_section_format">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/year_range"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp" />
-
-                <com.google.android.material.slider.RangeSlider
-                    android:id="@+id/searchYearRange"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:stepSize="1"
-                    android:valueFrom="1970"
-                    android:valueTo="2028" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/list_only"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp" />
-
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/searchListOnly"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:buttonTint="?attr/colorPrimary"
-                    tools:ignore="TouchTargetSizeCheck" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/genres"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="10dp"
-                    android:fontFamily="@font/poppins_semi_bold"
-                    android:text="@string/grid"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/searchGenresGrid"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
-
-            <ani.dantotsu.FadingEdgeRecyclerView
-                android:id="@+id/searchFilterGenres"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:clipToPadding="false"
-                android:requiresFadingEdge="horizontal"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="16dp"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                app:spanCount="6"
-                tools:listitem="@layout/item_chip" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="32dp"
-                android:orientation="horizontal">
-
+                <!-- Format -->
                 <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_margin="8dp"
+                    android:baselineAligned="false"
                     android:orientation="horizontal">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center_vertical"
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
                         android:layout_marginEnd="8dp"
-                        android:fontFamily="@font/poppins_bold"
-                        android:text="@string/tags"
-                        android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp" />
+                        android:layout_weight="1"
+                        android:hint="@string/source"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
 
-                    <ImageButton
-                        android:id="@+id/searchTagsAnilist"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:layout_marginEnd="10dp"
-                        android:layout_gravity="center_vertical"
-                        android:background="?android:attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/search"
-                        app:srcCompat="@drawable/ic_round_search_24"
-                        app:tint="?attr/colorOnBackground" />
+                        <AutoCompleteTextView
+                            android:id="@+id/searchSource"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textAllCaps="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/searchTagsQuickSearchLayout"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
-                        android:layout_width="140dp"
-                        android:layout_height="40dp"
-                        android:layout_gravity="center_vertical"
-                        android:layout_marginEnd="10dp"
-                        android:minHeight="0dp"
-                        android:visibility="gone"
-                        app:boxCornerRadiusBottomEnd="12dp"
-                        app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusTopEnd="12dp"
-                        app:boxCornerRadiusTopStart="12dp"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/format"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
                         app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                        app:hintEnabled="false">
+                        app:hintAnimationEnabled="true">
 
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/searchTagsQuickSearchText"
+                        <AutoCompleteTextView
+                            android:id="@+id/searchFormat"
                             android:layout_width="match_parent"
-                            android:layout_height="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
                             android:fontFamily="@font/poppins_bold"
-                            android:gravity="center_vertical"
-                            android:hint="@string/search"
-                            android:imeOptions="actionDone"
-                            android:inputType="text"
-                            android:maxLines="1"
-                            android:minHeight="0dp"
-                            android:paddingTop="0dp"
-                            android:paddingBottom="0dp"
-                            android:textSize="14sp" />
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textAllCaps="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_margin="8dp"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/searchStatusCont"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/status_title"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/searchStatus"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textAllCaps="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/searchSeasonCont"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/season"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/searchSeason"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textAllCaps="true"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
 
                 <LinearLayout
-                    android:id="@+id/searchTagsAdultContainer"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/searchYearRangeCont"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="16dp"
+                    android:orientation="vertical">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginEnd="10dp"
-                        android:fontFamily="@font/poppins_semi_bold"
-                        android:text="@string/adult_tags"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/year_range"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp" />
 
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/searchTagsAdult"
-                        android:layout_width="wrap_content"
+                    <com.google.android.material.slider.RangeSlider
+                        android:id="@+id/searchYearRange"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginEnd="10dp" />
+                        android:stepSize="1"
+                        android:valueFrom="1970"
+                        android:valueTo="2028" />
                 </LinearLayout>
 
                 <LinearLayout
-                    android:id="@+id/searchTagsGridContainer"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="16dp"
                     android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/list_only"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp" />
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/searchListOnly"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:buttonTint="?attr/colorPrimary"
+                        tools:ignore="TouchTargetSizeCheck" />
+                </LinearLayout>
+            </ani.dantotsu.others.Xpandable>
+
+            <ani.dantotsu.others.Xpandable
+                android:id="@+id/searchSectionGenres"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:paddingBottom="8dp"
+                app:accordion="true"
+                app:cardInset="false"
+                app:icon="@drawable/ic_round_menu_book_24"
+                app:isExpanded="false"
+                app:title="@string/genres">
+
+                <!-- Genres -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="16dp"
+                    android:orientation="horizontal">
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -475,36 +382,165 @@
                         android:layout_marginEnd="10dp"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:text="@string/grid"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                        android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/searchTagsGrid"
+                        android:id="@+id/searchGenresGrid"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
                 </LinearLayout>
-            </LinearLayout>
 
-            <ani.dantotsu.FadingEdgeRecyclerView
-                android:requiresFadingEdge="horizontal"
-                android:id="@+id/searchFilterTags"
+                <ani.dantotsu.FadingEdgeRecyclerView
+                    android:id="@+id/searchFilterGenres"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:requiresFadingEdge="horizontal"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="16dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    app:spanCount="6"
+                    tools:listitem="@layout/item_chip" />
+            </ani.dantotsu.others.Xpandable>
+
+            <ani.dantotsu.others.Xpandable
+                android:id="@+id/searchSectionTags"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:clipToPadding="false"
-                android:fadeScrollbars="true"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="16dp"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                app:spanCount="6"
-                tools:listitem="@layout/item_chip" />
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:paddingBottom="8dp"
+                app:accordion="true"
+                app:cardInset="false"
+                app:icon="@drawable/ic_round_bookmark_border_24"
+                app:isExpanded="false"
+                app:title="@string/tags">
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="16dp"
-                android:alpha="0.5"
-                android:background="?attr/colorOutlineVariant" />
+                <!-- Tags -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="16dp"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageButton
+                            android:id="@+id/searchTagsAnilist"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_marginEnd="10dp"
+                            android:layout_gravity="center_vertical"
+                            android:background="?android:attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/search"
+                            app:srcCompat="@drawable/ic_round_search_24"
+                            app:tint="?attr/colorOnBackground" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/searchTagsQuickSearchLayout"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
+                            android:layout_width="140dp"
+                            android:layout_height="40dp"
+                            android:layout_gravity="center_vertical"
+                            android:layout_marginEnd="10dp"
+                            android:minHeight="0dp"
+                            android:visibility="gone"
+                            app:boxCornerRadiusBottomEnd="12dp"
+                            app:boxCornerRadiusBottomStart="12dp"
+                            app:boxCornerRadiusTopEnd="12dp"
+                            app:boxCornerRadiusTopStart="12dp"
+                            app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                            app:hintEnabled="false">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/searchTagsQuickSearchText"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="@font/poppins_bold"
+                                android:gravity="center_vertical"
+                                android:hint="@string/search"
+                                android:imeOptions="actionDone"
+                                android:inputType="text"
+                                android:maxLines="1"
+                                android:minHeight="0dp"
+                                android:paddingTop="0dp"
+                                android:paddingBottom="0dp"
+                                android:textSize="14sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+
+                    <LinearLayout
+                        android:id="@+id/searchTagsAdultContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="10dp"
+                            android:fontFamily="@font/poppins_semi_bold"
+                            android:text="@string/adult_tags"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/searchTagsAdult"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="10dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/searchTagsGridContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="10dp"
+                            android:fontFamily="@font/poppins_semi_bold"
+                            android:text="@string/grid"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/searchTagsGrid"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <ani.dantotsu.FadingEdgeRecyclerView
+                    android:requiresFadingEdge="horizontal"
+                    android:id="@+id/searchFilterTags"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:fadeScrollbars="true"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="16dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    app:spanCount="6"
+                    tools:listitem="@layout/item_chip" />
+            </ani.dantotsu.others.Xpandable>
+
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

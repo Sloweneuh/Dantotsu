@@ -19,6 +19,7 @@ import ani.dantotsu.getThemeColor
 import ani.dantotsu.snackString
 import ani.dantotsu.util.customAlertDialog
 import ani.dantotsu.util.materialDialog
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
@@ -252,16 +253,26 @@ object SavedFiltersDialog {
             SectionCard.resetPanel(holder.expanded)
             holder.expanded.visibility = if (isExpanded) View.VISIBLE else View.GONE
             holder.chevron.rotation = if (isExpanded) 180f else 0f
+            holder.card.setCardBackgroundColor(SectionCard.fill(holder.card, isExpanded))
             if (isExpanded) populateChips(holder.chipGroup, entry.chips, resolveChipIcon)
             // Tap on the row body applies; chevron is the only expand affordance
             // so users who memorise their preset names keep one-tap apply.
             holder.header.setOnClickListener { onApply(entry.name) }
             holder.chevron.setOnClickListener {
                 val nowExpanded = !expanded.contains(entry.name)
-                if (nowExpanded) expanded += entry.name else expanded -= entry.name
+                if (nowExpanded) {
+                    // One preview open at a time, like the filter sheets' cards.
+                    expanded.filter { it != entry.name }.forEach { other ->
+                        expanded -= other
+                        val pos = items.indexOfFirst { it.name == other }
+                        if (pos >= 0) notifyItemChanged(pos)
+                    }
+                    expanded += entry.name
+                } else expanded -= entry.name
                 // Opened in place rather than by rebinding the row, which snapped it open.
                 holder.chevron.animate().rotation(if (nowExpanded) 180f else 0f)
                     .setDuration(220).start()
+                holder.card.setCardBackgroundColor(SectionCard.fill(holder.card, nowExpanded))
                 if (nowExpanded) populateChips(holder.chipGroup, entry.chips, resolveChipIcon)
                 SectionCard.setExpanded(holder.expanded, nowExpanded)
             }
@@ -305,6 +316,7 @@ object SavedFiltersDialog {
         }
 
         class VH(v: View) : RecyclerView.ViewHolder(v) {
+            val card: MaterialCardView = v.findViewById(R.id.savedFilterCard)
             val header: View = v.findViewById(R.id.savedFilterHeader)
             val name: TextView = v.findViewById(R.id.savedFilterName)
             val count: TextView = v.findViewById(R.id.savedFilterCount)

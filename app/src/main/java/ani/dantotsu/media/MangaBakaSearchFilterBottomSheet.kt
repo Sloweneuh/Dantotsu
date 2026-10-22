@@ -137,6 +137,19 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         setupTagSection()
         loadOptions()
 
+        // A closed card says what is set in it.
+        val ctx = requireContext()
+        binding.mbSectionFormat.summarizeWhenClosed {
+            FilterSummary.choices(ctx,
+                selectedTypes.size + selectedStatuses.size + selectedContentRatings.size + selectedAnime.size,
+                excludedTypes.size + excludedStatuses.size + excludedContentRatings.size + excludedAnime.size)
+        }
+        binding.mbSectionGenres.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedGenres.size, excludedGenres.size)
+        }
+        binding.mbSectionTags.summarizeWhenClosed { FilterSummary.choices(ctx, selectedTags.size, excludedTags.size) }
+        binding.mbSectionRelease.summarizeWhenClosed { releaseSummary() }
+
         binding.mbFilterReset.setOnClickListener { resetAll() }
         binding.mbFilterCancel.setOnClickListener { dismiss() }
         binding.mbFilterApply.setOnClickListener { applyFilters(); dismiss() }
@@ -302,6 +315,22 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
 
     // --- year slider ---
 
+    /** The year, chapter and volume bounds set, in a line; null when none is. */
+    private fun releaseSummary(): String? {
+        val ctx = context ?: return null
+        val (chaptersMin, chaptersMax) = countBounds(binding.mbFilterChaptersMin, binding.mbFilterChaptersMax)
+        val (volumesMin, volumesMax) = countBounds(binding.mbFilterVolumesMin, binding.mbFilterVolumesMax)
+        return FilterSummary.join(
+            FilterSummary.years(binding.mbFilterYearRange.values, yearRangeMin.toFloat(), yearRangeMax.toFloat()),
+            FilterSummary.labelled(ctx, getString(R.string.filter_chapters), chaptersMin, chaptersMax),
+            FilterSummary.labelled(ctx, getString(R.string.volumes), volumesMin, volumesMax),
+        )
+    }
+
+    private fun refreshSummaries() = listOf(
+        binding.mbSectionFormat, binding.mbSectionGenres, binding.mbSectionTags, binding.mbSectionRelease
+    ).forEach { it.refreshSummary() }
+
     private fun setupYearSlider(fromYear: Int?, toYear: Int?) {
         binding.mbFilterYearRange.valueFrom = yearRangeMin.toFloat()
         binding.mbFilterYearRange.valueTo = yearRangeMax.toFloat()
@@ -446,6 +475,7 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         setupEnumFilters()
         updateGenreResults(allGenres)
         updateTagResults(emptyList())
+        refreshSummaries()
     }
 
     override fun onDestroyView() {

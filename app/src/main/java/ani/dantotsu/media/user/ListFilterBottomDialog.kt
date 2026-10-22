@@ -15,6 +15,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
 import android.widget.ArrayAdapter
 import android.widget.PopupMenu
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.widget.addTextChangedListener
@@ -25,6 +26,7 @@ import androidx.recyclerview.widget.RecyclerView.HORIZONTAL
 import androidx.recyclerview.widget.RecyclerView.VERTICAL
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
+import ani.dantotsu.media.FilterSummary
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetListFilterBinding
@@ -33,6 +35,8 @@ import ani.dantotsu.media.savedfilters.SavedFilterEntry
 import ani.dantotsu.media.savedfilters.SavedFiltersDialog
 import ani.dantotsu.media.savedfilters.SavedFiltersStore
 import ani.dantotsu.media.savedfilters.SavedListFilter
+import ani.dantotsu.settings.SectionCard
+import ani.dantotsu.util.animationsEnabled
 import com.google.android.flexbox.FlexDirection
 import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
@@ -159,6 +163,7 @@ class ListFilterBottomDialog(
         setupEnglishLicencedFilter()
         setupProviderTabs()
         setupMuFilters()
+        setupSummaries()
 
         binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog() }
 
@@ -274,13 +279,29 @@ class ListFilterBottomDialog(
             binding.listFilterProviderTabs.newTab().setText(R.string.filter_provider_mangaupdates)
         )
 
-        fun setSection(tabPosition: Int) {
+        fun setSection(tabPosition: Int, animate: Boolean = true) {
+            val scroll = binding.listFilterScroll
+            val from = scroll.height
             binding.listFilterAnilistSection.visibility = if (tabPosition == 0) View.VISIBLE else GONE
             binding.listFilterMuSection.visibility = if (tabPosition == 1) View.VISIBLE else GONE
             binding.countryFilter.visibility = if (tabPosition == 1) View.INVISIBLE else View.VISIBLE
+            if (!animate || !animationsEnabled || from == 0) return
+
+            // The sheet wraps its content, so it is the scroll view's height that moves, from the
+            // old section's to the new one's; its content is measured unbounded, so nothing in the
+            // section gets squeezed on the way. The new section slides in from the side of its tab.
+            val window = dialog?.window?.decorView?.height ?: resources.displayMetrics.heightPixels
+            val margins = (scroll.layoutParams as ViewGroup.MarginLayoutParams).let { it.topMargin + it.bottomMargin }
+            val to = SectionCard.naturalHeight(scroll).coerceAtMost(window - margins)
+            SectionCard.animateHeight(scroll, from, to)
+            val incoming = if (tabPosition == 0) binding.listFilterAnilistSection else binding.listFilterMuSection
+            incoming.alpha = 0f
+            incoming.translationX = (if (tabPosition == 1) 1 else -1) * 30f * resources.displayMetrics.density
+            incoming.animate().alpha(1f).translationX(0f).setDuration(300)
+                .setInterpolator(FastOutSlowInInterpolator()).start()
         }
 
-        setSection(0)
+        setSection(0, animate = false)
         binding.listFilterProviderTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) = setSection(tab.position)
             override fun onTabUnselected(tab: TabLayout.Tab) = Unit
@@ -847,6 +868,41 @@ class ListFilterBottomDialog(
         binding.countryFilter.startAnimation(bounceAnimation)
     }
 
+    /** A closed card says what is set in it. */
+    private fun setupSummaries() {
+        val ctx = requireContext()
+        binding.listSectionFormat.summarizeWhenClosed {
+            val score = binding.listFilterScoreRange
+            val years = binding.listFilterYearRange
+            FilterSummary.join(
+                binding.listFilterSource.text, binding.listFilterFormat.text, binding.listFilterStatus.text,
+                binding.listFilterSeason.text,
+                FilterSummary.years(years.values, years.valueFrom, years.valueTo),
+                score.values.takeIf { it.size == 2 && (it[0] > score.valueFrom || it[1] < score.valueTo) }
+                    ?.let { FilterSummary.labelled(ctx, getString(R.string.score), it[0], it[1]) },
+                getString(R.string.filter_english_licenced).takeIf { englishLicenced },
+            )
+        }
+        binding.listSectionGenres.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedGenres.size, selectedExcludedGenres.size)
+        }
+        binding.listSectionTags.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedTags.size, selectedExcludedTags.size)
+        }
+        binding.listMuSectionFormat.summarizeWhenClosed {
+            FilterSummary.join(
+                binding.listMuFilterFormat.text, binding.listMuFilterYear.text, binding.listMuFilterLicensed.text,
+                FilterSummary.choices(ctx, selectedMuStatusFilters.size),
+            )
+        }
+        binding.listMuSectionGenres.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedMuGenres.size, selectedMuExcludedGenres.size)
+        }
+        binding.listMuSectionCategories.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedMuCategories.size, selectedMuExcludedCategories.size)
+        }
+    }
+
     private fun resetFilters() {
         selectedGenres.clear()
         selectedExcludedGenres.clear()
@@ -904,6 +960,9 @@ class ListFilterBottomDialog(
         binding.listFilterTagsAdult.isChecked = false
 
         updateCountryIcon()
+        listOf(binding.listSectionFormat, binding.listSectionGenres, binding.listSectionTags,
+            binding.listMuSectionFormat, binding.listMuSectionGenres, binding.listMuSectionCategories)
+            .forEach { it.refreshSummary() }
     }
 
     private fun sortCategoriesByRelevance(categories: List<String>, query: String): List<String> {

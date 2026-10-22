@@ -43,6 +43,9 @@ class Xpandable @JvmOverloads constructor(
     private var summaryText: CharSequence? = null
     private var iconRes: Int = 0
 
+    /** Whether opening this card closes its siblings; see the `accordion` attribute. */
+    var accordion: Boolean = false
+
     /** Whether the card insets itself from its parent; see the `cardInset` attribute. */
     private var cardInset: Boolean = true
 
@@ -57,6 +60,9 @@ class Xpandable @JvmOverloads constructor(
 
     private var stateScope: String? = null
 
+    /** What the card holds, in a line, for its header while closed; see [summarizeWhenClosed]. */
+    private var summaryProvider: (() -> CharSequence?)? = null
+
     init {
         context.withStyledAttributes(attrs, R.styleable.Xpandable) {
             expanded = getBoolean(R.styleable.Xpandable_isExpanded, expanded)
@@ -66,6 +72,7 @@ class Xpandable @JvmOverloads constructor(
             summaryText = getText(R.styleable.Xpandable_summary)
             iconRes = getResourceId(R.styleable.Xpandable_icon, 0)
             cardInset = getBoolean(R.styleable.Xpandable_cardInset, cardInset)
+            accordion = getBoolean(R.styleable.Xpandable_accordion, accordion)
         }
         stateKey?.let { key ->
             if (shouldRestore()) expanded = PrefManager.getCustomVal(prefKey(key), expanded)
@@ -106,6 +113,22 @@ class Xpandable @JvmOverloads constructor(
      */
     override fun onFinishInflate() {
         super.onFinishInflate()
+        buildHeader()
+    }
+
+    /**
+     * The same card built from code, for sections that only exist at runtime: call before adding
+     * the body and before the view is attached. A card made this way sits flush in its parent.
+     */
+    fun setHeader(title: CharSequence, iconRes: Int = 0) {
+        orientation = VERTICAL
+        cardInset = false
+        titleText = title
+        this.iconRes = iconRes
+        buildHeader()
+    }
+
+    private fun buildHeader() {
         val title = titleText ?: return
         val header = ItemSettingsSectionHeaderBinding.inflate(
             LayoutInflater.from(context), this, false
@@ -156,8 +179,13 @@ class Xpandable @JvmOverloads constructor(
         headerView.setOnClickListener {
             expanded = !expanded
             persist()
+            // Before the animation, so it grows or shrinks to the header as it will end up.
+            refreshSummary()
             styleHeader(expanded, animate = true)
-            if (expanded) showAll() else hideAll()
+            if (expanded) {
+                showAll()
+                if (accordion) closeSiblings()
+            } else hideAll()
         }
         if (!isNested()) SectionCard.pressFeedback(headerView, this)
 
@@ -167,6 +195,59 @@ class Xpandable @JvmOverloads constructor(
             }
         }
         super.onAttachedToWindow()
+    }
+
+    /**
+     * While the card's height animates, its children are measured at full size and clipped, not
+     * squeezed into the height the animation has got to. Squeezed, a wrap-content list measured at
+     * nothing lays out no items, and a chip row came back empty after the card was reopened.
+     */
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val fixed = layoutParams?.height ?: LayoutParams.WRAP_CONTENT
+        if (fixed < 0 || getTag(R.id.section_height_anim) == null) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            return
+        }
+        super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        setMeasuredDimension(measuredWidth, resolveSize(fixed, heightMeasureSpec))
+    }
+
+    /**
+     * Closes, with the usual animation, the open accordion cards at this one's level: the other
+     * top-level cards on the screen, or for a sub-group, the other sub-groups of its card. By
+     * level rather than by parent, as a screen may split its cards across containers.
+     */
+    private fun closeSiblings() {
+        val owner = enclosingGroup()
+        val scope: android.view.ViewGroup = owner ?: (rootView as? android.view.ViewGroup) ?: return
+        fun visit(group: android.view.ViewGroup) {
+            for (i in 0 until group.childCount) {
+                val child = group.getChildAt(i)
+                if (child is Xpandable) {
+                    if (child !== this && child.accordion && child.expanded && child.enclosingGroup() === owner) {
+                        child.expanded = false
+                        child.persist()
+                        child.refreshSummary()
+                        child.styleHeader(false, animate = true)
+                        child.hideAll()
+                    }
+                    // Sub-groups belong to their own card's level, not this one's.
+                    continue
+                }
+                if (child is android.view.ViewGroup) visit(child)
+            }
+        }
+        visit(scope)
+    }
+
+    /** The card this one is a sub-group of, or null for a top-level card. */
+    private fun enclosingGroup(): Xpandable? {
+        var p = parent
+        while (p != null) {
+            if (p is Xpandable) return p
+            p = p.parent
+        }
+        return null
     }
 
     /**
@@ -212,7 +293,7 @@ class Xpandable @JvmOverloads constructor(
     private fun hideAll() {
         val headerView = getChildAt(0)
         children.forEach { if (it != headerView) SectionCard.hideContents(it) }
-        SectionCard.animateHeight(this, height, headerView.height, restingHeight) {
+        SectionCard.animateHeight(this, height, SectionCard.naturalHeight(headerView), restingHeight) {
             children.forEach {
                 if (it != headerView) {
                     it.visibility = GONE
@@ -225,6 +306,30 @@ class Xpandable @JvmOverloads constructor(
         }
     }
 
+    /** Changes the line under the title; blank hides it. For a section that sums up its content. */
+    fun setSummary(text: CharSequence?) {
+        summaryText = text
+        header?.let {
+            it.sectionSummary.text = text
+            it.sectionSummary.isVisible = !text.isNullOrBlank()
+        }
+    }
+
+    /**
+     * Sums the card up under its title while it is closed, so what is set in it shows without
+     * opening it; open, the controls say it themselves and the line is hidden rather than left to
+     * go stale. Call [refreshSummary] when the controls change from outside the card, as a reset.
+     */
+    fun summarizeWhenClosed(summary: () -> CharSequence?) {
+        summaryProvider = summary
+        refreshSummary()
+    }
+
+    fun refreshSummary() {
+        val provider = summaryProvider ?: return
+        setSummary(if (expanded) null else provider())
+    }
+
     /**
      * Immediately expands the section (no animation, no-op if already expanded). Used by the
      * settings search to reveal a control before scrolling to and highlighting it.
@@ -233,6 +338,7 @@ class Xpandable @JvmOverloads constructor(
         if (expanded) return
         expanded = true
         persist()
+        refreshSummary()
         styleHeader(true, animate = false)
         setBodyPadding(true)
         children.forEach {

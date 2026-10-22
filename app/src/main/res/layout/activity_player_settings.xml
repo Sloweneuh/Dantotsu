@@ -76,6 +76,7 @@
              Carded like every other group — Xpandable collapses whatever children follow its
              header, and a RecyclerView is as good a child as a switch. -->
         <ani.dantotsu.others.Xpandable
+            app:accordion="true"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -105,6 +106,7 @@
             android:orientation="vertical">
 
             <ani.dantotsu.others.Xpandable
+                app:accordion="true"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
@@ -177,6 +179,7 @@
             </ani.dantotsu.others.Xpandable>
 
             <ani.dantotsu.others.Xpandable
+                app:accordion="true"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
@@ -362,6 +365,7 @@
             </ani.dantotsu.others.Xpandable>
 
             <ani.dantotsu.others.Xpandable
+                app:accordion="true"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
@@ -608,6 +612,7 @@
             </ani.dantotsu.others.Xpandable>
 
             <ani.dantotsu.others.Xpandable
+                app:accordion="true"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
@@ -746,6 +751,7 @@
             </ani.dantotsu.others.Xpandable>
 
             <ani.dantotsu.others.Xpandable
+                app:accordion="true"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
@@ -1054,6 +1060,7 @@
 
 
             <ani.dantotsu.others.Xpandable
+                app:accordion="true"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"

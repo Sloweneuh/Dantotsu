@@ -85,6 +85,22 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
         setupFilters()
         loadGenres()
 
+        // A closed card says what is set in it.
+        val ctx = requireContext()
+        binding.comickListSectionFormat.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedStatus.size + selectedCountry.size + selectedContentRating.size +
+                selectedDemographic.size + (if (selectedCompleted != null) 1 else 0))
+        }
+        binding.comickListSectionGenres.summarizeWhenClosed {
+            FilterSummary.choices(ctx, selectedGenres.size, excludedGenres.size)
+        }
+        binding.comickListSectionRelease.summarizeWhenClosed {
+            FilterSummary.join(
+                FilterSummary.years(binding.comickListFilterYearRange.values, yearRangeMin.toFloat(), yearRangeMax.toFloat()),
+                FilterSummary.labelled(ctx, getString(R.string.filter_chapters), readMinChapters(), null),
+            )
+        }
+
         binding.comickListFilterReset.setOnClickListener { resetAll() }
         binding.comickListFilterCancel.setOnClickListener { dismiss() }
         binding.comickListFilterApply.setOnClickListener {
@@ -375,6 +391,8 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
         binding.comickListFilterMinChapters.setText("")
 
         setupFilters()
+        listOf(binding.comickListSectionFormat, binding.comickListSectionGenres, binding.comickListSectionRelease)
+            .forEach { it.refreshSummary() }
     }
 
     private fun showSavedFiltersDialog() {

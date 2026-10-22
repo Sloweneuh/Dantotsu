@@ -1366,6 +1366,10 @@
     <string name="filter_min">Min</string>
     <string name="filter_max">Max</string>
     <string name="filter_count_range">%1$s: %2$s</string>
+    <string name="filter_section_format">Format &amp; status</string>
+    <string name="filter_section_release">Release &amp; length</string>
+    <string name="filter_summary_selected">%1$d selected</string>
+    <string name="filter_summary_excluded">%1$d excluded</string>
     <string name="filter_sort">"Sort : %1$s"</string>
     <string name="filter_exclude">"Not %1$s"</string>
     <string name="search_by_image">Search by Image</string>

@@ -72,8 +72,39 @@ class AccountCardAdapter(
      *  land on a setting search brought up from inside a collapsed card. */
     fun expand(provider: AccountProvider) {
         if (expanded.add(provider)) {
+            closeOthers(provider)
             val pos = positionOf(provider)
             if (pos >= 0) notifyItemChanged(pos)
+        }
+    }
+
+    private var recycler: RecyclerView? = null
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        recycler = recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        recycler = null
+    }
+
+    /** One card open at a time, like the settings cards: an on-screen card closes with the usual
+     *  animation, one scrolled away is simply rebound shut. */
+    private fun closeOthers(provider: AccountProvider) {
+        val others = expanded.filter { it != provider }
+        if (others.isEmpty()) return
+        expanded.removeAll(others.toSet())
+        others.forEach { other ->
+            val pos = positionOf(other)
+            if (pos < 0) return@forEach
+            val holder = recycler?.findViewHolderForAdapterPosition(pos) as? Holder
+            if (holder == null) {
+                notifyItemChanged(pos)
+                return@forEach
+            }
+            val b = holder.b
+            styleCard(b, false, animate = true)
+            SectionCard.toggleBody(b.accountBodyContainer, b.accountBody, false) { bindBody(b, items[pos], it) }
         }
     }
 
@@ -192,7 +223,9 @@ class AccountCardAdapter(
         val nowOpen = if (card.provider in expanded) {
             expanded.remove(card.provider); false
         } else {
-            expanded.add(card.provider); true
+            expanded.add(card.provider)
+            closeOthers(card.provider)
+            true
         }
         styleCard(b, nowOpen, animate = true)
         SectionCard.toggleBody(b.accountBodyContainer, b.accountBody, nowOpen) { bindBody(b, card, it) }

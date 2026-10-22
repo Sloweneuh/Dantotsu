@@ -99,6 +99,9 @@ class ListSyncCompareActivity : AppCompatActivity() {
     }
 
     /** Adds an empty, spinning card for [section] and returns the handle that fills it in. */
+    /** Closes each section that is open; one opening closes the rest, like the settings cards. */
+    private val sectionClosers = mutableListOf<() -> Unit>()
+
     private fun addSection(section: ListCompare.Section, muActive: Boolean): SectionHandle {
         val (sectionTitle, headerIcon) = when (section) {
             ListCompare.Section.MAL_ANIME -> getString(R.string.anime) to R.drawable.ic_myanimelist
@@ -196,13 +199,19 @@ class ListSyncCompareActivity : AppCompatActivity() {
         sb.sectionDiffList.adapter = adapter
         sb.sectionDiffList.isNestedScrollingEnabled = false
 
-        sb.sectionHeader.setOnClickListener {
-            if (loading || destStats == null) return@setOnClickListener
-            expanded = !expanded
+        fun setOpen(open: Boolean) {
+            expanded = open
             styleCard(animate = true)
             SectionCard.toggleBody(sb.sectionBody, sb.sectionDiffList, expanded) {
                 sb.sectionBody.isVisible = it
             }
+        }
+        val close = { if (expanded) setOpen(false) }
+        sectionClosers += close
+        sb.sectionHeader.setOnClickListener {
+            if (loading || destStats == null) return@setOnClickListener
+            if (!expanded) sectionClosers.forEach { if (it !== close) it() }
+            setOpen(!expanded)
         }
         SectionCard.pressFeedback(sb.sectionHeader, sb.sectionCard)
 

@@ -113,9 +113,42 @@ class SettingsSectionAdapter(
      *  setting that lives inside a collapsed group. */
     fun expand(key: String) {
         if (expanded.add(key)) {
+            closeOthers(key)
             saveExpanded()
             val pos = positionOf(key)
             if (pos >= 0) notifyItemChanged(pos)
+        }
+    }
+
+    private var recycler: RecyclerView? = null
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        recycler = recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        recycler = null
+    }
+
+    /**
+     * One card open at a time: opening [key] closes the rest. An on-screen card closes with the
+     * usual animation, one scrolled away is simply rebound shut.
+     */
+    private fun closeOthers(key: String) {
+        val others = expanded.filter { it != key }
+        if (others.isEmpty()) return
+        expanded.removeAll(others.toSet())
+        others.forEach { other ->
+            val pos = positionOf(other)
+            if (pos < 0) return@forEach
+            val holder = recycler?.findViewHolderForAdapterPosition(pos) as? Holder
+            if (holder == null) {
+                notifyItemChanged(pos)
+                return@forEach
+            }
+            val b = holder.b
+            SectionCard.bind(b.sectionHeader, false, animate = true) { b.sectionCard.setCardBackgroundColor(it) }
+            SectionCard.toggleBody(b.sectionBodyContainer, b.sectionBody, false) { bindBody(b, sections[pos], it) }
         }
     }
 
@@ -175,7 +208,9 @@ class SettingsSectionAdapter(
         val nowOpen = if (section.key in expanded) {
             expanded.remove(section.key); false
         } else {
-            expanded.add(section.key); true
+            expanded.add(section.key)
+            closeOthers(section.key)
+            true
         }
         saveExpanded()
         SectionCard.bind(b.sectionHeader, nowOpen, animate = true) { b.sectionCard.setCardBackgroundColor(it) }

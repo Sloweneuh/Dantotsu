@@ -274,6 +274,8 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         binding.searchFormat.clearFocus()
         binding.searchSeason.clearFocus()
         updateChips()
+        listOf(binding.searchSectionFormat, binding.searchSectionGenres, binding.searchSectionTags)
+            .forEach { it.refreshSummary() }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -288,6 +290,21 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         listOnly = activity.aniMangaResult.onList
         setSortByFilterImage()
         setCountryButton(activity.aniMangaResult.countryOfOrigin)
+
+        // A closed card says what is set in it.
+        val ctx = requireContext()
+        binding.searchSectionFormat.summarizeWhenClosed {
+            val years = binding.searchYearRange
+            FilterSummary.join(
+                binding.searchSource.text, binding.searchFormat.text, binding.searchStatus.text,
+                binding.searchSeason.text,
+                FilterSummary.years(years.values, years.valueFrom, years.valueTo)
+                    .takeIf { binding.searchYearRangeCont.visibility == View.VISIBLE },
+                getString(R.string.list_only).takeIf { listOnly == true },
+            )
+        }
+        binding.searchSectionGenres.summarizeWhenClosed { FilterSummary.choices(ctx, selectedGenres.size, exGenres.size) }
+        binding.searchSectionTags.summarizeWhenClosed { FilterSummary.choices(ctx, selectedTags.size, exTags.size) }
 
         binding.resetSearchFilter.setOnClickListener {
             val rotateAnimation =
