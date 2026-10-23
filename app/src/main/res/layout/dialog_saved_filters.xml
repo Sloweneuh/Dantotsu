@@ -19,7 +19,8 @@
         android:text="@string/saved_filters_save_current"
         android:textSize="15sp"
         app:cornerRadius="16dp"
-        app:icon="@drawable/ic_save_as_24" />
+        app:icon="@drawable/ic_save_as_24"
+        app:iconGravity="textStart" />
 
     <TextView
         android:id="@+id/savedFiltersEmpty"

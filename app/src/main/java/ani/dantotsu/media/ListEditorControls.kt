@@ -1,6 +1,9 @@
 package ani.dantotsu.media
 
+import android.view.Gravity
+import android.view.ViewGroup
 import android.widget.AutoCompleteTextView
+import androidx.core.view.updateLayoutParams
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import ani.dantotsu.R
@@ -59,6 +62,9 @@ class ScoreSlider(
             "POINT_5" -> "/5"
             else -> "/10"
         }
+        // Material pins the suffix to the box's top in a fixed-height field; centre it like the text.
+        fieldLayout.suffixTextView.updateLayoutParams { height = ViewGroup.LayoutParams.MATCH_PARENT }
+        fieldLayout.suffixTextView.gravity = Gravity.CENTER
         showInField(initial)
         field.doAfterTextChanged { text ->
             if (syncing) return@doAfterTextChanged

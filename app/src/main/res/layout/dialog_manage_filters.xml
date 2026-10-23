@@ -20,7 +20,8 @@
         android:text="@string/clear_all"
         android:textSize="15sp"
         app:cornerRadius="16dp"
-        app:icon="@drawable/ic_round_delete_24" />
+        app:icon="@drawable/ic_round_delete_24"
+        app:iconGravity="textStart" />
 
     <TextView
         android:id="@+id/manageFiltersEmpty"

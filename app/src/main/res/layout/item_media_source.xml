@@ -33,6 +33,7 @@
             android:visibility="gone"
             app:cornerRadius="12dp"
             app:icon="@drawable/ic_round_play_circle_24"
+            app:iconGravity="textStart"
             app:iconTint="@color/bg_white"
             tools:ignore="TextContrastCheck"
             tools:visibility="visible" />
@@ -422,6 +423,7 @@
             android:visibility="gone"
             app:cornerRadius="12dp"
             app:icon="@drawable/ic_round_help_outline"
+            app:iconGravity="textStart"
             app:iconTint="?attr/colorOnPrimaryContainer" />
 
     </LinearLayout>

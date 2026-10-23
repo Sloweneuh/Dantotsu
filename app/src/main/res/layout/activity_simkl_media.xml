@@ -154,6 +154,7 @@
                         android:textAllCaps="false"
                         android:visibility="gone"
                         app:icon="@drawable/ic_anilist"
+                        app:iconGravity="textStart"
                         app:iconPadding="16dp" />
 
                 </LinearLayout>

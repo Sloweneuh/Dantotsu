@@ -57,6 +57,7 @@
             android:textColor="?attr/colorOnPrimaryContainer"
             app:cornerRadius="16dp"
             app:icon="@drawable/ic_anilist"
+            app:iconGravity="textStart"
             app:iconTint="?attr/colorOnPrimaryContainer" />
 
         <LinearLayout

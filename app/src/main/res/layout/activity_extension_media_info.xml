@@ -168,6 +168,7 @@
                     android:textAlignment="viewStart"
                     android:textAllCaps="false"
                     app:icon="@drawable/ic_anilist"
+                    app:iconGravity="textStart"
                     app:iconPadding="16dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -182,6 +183,7 @@
                     android:textAllCaps="false"
                     android:visibility="gone"
                     app:icon="@drawable/ic_round_mangaupdates_24"
+                    app:iconGravity="textStart"
                     app:iconPadding="16dp"
                     tools:visibility="visible" />
 

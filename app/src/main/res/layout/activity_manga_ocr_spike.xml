@@ -80,7 +80,8 @@
                     android:layout_marginTop="12dp"
                     android:fontFamily="@font/poppins_semi_bold"
                     android:text="@string/ocr_spike_pick_page"
-                    app:icon="@drawable/ic_round_image_search_24" />
+                    app:icon="@drawable/ic_round_image_search_24"
+                    app:iconGravity="textStart" />
 
                 <!--
                   Rebuilds from the recognizer's runs rather than re-reading the page, so merged
@@ -124,7 +125,8 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:text="@string/ocr_spike_translate"
-                        app:icon="@drawable/ic_round_translate_24" />
+                        app:icon="@drawable/ic_round_translate_24"
+                        app:iconGravity="textStart" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/previewToggle"
