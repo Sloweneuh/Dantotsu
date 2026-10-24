@@ -58,6 +58,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
             bottomMargin = navBarHeight
         }
 
+        SettingsSearchButton.attach(this@ReaderSettingsActivity, binding.readerSettingsBack)
         binding.readerSettingsBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
@@ -442,6 +443,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 Settings(
                     type = 5,
                     name = getString(R.string.default_chp_view),
+                    startsGroup = true,
                     desc = getString(R.string.default_chp_view_desc),
                     icon = R.drawable.ic_round_view_list_24,
                     anchorKey = "default_chp_view",
@@ -454,7 +456,8 @@ class ReaderSettingsActivity : AppCompatActivity() {
                         onSelect = { PrefManager.setVal(PrefName.MangaDefaultView, it) },
                     ),
                 ),
-            )
+            ),
+            tiled = true,
         )
         binding.settingsRecyclerView.layoutManager =
             LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)

@@ -93,4 +93,7 @@ data class Settings(
      *  (possibly parameterised, possibly retitled) display name. Used to land a settings-search
      *  result on a row nested inside an account card. */
     val anchorKey: String? = null,
+    /** In a [SettingsAdapter] with `tiled` on, begins a new group of tiles, set apart from the
+     *  rows above it — the way system settings bundle related entries into one rounded block. */
+    val startsGroup: Boolean = false,
 )

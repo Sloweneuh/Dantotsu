@@ -67,6 +67,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             topMargin = statusBarHeight
             bottomMargin = navBarHeight
         }
+        SettingsSearchButton.attach(this@SettingsAccountActivity, binding.accountSettingsBack)
         binding.accountSettingsBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         // After a login/logout the app data has to be reloaded; a back press then reopens MainActivity.
         onBackPressedDispatcher.addCallback(this, restartMainActivity)
@@ -161,7 +162,7 @@ class SettingsAccountActivity : AppCompatActivity() {
      */
     private fun buildBottomRows() {
         val first = binding.settingsRecyclerView.adapter == null
-        binding.settingsRecyclerView.adapter = SettingsAdapter(ArrayList(bottomRows()), popIn = first)
+        binding.settingsRecyclerView.adapter = SettingsAdapter(ArrayList(bottomRows()), popIn = first, tiled = true)
     }
 
     private fun bottomRows(): List<Settings> = listOf(
@@ -173,16 +174,6 @@ class SettingsAccountActivity : AppCompatActivity() {
             isActivity = true,
             onClick = {
                 SettingsPageTransitions.open(this, it, SettingsListSyncActivity::class.java)
-            },
-        ),
-        Settings(
-            type = 1,
-            name = getString(R.string.customize_info_tabs),
-            desc = getString(R.string.customize_info_tabs_desc),
-            icon = R.drawable.ic_round_view_array_24,
-            onClick = {
-                InfoTabOrderBottomSheet.newInstance()
-                    .show(supportFragmentManager, InfoTabOrderBottomSheet.TAG)
             },
         ),
         // Came from Common, which described none of it. Backup and cloud sync answer the
@@ -197,6 +188,17 @@ class SettingsAccountActivity : AppCompatActivity() {
             anchorKey = "backup_sync",
             onClick = {
                 SettingsPageTransitions.open(this, it, SettingsBackupSyncActivity::class.java)
+            },
+        ),
+        Settings(
+            type = 1,
+            name = getString(R.string.customize_info_tabs),
+            startsGroup = true,
+            desc = getString(R.string.customize_info_tabs_desc),
+            icon = R.drawable.ic_round_view_array_24,
+            onClick = {
+                InfoTabOrderBottomSheet.newInstance()
+                    .show(supportFragmentManager, InfoTabOrderBottomSheet.TAG)
             },
         ),
         // Lives here rather than on the Comick card: it also governs MangaBaka, so a shared

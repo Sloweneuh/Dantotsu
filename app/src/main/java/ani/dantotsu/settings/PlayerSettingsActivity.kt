@@ -102,6 +102,7 @@ class PlayerSettingsActivity :
             bottomMargin = navBarHeight
         }
 
+        SettingsSearchButton.attach(this@PlayerSettingsActivity, binding.playerSettingsBack)
         binding.playerSettingsBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
@@ -824,6 +825,7 @@ class PlayerSettingsActivity :
                 Settings(
                     type = 5,
                     name = getString(R.string.default_ep_view),
+                    startsGroup = true,
                     desc = getString(R.string.default_ep_view_desc),
                     icon = R.drawable.ic_round_view_list_24,
                     anchorKey = "default_ep_view",
@@ -837,7 +839,8 @@ class PlayerSettingsActivity :
                         onSelect = { PrefManager.setVal(PrefName.AnimeDefaultView, it) },
                     ),
                 ),
-            )
+            ),
+            tiled = true,
         )
         binding.settingsRecyclerView.layoutManager =
             LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)

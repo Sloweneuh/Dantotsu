@@ -48,6 +48,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
             topMargin = statusBarHeight
             bottomMargin = navBarHeight
         }
+        SettingsSearchButton.attach(this@SettingsNotificationActivity, binding.notificationSettingsBack)
         binding.notificationSettingsBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
@@ -106,7 +107,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
         )
 
         binding.settingsRecyclerView.apply {
-            adapter = ConcatAdapter(sectionAdapter, SettingsAdapter(ArrayList(globalRows())))
+            adapter = ConcatAdapter(sectionAdapter, SettingsAdapter(ArrayList(globalRows()), tiled = true, afterOtherContent = true))
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
         }
 

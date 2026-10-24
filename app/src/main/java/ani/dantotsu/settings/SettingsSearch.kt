@@ -657,6 +657,34 @@ object SettingsSearch {
             .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
             .lowercase()
 
+    /**
+     * The settings page [setting] lives on, which search results are grouped under. Not
+     * [SearchableSetting.sectionRes]: that is a breadcrumb, often a group within a page.
+     */
+    fun pageRes(setting: SearchableSetting): Int = when (setting.dest) {
+        SettingsAccountActivity::class.java -> R.string.accounts_and_sync
+        SettingsAppearanceActivity::class.java -> R.string.appearance
+        SettingsGeneralActivity::class.java -> R.string.general
+        PlayerSettingsActivity::class.java -> R.string.anime_and_player
+        ReaderSettingsActivity::class.java -> R.string.manga_and_reader
+        SettingsSourcesActivity::class.java -> R.string.sources_and_downloads
+        DownloadActivity::class.java -> R.string.downloads
+        SettingsNotificationActivity::class.java -> R.string.notifications
+        SettingsAboutActivity::class.java, FAQActivity::class.java -> R.string.about
+        AnilistSettingsActivity::class.java -> R.string.anilist_settings
+        SettingsBackupSyncActivity::class.java -> R.string.backup_sync
+        SettingsListSyncActivity::class.java, ListSyncCompareActivity::class.java ->
+            R.string.list_comparison_title
+        else -> setting.sectionRes
+    }
+
+    /** The page a page from [pageRes] is opened from, when that isn't the top-level list. */
+    fun parentPageRes(page: Int): Int? = when (page) {
+        R.string.anilist_settings, R.string.backup_sync, R.string.list_comparison_title ->
+            R.string.accounts_and_sync
+        else -> null
+    }
+
     /** Returns the settings matching [raw], ranked with the closest title matches first. */
     fun query(context: Context, raw: String): List<SearchableSetting> {
         val q = fold(raw.trim())

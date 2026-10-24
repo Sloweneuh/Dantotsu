@@ -14,6 +14,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
@@ -56,6 +59,8 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val context = this
+        // Opened from another settings page's search button: just the search, nothing to browse.
+        val searchOnly = intent.getBooleanExtra(EXTRA_SEARCH_ONLY, false)
         binding.apply {
             settingsVersion.apply {
                 text = getString(R.string.version_current, BuildConfig.VERSION_NAME)
@@ -72,7 +77,7 @@ class SettingsActivity : AppCompatActivity() {
             }
 
             onBackPressedDispatcher.addCallback(context) {
-                if (PrefManager.getCustomVal("reload", false)) {
+                if (!searchOnly && PrefManager.getCustomVal("reload", false)) {
                     startMainActivity(context)
                     PrefManager.setCustomVal("reload", false)
                 } else {
@@ -109,7 +114,8 @@ class SettingsActivity : AppCompatActivity() {
                         onClick = {
                             openPage(it, SettingsAppearanceActivity::class.java)
                         },
-                        isActivity = true
+                        isActivity = true,
+                        startsGroup = true
                     ),
                     Settings(
                         type = 1,
@@ -129,7 +135,8 @@ class SettingsActivity : AppCompatActivity() {
                         onClick = {
                             openPage(it, PlayerSettingsActivity::class.java)
                         },
-                        isActivity = true
+                        isActivity = true,
+                        startsGroup = true
                     ),
                     Settings(
                         type = 1,
@@ -159,7 +166,8 @@ class SettingsActivity : AppCompatActivity() {
                         onClick = {
                             openPage(it, SettingsNotificationActivity::class.java)
                         },
-                        isActivity = true
+                        isActivity = true,
+                        startsGroup = true
                     ),
                     Settings(
                         type = 1,
@@ -188,7 +196,8 @@ class SettingsActivity : AppCompatActivity() {
                                     )
                                 )
                             },
-                            isActivity = true
+                            isActivity = true,
+                            startsGroup = true
                         ) else null,
                         // Debug playground comparing current components and motion with the
                         // proposed modernisation (Material 1.14 Expressive, transitions, springs).
@@ -200,42 +209,64 @@ class SettingsActivity : AppCompatActivity() {
                             onClick = {
                                 openPage(it, DesignLabActivity::class.java)
                             },
-                            isActivity = true
+                            isActivity = true,
+                            startsGroup = !BuildConfig.DEBUG
                         ) else null
                     ).toTypedArray()
-                )
+                ),
+                tiled = true,
             )
 
-            settingsRecyclerView.adapter = sectionsAdapter
+            val idleAdapter = if (searchOnly) SettingsAdapter(arrayListOf()) else sectionsAdapter
+            settingsRecyclerView.adapter = idleAdapter
             settingsRecyclerView.apply {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
                 setHasFixedSize(true)
+            }
+            if (searchOnly) {
+                settingsTitleRow.visibility = View.GONE
+                loginGithub.visibility = View.GONE
+                settingsVersion.visibility = View.GONE
+                settingsSearch.requestFocus()
+                WindowCompat.getInsetsController(window, settingsSearch)
+                    .show(WindowInsetsCompat.Type.ime())
             }
 
             settingsSearch.addTextChangedListener { text ->
                 val query = text?.toString().orEmpty()
                 val searching = query.isNotBlank()
                 if (!searching) {
-                    settingsRecyclerView.adapter = sectionsAdapter
+                    settingsRecyclerView.adapter = idleAdapter
                     settingsSearchEmpty.visibility = View.GONE
-                    loginGithub.visibility = View.VISIBLE
-                    settingsVersion.visibility = View.VISIBLE
+                    settingsSearchEmptyFrame.visibility = View.GONE
+                    loginGithub.isVisible = !searchOnly
+                    settingsVersion.isVisible = !searchOnly
                     return@addTextChangedListener
                 }
                 loginGithub.visibility = View.GONE
                 settingsVersion.visibility = View.GONE
-                val results = SettingsSearch.query(context, query).map { entry ->
-                    Settings(
-                        type = 1,
-                        name = getString(entry.titleRes),
-                        desc = getString(entry.sectionRes),
-                        icon = entry.icon,
-                        onClick = { SettingsRouter.open(context, entry) },
-                        isActivity = true
-                    )
-                }
-                settingsSearchEmpty.visibility = if (results.isEmpty()) View.VISIBLE else View.GONE
-                settingsRecyclerView.adapter = SettingsAdapter(ArrayList(results))
+                // Grouped by the page each result lives on, the pages in order of their best match.
+                val results = SettingsSearch.query(context, query)
+                    .groupBy { SettingsSearch.pageRes(it) }
+                    .flatMap { (page, entries) ->
+                        listOf(Settings(type = 3, name = getString(page), desc = "", icon = 0)) +
+                            entries.map { entry ->
+                                Settings(
+                                    type = 1,
+                                    name = getString(entry.titleRes),
+                                    // The full path down from the page, for a setting nested
+                                    // in one of its groups; just the page for one on its surface.
+                                    desc = listOfNotNull(
+                                        SettingsSearch.parentPageRes(page), page, entry.sectionRes
+                                    ).distinct().joinToString(" › ") { getString(it) },
+                                    icon = entry.icon,
+                                    onClick = { SettingsRouter.open(context, entry) },
+                                )
+                            }
+                    }
+                settingsSearchEmpty.isVisible = results.isEmpty()
+                settingsSearchEmptyFrame.isVisible = results.isEmpty()
+                settingsRecyclerView.adapter = SettingsAdapter(ArrayList(results), tiled = true)
             }
 
             if (!BuildConfig.FLAVOR.contains("fdroid")) {
@@ -275,6 +306,9 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     companion object {
+        /** Opens this screen as a bare settings search; see [SettingsSearchButton]. */
+        const val EXTRA_SEARCH_ONLY = "ani.dantotsu.settings.SEARCH_ONLY"
+
         fun getDeviceInfo(): String {
             return """
                 dantotsu Version: ${BuildConfig.VERSION_NAME}

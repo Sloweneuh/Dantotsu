@@ -55,6 +55,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                 topMargin = statusBarHeight
                 bottomMargin = navBarHeight
             }
+            SettingsSearchButton.attach(this@AnilistSettingsActivity, binding.anilistSettingsBack)
             binding.anilistSettingsBack.setOnClickListener {
                 onBackPressedDispatcher.onBackPressed()
             }
@@ -236,7 +237,8 @@ class AnilistSettingsActivity : AppCompatActivity() {
                             }
                         }
                     ),
-                )
+                ),
+                tiled = true,
             )
             binding.settingsRecyclerView1.layoutManager =
                 LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
@@ -259,7 +261,8 @@ class AnilistSettingsActivity : AppCompatActivity() {
                         }
                     }
                 ),
-            )
+            ),
+            tiled = true,
         )
         binding.settingsRecyclerView2.layoutManager =
             LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)

@@ -166,6 +166,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
             topMargin = statusBarHeight
             bottomMargin = navBarHeight
         }
+        SettingsSearchButton.attach(this@SettingsBackupSyncActivity, binding.backupSyncSettingsBack)
         binding.backupSyncSettingsBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
@@ -197,6 +198,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
             Settings(
                 type = 2,
                 name = getString(R.string.cloud_sync),
+                startsGroup = true,
                 desc = getString(R.string.cloud_sync_desc),
                 // Not the plain sync glyph the row below it uses: the toggle is the feature and that
                 // one is a single action, and sharing an icon made two rows that mean quite
@@ -339,6 +341,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
             Settings(
                 type = 2,
                 name = getString(R.string.sync_extensions),
+                startsGroup = true,
                 desc = getString(R.string.sync_extensions_desc),
                 icon = R.drawable.ic_round_extension_cloud_24,
                 isEnabled = linked,
@@ -399,6 +402,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
             Settings(
                 type = 1,
                 name = getString(R.string.force_upload),
+                startsGroup = true,
                 desc = getString(R.string.force_upload_desc),
                 icon = R.drawable.ic_round_cloud_upload_24,
                 isEnabled = linked,
@@ -528,7 +532,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
             )).toTypedArray(),
         )
 
-        val adapter = SettingsAdapter(settingsList)
+        val adapter = SettingsAdapter(settingsList, tiled = true)
         settingsItems = settingsList
         settingsAdapter = adapter
         binding.backupSyncRecyclerView.adapter = adapter

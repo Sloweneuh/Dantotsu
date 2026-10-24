@@ -1,9 +1,16 @@
 package ani.dantotsu.settings
 
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.core.view.updateLayoutParams
+import com.google.android.material.color.MaterialColors
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ItemSettingsBinding
@@ -22,10 +29,26 @@ import kotlin.math.roundToInt
  *  since a card already frames its own body. */
 private val COMPACT_TOP_MARGIN get() = 10f.px
 
+/** Tiled rows: the hairline between tiles of one group, the gap between groups, and the corners
+ *  at a group's ends and between its tiles. */
+private val TILE_GAP get() = 2f.px
+private val TILE_GROUP_GAP get() = 16f.px
+private val TILE_OUTER_RADIUS get() = 24f.px.toFloat()
+private val TILE_INNER_RADIUS get() = 6f.px.toFloat()
+
 class SettingsAdapter(
     private val settings: ArrayList<Settings>,
     /** Whether rows pop in as they bind. Off inside a section card, whose opening is the motion. */
     private val popIn: Boolean = true,
+    /**
+     * Each row on its own rounded tile, rows grouped by [Settings.startsGroup] into blocks with
+     * round outer corners and tight inner ones. For a list standing directly on a settings screen;
+     * one inside a card already has its frame.
+     */
+    private val tiled: Boolean = false,
+    /** Set apart the first tile from what sits above it in the same RecyclerView — the section
+     *  cards a [androidx.recyclerview.widget.ConcatAdapter] puts ahead of these rows. */
+    private val afterOtherContent: Boolean = false,
 ) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     inner class SettingsViewHolder(val binding: ItemSettingsBinding) :
@@ -51,7 +74,75 @@ class SettingsAdapter(
     inner class SettingsChoiceViewHolder(val binding: ItemSettingsChoiceBinding) :
         RecyclerView.ViewHolder(binding.root)
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
+        createHolder(parent, viewType).also {
+            if (!tiled) return@also
+            // A header lines up with the icons on the tiles below it.
+            if (viewType == 3) it.itemView.setPaddingRelative(16f.px, 0, 16f.px, 0)
+            else fitToTile(it.itemView)
+        }
+
+    /**
+     * Pads a row in from its tile's edges. Rows framed by their icon's 24dp margins trade some of
+     * that for padding, so a description running to a third line still clears the tile's edge.
+     */
+    private fun fitToTile(row: View) {
+        val icons = listOfNotNull<View>(
+            row.findViewById(R.id.settingsIcon),
+            row.findViewById(R.id.settingsIconRight),
+        ).filter { (it.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin == 24f.px }
+        icons.forEach {
+            it.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                topMargin = 16f.px
+                bottomMargin = 16f.px
+            }
+        }
+        val vertical = if (icons.isEmpty()) row.paddingTop else 8f.px
+        row.setPaddingRelative(16f.px, vertical, 16f.px, maxOf(vertical, row.paddingBottom))
+    }
+
+    /** The tile behind the row at [position], its corners rounded where its group begins and ends. */
+    private fun tileBackground(row: View, position: Int): Drawable {
+        val next = (position + 1 until settings.size).firstOrNull { settings[it].isVisible }
+        val first = groupBreakBefore(position)
+        val last = next == null || settings[next].type == 3 || groupBreakBefore(next)
+        val top = if (first) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
+        val bottom = if (last) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
+        fun shape(color: Int) = GradientDrawable().apply {
+            cornerRadii = floatArrayOf(top, top, top, top, bottom, bottom, bottom, bottom)
+            setColor(color)
+        }
+        return RippleDrawable(
+            ColorStateList.valueOf(
+                MaterialColors.getColor(row, androidx.appcompat.R.attr.colorControlHighlight)
+            ),
+            shape(SectionCard.fill(row, false)),
+            shape(Color.WHITE),
+        )
+    }
+
+    private fun tileTopMargin(position: Int): Int {
+        val prev = (position - 1 downTo 0).firstOrNull { settings[it].isVisible }
+        return when {
+            prev == null -> if (afterOtherContent) TILE_GROUP_GAP else 0
+            // A header sits just above its own group, and well clear of the one before it.
+            settings[position].type == 3 -> TILE_GROUP_GAP + 8f.px
+            settings[prev].type == 3 -> 8f.px
+            groupBreakBefore(position) -> TILE_GROUP_GAP
+            else -> TILE_GAP
+        }
+    }
+
+    /**
+     * Whether the visible row at [position] begins a group. A hidden row that starts one hands
+     * that over to the next row shown, so a group whose first row is hidden still stands apart.
+     */
+    private fun groupBreakBefore(position: Int): Boolean {
+        val prev = (position - 1 downTo 0).firstOrNull { settings[it].isVisible } ?: return true
+        return settings[prev].type == 3 || (prev + 1..position).any { settings[it].startsGroup }
+    }
+
+    private fun createHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
             1 -> SettingsViewHolder(
                 ItemSettingsBinding.inflate(
@@ -111,10 +202,14 @@ class SettingsAdapter(
                 // a gap in the list wherever a row was hidden.
                 topMargin = when {
                     !settings.isVisible -> 0
+                    tiled -> tileTopMargin(position)
                     settings.compact -> COMPACT_TOP_MARGIN
                     else -> inflated
                 }
             }
+        }
+        if (tiled && settings.type != 3 && settings.isVisible) {
+            holder.itemView.background = tileBackground(holder.itemView, position)
         }
         holder.itemView.alpha = if (settings.isEnabled) 1f else 0.5f
         when (settings.type) {
@@ -141,8 +236,9 @@ class SettingsAdapter(
                     settings.onLongClick?.invoke()
                     true
                 }
+                // A tile reads as tappable on its own; the chevron only crowded it.
                 b.settingsIconRight.visibility =
-                    if (settings.isActivity) View.VISIBLE else View.GONE
+                    if (settings.isActivity && !tiled) View.VISIBLE else View.GONE
                 b.attachView.visibility = if (settings.attach != null) View.VISIBLE else View.GONE
                 // Cleared before the row gets its say. This icon is opt-in per row and nothing else
                 // resets it, so a recycled holder handed to a row that doesn't want one kept the

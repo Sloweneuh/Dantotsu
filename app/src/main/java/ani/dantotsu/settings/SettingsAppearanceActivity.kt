@@ -109,6 +109,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
                 finishAfterTransition()
             }
         }
+        SettingsSearchButton.attach(this@SettingsAppearanceActivity, binding.appearanceSettingsBack)
         binding.appearanceSettingsBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }

@@ -98,6 +98,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
             topMargin = statusBarHeight
             bottomMargin = navBarHeight
         }
+        SettingsSearchButton.attach(this@SettingsSourcesActivity, binding.sourcesSettingsBack)
         binding.sourcesSettingsBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }

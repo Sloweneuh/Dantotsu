@@ -50,6 +50,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
             bottomMargin = navBarHeight
         }
 
+        SettingsSearchButton.attach(this@SettingsListSyncActivity, binding.listSyncSettingsBack)
         binding.listSyncSettingsBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         binding.listSyncRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -124,6 +125,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
             Settings(
                 type = 1,
                 name = getString(R.string.auto_list_sync),
+                startsGroup = true,
                 desc = autoSyncDesc(autoInterval),
                 icon = R.drawable.ic_round_compare_schedule_24,
                 onClick = { view -> showIntervalDropdown(view.root) },
@@ -142,7 +144,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
             ),
         )
 
-        binding.listSyncRecyclerView.adapter = SettingsAdapter(settingsList)
+        binding.listSyncRecyclerView.adapter = SettingsAdapter(settingsList, tiled = true)
     }
 
     /** Stores the interval, reschedules the task and redraws the screen around it. */

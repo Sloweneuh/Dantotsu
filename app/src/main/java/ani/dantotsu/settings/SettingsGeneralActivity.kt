@@ -53,6 +53,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                 topMargin = statusBarHeight
                 bottomMargin = navBarHeight
             }
+            SettingsSearchButton.attach(this@SettingsGeneralActivity, binding.generalSettingsBack)
             generalSettingsBack.setOnClickListener {
                 onBackPressedDispatcher.onBackPressed()
             }
@@ -162,6 +163,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                         Settings(
                             type = 2,
                             name = getString(R.string.always_continue_content),
+                            startsGroup = true,
                             desc = getString(R.string.always_continue_content_desc),
                             icon = R.drawable.ic_round_resume_24,
                             isChecked = PrefManager.getVal(PrefName.ContinueMedia),
@@ -204,6 +206,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                         Settings(
                             type = 2,
                             name = getString(R.string.hide_private),
+                            startsGroup = true,
                             desc = getString(R.string.hide_private_desc),
                             icon = R.drawable.ic_round_visibility_off_24,
                             isChecked = PrefManager.getVal(PrefName.HidePrivate),
@@ -252,6 +255,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             onClick = { showHiddenFromListsDialog() },
                         ),
                     ),
+                    tiled = true,
                 )
             settingsRecyclerView.apply {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)

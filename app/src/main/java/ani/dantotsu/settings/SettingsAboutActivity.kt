@@ -47,6 +47,7 @@ class SettingsAboutActivity : AppCompatActivity() {
                 topMargin = statusBarHeight
                 bottomMargin = navBarHeight
             }
+            SettingsSearchButton.attach(this@SettingsAboutActivity, binding.aboutSettingsBack)
             aboutSettingsBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
             settingsRecyclerView.adapter = SettingsAdapter(
@@ -66,6 +67,7 @@ class SettingsAboutActivity : AppCompatActivity() {
                     Settings(
                         type = 2,
                         name = getString(R.string.check_app_updates),
+                        startsGroup = true,
                         desc = getString(R.string.check_app_updates_desc),
                         icon = R.drawable.ic_round_new_releases_24,
                         isChecked = PrefManager.getVal(PrefName.CheckUpdate),
@@ -120,6 +122,7 @@ class SettingsAboutActivity : AppCompatActivity() {
                     Settings(
                         type = 1,
                         name = getString(R.string.devs),
+                        startsGroup = true,
                         desc = getString(R.string.devs_desc),
                         icon = R.drawable.ic_round_group_24,
                         onClick = {
@@ -188,8 +191,8 @@ class SettingsAboutActivity : AppCompatActivity() {
                             }
                         }
                     ),
-
-                    )
+                ),
+                tiled = true,
             )
             binding.settingsRecyclerView.layoutManager =
                 LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
