@@ -126,6 +126,89 @@ object ComickMatches {
             .mapNotNull { (id, anilistIds) -> anilistIds.distinct().singleOrNull()?.let { id to Target(anilistId = it) } }
             .toMap()
 
+    // ---- picks made by hand ---------------------------------------------------------------------
+
+    /**
+     * A Comick entry ([slug]) picked by hand for a title: on its media page's Comick tab, or from
+     * the unmatched titles. For an AniList title ([anilistId]), or a MangaUpdates series
+     * ([muSeriesId], always manga) — of which an older pick knows only the truncated [muKey].
+     */
+    data class Pick(
+        val slug: String,
+        val anilistId: Int? = null,
+        val muSeriesId: Long? = null,
+        val muKey: Int? = null,
+        val isAnime: Boolean = false,
+    )
+
+    /** Every pick made by hand, manga and anime. Read from the prefs, so cheap enough per visit. */
+    fun picks(): List<Pick> {
+        val manga = PrefManager.getAllCustomValsForMedia(PICK_PREFIX)
+        val muSeries = manga.mapNotNull { (key, value) ->
+            if (!key.startsWith(MU_SERIES_PREFIX)) return@mapNotNull null
+            val muKey = key.removePrefix(MU_SERIES_PREFIX).toIntOrNull() ?: return@mapNotNull null
+            (value as? String)?.toLongOrNull()?.let { muKey to it }
+        }.toMap()
+        val mangaPicks = manga.mapNotNull { (key, value) ->
+            // Only `comick_slug_<digits>`; see [index].
+            val id = key.removePrefix(PICK_PREFIX).toIntOrNull()?.takeIf { it > 0 } ?: return@mapNotNull null
+            val slug = (value as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            when {
+                muSeries[id] != null -> Pick(slug, muSeriesId = muSeries[id], muKey = id)
+                id > ANILIST_ID_CEILING -> Pick(slug, muKey = id)
+                else -> Pick(slug, anilistId = id)
+            }
+        }
+        val animePrefix = ComickEpisodes.savedSlugKey(0).removeSuffix("0")
+        val animePicks = PrefManager.getAllCustomValsForMedia(animePrefix).mapNotNull { (key, value) ->
+            val id = key.removePrefix(animePrefix).toIntOrNull()?.takeIf { it > 0 } ?: return@mapNotNull null
+            val slug = (value as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            Pick(slug, anilistId = id, isAnime = true)
+        }
+        return mangaPicks + animePicks
+    }
+
+    /** Points [pick]'s title at another Comick entry, as picking it on the media page would. */
+    fun repick(pick: Pick, slug: String, hid: String): Pick {
+        when {
+            pick.anilistId != null -> link(pick.anilistId, pick.isAnime, slug, hid)
+            pick.muSeriesId != null -> linkMangaUpdates(pick.muSeriesId, slug, hid)
+            // An older MangaUpdates pick whose series was never recorded: the pick alone.
+            pick.muKey != null -> PrefManager.setCustomVal("$PICK_PREFIX${pick.muKey}", slug)
+        }
+        return pick.copy(slug = slug)
+    }
+
+    /**
+     * Takes [pick] back, as unlinking on the media page does — and also forgets the Comick entries
+     * sync resolved from it, which it would otherwise keep writing to. The title is matched afresh
+     * the next time anything looks.
+     */
+    fun unpick(pick: Pick) {
+        PrefManager.removeCustomVal(pickKey(pick))
+        pick.muKey?.let { clearMuPick(it) }
+        pick.anilistId?.let {
+            IdCache.remove("comick_hids_${mediaType(pick.isAnime)}_$it")
+            if (pick.isAnime) ComickEpisodes.clearAutoSlug(it)
+        }
+        pick.muSeriesId?.let { IdCache.remove(muHidsKey(it)) }
+        IdCache.flush()
+    }
+
+    /**
+     * Puts back a pick [unpick] took — the undo. The entries sync had resolved are found again
+     * from the pick itself on its next look, at the cost of one lookup.
+     */
+    fun restore(pick: Pick) {
+        PrefManager.setCustomVal(pickKey(pick), pick.slug)
+        if (pick.muKey != null && pick.muSeriesId != null) recordMuPick(pick.muKey, pick.muSeriesId)
+    }
+
+    private fun pickKey(pick: Pick) = when {
+        pick.anilistId != null -> pinnedKey(pick.anilistId, pick.isAnime)
+        else -> "$PICK_PREFIX${pick.muKey ?: pick.muSeriesId?.let { ani.dantotsu.connections.mangaupdates.muMediaKey(it) }}"
+    }
+
     // ---- titles list sync couldn't match ----------------------------------------------------
 
     /**

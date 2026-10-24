@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Collapsible header over the titles marked "not on Comick". -->
+<!-- Collapsible header over a section of the Comick matches: matched by hand, or marked
+     "not on Comick". -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -21,22 +22,23 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/comickUnmatchedHeaderTitle"
+            android:id="@+id/comickMatchHeaderTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="@font/poppins_bold"
             tools:text="Marked not on Comick (3)" />
 
         <TextView
+            android:id="@+id/comickMatchHeaderDesc"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:alpha="0.6"
-            android:text="@string/comick_unmatched_hidden_desc"
+            tools:text="@string/comick_unmatched_hidden_desc"
             android:textSize="12sp" />
     </LinearLayout>
 
     <ImageView
-        android:id="@+id/comickUnmatchedHeaderChevron"
+        android:id="@+id/comickMatchHeaderChevron"
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:importantForAccessibility="no"

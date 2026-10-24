@@ -116,6 +116,15 @@ object IdCache {
         }
     }
 
+    /**
+     * Forgets [key], for a mapping that is no longer true rather than merely old — one the user
+     * undid, which the next lookup must resolve afresh instead of reusing.
+     */
+    fun remove(key: String) = synchronized(lock) {
+        load()
+        if (entries.remove(key) != null) pending++
+    }
+
     /** Writes anything buffered. Cheap, and safe to call at any batch boundary. */
     fun flush() = synchronized(lock) { if (pending > 0) writeLocked() }
 

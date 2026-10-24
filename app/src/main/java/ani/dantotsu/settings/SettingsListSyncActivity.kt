@@ -112,11 +112,11 @@ class SettingsListSyncActivity : AppCompatActivity() {
             ),
             Settings(
                 type = 1,
-                name = getString(R.string.comick_unmatched_title),
-                desc = getString(R.string.comick_unmatched_desc),
+                name = getString(R.string.comick_matches_title),
+                desc = getString(R.string.comick_matches_desc),
                 icon = R.drawable.ic_round_comick_24,
                 onClick = {
-                    SettingsPageTransitions.open(this, it, ComickUnmatchedActivity::class.java)
+                    SettingsPageTransitions.open(this, it, ComickMatchesActivity::class.java)
                 },
                 isActivity = true,
                 isVisible = Comick.token != null,

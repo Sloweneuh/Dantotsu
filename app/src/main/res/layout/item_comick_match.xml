@@ -19,7 +19,7 @@
 
         <!-- Cover and title open the media page: one ripple for both, apart from the buttons. -->
         <LinearLayout
-            android:id="@+id/comickUnmatchedOpen"
+            android:id="@+id/comickMatchOpen"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -31,7 +31,7 @@
             android:orientation="horizontal">
 
             <com.google.android.material.imageview.ShapeableImageView
-                android:id="@+id/comickUnmatchedCover"
+                android:id="@+id/comickMatchCover"
                 android:layout_width="48dp"
                 android:layout_height="68dp"
                 android:scaleType="centerCrop"
@@ -46,7 +46,7 @@
                 android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/comickUnmatchedName"
+                    android:id="@+id/comickMatchName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
@@ -55,17 +55,34 @@
                     tools:text="Title" />
 
                 <TextView
-                    android:id="@+id/comickUnmatchedInfo"
+                    android:id="@+id/comickMatchInfo"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:alpha="0.6"
                     android:textSize="12sp"
                     tools:text="Manga · 2019" />
+
+                <!-- Matched titles only: the Comick entry the title is matched to, which opens
+                     it. -->
+                <TextView
+                    android:id="@+id/comickMatchMatch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/ripple_rounded_8dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins_bold"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    tools:text="Comick: Title"
+                    tools:visibility="visible" />
             </LinearLayout>
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/comickUnmatchedSearch"
+            android:id="@+id/comickMatchSearch"
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -73,7 +90,7 @@
             app:icon="@drawable/ic_round_search_24" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/comickUnmatchedDismiss"
+            android:id="@+id/comickMatchDismiss"
             style="@style/Widget.Material3.Button.IconButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

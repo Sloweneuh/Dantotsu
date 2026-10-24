@@ -66,7 +66,7 @@ object SettingsPageTransitions : Application.ActivityLifecycleCallbacks {
         FAQActivity::class.java,
         ListSyncCompareActivity::class.java,
         MUCustomListMappingActivity::class.java,
-        ComickUnmatchedActivity::class.java,
+        ComickMatchesActivity::class.java,
         DesignLabActivity::class.java,
     )
 
@@ -237,6 +237,12 @@ object SettingsPageTransitions : Application.ActivityLifecycleCallbacks {
             // The bars are part of the window, not the page; moving them with it flashes them.
             excludeTarget(android.R.id.statusBarBackground, true)
             excludeTarget(android.R.id.navigationBarBackground, true)
+            // A page's loading spinner is showing when the page arrives, so the enter transition
+            // counted it among the views it moves, and the framework puts back every one of those
+            // as it was whenever the page comes back to the front — the spinner the page had hidden
+            // once its list loaded included. It reappeared over the finished list after opening a
+            // title from Comick matches and returning, and stayed. Excluded, it is never counted.
+            excludeTarget(ani.dantotsu.others.MaterialProgressBar::class.java, true)
         }
 
     private const val PAGE_MS = 300L

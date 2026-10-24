@@ -233,7 +233,7 @@
         <activity android:name=".settings.ReaderSettingsActivity" />
         <activity android:name=".media.manga.mangareader.TapZoneEditorActivity" />
         <activity android:name=".settings.FAQActivity" />
-        <activity android:name=".settings.ComickUnmatchedActivity" />
+        <activity android:name=".settings.ComickMatchesActivity" />
         <!-- Debug-only screen (FirebaseTestActivity finishes itself outside debug builds); exported
              so it's reachable via `adb shell am start` regardless of build type. -->
         <activity
