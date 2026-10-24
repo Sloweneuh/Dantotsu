@@ -7,6 +7,7 @@ import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
@@ -66,6 +67,11 @@ internal fun ItemQuickTileBinding.paintQuickTile(
     }
 
     sizeIcon(large, extensionIcon != null || remoteIcon != null)
+    // A resize pins the label to a fixed width (see QuickTileEditAdapter.pinForResize).
+    quickTileText.updateLayoutParams<LinearLayout.LayoutParams> {
+        width = 0
+        weight = 1f
+    }
     quickTileText.isVisible = large
     quickTileRoot.gravity = if (large) Gravity.CENTER_VERTICAL else Gravity.CENTER
     if (large) {
@@ -161,7 +167,14 @@ internal fun quickTileIconDp(large: Boolean, isExtension: Boolean) = when {
     else -> 30
 }
 
-private fun ItemQuickTileBinding.sizeIcon(large: Boolean, isExtension: Boolean) {
+/**
+ * Whether the tile shows an extension's own artwork rather than a glyph — the icons sized by the
+ * extension rule in [quickTileIconDp]. Read off the view: artwork is the one icon left untinted.
+ */
+internal val ItemQuickTileBinding.showsArtwork: Boolean
+    get() = quickTileIcon.imageTintList == null
+
+internal fun ItemQuickTileBinding.sizeIcon(large: Boolean, isExtension: Boolean) {
     val density = root.resources.displayMetrics.density
     val dp = quickTileIconDp(large, isExtension)
     quickTileIcon.updateLayoutParams {

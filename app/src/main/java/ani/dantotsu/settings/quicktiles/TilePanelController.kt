@@ -14,6 +14,7 @@ import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.interpolator.view.animation.FastOutLinearInInterpolator
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
+import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -78,7 +79,11 @@ class TilePanelController(
         binding.quickTilesVersion.isVisible = footerText != null && !editing
     }
 
-    private fun showPages() {
+    /**
+     * @param page the page to open on — the one edit mode was entered from, coming back out of it,
+     *   so the tiles that travel home are the ones that left.
+     */
+    private fun showPages(page: Int = 0) {
         // Every placed tile is laid out, including ones that cannot work right now. Dropping them
         // would reflow the panel around a missing tile and reflow it back later, which reads far
         // worse than an inert one.
@@ -92,6 +97,8 @@ class TilePanelController(
             height = adapter.maxRows() *
                     quickTileRowHeightPx(binding.root.resources.displayMetrics.density)
         }
+        // Resizes in the editor can change how many pages there are.
+        binding.quickTilesPager.setCurrentItem(page.coerceIn(0, (pages.size - 1).coerceAtLeast(0)), false)
         binding.quickTilesIndicator.attachTo(binding.quickTilesPager, pages.size)
     }
 
@@ -104,6 +111,18 @@ class TilePanelController(
 
     /** True while the pages and the editor are trading places; taps on edit/done wait for it. */
     private var swapping = false
+
+    /** Puts back the panel's parent clipping, which a swap lifts (see [setEditing]). */
+    private var restoreHostClip: (() -> Unit)? = null
+
+    private fun endSwap() {
+        swapping = false
+        restoreHostClip?.invoke()
+        restoreHostClip = null
+    }
+
+    /** The page edit mode was opened from, to go back to when it closes. */
+    private var editedFromPage = 0
 
     /**
      * Swaps the pages for the editor, or back, keeping the tiles that are on screen on both sides.
@@ -123,6 +142,7 @@ class TilePanelController(
      */
     private fun setEditing(value: Boolean) {
         if (value == editing || swapping) return
+        if (value) editedFromPage = binding.quickTilesPager.currentItem
         val frame = binding.quickTilesPager.parent as ViewGroup
         if (!animationsEnabled || !frame.isLaidOut) {
             // A footer faded out by an animated swap keeps its alpha while hidden.
@@ -132,21 +152,57 @@ class TilePanelController(
             return
         }
         swapping = true
+        // The panel's height runs only as far as the sheet visibly changes (see [visibleHeightCap]),
+        // and below it the footer row — empty while editing — fills the rest of the sheet until the
+        // panel is given its full height at the end. Clipped to the panel, the editor left that strip
+        // blank through the swap, and the shelves filled it in one step when the height was let go
+        // (or, leaving, it went blank in one step at the start). Drawn past the panel's edge, the
+        // strip shows all along what it will show after: the editor is laid out at full height for
+        // the swap either way.
+        (frame.parent as? ViewGroup)?.let { host ->
+            val clip = host.clipChildren
+            host.clipChildren = false
+            restoreHostClip = { host.clipChildren = clip }
+        }
         val speed = PrefManager.getVal<Float>(PrefName.AnimationSpeed)
         val incoming = if (value) binding.quickTilesEditContainer else binding.quickTilesPager
 
         // Where each tile on screen is now, before anything changes.
         val leaving = shownTiles()
         val snaps = leaving.mapValues { (_, view) -> TileSnap.of(view, frame) }
+        // The footer as it shows now. Leaving, [prepare] rebuilds the pages, which puts the page
+        // dots back on the spot; they belong to the side arriving and fade in with it.
+        val footerShown = footerViews().filter { it.isVisible }
+        val editorHeight = binding.quickTilesEditContainer.height
 
         prepare(value)
+        footerViews().filter { it.isVisible && it !in footerShown }.forEach { it.alpha = 0f }
+        // Leaving, the editor keeps its full height until it goes: re-measured to the panel as that
+        // shrinks, it dropped every row past the panel's edge on the first frame, and the strip
+        // below went blank with them (see the clipping lifted above).
+        if (!value) binding.quickTilesEditContainer.updateLayoutParams { height = editorHeight }
+        // At its own fixed height when it has one. The pager does — every page as tall as the
+        // tallest — and measured unbounded it answered with only what the page showing needs, so
+        // coming back to a short page the panel closed to that page's rows and then jumped open to
+        // the pager's real height the moment the animation let go of it.
+        val fixedHeight = incoming.layoutParams.height
         incoming.measure(
             View.MeasureSpec.makeMeasureSpec(
                 frame.width - frame.paddingLeft - frame.paddingRight, View.MeasureSpec.EXACTLY,
             ),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            if (fixedHeight >= 0) {
+                View.MeasureSpec.makeMeasureSpec(fixedHeight, View.MeasureSpec.EXACTLY)
+            } else {
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            },
         )
         val fullTo = frame.paddingTop + frame.paddingBottom + incoming.measuredHeight
+        // The editor is laid out at its full height for the length of the swap, not at whatever the
+        // panel has grown to so far. A RecyclerView only lays out the rows that fit, so from any page
+        // but the first the tiles being carried over — further down the arrangement than the pager
+        // shows them — had no views yet when the move began: they vanished with the pager and popped
+        // in once the growing edge reached them, while the first page's tiles glided into place.
+        if (value) incoming.updateLayoutParams { height = incoming.measuredHeight }
         // Only the part of the change that shows is animated. The editor with its shelves runs past
         // the screen, the sheet tops out at full height and the rest scrolls — so most of a full
         // collapse happened out of sight, and the sheet edge only began to move at the very end.
@@ -157,10 +213,10 @@ class TilePanelController(
         val travelDp = abs(to - from) / frame.resources.displayMetrics.density
         val totalMs = ((EDIT_SWAP_MS + travelDp * HEIGHT_MS_PER_DP)
             .coerceAtMost(HEIGHT_MAX_MS) * speed).toLong()
-        // One clock for all of it. The height runs the whole length and ends with the carried-over
-        // tiles, on the same ease, so the sheet edge and the tiles settle on the same frame: the
-        // space neither closes after the tiles are home nor finishes early and cuts off a row still
-        // on its way back up from where the editor had it.
+        // The height starts on the first frame and hands over to the carried-over tiles when they
+        // set off ([arrive]), so the sheet edge and the tiles settle on the same frame: the space
+        // neither closes after the tiles are home nor finishes early and cuts off a row still on its
+        // way back up from where the editor had it.
         val outMs = (totalMs * 0.35f).toLong()
         val inMs = totalMs - outMs
         frame.updateLayoutParams { height = from }
@@ -170,43 +226,62 @@ class TilePanelController(
             addUpdateListener { anim ->
                 frame.updateLayoutParams { height = anim.animatedValue as Int }
             }
-            doOnEnd {
-                frame.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
-            }
+            doOnEnd { releaseHeight(frame) }
             start()
         }
 
-        // What carries over: everything on the page being left goes into the editor; coming out,
-        // the tiles of the page the pager is about to show.
-        val staying: Set<String> = if (value) snaps.keys else
-            pages.getOrNull(binding.quickTilesPager.currentItem).orEmpty()
-                .map { it.tile.id }.toSet()
-        val fading = buildList {
-            addAll(footerViews().filter { it.isVisible })
-            if (!value) {
-                addAll(editorChrome())
-                leaving.forEach { (id, view) -> if (id !in staying) add(view) }
-                addAll(editorRows().filter { row -> leaving.values.none { it === row } })
+        if (value) {
+            // Into the editor in one movement. Coming out, the editor's extra rows have to clear
+            // before the pages come back; going in, nothing on a page is in the way — every tile on
+            // it carries over — so there is no clearing phase, only the footer fading as it goes.
+            // With one: from any page but the first, the tiles rode up with the growing sheet for a
+            // third of the swap, then turned round and slid back down into the editor, through rows
+            // still fading in. Started together on the same ease, the sheet rising and the tiles
+            // sinking within it cancel out, and the tiles barely move on screen while the editor
+            // grows in around them.
+            val footer = footerViews().filter { it.isVisible }
+            show(true)
+            footer.forEach { view ->
+                view.isVisible = true
+                view.animate().alpha(0f).setDuration(outMs)
+                    .setInterpolator(FastOutLinearInInterpolator())
+                    .withEndAction {
+                        view.alpha = 1f
+                        applyFooterVisibility()
+                    }
+                    .start()
             }
+            frame.doOnPreDraw { arrive(true, snaps, frame, totalMs, heightAnim, to, fromRest = true) }
+            return
+        }
+
+        // What carries over: the tiles of the page the pager is about to show.
+        val staying: Set<String> = pages.getOrNull(binding.quickTilesPager.currentItem).orEmpty()
+            .map { it.tile.id }.toSet()
+        val fading = buildList {
+            addAll(footerShown)
+            addAll(editorChrome())
+            leaving.forEach { (id, view) -> if (id !in staying) add(view) }
+            addAll(editorRows().filter { row -> leaving.values.none { it === row } })
         }
         fading.forEach {
             it.animate().alpha(0f).setDuration(outMs)
                 .setInterpolator(FastOutLinearInInterpolator()).start()
         }
-        if (!value) fadeBorder(to = 0f, ms = outMs)
+        fadeBorder(to = 0f, ms = outMs)
 
         ValueAnimator.ofFloat(0f, 1f).apply {
             duration = outMs
             doOnEnd {
                 if (!frame.isAttachedToWindow) {
-                    swapping = false
+                    endSwap()
                     return@doOnEnd
                 }
                 show(value)
                 // Hidden now; put them back so the next visit doesn't start with invisible views.
                 fading.forEach { it.animate().cancel(); it.alpha = 1f }
                 frame.doOnPreDraw {
-                    arrive(value, snaps, frame, inMs, heightAnim.takeIf { from != to })
+                    arrive(value, snaps, frame, inMs, heightAnim, to)
                 }
             }
             start()
@@ -217,26 +292,35 @@ class TilePanelController(
      * The incoming side's first frame: carried-over tiles start where they were and travel home,
      * everything else fades up. Runs before that frame is drawn, so nothing shows in between.
      *
-     * While the panel's height is still moving ([heightAnim]), the tiles cover what is left of their
-     * way in step with what is left of the height, not on a clock of their own. By the time they
-     * start, the height has done most of its travel on its fast-out ease, so on their own clock the
-     * sheet edge came to rest with the tiles still well short of home: they visibly slid down under
-     * a sheet that had already stopped.
+     * The panel's height, still moving ([heightAnim]), is taken over and finished on the tiles' own
+     * clock, so the two come to rest together. Run separately, the sheet edge stopped with the tiles
+     * still short of home, and they slid on under a sheet that had already settled. The other way
+     * round — the tiles following what was left of the height — failed wherever the height was all
+     * but done by now, as it is once the sheet has reached the top of the screen: the tiles' whole
+     * journey was squeezed into the height's last few frames, so they leapt most of the way in one
+     * and crept the rest. Only the tiles from a page other than the first travel far enough to show
+     * it, theirs being further down the editor than the pager.
      */
     private fun arrive(
         value: Boolean,
         snaps: Map<String, TileSnap>,
         frame: View,
         inMs: Long,
-        heightAnim: ValueAnimator?,
+        heightAnim: ValueAnimator,
+        heightTo: Int,
+        /** Whether this is the whole swap, everything starting from rest, or its second half. */
+        fromRest: Boolean = false,
     ) {
         val arriving = shownTiles()
         val fadeIn = mutableListOf<View>()
         val unclipped = mutableMapOf<ViewGroup, Pair<Boolean, Boolean>>()
         val morphs = mutableListOf<(Float) -> Unit>()
+        // Each carried-over tile's top in the panel, where it lands and where it starts.
+        val carried = mutableListOf<Pair<Float, Float>>()
         arriving.forEach { (id, view) ->
             val snap = snaps[id]
             if (snap != null) {
+                carried += TileSnap.positionIn(view, frame).second to snap.y
                 unclipUpTo(view, frame, unclipped)
                 morphs += snap.morphInto(view, frame)
             } else {
@@ -250,32 +334,65 @@ class TilePanelController(
         } else {
             fadeIn += footerViews().filter { it.isVisible }
         }
-        fadeIn.distinct().forEach {
+        // Editor rows above where the carried-over tiles land — the earlier pages' tiles, entering
+        // from any page but the first — are crossed by those tiles on their way down. Faded in on
+        // the clock, they came up underneath the tiles still passing over them. Instead each is
+        // uncovered as the tiles slide off it, its opacity following how much of it they have
+        // cleared, so the arrangement unrolls behind them.
+        val landing = carried.minOfOrNull { it.first }
+        val revealed: Map<View, Pair<Float, Float>> = if (value && landing != null) {
+            val rows = editorRows().toSet()
+            fadeIn.filter { it in rows }.associateWith { view ->
+                TileSnap.positionIn(view, frame).second to view.height.toFloat().coerceAtLeast(1f)
+            }.filterValues { (top, _) -> top < landing }
+        } else emptyMap()
+        val carriedTop = { f: Float -> carried.minOf { (to, from) -> to + (from - to) * (1f - f) } }
+        val reveal = reveal@{ f: Float ->
+            if (revealed.isEmpty()) return@reveal
+            val top = carriedTop(f)
+            revealed.forEach { (view, extent) ->
+                view.alpha = ((top - extent.first) / extent.second).coerceIn(0f, 1f)
+            }
+        }
+        revealed.keys.forEach { it.animate().cancel() }
+        reveal(0f)
+        (fadeIn.distinct() - revealed.keys).forEach {
             it.animate().cancel()
             it.alpha = 0f
             it.animate().alpha(1f).setDuration(inMs)
                 .setInterpolator(FastOutSlowInInterpolator()).start()
         }
-        val heightStart = heightAnim?.takeIf { it.isRunning }?.animatedFraction
+        // Its listeners go first: cancelling runs the end listener, which would let go of the height
+        // here, mid-move.
+        val heightFrom = if (heightAnim.isRunning) {
+            heightAnim.removeAllUpdateListeners()
+            heightAnim.removeAllListeners()
+            heightAnim.cancel()
+            frame.layoutParams.height
+        } else null
         ValueAnimator.ofFloat(0f, 1f).apply {
             duration = inMs
-            interpolator = FastOutSlowInInterpolator()
+            // From rest when this is the whole swap. Otherwise at full speed from the first frame,
+            // the speed the height is already moving at, then easing in: whatever is arriving is
+            // still on its way when this starts.
+            interpolator = if (fromRest) FastOutSlowInInterpolator() else LinearOutSlowInInterpolator()
             addUpdateListener { anim ->
-                val f = if (heightAnim != null && heightStart != null && heightStart < 1f) {
-                    if (heightAnim.isRunning) {
-                        ((heightAnim.animatedFraction - heightStart) / (1f - heightStart))
-                            .coerceIn(0f, 1f)
-                    } else 1f
-                } else anim.animatedValue as Float
+                val f = anim.animatedValue as Float
+                if (heightFrom != null) {
+                    frame.updateLayoutParams { height = heightFrom + ((heightTo - heightFrom) * f).toInt() }
+                }
                 morphs.forEach { it(f) }
+                reveal(f)
             }
             doOnEnd {
                 morphs.forEach { it(1f) }
+                revealed.keys.forEach { it.alpha = 1f }
+                if (heightFrom != null) releaseHeight(frame)
                 unclipped.forEach { (group, clip) ->
                     group.clipChildren = clip.first
                     group.clipToPadding = clip.second
                 }
-                swapping = false
+                endSwap()
             }
             start()
         }
@@ -406,6 +523,14 @@ class TilePanelController(
         }
     }
 
+    /** Hands the panel's height back to its content once a swap has finished moving it. */
+    private fun releaseHeight(frame: View) {
+        frame.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
+        binding.quickTilesEditContainer.updateLayoutParams {
+            height = ViewGroup.LayoutParams.WRAP_CONTENT
+        }
+    }
+
     /** Every row of the editor's list: arrangement, shelf headers and shelf tiles. */
     private fun editorRows(): List<View> = binding.quickTilesEditor.children.toList()
 
@@ -461,20 +586,29 @@ class TilePanelController(
     /** Swaps which side is showing. Whatever is coming in has already been built by [prepare]. */
     private fun show(value: Boolean) {
         editing = value
-        updateFooterVisibility()
+        applyFooterVisibility()
         binding.quickTilesPager.isVisible = !value
-        binding.quickTilesIndicator.isVisible =
-            !value && (binding.quickTilesPager.adapter?.itemCount ?: 0) > 1
-        binding.quickTilesEdit.isVisible = !value
         binding.quickTilesEditContainer.isVisible = value
+    }
+
+    /** The footer as the side showing has it: page dots and the edit button with the pages only. */
+    private fun applyFooterVisibility() {
+        updateFooterVisibility()
+        binding.quickTilesIndicator.isVisible =
+            !editing && (binding.quickTilesPager.adapter?.itemCount ?: 0) > 1
+        binding.quickTilesEdit.isVisible = !editing
     }
 
     /** Builds the side about to come in, out of sight, so it can be measured before the swap. */
     private fun prepare(value: Boolean) {
         detachEditor()
+        // Pinned by a swap that never got to finish (see [setEditing]).
+        binding.quickTilesEditContainer.updateLayoutParams {
+            height = ViewGroup.LayoutParams.WRAP_CONTENT
+        }
         if (!value) {
             // Re-paginate: sizes and membership may both have changed under the editor.
-            showPages()
+            showPages(editedFromPage)
             return
         }
 

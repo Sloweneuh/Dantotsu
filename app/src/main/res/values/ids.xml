@@ -45,4 +45,5 @@
     <item name="section_height_anim" type="id" />
     <item name="section_collapsing" type="id" />
     <item name="quick_tile_relight" type="id" />
+    <item name="quick_tile_resize" type="id" />
 </resources>

@@ -1,5 +1,7 @@
 package ani.dantotsu.settings.quicktiles
 
+import android.animation.Animator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.view.Gravity
@@ -9,10 +11,10 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
-import android.view.animation.DecelerateInterpolator
-import android.view.animation.OvershootInterpolator
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.LinearLayout
+import androidx.core.animation.doOnEnd
 import androidx.core.content.ContextCompat
-import androidx.core.view.doOnPreDraw
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePaddingRelative
@@ -73,8 +75,19 @@ class QuickTileEditAdapter(
         rebuild()
     }
 
-    /** A size change waiting for its tile to be rebound, so the new binding can animate into it. */
-    private class Resize(val tile: PlacedTile, val from: TileSize, val durationMs: Long)
+    /**
+     * A size change waiting for its tile to be rebound, so the new binding can animate into it.
+     *
+     * [fromWidth] and [fromLargeness] are where the tile visibly is when the animation takes over
+     * — part-way, after a resize drag — and null for a tile still sitting at [from]'s shape.
+     */
+    private class Resize(
+        val tile: PlacedTile,
+        val from: TileSize,
+        val durationMs: Long,
+        val fromWidth: Float? = null,
+        val fromLargeness: Float? = null,
+    )
 
     private var animateNext: Resize? = null
 
@@ -115,33 +128,13 @@ class QuickTileEditAdapter(
         val growing = (dragStartSize ?: target.size) == TileSize.SMALL
 
         with(holder.binding) {
-            if (dragBaseWidth == 0) dragBaseWidth = quickTileRoot.width
-            val stretched = dragBaseWidth + travel
-            quickTileRoot.updateLayoutParams { width = stretched.toInt() }
-            // The label is laid out for the wide shape throughout, and simply dissolves; that is
-            // what the recording shows, rather than it popping in at the end.
-            quickTileText.isVisible = true
-            quickTileText.alpha = if (growing) fraction else 1f - fraction
-            // Pinned to the wide layout for the whole gesture, so nothing re-lays-out under the
-            // finger. The icon is then placed by hand below, which is the only way it can travel
-            // smoothly rather than jumping the moment the gravity changes.
-            quickTileRoot.gravity = Gravity.CENTER_VERTICAL
-
+            if (dragBaseWidth == 0) {
+                dragBaseWidth = quickTileRoot.width
+                pinForResize(column)
+            }
             // How far along the change is, as "how large does this look": 0 small, 1 large.
             val largeness = if (growing) fraction else 1f - fraction
-            val isExtension = target.tile is QuickTile.Extension
-            val fromDp = quickTileIconDp(!growing, isExtension)
-            val toDp = quickTileIconDp(growing, isExtension)
-            val density = root.resources.displayMetrics.density
-
-            // Between centred in the tile (small) and sitting at the start padding (large).
-            val iconWidth = fromDp * density
-            val centred = (stretched - iconWidth) / 2f
-            val start = quickTileRoot.paddingStart.toFloat()
-            quickTileIcon.translationX = (centred - start) * (1f - largeness)
-            val scale = 1f + (toDp.toFloat() / fromDp - 1f) * fraction
-            quickTileIcon.scaleX = scale
-            quickTileIcon.scaleY = scale
+            drawResize(dragBaseWidth + travel, largeness)
 
             // The handle is a sibling anchored to the cell, and the cell does not move while
             // the tile stretches inside it. Carry it along by hand or it sits at the old edge
@@ -162,51 +155,90 @@ class QuickTileEditAdapter(
     }
 
     /**
-     * Ends a live resize: snaps to whichever size the finger is nearest and clears the temporary
-     * stretch, so the grid takes over from a clean state.
+     * Ends a live resize: settles on whichever size the finger is nearest — or, for a tap on the
+     * handle ([flip]), the other one — and carries the tile there from wherever the stretch left it.
+     *
+     * Continued rather than reset: the stretch is undone by the rebind, which then animates from the
+     * stretched width and part-faded label onward. Clearing it first put the tile back at its old
+     * shape for a frame, and the neighbours the stretch had pushed aside jumped back with it.
      *
      * @return whether the tile ended up at a different size than it started.
      */
-    private fun endStretch(target: PlacedTile, commit: Boolean): Boolean {
+    private fun endStretch(target: PlacedTile, commit: Boolean, flip: Boolean = false): Boolean {
         val rv = recycler
         val start = dragStartSize
         val travel = dragStretch
+        val baseWidth = dragBaseWidth
         dragStretch = 0f
         dragBaseWidth = 0
-        if (rv != null) {
-            for (i in 0 until rv.childCount) rv.getChildAt(i).translationX = 0f
+        if (start == null) {
+            rv?.let { settleNeighbours(it, 0L) }
+            return false
         }
-        if (start == null) return false
 
         val column = if (rv != null && rv.width > 0) {
             (rv.width - rv.paddingLeft - rv.paddingRight) / QUICK_TILE_COLUMNS.toFloat()
         } else 1f
-        val past = abs(travel) / column > 0.5f
-        val wanted = if (commit && past) {
-            if (start == TileSize.SMALL) TileSize.LARGE else TileSize.SMALL
-        } else start
-
-        // Rebind unconditionally: the stretched width and the label's part-way alpha are set
-        // straight on the views and only a fresh bind puts them back.
-        if (target.size != wanted) {
-            applySize(target, wanted, DRAG_SETTLE_MS, record = true)
-            return true
+        val other = if (start == TileSize.SMALL) TileSize.LARGE else TileSize.SMALL
+        val wanted = when {
+            flip -> other
+            commit && abs(travel) / column > 0.5f -> other
+            else -> start
         }
-        rebuild()
-        return false
+        val duration = if (flip) TAP_RESIZE_MS else DRAG_SETTLE_MS
+        rv?.let { settleNeighbours(it, duration) }
+
+        val fraction = (abs(travel) / column).coerceIn(0f, 1f)
+        val largeness = if (start == TileSize.SMALL) fraction else 1f - fraction
+        val changed = target.size != wanted
+        applySize(
+            target, wanted, duration, record = changed,
+            fromWidth = if (baseWidth > 0) baseWidth + travel else null,
+            fromLargeness = largeness,
+        )
+        return changed
+    }
+
+    /**
+     * Eases the tiles a stretch pushed along back to their places. A tile that also moves to a new
+     * cell is taken over by the item animator, which starts its slide from where this left it.
+     */
+    private fun settleNeighbours(rv: RecyclerView, duration: Long) {
+        for (i in 0 until rv.childCount) {
+            val child = rv.getChildAt(i)
+            if (child.translationX == 0f) continue
+            if (duration <= 0L) {
+                child.translationX = 0f
+            } else {
+                child.animate().translationX(0f).setDuration(duration)
+                    .setInterpolator(RESIZE_INTERPOLATOR).start()
+            }
+        }
     }
 
     /**
      * Moves a tile to [size] and animates the grid around it. Nothing is persisted here — a resize
      * drag can cross back and forth, and only the size the finger is left on should be written.
+     *
+     * With [fromWidth], the tile animates even when [size] is what it already was: a drag let go
+     * short of halfway still has to travel back.
      */
-    private fun applySize(target: PlacedTile, size: TileSize, duration: Long, record: Boolean = false) {
-        if (target.size == size) return
-        if (record) snapshot()
-        recycler?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+    private fun applySize(
+        target: PlacedTile,
+        size: TileSize,
+        duration: Long,
+        record: Boolean = false,
+        fromWidth: Float? = null,
+        fromLargeness: Float? = null,
+    ) {
+        if (target.size == size && fromWidth == null) return
         val from = target.size
+        if (from != size) {
+            if (record) snapshot()
+            recycler?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        }
         target.size = size
-        animateNext = Resize(target, from, duration)
+        animateNext = Resize(target, from, duration, fromWidth, fromLargeness)
         // The tiles that get pushed along should keep pace with the tile being resized, so a drag
         // reflows quickly and a tap unhurriedly.
         (recycler?.itemAnimator as? SimpleItemAnimator)?.apply {
@@ -347,83 +379,128 @@ class QuickTileEditAdapter(
         RecyclerView.ViewHolder(binding.root)
 
     /**
-     * Grows or shrinks a tile's contents into their new shape.
+     * Holds a tile in its wide layout, at fixed sizes, for the length of a resize: the label at a
+     * large tile's width and the icon at its large size. [drawResize] then changes only the width
+     * of the background and how the contents look within it.
+     *
+     * The label is fixed because its usual width is whatever the tile has left over, so a tile
+     * changing width re-wrapped and re-ellipsized it frame by frame, and it read as text being
+     * resized rather than faded. The icon is fixed so the label beside it never shifts either; the
+     * size it shows is a scale.
+     */
+    private fun ItemQuickTileBinding.pinForResize(column: Float) {
+        val density = root.resources.displayMetrics.density
+        val icon = (quickTileIconDp(true, showsArtwork) * density).toInt()
+        quickTileIcon.updateLayoutParams {
+            width = icon
+            height = icon
+        }
+        val largeWidth = column * TileSize.LARGE.columns - root.paddingStart - root.paddingEnd
+        val margin = (quickTileText.layoutParams as ViewGroup.MarginLayoutParams).marginStart
+        quickTileText.updateLayoutParams<LinearLayout.LayoutParams> {
+            width = (largeWidth - quickTileRoot.paddingStart - quickTileRoot.paddingEnd - icon - margin)
+                .toInt().coerceAtLeast(0)
+            weight = 0f
+        }
+        quickTileText.isVisible = true
+        quickTileRoot.gravity = Gravity.CENTER_VERTICAL
+    }
+
+    /**
+     * One frame of a resize, on a tile held by [pinForResize]: [width] is the tile's, [largeness]
+     * how far it looks from small (0) to large (1). The label dissolves rather than popping in at
+     * the end, as the system panel's does; the icon is placed by hand between centred (small) and
+     * the start padding (large), the only way it travels rather than jumping when the gravity does.
+     */
+    private fun ItemQuickTileBinding.drawResize(width: Float, largeness: Float) {
+        quickTileRoot.updateLayoutParams { this.width = width.toInt() }
+        quickTileText.alpha = largeness
+        val density = root.resources.displayMetrics.density
+        val icon = quickTileIconDp(true, showsArtwork) * density
+        val smallScale = quickTileIconDp(false, showsArtwork) * density / icon
+        val scale = smallScale + (1f - smallScale) * largeness
+        quickTileIcon.scaleX = scale
+        quickTileIcon.scaleY = scale
+        quickTileIcon.translationX =
+            ((width - icon) / 2f - quickTileRoot.paddingStart) * (1f - largeness)
+    }
+
+    /** Stops a resize still playing on this view, before a bind repaints it for another tile. */
+    private fun ItemQuickTileBinding.cancelResize() {
+        (quickTileRoot.getTag(R.id.quick_tile_resize) as? Animator)?.let {
+            quickTileRoot.setTag(R.id.quick_tile_resize, null)
+            it.cancel()
+        }
+    }
+
+    /**
+     * Carries a tile from its old shape into its new one: width, icon size and place, and label,
+     * all on one clock.
      *
      * The grid itself is animated by the RecyclerView — [notifyItemChanged] on a span change slides
-     * the following tiles across rather than snapping them. What that cannot do is the inside of
-     * the tile, since the rebind has already applied the new icon size and label visibility: this
-     * puts them back where they were for one frame and animates forward from there.
+     * the following tiles across rather than snapping them. The tile's own cell, though, takes its
+     * new width at once, and the rebind has already applied the new icon size and label visibility.
+     * So the tile is held in the wide layout and its background drawn at the old width, then
+     * everything is moved forward together. The width used to jump on the first frame while only
+     * the icon and label animated, each on an ease of its own, and the neighbours slid on a third.
+     *
+     * Eased as the item animator eases its moves, so the edge of a growing tile and the neighbour
+     * it pushes along travel as one.
      */
     private fun ItemQuickTileBinding.playResizeAnimation(target: PlacedTile, large: Boolean) {
         val pending = animateNext?.takeIf { it.tile === target }
         // Recycled holders inherit whatever the last tile was mid-animation.
-        quickTileIcon.animate().cancel()
-        quickTileText.animate().cancel()
-        if (pending == null) {
+        quickTileIcon.scaleX = 1f
+        quickTileIcon.scaleY = 1f
+        quickTileIcon.translationX = 0f
+        quickTileText.alpha = 1f
+        if (pending == null) return
+        animateNext = null
+        val rv = recycler ?: return
+        val column = (rv.width - rv.paddingLeft - rv.paddingRight) / QUICK_TILE_COLUMNS.toFloat()
+        if (column <= 0f) return
+
+        // Widths straight from the grid's columns, so the first frame is already right; waiting on
+        // a layout pass to measure them is a frame drawn at the new width.
+        val inset = (root.paddingStart + root.paddingEnd).toFloat()
+        val toWidth = column * target.size.columns - inset
+        val fromWidth = pending.fromWidth ?: (column * pending.from.columns - inset)
+        val toLargeness = if (large) 1f else 0f
+        val fromLargeness = pending.fromLargeness ?: if (pending.from == TileSize.LARGE) 1f else 0f
+
+        pinForResize(column)
+        val step = { f: Float ->
+            val width = fromWidth + (toWidth - fromWidth) * f
+            drawResize(width, fromLargeness + (toLargeness - fromLargeness) * f)
+            // The handle is anchored to the cell, which is already at the new width.
+            quickTileResize.translationX = width - toWidth
+        }
+        step(0f)
+        val animator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = pending.durationMs
+            interpolator = RESIZE_INTERPOLATOR
+            addUpdateListener { step(it.animatedValue as Float) }
+        }
+        animator.doOnEnd {
+            // Cancelled by a rebind: that bind has already painted this view for its own tile.
+            if (quickTileRoot.getTag(R.id.quick_tile_resize) !== animator) return@doOnEnd
+            quickTileRoot.setTag(R.id.quick_tile_resize, null)
+            quickTileRoot.updateLayoutParams { width = ViewGroup.LayoutParams.MATCH_PARENT }
+            quickTileText.updateLayoutParams<LinearLayout.LayoutParams> {
+                width = 0
+                weight = 1f
+            }
+            sizeIcon(large, showsArtwork)
             quickTileIcon.scaleX = 1f
             quickTileIcon.scaleY = 1f
             quickTileIcon.translationX = 0f
+            quickTileResize.translationX = 0f
             quickTileText.alpha = 1f
-            return
+            quickTileText.isVisible = large
+            quickTileRoot.gravity = if (large) Gravity.CENTER_VERTICAL else Gravity.CENTER
         }
-        animateNext = null
-
-        val isExtension = target.tile is QuickTile.Extension
-        val fromDp = quickTileIconDp(pending.from == TileSize.LARGE, isExtension)
-        val toDp = quickTileIconDp(large, isExtension)
-        val startScale = fromDp.toFloat() / toDp
-        quickTileIcon.scaleX = startScale
-        quickTileIcon.scaleY = startScale
-
-        // The icon also changes where it sits — centred on a small tile, at the start padding on a
-        // large one — and the rebind has already moved it. Put it back at the old spot for a frame
-        // so it travels rather than teleporting. Measured on the pre-draw pass because the new
-        // width is not known until this layout runs.
-        val interpolator =
-            if (pending.durationMs >= TAP_RESIZE_MS) OvershootInterpolator(1.4f)
-            else DecelerateInterpolator()
-        root.doOnPreDraw {
-            val start = quickTileRoot.paddingStart.toFloat()
-            val centred = (quickTileRoot.width - quickTileIcon.width) / 2f
-            quickTileIcon.translationX = if (large) centred - start else start - centred
-            quickTileIcon.animate()
-                .translationX(0f)
-                .setDuration(pending.durationMs)
-                .setInterpolator(interpolator)
-                .start()
-        }
-
-        quickTileIcon.animate()
-            .scaleX(1f).scaleY(1f)
-            .setDuration(pending.durationMs)
-            .setInterpolator(interpolator)
-            .start()
-
-        if (large) {
-            quickTileText.alpha = 0f
-            quickTileText.animate()
-                .alpha(1f)
-                .setDuration(pending.durationMs * 2 / 3)
-                .setInterpolator(DecelerateInterpolator())
-                .start()
-        } else {
-            // The rebind has already hidden the label. Put it back for the length of the fade and
-            // hold the wide layout's gravity, so the text dissolves as the tile narrows instead of
-            // vanishing on the first frame; the icon settles to centre once it is gone.
-            quickTileText.alpha = 1f
-            quickTileText.isVisible = true
-            quickTileRoot.gravity = Gravity.CENTER_VERTICAL
-            quickTileText.animate()
-                .alpha(0f)
-                .setDuration(pending.durationMs * 2 / 3)
-                .setInterpolator(DecelerateInterpolator())
-                .withEndAction {
-                    quickTileText.isVisible = false
-                    quickTileText.alpha = 1f
-                    quickTileRoot.gravity = Gravity.CENTER
-                }
-                .start()
-        }
+        quickTileRoot.setTag(R.id.quick_tile_resize, animator)
+        animator.start()
     }
 
     private inner class TileHolder(val binding: ItemQuickTileBinding) :
@@ -431,6 +508,7 @@ class QuickTileEditAdapter(
 
         @SuppressLint("ClickableViewAccessibility") // The tap path delegates to performClick().
         fun bindPlaced(target: PlacedTile) = with(binding) {
+            cancelResize()
             paintQuickTile(host, target, editing = true, dimmed = false)
             val isSelected = target === selected
             quickTileRoot.foreground = if (isSelected) {
@@ -455,6 +533,7 @@ class QuickTileEditAdapter(
         }
 
         fun bindShelf(tile: QuickTile) = with(binding) {
+            cancelResize()
             val alreadyPlaced = placed.any { it.tile.id == tile.id }
             val available = tile.isAvailable()
             val addable = !alreadyPlaced && available
@@ -518,6 +597,11 @@ class QuickTileEditAdapter(
             if (abs(e.y - centreY) > view.height / 2f) return false
             if (abs(e.x - centreX) > HANDLE_REACH_DP.dpToPx(rv)) return false
 
+            // A resize still settling is finished on the spot, so the stretch starts from the
+            // tile's real shape rather than wherever the last one had got to.
+            (rv.findViewHolderForAdapterPosition(position) as? TileHolder)?.binding?.quickTileRoot
+                ?.let { (it.getTag(R.id.quick_tile_resize) as? Animator)?.end() }
+
             target = chosen
             targetPosition = position
             dragStartX = e.rawX
@@ -546,10 +630,7 @@ class QuickTileEditAdapter(
                     } else {
                         // A tap on the handle flips the size too. The system panel does not offer
                         // that, but it costs nothing and saves a deliberate drag.
-                        endStretch(chosen, commit = false)
-                        val next =
-                            if (chosen.size == TileSize.LARGE) TileSize.SMALL else TileSize.LARGE
-                        applySize(chosen, next, TAP_RESIZE_MS, record = true)
+                        endStretch(chosen, commit = false, flip = true)
                         onArrangementChanged(placed)
                     }
                     target = null
@@ -629,6 +710,57 @@ class QuickTileEditAdapter(
             return true
         }
 
+        /** Where the finger let go of the tile, as an offset from its cell. */
+        private var releaseDx = 0f
+        private var releaseDy = 0f
+
+        /**
+         * A tile let go over the shelf stays where it was dropped and fades away there.
+         *
+         * However a drag ends, ItemTouchHelper first animates the tile back to its cell and only
+         * then calls [clearView] — which is where the removal happens, so a tile dropped on the
+         * shelf flew all the way back up into the arrangement before it disappeared. That return
+         * trip is still run, as the clock for the fade: how far it has left to go is how much of
+         * the tile is still showing.
+         */
+        override fun onChildDraw(
+            c: android.graphics.Canvas,
+            recyclerView: RecyclerView,
+            viewHolder: RecyclerView.ViewHolder,
+            dX: Float,
+            dY: Float,
+            actionState: Int,
+            isCurrentlyActive: Boolean,
+        ) {
+            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && !isCurrentlyActive &&
+                dropOntoShelf != null
+            ) {
+                val total = abs(releaseDx) + abs(releaseDy)
+                val left = if (total > 0f) ((abs(dX) + abs(dY)) / total).coerceIn(0f, 1f) else 0f
+                with(viewHolder.itemView) {
+                    translationX = releaseDx
+                    translationY = releaseDy
+                    alpha = left
+                    scaleX = DROP_END_SCALE + (1f - DROP_END_SCALE) * left
+                    scaleY = scaleX
+                }
+                return
+            }
+            if (isCurrentlyActive) {
+                releaseDx = dX
+                releaseDy = dY
+            }
+            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+        }
+
+        override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+            super.onSelectedChanged(viewHolder, actionState)
+            // On the drop itself rather than once the tile has faded out.
+            if (actionState == ItemTouchHelper.ACTION_STATE_IDLE && dropOntoShelf != null) {
+                recycler?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            }
+        }
+
         override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
             super.clearView(recyclerView, viewHolder)
             val removed = dropOntoShelf
@@ -636,10 +768,21 @@ class QuickTileEditAdapter(
             if (removed != null && !reorderRecorded) snapshot()
             val reordered = reorderRecorded
             reorderRecorded = false
-            if (removed != null && placed.remove(removed)) {
-                viewHolder.itemView.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            val removedAt = removed?.let { placed.indexOf(it) } ?: -1
+            if (removed != null && removedAt >= 0) {
+                placed.removeAt(removedAt)
                 if (selected === removed) select(null)
-                rebuild()
+                // Left faded out: the item animator's removal fades on from there, and puts the
+                // alpha back once the view is free for reuse. A rebuild would have skipped that and
+                // reflowed the rest of the grid in one jump.
+                viewHolder.itemView.scaleX = 1f
+                viewHolder.itemView.scaleY = 1f
+                rows = buildRows()
+                notifyItemRemoved(removedAt)
+                // Its shelf entry becomes addable again.
+                rows.indexOfFirst { it is Row.Shelf && it.tile.id == removed.tile.id }
+                    .takeIf { it >= 0 }?.let(::notifyItemChanged)
+                refreshDecorations()
             } else if (reordered) {
                 // Lay the grid out from scratch once the finger is up.
                 //
@@ -664,6 +807,9 @@ class QuickTileEditAdapter(
 
         const val HISTORY_LIMIT = 20
 
+        /** How small a tile dropped on the shelf has shrunk by the time it has faded out. */
+        const val DROP_END_SCALE = 0.85f
+
         /** How far the handle must travel before a press counts as a resize instead of a tap. */
         const val RESIZE_DRAG_DP = 28
 
@@ -682,9 +828,17 @@ class QuickTileEditAdapter(
         const val HANDLE_REACH_DP = 22
 
         // Timed off a screen recording of the Android 17 panel resizing a tile: the bulk of the
-        // motion runs ~300ms, followed by a long sub-pixel settle that gives away a spring. The
-        // overshoot below stands in for that settle without pulling in a physics animator.
+        // motion runs ~300ms, followed by a long sub-pixel settle that gives away a spring. Only
+        // the bulk is matched; see RESIZE_INTERPOLATOR for why there is no overshoot.
         const val TAP_RESIZE_MS = 300L
+
+        /**
+         * One ease for a resize: the tile's width, its contents, and the neighbours easing back from
+         * a stretch. The item animator moves tiles on ValueAnimator's default, this same curve, so
+         * the tiles it slides along keep pace with the edge pushing them. The overshoot once used
+         * for a tap, standing in for the system panel's spring, ran ahead of them and overlapped.
+         */
+        val RESIZE_INTERPOLATOR = AccelerateDecelerateInterpolator()
 
         // A drag has the finger to follow, so the only animation left is the snap on release.
         const val DRAG_RESIZE_MS = 130L
