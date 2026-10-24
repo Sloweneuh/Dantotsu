@@ -419,13 +419,48 @@
                     android:autofillHints="The One Piece is real"
                     android:background="@drawable/card_outline"
                     android:fontFamily="@font/poppins_semi_bold"
-                    android:hint="Add a comment..."
+                    android:hint="@string/comment_hint"
                     android:inputType="textMultiLine"
                     android:maxLength="300"
                     android:maxLines="8"
                     android:padding="8dp"
                     android:textSize="12sp"
                     tools:ignore="HardcodedText" />
+
+                <!-- Spoiler and GIF, shown with the tag and send buttons once the box is focused. -->
+                <ImageButton
+                    android:id="@+id/commentSpoiler"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_gravity="center"
+                    android:layout_marginEnd="4dp"
+                    android:alpha="0.6"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/comment_spoiler"
+                    android:padding="4dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_round_visibility_24"
+                    android:tooltipText="@string/comment_spoiler"
+                    android:visibility="gone"
+                    app:tint="?attr/colorOnBackground"
+                    tools:visibility="visible" />
+
+                <ImageButton
+                    android:id="@+id/commentGif"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_gravity="center"
+                    android:layout_marginEnd="4dp"
+                    android:alpha="0.6"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/comment_gif"
+                    android:padding="4dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_round_gif_24"
+                    android:tooltipText="@string/comment_gif"
+                    android:visibility="gone"
+                    app:tint="?attr/colorOnBackground"
+                    tools:visibility="visible" />
 
                 <ImageButton
                     android:id="@+id/commentLabel"

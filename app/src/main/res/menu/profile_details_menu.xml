@@ -1,19 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- A comment's ⋮ menu. Copy and the author's profile for every comment; delete for one's own
+     (or a mod's); report for anyone else's; ban for mods. -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
+        android:id="@+id/commentCopy"
+        android:icon="@drawable/ic_round_content_copy_24"
+        android:title="@string/comment_copy_text" />
+    <item
+        android:id="@+id/commentProfile"
+        android:icon="@drawable/ic_round_person_24"
+        android:title="@string/comment_view_profile" />
+    <item
         android:id="@+id/commentDelete"
-        android:enabled="true"
-        android:icon="@drawable/ic_round_comment_24"
+        android:icon="@drawable/ic_round_delete_24"
         android:title="@string/delete" />
     <item
         android:id="@+id/commentReport"
-        android:enabled="true"
         android:icon="@drawable/ic_round_info_24"
         android:title="@string/report" />
     <item
         android:id="@+id/commentBanUser"
-        android:enabled="true"
         android:icon="@drawable/ic_round_comment_24"
         android:title="@string/ban" />
 </menu>

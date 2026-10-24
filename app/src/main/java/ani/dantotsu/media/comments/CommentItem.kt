@@ -1,18 +1,34 @@
 package ani.dantotsu.media.comments
 
+import android.graphics.Typeface
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.TextPaint
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
+import android.text.style.URLSpan
+import android.widget.TextView
+import ani.dantotsu.others.SpoilerPlugin
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Color
+import android.content.res.ColorStateList
+import android.graphics.drawable.GradientDrawable
 import android.view.View
+import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
+import ani.dantotsu.settings.SectionCard
+import com.google.android.material.color.MaterialColors
 import ani.dantotsu.connections.comments.Comment
 import ani.dantotsu.connections.comments.CommentsAPI
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ItemCommentsBinding
 import ani.dantotsu.getAppString
+import ani.dantotsu.getThemeColor
 import ani.dantotsu.loadImage
 import ani.dantotsu.openImage
 import ani.dantotsu.profile.ProfileActivity
@@ -52,6 +68,7 @@ class CommentItem(
     private var isEditing = false
     var isReplying = false
     private var repliesVisible = false
+    private var expanded = false
     var MAX_DEPTH = 3
 
     init {
@@ -66,21 +83,54 @@ class CommentItem(
             commentRepliesList.layoutManager =
                 LinearLayoutManager(commentsFragment.activity)
             commentRepliesList.adapter = adapter
+            // Only a top-level comment is a card; its replies sit inside it, set off by the thread
+            // line rather than a card in a card.
+            val topLevel = commentDepth == 0
+            // The list editor's card fill (SectionCard), so comments read as the same kind of
+            // surface; the action pills take the same blend a step stronger to stand out on it.
+            val dpx = root.resources.displayMetrics.density
+            root.background = if (topLevel) GradientDrawable().apply {
+                cornerRadius = 18 * dpx
+                setColor(SectionCard.fill(root, open = false))
+            } else null
+            val pill = ColorStateList.valueOf(
+                MaterialColors.layer(
+                    MaterialColors.getColor(root, com.google.android.material.R.attr.colorSurface),
+                    MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurface),
+                    if (topLevel) 0.10f else 0.07f,
+                )
+            )
+            listOf(commentVotes, commentReply, commentEdit).forEach { it.backgroundTintList = pill }
+            (root.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
+                val density = root.resources.displayMetrics.density
+                lp.marginStart = if (topLevel) (8 * density).toInt() else 0
+                lp.marginEnd = if (topLevel) (8 * density).toInt() else 0
+                lp.topMargin = if (topLevel) (4 * density).toInt() else (2 * density).toInt()
+                lp.bottomMargin = if (topLevel) (4 * density).toInt() else 0
+                root.layoutParams = lp
+            }
+            // Explicit values: views are recycled between the two kinds.
+            val dp = root.resources.displayMetrics.density
+            root.setPaddingRelative(
+                if (topLevel) (12 * dp).toInt() else 0, (12 * dp).toInt(),
+                if (topLevel) (10 * dp).toInt() else 0, (8 * dp).toInt(),
+            )
             val isUserComment = CommentsAPI.userId == comment.userId
             val levelColor = getAvatarColor(comment.totalVotes, backgroundColor)
             markwon.setMarkdown(commentText, comment.content)
+            if (commentsFragment.timestampsLinkable()) linkTimestamps(commentText)
             commentEdit.visibility = if (isUserComment) View.VISIBLE else View.GONE
             if (comment.tag == null) {
                 commentUserTagLayout.visibility = View.GONE
             } else {
                 commentUserTagLayout.visibility = View.VISIBLE
                 commentUserTag.text = comment.tag.toString()
+                commentUserTagLayout.setOnClickListener { commentsFragment.onTagClicked(comment.tag) }
             }
             replying(isReplying) //sets default text
             editing(isEditing)
             if ((comment.replyCount ?: 0) > 0) {
-                commentTotalReplies.visibility = View.VISIBLE
-                commentRepliesDivider.visibility = View.VISIBLE
+                commentRepliesToggle.visibility = View.VISIBLE
                 commentTotalReplies.context.run {
                     commentTotalReplies.text = if (repliesVisible)
                         getString(R.string.hide_replies)
@@ -91,9 +141,9 @@ class CommentItem(
                             getString(R.string.view_replies_count, comment.replyCount)
                 }
             } else {
-                commentTotalReplies.visibility = View.GONE
-                commentRepliesDivider.visibility = View.GONE
+                commentRepliesToggle.visibility = View.GONE
             }
+            updateThreadLine()
             commentReply.visibility = View.VISIBLE
             commentTotalReplies.setOnClickListener {
                 if (repliesVisible) {
@@ -112,27 +162,21 @@ class CommentItem(
                     commentsFragment.viewReplyCallback(item)
                     repliesVisible = true
                 }
+                updateThreadLine()
             }
+            commentRepliesToggle.setOnClickListener { commentTotalReplies.performClick() }
 
-            commentUserName.setOnClickListener {
-                ContextCompat.startActivity(
-                    commentsFragment.activity,
-                    Intent(commentsFragment.activity, ProfileActivity::class.java)
-                        .putExtra("userId", comment.userId.toInt()),
-                    null
-                )
-            }
-            commentUserAvatar.setOnClickListener {
-                ContextCompat.startActivity(
-                    commentsFragment.activity,
-                    Intent(commentsFragment.activity, ProfileActivity::class.java)
-                        .putExtra("userId", comment.userId.toInt()),
-                    null
-                )
-            }
+            commentUserName.setOnClickListener { openProfile() }
+            commentUserAvatar.setOnClickListener { openProfile() }
             commentText.setOnLongClickListener {
                 copyToClipboard(comment.content)
                 true
+            }
+            // Long comments open up in full on a tap, rather than staying cut at eight lines.
+            commentText.maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_LINES
+            commentText.setOnClickListener {
+                expanded = !expanded
+                commentText.maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_LINES
             }
 
             commentEdit.setOnClickListener {
@@ -157,6 +201,16 @@ class CommentItem(
                 popup.menu.findItem(R.id.commentReport)?.isVisible = !isUserComment
                 popup.setOnMenuItemClickListener { item ->
                     when (item.itemId) {
+                        R.id.commentCopy -> {
+                            copyToClipboard(comment.content)
+                            true
+                        }
+
+                        R.id.commentProfile -> {
+                            openProfile()
+                            true
+                        }
+
                         R.id.commentReport -> {
                             dialogBuilder(
                                 getAppString(R.string.report_comment),
@@ -230,7 +284,9 @@ class CommentItem(
                             comment.downvotes -= 1
                         }
                         comment.upvotes += if (voteType == 1) 1 else -1
-                        notifyChanged()
+                        // Only the vote pill changes. notifyChanged() rebound the whole comment —
+                        // replaying its entry animation, re-rendering the text, reloading the avatar.
+                        showVotes(viewBinding)
                     }
                 }
             }
@@ -247,7 +303,9 @@ class CommentItem(
                             comment.upvotes -= 1
                         }
                         comment.downvotes += if (voteType == -1) 1 else -1
-                        notifyChanged()
+                        // Only the vote pill changes. notifyChanged() rebound the whole comment —
+                        // replaying its entry animation, re-rendering the text, reloading the avatar.
+                        showVotes(viewBinding)
                     }
                 }
             }
@@ -261,7 +319,7 @@ class CommentItem(
             val userColor = "[${levelColor.second}]"
             commentUserLevel.text = userColor
             commentUserLevel.setTextColor(levelColor.first)
-            commentUserTime.text = formatTimestamp(comment.timestamp)
+            commentUserTime.text = "· " + formatTimestamp(comment.timestamp)
         }
     }
 
@@ -279,7 +337,7 @@ class CommentItem(
 
     fun replying(isReplying: Boolean) {
         binding.commentReply.text =
-            if (isReplying) commentsFragment.activity.getString(R.string.cancel) else "Reply"
+            commentsFragment.activity.getString(if (isReplying) R.string.cancel else R.string.reply)
         this.isReplying = isReplying
     }
 
@@ -289,6 +347,69 @@ class CommentItem(
                 R.string.edit
             )
         this.isEditing = isEditing
+    }
+
+    /**
+     * Marks the replies as open before they're bound — for a thread shown down to one comment,
+     * whose replies are put in place by the fragment rather than fetched by a tap.
+     */
+    fun markRepliesOpen() {
+        repliesVisible = true
+    }
+
+    /**
+     * Turns every timestamp in an anime comment ("12:34", "1:02:03") into a link that opens the
+     * episode at that point. One inside an unrevealed spoiler stays hidden: the first tap reveals
+     * the spoiler, as it would anywhere else in it.
+     */
+    private fun linkTimestamps(textView: TextView) {
+        val spannable = textView.text as? Spannable ?: SpannableStringBuilder(textView.text)
+        val matches = TIMESTAMP.findAll(spannable).toList()
+        if (matches.isEmpty()) return
+        val accent = textView.context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+        matches.forEach { match ->
+            val start = match.range.first
+            val end = match.range.last + 1
+            if (spannable.getSpans(start, end, URLSpan::class.java).isNotEmpty()) return@forEach
+            val hours = match.groupValues[1].toLongOrNull() ?: 0L
+            val minutes = match.groupValues[2].toLongOrNull() ?: 0L
+            val seconds = match.groupValues[3].toLongOrNull() ?: 0L
+            val positionMs = (hours * 3600 + minutes * 60 + seconds) * 1000
+            fun spoiler() = spannable.getSpans(start, end, SpoilerPlugin.RedditSpoilerSpan::class.java)
+                .firstOrNull()?.takeIf { !it.revealed }
+            spannable.setSpan(object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    val hidden = spoiler()
+                    if (hidden != null) {
+                        hidden.setRevealed(true)
+                        widget.postInvalidateOnAnimation()
+                    } else commentsFragment.onTimestampClicked(comment.tag, positionMs)
+                }
+
+                override fun updateDrawState(ds: TextPaint) {
+                    if (spoiler() != null) return
+                    ds.color = accent
+                    ds.typeface = Typeface.create(ds.typeface, Typeface.BOLD)
+                    ds.isUnderlineText = true
+                }
+            }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        textView.text = spannable
+        textView.movementMethod = LinkMovementMethod.getInstance()
+    }
+
+    /** The thread line beside the replies shows only while they do. */
+    private fun updateThreadLine() {
+        binding.commentThreadLine.visibility = if (repliesVisible) View.VISIBLE else View.GONE
+    }
+
+    private fun openProfile() {
+        ContextCompat.startActivity(
+            commentsFragment.activity,
+            Intent(commentsFragment.activity, ProfileActivity::class.java)
+                .putExtra("userId", comment.userId.toInt()),
+            null
+        )
     }
 
     fun registerSubComment(id: Int) {
@@ -308,7 +429,20 @@ class CommentItem(
         subCommentIds.clear()
     }
 
+    private fun showVotes(viewBinding: ItemCommentsBinding) {
+        setVoteButtons(viewBinding)
+        viewBinding.commentTotalVotes.text = (comment.upvotes - comment.downvotes).toString()
+    }
+
     private fun setVoteButtons(viewBinding: ItemCommentsBinding) {
+        val context = viewBinding.root.context
+        viewBinding.commentTotalVotes.setTextColor(
+            if (comment.userVoteType == 1 || comment.userVoteType == -1) {
+                context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+            } else context.getThemeColor(com.google.android.material.R.attr.colorOnBackground)
+        )
+        viewBinding.commentUpVote.alpha = 0.7f
+        viewBinding.commentDownVote.alpha = 0.7f
         when (comment.userVoteType) {
             1 -> {
                 viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_upvote_active_24)
@@ -343,18 +477,27 @@ class CommentItem(
             val hours = diff / (60 * 60 * 1000) % 24
             val minutes = diff / (60 * 1000) % 60
 
+            val context = commentsFragment.activity
             return when {
-                days > 0 -> "${days}d"
-                hours > 0 -> "${hours}h"
-                minutes > 0 -> "${minutes}m"
-                else -> "now"
+                days >= 365 -> context.getString(R.string.comment_age_years, (days / 365).toInt())
+                days >= 30 -> context.getString(R.string.comment_age_months, (days / 30).toInt())
+                days >= 7 -> context.getString(R.string.comment_age_weeks, (days / 7).toInt())
+                days > 0 -> context.getString(R.string.comment_age_days, days.toInt())
+                hours > 0 -> context.getString(R.string.comment_age_hours, hours.toInt())
+                minutes > 0 -> context.getString(R.string.comment_age_minutes, minutes.toInt())
+                else -> context.getString(R.string.comment_age_now)
             }
         } catch (e: Exception) {
-            "now"
+            commentsFragment.activity.getString(R.string.comment_age_now)
         }
     }
 
     companion object {
+        private const val COLLAPSED_LINES = 8
+
+        /** h:mm:ss or mm:ss, as a whole word. */
+        private val TIMESTAMP = Regex("""\b(?:([0-1]?\d|2[0-3]):)?([0-5]?\d):([0-5]\d)\b""")
+
         @SuppressLint("SimpleDateFormat")
         fun timestampToMillis(timestamp: String): Long {
             val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT)

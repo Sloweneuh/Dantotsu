@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- How the comments tab is filtered and sorted, in the filter sheets' shared style: handle, reset
+     and title header, collapsible sections, and Cancel / Apply pinned at the bottom. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bottom_sheet_background">
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="72dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="16dp">
+
+            <View
+                android:layout_width="32dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="14dp"
+                android:alpha="0.4"
+                android:background="@drawable/bg_top_banner_handle" />
+
+            <!-- Header: reset | title -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="4dp">
+
+                <ImageButton
+                    android:id="@+id/commentFilterReset"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="17dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/comment_filter_reset"
+                    android:padding="8dp"
+                    android:rotation="180"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_round_reset_star_24"
+                    android:tooltipText="@string/comment_filter_reset"
+                    app:tint="?attr/colorPrimary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:fontFamily="@font/poppins_bold"
+                    android:includeFontPadding="false"
+                    android:text="@string/comment_filter_title"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="20sp" />
+            </FrameLayout>
+
+            <!-- Chapter / episode -->
+            <ani.dantotsu.others.Xpandable
+                android:id="@+id/commentFilterSectionTag"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical"
+                android:paddingBottom="8dp"
+                app:cardInset="false"
+                app:icon="@drawable/ic_label_24"
+                app:isExpanded="true"
+                app:title="@string/comment_filter_chapter">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="16dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/comment_filter_tag_desc"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp" />
+
+                    <EditText
+                        android:id="@+id/commentFilterTag"
+                        android:layout_width="72dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_filter_number_field"
+                        android:fontFamily="@font/poppins_bold"
+                        android:gravity="center"
+                        android:hint="@string/comment_filter_tag_hint"
+                        android:imeOptions="actionDone"
+                        android:importantForAutofill="no"
+                        android:inputType="number"
+                        android:maxLength="6"
+                        android:maxLines="1"
+                        android:paddingHorizontal="8dp"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textColorHint="?attr/colorOnSurfaceVariant"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <!-- Shortcuts to where the user is and the one after, when they have progress. -->
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/commentFilterTagChips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="12dp"
+                    android:layout_marginTop="10dp"
+                    app:chipSpacingVertical="4dp" />
+            </ani.dantotsu.others.Xpandable>
+
+
+            <!-- Which comments -->
+            <ani.dantotsu.others.Xpandable
+                android:id="@+id/commentFilterSectionShow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:paddingBottom="8dp"
+                app:cardInset="false"
+                app:icon="@drawable/ic_round_filter_alt_24"
+                app:isExpanded="true"
+                app:title="@string/comment_filter_show">
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/commentFilterHideDownvoted"
+                    style="@style/CommentFilterSwitch"
+                    android:text="@string/comment_filter_hide_downvoted" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/commentFilterWithReplies"
+                    style="@style/CommentFilterSwitch"
+                    android:text="@string/comment_filter_with_replies" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/commentFilterFriends"
+                    style="@style/CommentFilterSwitch"
+                    android:text="@string/comment_filter_friends" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/commentFilterMine"
+                    style="@style/CommentFilterSwitch"
+                    android:text="@string/comment_filter_mine" />
+            </ani.dantotsu.others.Xpandable>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Cancel / Apply, pinned at the bottom as in the other filter sheets. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/commentFilterCancel"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_margin="8dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="8dp"
+            android:text="@string/cancel"
+            android:textSize="15sp"
+            app:cornerRadius="16dp"
+            app:strokeColor="?attr/colorOutline" />
+
+        <Button
+            android:id="@+id/commentFilterApply"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_margin="8dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="8dp"
+            android:text="@string/apply"
+            android:textSize="15sp"
+            app:cornerRadius="16dp" />
+    </LinearLayout>
+</FrameLayout>

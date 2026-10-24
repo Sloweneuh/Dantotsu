@@ -11,6 +11,8 @@ import ani.dantotsu.util.Logger
 import com.lagradost.nicehttp.NiceResponse
 import com.lagradost.nicehttp.Requests
 import eu.kanade.tachiyomi.network.NetworkHelper
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -29,10 +31,20 @@ import uy.kohesive.injekt.api.get
 object CommentsAPI {
     private const val API_ADDRESS: String = "https://api.dantotsu.app"
     private const val LOCAL_HOST: String = "https://127.0.0.1"
+    private const val TOKEN_LIFETIME_MS = 1000L * 60 * 60 * 24 * 6
+    private const val MAX_SIGN_IN_ATTEMPTS = 5
+    private const val RATE_LIMIT_WAIT_MS = 60_000L
     private var isOnline: Boolean = true
-    private var commentsEnabled = PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1
+    /**
+     * Read on every use. It was read once, when this object was first touched, so switching comments
+     * on in settings left every call pointed at [LOCAL_HOST] until the app restarted, and switching
+     * them off left them all still going to the server.
+     */
+    private val commentsEnabled: Boolean
+        get() = PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1
     private val ADDRESS: String get() = if (commentsEnabled) API_ADDRESS else LOCAL_HOST
     var authToken: String? = null
+        private set
     var userId: String? = null
     var isBanned: Boolean = false
     var isAdmin: Boolean = false
@@ -45,78 +57,68 @@ object CommentsAPI {
         tag: Int?,
         sort: String?
     ): CommentResponse? {
-        var url = "$ADDRESS/comments/$id/$page"
-        val request = requestBuilder()
-        tag?.let {
-            url += "?tag=$it"
-        }
-        sort?.let {
-            url += if (tag != null) "&sort=$it" else "?sort=$it"
-        }
-        val json = try {
-            request.get(url)
-        } catch (e: IOException) {
-            Logger.log(e)
-            errorMessage("Failed to fetch comments")
-            return null
-        }
-        if (!json.text.startsWith("{")) return null
-        val res = json.code == 200
-        if (!res && json.code != 404) {
-            errorReason(json.code, json.text)
-        }
-        val parsed = try {
-            Json.decodeFromString<CommentResponse>(json.text)
-        } catch (e: Exception) {
-            return null
-        }
-        return parsed
+        val query = listOfNotNull(tag?.let { "tag=$it" }, sort?.let { "sort=$it" })
+            .joinToString("&").takeIf { it.isNotEmpty() }?.let { "?$it" }.orEmpty()
+        return getJson<CommentResponse>("/comments/$id/$page$query", "Failed to fetch comments")
     }
 
-    suspend fun getRepliesFromId(id: Int, page: Int = 1): CommentResponse? {
-        val url = "$ADDRESS/comments/parent/$id/$page"
-        val request = requestBuilder()
-        val json = try {
-            request.get(url)
+    suspend fun getRepliesFromId(id: Int, page: Int = 1): CommentResponse? =
+        getJson("/comments/parent/$id/$page", "Failed to fetch comments")
+
+    suspend fun getSingleComment(id: Int): Comment? =
+        getJson("/comments/$id", "Failed to fetch comment")
+
+    /**
+     * A GET of [path], decoded as [T]: null on a network error, an error answer (404 meaning there is
+     * nothing there), or a body that isn't the JSON expected — a Cloudflare error page, say.
+     *
+     * Every read needs a signed-in token — the server answers 401 without one and 403 to one it no
+     * longer accepts. So a read signs in first if nothing has yet, and on a 401 or 403 signs in
+     * afresh and tries once more, rather than toasting the code: a token can expire with the app
+     * open, and without this the comments simply stopped loading until it was restarted.
+     */
+    private suspend inline fun <reified T> getJson(path: String, failure: String): T? {
+        if (!commentsEnabled) return null
+        if (authToken == null) fetchAuthToken(null)
+        var json = try {
+            requestBuilder().get("$ADDRESS$path")
         } catch (e: IOException) {
             Logger.log(e)
-            errorMessage("Failed to fetch comments")
+            errorMessage(failure)
+            return null
+        }
+        if ((json.code == 401 || json.code == 403) && reauthenticate()) {
+            json = try {
+                requestBuilder().get("$ADDRESS$path")
+            } catch (e: IOException) {
+                Logger.log(e)
+                errorMessage(failure)
+                return null
+            }
+        }
+        if (json.code != 200) {
+            if (json.code != 404) errorReason(json.code, json.text)
             return null
         }
         if (!json.text.startsWith("{")) return null
-        val res = json.code == 200
-        if (!res && json.code != 404) {
-            errorReason(json.code, json.text)
-        }
-        val parsed = try {
-            Json.decodeFromString<CommentResponse>(json.text)
+        return try {
+            Json.decodeFromString<T>(json.text)
         } catch (e: Exception) {
-            return null
+            Logger.log(e)
+            null
         }
-        return parsed
     }
 
-    suspend fun getSingleComment(id: Int): Comment? {
-        val url = "$ADDRESS/comments/$id"
-        val request = requestBuilder()
-        val json = try {
-            request.get(url)
-        } catch (e: IOException) {
-            Logger.log(e)
-            errorMessage("Failed to fetch comment")
-            return null
+    /** Drops the token in use and signs in again; whether that got a new one. */
+    private suspend fun reauthenticate(): Boolean {
+        val stale = authToken
+        authMutex.withLock {
+            // Another caller may have signed in again already while this one waited.
+            if (authToken != null && authToken != stale) return true
+            clearSession()
         }
-        if (!json.text.startsWith("{")) return null
-        val res = json.code == 200
-        if (!res && json.code != 404) {
-            errorReason(json.code, json.text)
-        }
-        val parsed = try {
-            Json.decodeFromString<Comment>(json.text)
-        } catch (e: Exception) {
-            return null
-        }
-        return parsed
+        fetchAuthToken(null)
+        return authToken != null
     }
 
     suspend fun vote(commentId: Int, voteType: Int): Boolean {
@@ -295,93 +297,117 @@ object CommentsAPI {
         return parsed
     }
 
-    private suspend fun getUserDetails(client: OkHttpClient? = null): User? {
+    /** The account behind [token], or null when the server doesn't accept it (or can't be reached). */
+    private suspend fun getUserDetails(client: OkHttpClient?, token: String): User? {
         val url = "$ADDRESS/user"
-        val request = if (client != null) requestBuilder(client) else requestBuilder()
+        val headers = headerBuilder(token)
+        val request = Requests(client ?: Injekt.get<NetworkHelper>().client, headers)
         val json = try {
             request.get(url)
         } catch (e: IOException) {
             return null
         }
-        if (json.code == 200) {
-            val parsed = try {
-                Json.decodeFromString<UserResponse>(json.text)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                return null
-            }
-            isBanned = parsed.user.isBanned ?: false
-            isAdmin = parsed.user.isAdmin ?: false
-            isMod = parsed.user.isMod ?: false
-            totalVotes = parsed.user.totalVotes
-            return parsed.user
+        if (json.code != 200) return null
+        return try {
+            Json.decodeFromString<UserResponse>(json.text).user
+        } catch (e: Exception) {
+            Logger.log(e)
+            null
         }
-        return null
     }
 
-    suspend fun fetchAuthToken(context: Context, client: OkHttpClient? = null) {
-        isOnline = isOnline(context)
+    /** Serialises sign-ins: the app's start-up, the notification check and the comments tab all ask. */
+    private val authMutex = Mutex()
+
+    /**
+     * Signs in to the comments server, reusing the session kept from last time while the server
+     * still accepts it. With [context], also refreshes whether the device is online, which decides
+     * whether failures are shown.
+     *
+     * Nothing is taken as signed in until the server has said so. The kept session used to be put in
+     * place first and checked after; the comment-notification check, which runs at start-up and is
+     * routinely cancelled there by WorkManager, was cancelled mid-check — leaving a session that had
+     * expired weeks before in place as if it were good. Every later sign-in then saw a token and
+     * returned, and the comments tab spun forever on requests the server refused.
+     */
+    suspend fun fetchAuthToken(context: Context?, client: OkHttpClient? = null) {
+        context?.let { isOnline = isOnline(it) }
         // Same LOCAL_HOST sentinel as getNotifications(): with comments disabled, ADDRESS is
         // unreachable by design. CommentNotificationTask calls this unconditionally on every
         // cold start (it also delivers unrelated update notifications), and used to pay for a
         // real connect timeout here before getNotifications()'s own guard even ran.
         if (!commentsEnabled) return
         if (authToken != null) return
-        val MAX_RETRIES = 5
-        val tokenLifetime: Long = 1000 * 60 * 60 * 24 * 6 // 6 days
-        val tokenExpiry = PrefManager.getVal<Long>(PrefName.CommentTokenExpiry)
-        if (tokenExpiry < System.currentTimeMillis() + tokenLifetime) {
-            val commentResponse =
-                PrefManager.getNullableVal<AuthResponse>(PrefName.CommentAuthResponse, null)
-            if (commentResponse != null) {
-                authToken = commentResponse.authToken
-                userId = commentResponse.user.id
-                isBanned = commentResponse.user.isBanned ?: false
-                isAdmin = commentResponse.user.isAdmin ?: false
-                isMod = commentResponse.user.isMod ?: false
-                totalVotes = commentResponse.user.totalVotes
-                if (getUserDetails(client) != null) return
-            }
-
-        }
-        val url = "$ADDRESS/authenticate"
-        val token = PrefManager.getVal(PrefName.AnilistToken, null as String?) ?: return
-        repeat(MAX_RETRIES) {
-            try {
-                val json = authRequest(token, url, client)
-                if (json.code == 200) {
-                    if (!json.text.startsWith("{")) throw IOException("Invalid response")
-                    val parsed = try {
-                        Json.decodeFromString<AuthResponse>(json.text)
-                    } catch (e: Exception) {
-                        Logger.log(e)
-                        errorMessage("Failed to login to comments API: ${e.printStackTrace()}")
-                        return
-                    }
-                    PrefManager.setVal(PrefName.CommentAuthResponse, parsed)
-                    PrefManager.setVal(
-                        PrefName.CommentTokenExpiry,
-                        System.currentTimeMillis() + tokenLifetime
-                    )
-                    authToken = parsed.authToken
-                    userId = parsed.user.id
-                    isBanned = parsed.user.isBanned ?: false
-                    isAdmin = parsed.user.isAdmin ?: false
-                    isMod = parsed.user.isMod ?: false
-                    totalVotes = parsed.user.totalVotes
-                    return
-                } else if (json.code != 429) {
-                    errorReason(json.code, json.text)
+        authMutex.withLock {
+            // Signed in by whoever held the lock before.
+            if (authToken != null) return
+            val cached = PrefManager.getNullableVal<AuthResponse>(PrefName.CommentAuthResponse, null)
+            val cachedValid = PrefManager.getVal<Long>(PrefName.CommentTokenExpiry) > System.currentTimeMillis()
+            if (cached != null && cachedValid) {
+                val user = getUserDetails(client, cached.authToken)
+                if (user != null) {
+                    applySession(cached.authToken, user)
                     return
                 }
+            }
+            signIn(client)
+        }
+    }
+
+    /** Signs in with the AniList token, retrying through rate limits. Holds [authMutex]. */
+    private suspend fun signIn(client: OkHttpClient?) {
+        val token = PrefManager.getVal(PrefName.AnilistToken, null as String?) ?: return
+        val url = "$ADDRESS/authenticate"
+        repeat(MAX_SIGN_IN_ATTEMPTS) {
+            val json = try {
+                authRequest(token, url, client)
             } catch (e: IOException) {
                 Logger.log(e)
                 errorMessage("Failed to login to comments API")
                 return
             }
-            kotlinx.coroutines.delay(60000)
+            when {
+                json.code == 200 -> {
+                    val parsed = try {
+                        if (!json.text.startsWith("{")) throw IllegalStateException("not JSON")
+                        Json.decodeFromString<AuthResponse>(json.text)
+                    } catch (e: Exception) {
+                        Logger.log(e)
+                        errorMessage("Failed to login to comments API")
+                        return
+                    }
+                    PrefManager.setVal(PrefName.CommentAuthResponse, parsed)
+                    PrefManager.setVal(PrefName.CommentTokenExpiry, System.currentTimeMillis() + TOKEN_LIFETIME_MS)
+                    applySession(parsed.authToken, parsed.user)
+                    return
+                }
+
+                json.code != 429 -> {
+                    errorReason(json.code, json.text)
+                    return
+                }
+            }
+            kotlinx.coroutines.delay(RATE_LIMIT_WAIT_MS)
         }
         errorMessage("Failed to login after multiple attempts")
+    }
+
+    private fun applySession(token: String, user: User) {
+        authToken = token
+        userId = user.id
+        isBanned = user.isBanned ?: false
+        isAdmin = user.isAdmin ?: false
+        isMod = user.isMod ?: false
+        totalVotes = user.totalVotes
+    }
+
+    private fun clearSession() {
+        authToken = null
+        userId = null
+        isBanned = false
+        isAdmin = false
+        isMod = false
+        totalVotes = 0
     }
 
     private fun errorMessage(reason: String) {
@@ -392,12 +418,7 @@ object CommentsAPI {
     fun logout() {
         PrefManager.removeVal(PrefName.CommentAuthResponse)
         PrefManager.removeVal(PrefName.CommentTokenExpiry)
-        authToken = null
-        userId = null
-        isBanned = false
-        isAdmin = false
-        isMod = false
-        totalVotes = 0
+        clearSession()
     }
 
     private suspend fun authRequest(
@@ -412,13 +433,11 @@ object CommentsAPI {
         return request.post(url, requestBody = body)
     }
 
-    private fun headerBuilder(): Map<String, String> {
+    private fun headerBuilder(token: String? = authToken): Map<String, String> {
         val map = mutableMapOf(
             "appauth" to "6*45Qp%W2RS@t38jkXoSKY588Ynj%n"
         )
-        if (authToken != null) {
-            map["Authorization"] = authToken!!
-        }
+        token?.let { map["Authorization"] = it }
         return map
     }
 
@@ -506,10 +525,10 @@ data class User(
     val isBanned: Boolean? = null,
     @SerialName("is_mod")
     @Serializable(with = NumericBooleanSerializer::class)
-    val isAdmin: Boolean? = null,
+    val isMod: Boolean? = null,
     @SerialName("is_admin")
     @Serializable(with = NumericBooleanSerializer::class)
-    val isMod: Boolean? = null,
+    val isAdmin: Boolean? = null,
     @SerialName("total_votes")
     val totalVotes: Int,
     @SerialName("warnings")

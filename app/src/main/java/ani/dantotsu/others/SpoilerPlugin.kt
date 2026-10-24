@@ -21,8 +21,10 @@ class SpoilerPlugin(private val anilist: Boolean = false) : AbstractMarkwonPlugi
         }
     }
 
-    private class RedditSpoilerSpan : CharacterStyle() {
-        private var revealed = false
+    /** Public so other spans over the same text (comment timestamps) can stay hidden with it. */
+    class RedditSpoilerSpan : CharacterStyle() {
+        var revealed = false
+            private set
         override fun updateDrawState(tp: TextPaint) {
             if (!revealed) {
                 // use the same text color
@@ -48,8 +50,9 @@ class SpoilerPlugin(private val anilist: Boolean = false) : AbstractMarkwonPlugi
     }
 
     companion object {
-        private val RE = Pattern.compile("\\|\\|.+?\\|\\|")
-        private val ARE = Pattern.compile("~!.+?!~")
+        // DOTALL: a spoiler can run over several lines, as the comment box's spoiler button makes them.
+        private val RE = Pattern.compile("\\|\\|.+?\\|\\|", Pattern.DOTALL)
+        private val ARE = Pattern.compile("~!.+?!~", Pattern.DOTALL)
         private fun applySpoilerSpans(spannable: Spannable, regex: Pattern = RE) {
             val text = spannable.toString()
             val matcher = regex.matcher(text)

@@ -66,6 +66,19 @@
                 android:layout_marginTop="64dp"
                 tools:visibility="gone" />
 
+            <!-- Why there's nothing to show: offline, failed to load, or no comments yet. -->
+            <TextView
+                android:id="@+id/commentsMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="48dp"
+                android:alpha="0.6"
+                android:fontFamily="@font/poppins_bold"
+                android:gravity="center"
+                android:paddingHorizontal="32dp"
+                android:visibility="gone"
+                tools:text="No comments yet" />
+
             <FrameLayout
                 android:id="@+id/commentsListContainer"
                 android:layout_width="match_parent"

@@ -128,6 +128,12 @@ class Xpandable @JvmOverloads constructor(
         buildHeader()
     }
 
+    /** Renames an inflated card — for a title that depends on what it's about. */
+    fun setTitle(title: CharSequence) {
+        titleText = title
+        header?.sectionTitle?.text = title
+    }
+
     private fun buildHeader() {
         val title = titleText ?: return
         val header = ItemSettingsSectionHeaderBinding.inflate(

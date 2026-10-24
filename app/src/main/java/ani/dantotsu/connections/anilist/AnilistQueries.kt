@@ -49,6 +49,9 @@ import ani.dantotsu.util.Logger
 /** Pages of 50 titles per request in [AnilistQueries.getRelatedNotOnList]; see there. */
 private const val PAGES_PER_REQUEST = 4
 
+/** Pages of 50 [AnilistQueries.followingIds] reads at most: 2,500 accounts. */
+private const val MAX_FOLLOWING_PAGES = 50
+
 class AnilistQueries {
 
     /**
@@ -1950,6 +1953,23 @@ Page(page:$page,perPage:50) {
             """{Page {following(userId:${id},sort:[USERNAME]){id name avatar{large medium}bannerImage}}}""",
             force = true
         )
+    }
+
+    /**
+     * The ids of everyone [id] follows, every page of them — [userFollowing] stops at the first 50.
+     * Null when a page fails, so a partial list is never taken for the whole.
+     */
+    suspend fun followingIds(id: Int): Set<Int>? {
+        val ids = HashSet<Int>()
+        for (page in 1..MAX_FOLLOWING_PAGES) {
+            val users = executeQuery<Query.Following>(
+                """{Page(page:$page,perPage:50){following(userId:$id){id}}}""",
+                force = true
+            )?.data?.page?.following ?: return null
+            users.mapTo(ids) { it.id }
+            if (users.size < 50) break
+        }
+        return ids
     }
 
     suspend fun userFollowers(id: Int): Query.Follower? {

@@ -25,6 +25,14 @@ android {
         versionCode = major * 1_000_000 + minor * 1_000 + patch
         signingConfig signingConfigs.debug
 
+        // The comment box's GIF search (Klipy). Kept out of the repository: set `klipy.apiKey` in
+        // local.properties, or KLIPY_API_KEY in the environment for CI. Without one, the GIF
+        // button simply isn't shown.
+        def localProps = new Properties()
+        def localFile = rootProject.file("local.properties")
+        if (localFile.exists()) localFile.withInputStream { localProps.load(it) }
+        def klipyKey = localProps.getProperty("klipy.apiKey") ?: System.getenv("KLIPY_API_KEY") ?: ""
+        buildConfigField "String", "KLIPY_API_KEY", "\"${klipyKey}\""
     }
 
     flavorDimensions += "store"
