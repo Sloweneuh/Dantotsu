@@ -143,55 +143,6 @@ class ListActivity : AppCompatActivity() {
         binding.listBack.setOnClickListener {
             finish()
         }
-        binding.listFindMissingSequels.setOnClickListener {
-            if (binding.listTabLayout.getTabAt(selectedTabIdx)?.tag as? String != "ANI:Completed") return@setOnClickListener
-
-            val dialog = ani.dantotsu.others.CustomBottomDialog.newInstance()
-            dialog.setTitleText(getString(R.string.check_missing_sequels_confirm_title))
-            val tv = TextView(this@ListActivity).apply {
-                setPadding(32, 16, 32, 16)
-                text = getString(R.string.check_missing_sequels_confirm_text)
-                textSize = 14f
-            }
-            dialog.addView(tv)
-            dialog.setNegativeButton(getString(R.string.cancel)) {
-                dialog.dismiss()
-            }
-            dialog.setPositiveButton(getString(R.string.proceed)) {
-                dialog.dismiss()
-                val sourceList = model.getUnfilteredLists().value?.get("Completed")
-                    ?: model.getLists().value?.get("Completed")
-                    ?: return@setPositiveButton
-                val completedIds = sourceList.map { it.id }.distinct()
-                if (completedIds.isEmpty()) {
-                    toast(getString(R.string.no_missing_sequels_found))
-                    return@setPositiveButton
-                }
-                val existingIds = (
-                    model.getUnfilteredLists().value?.values?.flatten()
-                        ?: model.getLists().value?.values?.flatten()
-                        ?: emptyList()
-                ).map { it.id }.toSet()
-
-                // Hand the sequel lookup to the list screen so it runs behind that screen's
-                // spinner, the same way a MAL stack resolves itself — rather than holding the
-                // user on the Completed list for the whole round-trip. The id lists go through
-                // statics: a full library can be long enough to strain the intent Bundle.
-                // See [MediaListViewActivity.loadMissingSequels].
-                ani.dantotsu.media.MediaListViewActivity.pendingSequelSourceIds = completedIds
-                ani.dantotsu.media.MediaListViewActivity.pendingSequelExistingIds = existingIds
-                val intent = android.content.Intent(
-                    this@ListActivity,
-                    ani.dantotsu.media.MediaListViewActivity::class.java
-                ).putExtra(
-                    "title",
-                    getString(R.string.missing_sequels_title, if (anime) getString(R.string.anime) else getString(R.string.manga))
-                ).putExtra("isAnime", anime)
-                    .putExtra("missingSequels", true)
-                startActivity(intent)
-            }
-            dialog.show(supportFragmentManager, "missing_sequels_confirm")
-        }
         // Once. This used to run on every tab rebuild — each search keystroke that changed which
         // tabs had results, each reload pass — and every call registers another page-change
         // callback and layout listener, none ever removed. After a while of typing, a single page
@@ -212,7 +163,6 @@ class ListActivity : AppCompatActivity() {
                     preservedTabKeyDuringSearch = tab?.tag as? String
                         ?: selectedTabBase?.let { "TEXT:$it" }
                 }
-                updateContextualButtons()
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -233,7 +183,6 @@ class ListActivity : AppCompatActivity() {
             if (it != null) {
                 binding.listProgressBar.visibility = View.GONE
                 buildTabs(it, model.getFilteredMuLists().value)
-                updateContextualButtons()
             }
         }
 
@@ -249,32 +198,6 @@ class ListActivity : AppCompatActivity() {
             if (muMap == null) return@observe
             val aniMap = model.getLists().value ?: return@observe
             buildTabs(aniMap, muMap)
-            updateContextualButtons()
-            if (muMap.values.flatten().isNotEmpty()) {
-                binding.listFindEquivalents.setOnClickListener {
-                    val dialog = ani.dantotsu.others.CustomBottomDialog.newInstance()
-                    dialog.setTitleText(getString(R.string.search_equivalents_confirm_title))
-                    val tv = android.widget.TextView(this@ListActivity).apply {
-                        setPadding(32, 16, 32, 16)
-                        text = getString(R.string.search_equivalents_confirm_text)
-                        textSize = 14f
-                    }
-                    dialog.addView(tv)
-                    dialog.setNegativeButton(getString(R.string.cancel)) {
-                        dialog.dismiss()
-                    }
-                    dialog.setPositiveButton(getString(R.string.proceed)) {
-                        try {
-                            val allMu = muMap.values.flatten().toMutableList()
-                            ani.dantotsu.media.MediaEquivalentsActivity.passedMuMedia = ArrayList(allMu)
-                            val intent = android.content.Intent(this@ListActivity, ani.dantotsu.media.MediaEquivalentsActivity::class.java)
-                            startActivity(intent)
-                        } catch (_: Exception) {}
-                        dialog.dismiss()
-                    }
-                    dialog.show(supportFragmentManager, "mu_equivalents_confirm")
-                }
-            }
         }
 
         // Default to false (not "needs load") — this activity is recreated on every rotation, so a
@@ -888,12 +811,6 @@ class ListActivity : AppCompatActivity() {
         binding.listSort.setImageResource(iconRes)
     }
 
-    private fun updateContextualButtons() {
-        val hasMu = model.getFilteredMuLists().value?.values?.flatten()?.isNotEmpty() == true
-        val selectedTag = binding.listTabLayout.getTabAt(selectedTabIdx)?.tag as? String
-        binding.listFindEquivalents.isVisible = hasMu && muTabPosition >= 0 && selectedTag == "MU:AGGREGATE"
-        binding.listFindMissingSequels.isVisible = selectedTag == "ANI:Completed"
-    }
 
     private fun addFilterChip(text: String, type: String, onRemove: () -> Unit) {
         val chip = com.google.android.material.chip.Chip(this)

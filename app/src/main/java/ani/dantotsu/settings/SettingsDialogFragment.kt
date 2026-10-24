@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.updateLayoutParams
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -74,6 +75,12 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
         // exactly as true without a connection. Only the things that need to reach out go away:
         // notifications, sync state, and opening the profile.
         binding.settingsCloudCard.isVisible = !offline
+        // Every tool reads the lists from the trackers, so none of them works offline either.
+        binding.settingsToolboxCard.isVisible = !offline
+        binding.settingsToolbox.setOnClickListener {
+            startActivity(Intent(requireContext(), ToolboxActivity::class.java))
+            dismiss()
+        }
         binding.settingsNotificationContainer.isVisible = !offline
 
         // A shortcut back to the home page, pointless when that is where the sheet was opened from.
@@ -82,6 +89,7 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
         val onHomePage = (activity is MainActivity && pageType == PageType.HOME) ||
             pageType == PageType.OfflineHOME
         binding.settingsHomeCard.isVisible = !onHomePage
+        if (!onHomePage) compactHeaderButtons()
         binding.settingsHome.setOnClickListener {
             val intent = Intent(activity, MainActivity::class.java).putExtra(
                 "FRAGMENT_CLASS_NAME",
@@ -157,6 +165,35 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
 
     }
 
+    /**
+     * Shrinks the round buttons beside the account when the home button makes four of them. At full
+     * size they left the name column a few characters wide, and the username and "Logout" broke
+     * letter by letter down the row.
+     */
+    private fun compactHeaderButtons() {
+        val size = (COMPACT_BUTTON_DP * resources.displayMetrics.density).toInt()
+        val gap = (COMPACT_GAP_DP * resources.displayMetrics.density).toInt()
+        listOf(
+            binding.settingsHomeCard to binding.settingsHome,
+            binding.settingsToolboxCard to binding.settingsToolbox,
+            binding.settingsCloudCard to binding.settingsCloudStatus,
+            binding.settingsNotificationCard to binding.settingsNotification,
+        ).forEach { (card, icon) ->
+            card.updateLayoutParams {
+                width = size
+                height = size
+            }
+            card.radius = size / 2f
+            icon.updateLayoutParams {
+                width = size
+                height = size
+            }
+        }
+        listOf(binding.settingsHomeCard, binding.settingsToolboxCard, binding.settingsCloudCard).forEach {
+            it.updateLayoutParams<ViewGroup.MarginLayoutParams> { marginEnd = gap }
+        }
+    }
+
     /** The tile panel below the account row: same machinery as the search sheet. */
     private fun setupQuickTiles(offline: Boolean) {
         TilePanelController(
@@ -229,6 +266,10 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
     }
 
     companion object {
+        /** The header's round buttons when there are four of them; see [compactHeaderButtons]. */
+        private const val COMPACT_BUTTON_DP = 44
+        private const val COMPACT_GAP_DP = 6
+
         enum class PageType {
             MANGA, ANIME, HOME, OfflineMANGA, OfflineANIME, OfflineHOME
         }

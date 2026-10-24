@@ -67,6 +67,8 @@ object SettingsPageTransitions : Application.ActivityLifecycleCallbacks {
         ListSyncCompareActivity::class.java,
         MUCustomListMappingActivity::class.java,
         ComickMatchesActivity::class.java,
+        ToolboxActivity::class.java,
+        ToolResultsActivity::class.java,
         DesignLabActivity::class.java,
     )
 

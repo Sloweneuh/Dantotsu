@@ -12,6 +12,7 @@ import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.anilist.api.MediaEdge
 import ani.dantotsu.connections.anilist.api.MediaExternalLink
 import ani.dantotsu.connections.anilist.api.MediaRelation
+import ani.dantotsu.connections.anilist.api.MediaType
 import ani.dantotsu.connections.anilist.api.MediaList
 import ani.dantotsu.connections.anilist.api.NotificationResponse
 import ani.dantotsu.connections.anilist.api.Page
@@ -44,6 +45,9 @@ import java.util.Calendar
 import kotlin.system.measureTimeMillis
 import ani.dantotsu.Mapper
 import ani.dantotsu.util.Logger
+
+/** Pages of 50 titles per request in [AnilistQueries.getRelatedNotOnList]; see there. */
+private const val PAGES_PER_REQUEST = 4
 
 class AnilistQueries {
 
@@ -108,54 +112,66 @@ class AnilistQueries {
         }
     }
 
-    suspend fun getMissingSequels(mediaIds: List<Int>, existingIds: Set<Int>): List<Media> {
-        val uniqueIds = mediaIds.distinct()
-        if (uniqueIds.isEmpty()) return emptyList()
+    /**
+     * A title AniList relates to one of the user's: [related] is what it relates to [source] as —
+     * its sequel, its anime adaptation.
+     */
+    data class RelatedTitle(val source: Media, val related: Media)
 
-        val chunks = uniqueIds.chunked(50)
-        val queryBody = chunks.mapIndexed { index, chunk ->
-            val idsString = chunk.joinToString(",")
-            """
-                page${index}: Page(perPage: ${chunk.size}) {
-                    media(id_in: [$idsString]) {
-                        ${standardMediaInformation()}
-                        relations {
-                            edges {
-                                relationType(version: 2)
-                                node {
-                                    ${standardMediaInformation()}
+    /**
+     * The titles related to [sourceIds] by [relation] — of [type] only, when given — that aren't on
+     * the user's list, each with the source it was found from. AniList's own `mediaListEntry` on
+     * each related title says whether it's listed, so the other list needn't be fetched; anything
+     * in [excludedIds] is left out too. A title reached from two sources is listed once, from the
+     * first.
+     *
+     * The ids go [PAGES_PER_REQUEST] pages of 50 to a request: one page per alias, each with every
+     * title's relations, makes a request heavy, and a whole library in one blew past AniList's
+     * limits. Null when any request fails, so a partial answer is never shown as the whole one.
+     */
+    suspend fun getRelatedNotOnList(
+        sourceIds: List<Int>,
+        relation: MediaRelation,
+        type: MediaType? = null,
+        excludedIds: Set<Int> = emptySet(),
+    ): List<RelatedTitle>? {
+        val uniqueIds = sourceIds.distinct()
+        if (uniqueIds.isEmpty()) return emptyList()
+        val sources = HashMap<Int, ani.dantotsu.connections.anilist.api.Media>()
+        for (pages in uniqueIds.chunked(50).chunked(PAGES_PER_REQUEST)) {
+            val queryBody = pages.mapIndexed { index, chunk ->
+                """
+                    page${index}: Page(perPage: ${chunk.size}) {
+                        media(id_in: [${chunk.joinToString(",")}]) {
+                            ${standardMediaInformation()}
+                            relations {
+                                edges {
+                                    relationType(version: 2)
+                                    node {
+                                        ${standardMediaInformation()}
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            """.trimIndent()
-        }.joinToString("\n")
-
-        val query = """{
-            $queryBody
-        }""".trimIndent()
-
-        val response = executeQuery<Query.BatchedPageResponse>(query, force = true)?.data ?: return emptyList()
-        val mediaById = response.values
-            .asSequence()
-            .flatMap { it.media.orEmpty().asSequence() }
-            .associateBy { it.id }
-
-        val addedIds = mutableSetOf<Int>()
-        val sequels = mutableListOf<Media>()
-
-        for (sourceId in uniqueIds) {
-            val source = mediaById[sourceId] ?: continue
-            source.relations?.edges?.forEach { edge ->
-                if (edge.relationType != MediaRelation.SEQUEL) return@forEach
-                val sequel = edge.node ?: return@forEach
-                if (sequel.id in existingIds || !addedIds.add(sequel.id)) return@forEach
-                sequels.add(Media(sequel))
-            }
+                """.trimIndent()
+            }.joinToString("\n")
+            val response = executeQuery<Query.BatchedPageResponse>("{\n$queryBody\n}", force = true)
+                ?.data ?: return null
+            response.values.forEach { page -> page.media.orEmpty().forEach { sources[it.id] = it } }
         }
 
-        return sequels
+        val added = HashSet<Int>()
+        return uniqueIds.mapNotNull { sources[it] }.flatMap { source ->
+            source.relations?.edges.orEmpty().mapNotNull { edge ->
+                val node = edge.node ?: return@mapNotNull null
+                if (edge.relationType != relation) return@mapNotNull null
+                if (type != null && node.type != type) return@mapNotNull null
+                if (node.mediaListEntry != null || node.id in excludedIds) return@mapNotNull null
+                if (!added.add(node.id)) return@mapNotNull null
+                RelatedTitle(Media(source), Media(node))
+            }
+        }
     }
 
     suspend fun getUserData(): Boolean {

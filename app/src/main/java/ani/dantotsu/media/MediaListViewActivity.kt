@@ -65,7 +65,6 @@ class MediaListViewActivity : AppCompatActivity() {
     private var screenTitle: String = ""
     private var fromMalStack = false
     private var isStack = false
-    private var isMissingSequels = false
 
     /** Set for a MangaBaka stack; see [loadMangaBakaStack]. */
     private var mangaBakaStackId: Long? = null
@@ -140,16 +139,13 @@ class MediaListViewActivity : AppCompatActivity() {
             ?: intent.data?.takeIf { it.pathSegments.firstOrNull() == "stacks" }
                 ?.let { StackResolver.mangaBakaStackId(it.pathSegments.getOrNull(1)) }
         isStack = stackUrl != null || mangaBakaStackId != null
-        isMissingSequels = intent.getBooleanExtra("missingSequels", false)
-        // A stack (or a resolved sequel list) from before a rotation is republished through the
-        // statics below, so a recreation reuses it instead of running the whole lookup again.
+        // A stack from before a rotation is republished through the statics below, so a
+        // recreation reuses it instead of running the whole lookup again.
         val mbStackId = mangaBakaStackId
         if (mbStackId != null && passedMedia == null) {
             loadMangaBakaStack(mbStackId)
         } else if (stackUrl != null && passedMedia == null) {
             loadStack(stackUrl)
-        } else if (isMissingSequels && passedMedia == null) {
-            loadMissingSequels()
         } else {
             fromMalStack = passedMedia != null
             mediaList =
@@ -399,36 +395,6 @@ class MediaListViewActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Runs the AniList "missing sequels" lookup behind this screen's spinner, the same way
-     * [loadStack] resolves a MAL stack — so confirming the check on the Completed list lands the
-     * user here immediately rather than stalling that list for the whole round-trip. The source
-     * and existing ids arrive through the statics below: a full library can be long enough to
-     * strain the intent Bundle.
-     */
-    private fun loadMissingSequels() {
-        // The old flow set passedMedia before starting this activity, so cards have always been
-        // drawn in "stack" mode here; keep that.
-        fromMalStack = true
-        val sourceIds = pendingSequelSourceIds ?: emptyList()
-        val existingIds = pendingSequelExistingIds ?: emptySet()
-        pendingSequelSourceIds = null
-        pendingSequelExistingIds = null
-
-        binding.mediaListProgress.visibility = View.VISIBLE
-        lifecycleScope.launch {
-            val sequels = withContext(Dispatchers.IO) {
-                runCatching { Anilist.query.getMissingSequels(sourceIds, existingIds) }
-                    .getOrDefault(emptyList())
-            }
-            mediaList = sequels.toMutableList()
-            // Republish for a rotation-triggered recreation (see onCreate).
-            passedMedia = ArrayList(sequels)
-            binding.mediaListProgress.visibility = View.GONE
-            showContent()
-        }
-    }
-
     /** Shows the info button and wires it to open [description] in a bottom dialog, if there is one. */
     private fun showDescriptionButton() {
         val description = description
@@ -517,13 +483,10 @@ class MediaListViewActivity : AppCompatActivity() {
             }
         }
 
-        // A stack that resolved to nothing (scrape failed, or no entry matched anywhere), or a
-        // sequel check that turned nothing up, would otherwise leave an empty screen with no
-        // explanation.
-        if ((isStack || isMissingSequels) && mediaList.isEmpty() && combinedItems == null) {
-            binding.mediaListEmpty.text = getString(
-                if (isMissingSequels) R.string.no_missing_sequels_found else R.string.stack_empty
-            )
+        // A stack that resolved to nothing (scrape failed, or no entry matched anywhere) would
+        // otherwise leave an empty screen with no explanation.
+        if (isStack && mediaList.isEmpty() && combinedItems == null) {
+            binding.mediaListEmpty.text = getString(R.string.stack_empty)
             binding.mediaListEmpty.visibility = View.VISIBLE
         } else {
             binding.mediaListEmpty.visibility = View.GONE
@@ -620,8 +583,6 @@ class MediaListViewActivity : AppCompatActivity() {
             passedUnreleasedInfo = null
             passedDescription = null
             passedRecommendationSource = null
-            pendingSequelSourceIds = null
-            pendingSequelExistingIds = null
         }
     }
 
@@ -656,9 +617,5 @@ class MediaListViewActivity : AppCompatActivity() {
         var passedDescription: String? = null
         var passedRecommendationSource: Media? = null
 
-        // Inputs for a "missing sequels" check the caller kicked off; consumed once by
-        // [loadMissingSequels]. Kept off the intent because a full library's id list can be large.
-        var pendingSequelSourceIds: List<Int>? = null
-        var pendingSequelExistingIds: Set<Int>? = null
     }
 }

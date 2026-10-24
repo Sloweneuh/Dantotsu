@@ -18,6 +18,9 @@ class MediaExcludeBottomDialog : BottomSheetDialogFragment() {
     private var prefName: PrefName = PrefName.MalSyncExcludeList
     private var title: String = ""
 
+    /** Told when the sheet closes, for a screen that shows how many entries the list holds. */
+    var onDismissed: (() -> Unit)? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -43,6 +46,11 @@ class MediaExcludeBottomDialog : BottomSheetDialogFragment() {
                 PrefManager.setVal(prefName, current - removed)
             })
         }
+    }
+
+    override fun onDismiss(dialog: android.content.DialogInterface) {
+        super.onDismiss(dialog)
+        onDismissed?.invoke()
     }
 
     override fun onDestroyView() {

@@ -54,8 +54,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="-4dp"
+                        android:ellipsize="end"
                         android:fontFamily="@font/poppins_bold"
                         android:gravity="center"
+                        android:maxLines="1"
                         android:text="@string/username"
                         android:textSize="16sp" />
 
@@ -67,6 +69,8 @@
                         android:layout_marginTop="-16dp"
                         android:layout_marginBottom="-16dp"
                         android:fontFamily="@font/poppins_bold"
+                        android:ellipsize="end"
+                        android:maxLines="1"
                         android:padding="16dp"
                         android:text="@string/logout"
                         android:textColor="?attr/colorSecondary"
@@ -94,6 +98,30 @@
                         android:contentDescription="@string/home"
                         android:scaleType="center"
                         app:srcCompat="@drawable/ic_round_home_24"
+                        app:tint="@color/bg_opp"
+                        tools:ignore="ImageContrastCheck" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- The toolbox: checks and fixers that work over the whole library. -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/settingsToolboxCard"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="12dp"
+                    android:backgroundTint="@color/nav_bg_inv"
+                    app:cardCornerRadius="26dp"
+                    app:strokeColor="@color/transparent">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/settingsToolbox"
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        android:contentDescription="@string/toolbox"
+                        android:scaleType="center"
+                        android:tooltipText="@string/toolbox"
+                        app:srcCompat="@drawable/ic_round_handyman_24"
                         app:tint="@color/bg_opp"
                         tools:ignore="ImageContrastCheck" />
 
@@ -131,6 +159,7 @@
                     android:layout_marginEnd="16dp">
 
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/settingsNotificationCard"
                         android:layout_width="52dp"
                         android:layout_height="52dp"
                         app:strokeColor="@color/transparent"

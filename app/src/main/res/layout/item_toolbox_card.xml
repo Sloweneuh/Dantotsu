@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One tool in the toolbox grid: its icon on a tinted tile, its name, what it finds, and — for the
+     checks that can be told to stop suggesting things — how many they have been told to. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/toolboxCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="5dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- No padding on the icon itself: the flight into the results page scales the whole
+                 view, so a padded icon would land smaller than the header's. -->
+            <FrameLayout
+                android:id="@+id/toolboxCardIconTile"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/toolbox_icon_background">
+
+                <ImageView
+                    android:id="@+id/toolboxCardIcon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    app:tint="?attr/colorPrimary"
+                    tools:ignore="ContentDescription"
+                    tools:srcCompat="@drawable/ic_round_movie_filter_24" />
+            </FrameLayout>
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/toolboxCardIgnored"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/toolbox_pill_background"
+                android:drawablePadding="4dp"
+                android:fontFamily="@font/poppins_bold"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp"
+                android:textColor="?attr/colorOnSecondaryContainer"
+                android:textSize="11sp"
+                android:visibility="gone"
+                app:drawableStartCompat="@drawable/ic_round_visibility_off_24"
+                app:drawableTint="?attr/colorOnSecondaryContainer"
+                tools:text="3 ignored"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/toolboxCardTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="@font/poppins_bold"
+            android:textSize="14sp"
+            tools:text="Missed anime sequels" />
+
+        <!-- Wrapped in full rather than cut to a line count: on a narrow screen or with larger text
+             the names and descriptions ran out of room and were cut mid-word. Cards side by side
+             still come out the same height — the grid measures a row's cards to its tallest. -->
+        <TextView
+            android:id="@+id/toolboxCardDesc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:alpha="0.65"
+            android:textSize="12sp"
+            tools:text="Sequels to anime you've finished that aren't on your list" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

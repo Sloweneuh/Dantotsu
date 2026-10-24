@@ -604,8 +604,6 @@
     <string name="home_layout_show">Edit Home Sections</string>
     <string name="home_layout_show_and_order">Show, hide and reorder Home sections</string>
         <string name="ui_show_system_bars">Show system bars on media pages</string>
-    <string name="search_equivalents_confirm_title">Search for AniList equivalents</string>
-    <string name="search_equivalents_confirm_text">This will try to find AniList equivalents for every MangaUpdates entry in this list. This may take a while. Continue?</string>
     <string name="proceed">Proceed</string>
     <string name="home_stats_stat1">Home Stat 1</string>
     <string name="home_stats_stat2">Home Stat 2</string>
@@ -2426,11 +2424,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="allow_metered_downloads_desc">If disabled, downloads will only start on unmetered connections like Wi-Fi.</string>
     <string name="download_blocked_metered_title">Downloads blocked on metered network</string>
     <string name="download_blocked_metered_desc">Enable "Allow downloads on metered networks" in Common settings or switch to an unmetered network.</string>
-    <string name="check_missing_sequels">Check missing sequels</string>
-    <string name="check_missing_sequels_confirm_title">Check for missing sequels</string>
-    <string name="check_missing_sequels_confirm_text">This will scan every completed item in the current list and show AniList sequels that are not already in the list. Continue?</string>
-    <string name="missing_sequels_title">%1$s missing sequels</string>
-    <string name="no_missing_sequels_found">No missing sequels found</string>
 
     <!-- Backup &amp; restore -->
     <string name="backup_restore_chooser_msg">Do you want to back up your settings to a file, or restore them from an existing backup?</string>
@@ -3393,4 +3386,38 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="sub_soft_only">These only restyle soft subtitles. Subtitles burned into the video can\'t be changed.</string>
     <string name="sub_size_value">%1$d sp</string>
     <string name="sub_group_style">Style</string>
+    <string name="toolbox">Toolbox</string>
+    <string name="toolbox_library">Your library</string>
+    <string name="toolbox_matching">Matching</string>
+    <string name="missed_anime_sequels">Missed anime sequels</string>
+    <string name="missed_anime_sequels_desc">Sequels to anime you\'ve finished that aren\'t on your list</string>
+    <string name="missed_manga_sequels">Missed manga sequels</string>
+    <string name="missed_manga_sequels_desc">Sequels to manga you\'ve finished that aren\'t on your list</string>
+    <string name="missed_sequels_source">Sequel to %1$s</string>
+    <string name="missed_sequels_none">No missed sequels</string>
+    <string name="anime_adaptations">Anime adaptations</string>
+    <string name="anime_adaptations_desc">Anime of your manga and novels that aren\'t on your list</string>
+    <string name="anime_adaptations_source">Adapted from %1$s</string>
+    <string name="anime_adaptations_none">No anime adaptations missing from your list</string>
+    <string name="search_equivalents_desc">Find the AniList entries of your MangaUpdates series</string>
+    <string name="tool_results_empty">Nothing found</string>
+    <string name="tool_results_failed">Couldn\'t load your list. Check your connection and try again.</string>
+    <string name="tool_results_ignore">Ignore</string>
+    <string name="tool_results_ignored">%1$s won\'t be suggested again</string>
+    <string name="ignored_sequels">Ignored sequels</string>
+    <string name="ignored_adaptations">Ignored adaptations</string>
+    <plurals name="missed_sequels_summary">
+        <item quantity="one">%1$d sequel to a title you\'ve completed isn\'t on your list.</item>
+        <item quantity="other">%1$d sequels to titles you\'ve completed aren\'t on your list.</item>
+    </plurals>
+    <plurals name="anime_adaptations_summary">
+        <item quantity="one">%1$d anime adapted from your manga and novels isn\'t on your list.</item>
+        <item quantity="other">%1$d anime adapted from your manga and novels aren\'t on your list.</item>
+    </plurals>
+    <string name="toolbox_comick_desc">Match titles to Comick, or fix ones matched wrong</string>
+    <string name="toolbox_compare_desc">Find and fix where your trackers disagree</string>
+    <plurals name="toolbox_ignored_pill">
+        <item quantity="one">%1$d ignored</item>
+        <item quantity="other">%1$d ignored</item>
+    </plurals>
 </resources>

@@ -204,6 +204,10 @@ enum class PrefName(val data: Pref) {
     /** How the home Unread Chapters row is ordered: "unread" (fewest unread first) or "recent". */
     UnreadChaptersSort(Pref(Location.General, String::class, "unread")),
     MalSyncExcludeList(Pref(Location.General, Set::class, setOf<String>())),
+    // Titles the toolbox's checks were told to stop suggesting, "id||cover||title" like the list
+    // above so the same manager edits them. General, so they follow the user to every device.
+    IgnoredSequels(Pref(Location.General, Set::class, setOf<String>())),
+    IgnoredAdaptations(Pref(Location.General, Set::class, setOf<String>())),
     HiddenFromLists(Pref(Location.General, Set::class, setOf<String>())),
 
     // Info tab order/visibility per media context (indices into InfoTabContext.tabs)

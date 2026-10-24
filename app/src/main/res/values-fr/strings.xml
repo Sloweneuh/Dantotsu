@@ -2242,7 +2242,6 @@
     <string name="filter_summary_selected">%1$d sélectionné(s)</string>
     <string name="filter_summary_excluded">%1$d exclu(s)</string>
     <string name="ui_show_system_bars">Afficher les barres système sur les pages des médias</string>
-    <string name="search_equivalents_confirm_title">Rechercher des équivalents sur Anilist</string>
     <string name="discord_dantotsu_mode">Mode Dantotsu</string>
     <string name="discord_anilist_mode">Mode AniList</string>
     <string name="discord_mal_mode">Mode MAL</string>
@@ -2251,16 +2250,10 @@
     <string name="discord_anime_presence">Présence Anime</string>
     <string name="discord_manga_presence">Présence Manga</string>
     <string name="search_equivalents">Rechercher des équivalents</string>
-    <string name="search_equivalents_confirm_text">Cela va tenter de trouver des équivalents AniList pour chaque entrée MangaUpdates de cette liste. Cela peut prendre un certain temps. Continuer ?</string>
     <string name="allow_metered_downloads">Autoriser les téléchargements sur réseaux limités</string>
     <string name="allow_metered_downloads_desc">Si désactivé, les téléchargements ne démarrent que sur des connexions non limitées comme le Wi-Fi.</string>
     <string name="download_blocked_metered_title">Téléchargements bloqués sur réseau limité</string>
     <string name="download_blocked_metered_desc">Activez "Autoriser les téléchargements sur réseaux limités" dans les paramètres communs ou passez sur un réseau non limité.</string>
-    <string name="check_missing_sequels">Vérifier les suites manquantes</string>
-    <string name="check_missing_sequels_confirm_title">Vérifier les suites manquantes</string>
-    <string name="check_missing_sequels_confirm_text">Cela va analyser chaque entrée terminée de cette liste et afficher les suites AniList qui ne sont pas déjà dans vos listes. Continuer ?</string>
-    <string name="missing_sequels_title">Suites manquantes (%1$s)</string>
-    <string name="no_missing_sequels_found">Aucune suite manquante trouvée</string>
     <string name="chapter_missing_single">1 chapitre manquant</string>
     <string name="chapters_missing">%1$d chapitres manquants</string>
     <string name="chapter_gap_warning_title">Chapitre manquant</string>
@@ -3269,4 +3262,38 @@
     <string name="sub_soft_only">Ces réglages ne modifient que les sous-titres séparés. Les sous-titres incrustés dans la vidéo ne peuvent pas être changés.</string>
     <string name="sub_size_value">%1$d sp</string>
     <string name="sub_group_style">Style</string>
+    <string name="toolbox">Boîte à outils</string>
+    <string name="toolbox_library">Votre bibliothèque</string>
+    <string name="toolbox_matching">Associations</string>
+    <string name="missed_anime_sequels">Suites d’anime manquées</string>
+    <string name="missed_anime_sequels_desc">Suites des anime que vous avez finis, absentes de votre liste</string>
+    <string name="missed_manga_sequels">Suites de manga manquées</string>
+    <string name="missed_manga_sequels_desc">Suites des manga que vous avez finis, absentes de votre liste</string>
+    <string name="missed_sequels_source">Suite de %1$s</string>
+    <string name="missed_sequels_none">Aucune suite manquée</string>
+    <string name="anime_adaptations">Adaptations en anime</string>
+    <string name="anime_adaptations_desc">Anime de vos manga et romans, absents de votre liste</string>
+    <string name="anime_adaptations_source">Adapté de %1$s</string>
+    <string name="anime_adaptations_none">Aucune adaptation en anime ne manque à votre liste</string>
+    <string name="search_equivalents_desc">Trouvez les entrées AniList de vos séries MangaUpdates</string>
+    <string name="tool_results_empty">Rien trouvé</string>
+    <string name="tool_results_failed">Impossible de charger votre liste. Vérifiez votre connexion et réessayez.</string>
+    <string name="tool_results_ignore">Ignorer</string>
+    <string name="tool_results_ignored">%1$s ne sera plus suggéré</string>
+    <string name="ignored_sequels">Suites ignorées</string>
+    <string name="ignored_adaptations">Adaptations ignorées</string>
+    <plurals name="missed_sequels_summary">
+        <item quantity="one">%1$d suite d’un titre que vous avez terminé n’est pas dans votre liste.</item>
+        <item quantity="other">%1$d suites de titres que vous avez terminés ne sont pas dans votre liste.</item>
+    </plurals>
+    <plurals name="anime_adaptations_summary">
+        <item quantity="one">%1$d anime adapté de vos manga et romans n’est pas dans votre liste.</item>
+        <item quantity="other">%1$d anime adaptés de vos manga et romans ne sont pas dans votre liste.</item>
+    </plurals>
+    <string name="toolbox_comick_desc">Associez des titres à Comick, ou corrigez les erreurs</string>
+    <string name="toolbox_compare_desc">Trouvez et corrigez les écarts entre vos trackers</string>
+    <plurals name="toolbox_ignored_pill">
+        <item quantity="one">%1$d ignoré</item>
+        <item quantity="other">%1$d ignorés</item>
+    </plurals>
 </resources>

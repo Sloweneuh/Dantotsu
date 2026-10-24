@@ -64,6 +64,8 @@ object BackupTree {
                         BackupItem(PrefName.AnilistToken, R.string.backup_anilist_token),
                         BackupItem(PrefName.AnilistUserName, R.string.backup_anilist_username),
                         BackupItem(PrefName.AnilistUserId, R.string.backup_anilist_user_id),
+                        BackupItem(PrefName.IgnoredSequels, R.string.ignored_sequels),
+                        BackupItem(PrefName.IgnoredAdaptations, R.string.ignored_adaptations),
                     )
                 ),
                 BackupSubCategory(
@@ -765,6 +767,8 @@ object BackupTree {
         PrefName.LockRotation.name to R.string.pref_lock_rotation,
         PrefName.MakeDefault.name to R.string.pref_make_default,
         PrefName.MalSyncExcludeList.name to R.string.pref_malsync_exclude_list,
+        PrefName.IgnoredSequels.name to R.string.ignored_sequels,
+        PrefName.IgnoredAdaptations.name to R.string.ignored_adaptations,
         PrefName.MalSyncLanguagePreferences.name to R.string.pref_malsync_languages,
         // Named "disable_*" but worded "Enable *", which is what the pref stores.
         PrefName.MangaBakaInfoEnabled.name to R.string.disable_mangabaka,

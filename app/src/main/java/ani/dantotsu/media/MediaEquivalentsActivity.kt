@@ -101,14 +101,41 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         // Now set the activity content view
         setContentView(binding.root)
 
-        val muList = passedMuMedia ?: arrayListOf()
-        passedMuMedia = null
-        for (m in muList) items.add(EquivalentItem(m))
-
         adapter = EquivalentAdapter(items)
         recycler = binding.equivalentsRecyclerView
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
+
+        val passed = passedMuMedia
+        passedMuMedia = null
+        if (passed != null) {
+            search(passed)
+            return
+        }
+        // Opened from the toolbox rather than a list screen: the whole MangaUpdates library, read
+        // here. A series filed in a custom list as well as a standard one is searched once.
+        binding.equivalentsSearchProgress.isIndeterminate = true
+        binding.equivalentsSearchProgress.show()
+        lifecycleScope.launch {
+            val lists = withContext(Dispatchers.IO) {
+                runCatching { MangaUpdates.getAllUserLists() }
+                    .onFailure { Logger.log(it) }.getOrNull()
+            }
+            if (lists == null) {
+                toast(getString(R.string.tool_results_failed))
+                binding.equivalentsSearchProgress.hide()
+                return@launch
+            }
+            binding.equivalentsSearchProgress.hide()
+            binding.equivalentsSearchProgress.isIndeterminate = false
+            search(lists.values.flatten().distinctBy { it.id })
+        }
+    }
+
+    /** Looks up an AniList equivalent for each of [muList], filling the rows in as they resolve. */
+    private fun search(muList: List<MUMedia>) {
+        for (m in muList) items.add(EquivalentItem(m))
+        adapter.notifyDataSetChanged()
 
         binding.equivalentsSearchProgress.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
         binding.equivalentsSearchProgress.max = items.size.coerceAtLeast(1)
