@@ -7,6 +7,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -31,7 +32,8 @@ import okio.buffer
  *
  * Schema mirrors Mihon's index.proto
  * (https://github.com/mihonapp/tachiyomix/blob/e4d546c/index/index.proto), including the
- * `Resources.jarUrl` (field 501) that keiyoushi's copy adds.
+ * `Resources.jarUrl` (field 501) that keiyoushi's copy adds. Aniyomi's copy differs in one place:
+ * `Extension.isTorrent` takes field 8 and `sources` moves to 9 — see [AniyomiRepoExtension].
  */
 
 /** Index file names a repository URL may already point at. */
@@ -73,7 +75,51 @@ internal data class RepoExtension(
     @ProtoNumber(6) val versionName: String = "",
     @ProtoNumber(7) val contentWarning: ContentWarning = ContentWarning.CONTENT_WARNING_UNSPECIFIED,
     @ProtoNumber(8) val sources: List<RepoSource> = emptyList(),
+    /** Only Aniyomi's numbering has it; see [AniyomiRepoExtension]. */
+    @Transient val isTorrent: Boolean = false,
 )
+
+/**
+ * [RepoExtension] as Aniyomi's index.proto numbers it: `bool is_torrent = 8` where Mihon has its
+ * sources, which move to 9. Read with Mihon's numbering, the first torrent extension's flag fails
+ * the whole index, and an index without one loses every extension's sources.
+ */
+@Serializable
+internal data class AniyomiRepoExtension(
+    @ProtoNumber(1) val name: String = "",
+    @ProtoNumber(2) val packageName: String = "",
+    @ProtoNumber(3) val resources: RepoResources = RepoResources(),
+    @ProtoNumber(4) val extensionLib: String = "",
+    @ProtoNumber(5) @Serializable(with = LenientLongSerializer::class) val versionCode: Long = 0,
+    @ProtoNumber(6) val versionName: String = "",
+    @ProtoNumber(7) val contentWarning: ContentWarning = ContentWarning.CONTENT_WARNING_UNSPECIFIED,
+    @ProtoNumber(8) val isTorrent: Boolean = false,
+    @ProtoNumber(9) val sources: List<RepoSource> = emptyList(),
+) {
+    fun toRepoExtension() = RepoExtension(
+        name, packageName, resources, extensionLib, versionCode, versionName, contentWarning, sources,
+        isTorrent,
+    )
+}
+
+@Serializable
+internal data class AniyomiRepoExtensionList(
+    @ProtoNumber(1) val extensions: List<AniyomiRepoExtension> = emptyList(),
+)
+
+/** [RepoIndex] holding an [AniyomiRepoExtensionList]. */
+@Serializable
+internal data class AniyomiRepoIndex(
+    @ProtoNumber(101) val extensionList: AniyomiRepoExtensionList? = null,
+    @ProtoNumber(102) val extensionListUrl: String? = null,
+) {
+    fun toRepoIndex() = RepoIndex(
+        extensionList = extensionList?.let { list ->
+            RepoExtensionList(list.extensions.map(AniyomiRepoExtension::toRepoExtension))
+        },
+        extensionListUrl = extensionListUrl,
+    )
+}
 
 @Serializable
 internal data class RepoResources(
@@ -180,6 +226,8 @@ internal data class RepoEntry(
     /** Absolute apk url; only v2 indexes provide one. */
     val apkUrl: String?,
     val iconUrl: String,
+    /** Plays through the Torrent add-on. Only Aniyomi's v2 index says so. */
+    val isTorrent: Boolean = false,
 )
 
 internal data class RepoEntrySource(
@@ -232,11 +280,33 @@ internal class ExtensionRepoFetcher(
                 .decodeFromString(ListSerializer(LegacyExtensionJson.serializer()), bytes.decodeToString())
                 .map { it.toRepoEntry(base) }
 
-            '{' -> json.decodeFromString<RepoIndex>(bytes.decodeToString()).resolveExtensions()
+            // Field names are the same in both numberings, so Aniyomi's models read either and
+            // keep its torrent flag.
+            '{' -> json.decodeFromString<AniyomiRepoIndex>(bytes.decodeToString()).toRepoIndex()
+                .resolveExtensions()
 
-            else -> decodeProto<RepoIndex>(bytes).resolveExtensions()
+            else -> decodeIndexProto(bytes).resolveExtensions()
         }
     }
+
+    private fun decodeIndexProto(bytes: ByteArray): RepoIndex {
+        val list = bytes.protoFields().firstOrNull { it.number == 101 && it.payload != null }?.payload
+        return if (list != null && list.isAniyomiExtensionList()) {
+            decodeProto<AniyomiRepoIndex>(bytes).toRepoIndex()
+        } else {
+            decodeProto<RepoIndex>(bytes)
+        }
+    }
+
+    private fun decodeExtensionListProto(bytes: ByteArray): RepoExtensionList =
+        if (bytes.isAniyomiExtensionList()) {
+            RepoExtensionList(
+                decodeProto<AniyomiRepoExtensionList>(bytes).extensions
+                    .map(AniyomiRepoExtension::toRepoExtension)
+            )
+        } else {
+            decodeProto<RepoExtensionList>(bytes)
+        }
 
     /** Handles the `extensions` oneof: either an inline list or a url pointing at one. */
     private suspend fun RepoIndex.resolveExtensions(): List<RepoEntry> {
@@ -245,9 +315,12 @@ internal class ExtensionRepoFetcher(
         val url = extensionListUrl?.takeIf { it.isNotBlank() } ?: return emptyList()
         val bytes = get(url) ?: return emptyList()
         val list = if (bytes.formatMarker() == '{') {
-            json.decodeFromString<RepoExtensionList>(bytes.decodeToString())
+            RepoExtensionList(
+                json.decodeFromString<AniyomiRepoExtensionList>(bytes.decodeToString()).extensions
+                    .map(AniyomiRepoExtension::toRepoExtension)
+            )
         } else {
-            decodeProto<RepoExtensionList>(bytes)
+            decodeExtensionListProto(bytes)
         }
         return list.extensions.map(RepoExtension::toRepoEntry)
     }
@@ -290,6 +363,58 @@ private fun ByteArray.formatMarker(): Char? {
     ) 3 else 0
     return getOrNull(start)?.toInt()?.toChar()
 }
+
+/** One top-level field of a protobuf message: [payload] for a length-delimited one, else null. */
+private class ProtoField(val number: Int, val wireType: Int, val payload: ByteArray?)
+
+/** The message's top-level fields, as far as they parse; nothing is decoded below them. */
+private fun ByteArray.protoFields(): List<ProtoField> {
+    val fields = ArrayList<ProtoField>()
+    var i = 0
+    fun varint(): Long? {
+        var result = 0L
+        var shift = 0
+        while (i < size && shift < 64) {
+            val b = this[i++].toInt()
+            result = result or ((b and 0x7F).toLong() shl shift)
+            if (b and 0x80 == 0) return result
+            shift += 7
+        }
+        return null
+    }
+    while (i < size) {
+        val key = varint() ?: break
+        val number = (key ushr 3).toInt()
+        val wireType = (key and 7).toInt()
+        var payload: ByteArray? = null
+        when (wireType) {
+            0 -> varint() ?: break
+            1 -> i += 8
+            2 -> {
+                val length = varint()?.toInt() ?: break
+                if (length < 0 || i + length > size) break
+                payload = copyOfRange(i, i + length)
+                i += length
+            }
+            5 -> i += 4
+            else -> break
+        }
+        fields += ProtoField(number, wireType, payload)
+    }
+    return fields
+}
+
+/**
+ * Whether an encoded extension list uses Aniyomi's numbering ([AniyomiRepoExtension]): some entry
+ * has sources at 9, or a flag rather than a source at 8.
+ */
+private fun ByteArray.isAniyomiExtensionList(): Boolean =
+    protoFields().asSequence()
+        .filter { it.number == 1 }
+        .mapNotNull { it.payload }
+        .any { extension ->
+            extension.protoFields().any { it.number == 9 || (it.number == 8 && it.wireType == 0) }
+        }
 
 /** Strips a trailing index file name, leaving the directory the repo lives in. */
 private fun String.repoBaseUrl(): String {
@@ -338,4 +463,5 @@ private fun RepoExtension.toRepoEntry() = RepoEntry(
     apkName = resources.apkUrl.substringAfterLast('/'),
     apkUrl = resources.apkUrl.takeIf { it.isNotBlank() },
     iconUrl = resources.iconUrl,
+    isTorrent = isTorrent,
 )

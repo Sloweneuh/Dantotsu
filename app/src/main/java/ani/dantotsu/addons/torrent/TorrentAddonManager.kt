@@ -16,6 +16,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.extension.InstallStep
 import kotlinx.coroutines.Dispatchers
+import tachiyomi.core.util.lang.launchIO
 import kotlinx.coroutines.withContext
 
 class TorrentAddonManager(
@@ -99,6 +100,13 @@ class TorrentAddonManager(
                 extension = result.extension
                 hasUpdate = false
                 onListenerAction?.invoke(AddonListener.ListenerAction.INSTALL)
+                // Turned on ahead of the install (a torrent extension's prompt): the server would
+                // otherwise wait for the next launch.
+                if (PrefManager.getVal(PrefName.TorrentEnabled)) {
+                    launchIO {
+                        if (!TorrentServerService.isRunning()) TorrentServerService.start()
+                    }
+                }
             }
         }
 

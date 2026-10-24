@@ -50,6 +50,8 @@ sealed class AnimeExtension {
         val repository: String,
         /** Absolute apk url advertised by v2 indexes; legacy indexes build one from [apkName]. */
         val apkUrl: String? = null,
+        /** Streams through the Torrent add-on, as the repository's index flags it. */
+        val isTorrent: Boolean = false,
     ) : AnimeExtension()
 
     data class Untrusted(

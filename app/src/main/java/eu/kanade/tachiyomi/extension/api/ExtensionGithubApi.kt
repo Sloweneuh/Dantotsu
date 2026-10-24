@@ -79,6 +79,7 @@ internal class ExtensionGithubApi {
                 apkUrl = entry.apkUrl,
                 iconUrl = entry.iconUrl,
                 repository = repo,
+                isTorrent = entry.isTorrent,
             )
         }
 

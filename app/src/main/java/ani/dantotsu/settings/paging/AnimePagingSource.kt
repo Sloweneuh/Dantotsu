@@ -183,20 +183,24 @@ class AnimeExtensionAdapter(private val clickListener: OnAnimeInstallClickListen
                 if (bindingAdapterPosition == RecyclerView.NO_POSITION) return@setOnClickListener
                 val extension = getItem(bindingAdapterPosition)
                 if (extension != null) {
-                    clickListener.onInstallClick(extension)
-                    binding.closeTextView.setImageResource(R.drawable.ic_sync)
-                    scope.launch {
-                        while (isActive) {
-                            withContext(Dispatchers.Main) {
-                                binding.closeTextView.animate()
-                                    .rotationBy(360f)
-                                    .setDuration(1000)
-                                    .setInterpolator(LinearInterpolator())
-                                    .start()
-                            }
-                            delay(1000)
-                        }
+                    clickListener.onInstallClick(extension) { showInstalling() }
+                }
+            }
+        }
+
+        /** Spins the install button; only once the install really starts, which may wait on a prompt. */
+        private fun showInstalling() {
+            binding.closeTextView.setImageResource(R.drawable.ic_sync)
+            scope.launch {
+                while (isActive) {
+                    withContext(Dispatchers.Main) {
+                        binding.closeTextView.animate()
+                            .rotationBy(360f)
+                            .setDuration(1000)
+                            .setInterpolator(LinearInterpolator())
+                            .start()
                     }
+                    delay(1000)
                 }
             }
         }
@@ -205,9 +209,14 @@ class AnimeExtensionAdapter(private val clickListener: OnAnimeInstallClickListen
 
         fun bind(extension: AnimeExtension.Available) {
             val nsfw = if (extension.isNsfw) "(18+)" else ""
+            // Most torrent extensions already say so in their name.
+            val torrent = if (extension.isTorrent && !extension.name.contains("torrent", ignoreCase = true)) {
+                binding.root.context.getString(R.string.extension_torrent_tag)
+            } else ""
             val lang = LanguageMapper.getLanguageName(extension.lang)
             binding.extensionNameTextView.text = extension.name
-            val versionText = "$lang ${extension.versionName} $nsfw"
+            val versionText = listOf(lang, extension.versionName, torrent, nsfw)
+                .filter { it.isNotEmpty() }.joinToString(" ")
             binding.extensionVersionTextView.text = versionText
         }
 
@@ -223,5 +232,6 @@ class AnimeExtensionAdapter(private val clickListener: OnAnimeInstallClickListen
 }
 
 interface OnAnimeInstallClickListener {
-    fun onInstallClick(pkg: AnimeExtension.Available)
+    /** [onStart] once the install is under way — not when it's called off from a prompt. */
+    fun onInstallClick(pkg: AnimeExtension.Available, onStart: () -> Unit)
 }

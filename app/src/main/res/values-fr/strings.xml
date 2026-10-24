@@ -1920,6 +1920,13 @@
     <string name="download_addon_not_installed">Add-on de téléchargement non installé</string>
     <string name="would_you_like_to_install">Voulez-vous l\'installer ?</string>
     <string name="torrent_addon_not_available">Add-on Torrent non disponible</string>
+    <string name="extension_torrent_tag">(Torrent)</string>
+    <string name="torrent_extension_needs_addon_title">Nécessite l\'add-on Torrent</string>
+    <string name="torrent_extension_addon_missing">%1$s lit ses épisodes via l\'add-on Torrent, qui n\'est pas installé. Sans lui, ses flux ne se liront pas.</string>
+    <string name="torrent_extension_addon_disabled">%1$s lit ses épisodes via l\'add-on Torrent, qui est désactivé. Sans lui, ses flux ne se liront pas.</string>
+    <string name="torrent_extension_install_both">Installer les deux</string>
+    <string name="torrent_extension_enable_and_install">Activer et installer</string>
+    <string name="torrent_extension_install_anyway">Installer quand même</string>
     <string name="vote_out_of_total">(%1$s sur %2$s ont aimé cette critique)</string>
     <string name="post_to_anilist_warning">En publiant sur AniList, vous acceptez les règles et directives d\'AniList</string>
     <string name="view_subscriptions_desc">Voir et éditer tous vos abonnements</string>

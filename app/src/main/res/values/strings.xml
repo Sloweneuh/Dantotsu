@@ -1919,6 +1919,13 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="download_addon_not_installed">Download Add-on not installed</string>
     <string name="would_you_like_to_install">Would you like to install it?</string>
     <string name="torrent_addon_not_available">Torrent Add-on not available</string>
+    <string name="extension_torrent_tag">(Torrent)</string>
+    <string name="torrent_extension_needs_addon_title">Needs the Torrent Add-on</string>
+    <string name="torrent_extension_addon_missing">%1$s plays its episodes through the Torrent Add-on, which isn\'t installed. Without it, its streams won\'t play.</string>
+    <string name="torrent_extension_addon_disabled">%1$s plays its episodes through the Torrent Add-on, which is turned off. Without it, its streams won\'t play.</string>
+    <string name="torrent_extension_install_both">Install both</string>
+    <string name="torrent_extension_enable_and_install">Enable and install</string>
+    <string name="torrent_extension_install_anyway">Install anyway</string>
     <string name="download_subtitle">Download Subtitle</string>
     <string name="download_audio_tracks">Download Audio Tracks</string>
     <string name="no_video_selected">No video selected</string>
