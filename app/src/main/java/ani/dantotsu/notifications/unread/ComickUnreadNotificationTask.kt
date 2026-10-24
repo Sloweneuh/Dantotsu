@@ -168,6 +168,7 @@ class ComickUnreadNotificationTask : Task {
             notifId = notifId,
             publicationStatus = entry.publicationStatusWord,
             bayesianRating = entry.bayesian_rating,
+            anilistId = anilistId,
         )
     }
 

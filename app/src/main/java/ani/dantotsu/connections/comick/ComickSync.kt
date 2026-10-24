@@ -5,10 +5,12 @@ import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.mangaupdates.muMediaKey
+import ani.dantotsu.notifications.unread.UnreadCache
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.floor
 
 /**
  * One-way list synchronisation to Comick (manga and anime).
@@ -269,9 +271,16 @@ object ComickSync {
         return Comick.putEntry(
             hid, sendStatus, sendProgress, chapterHid.takeIf { sendProgress != null }, sendRating,
         ).also { ok ->
-            if (!ok) Logger.log("ComickSync: push failed for $hid")
+            if (!ok) {
+                Logger.log("ComickSync: push failed for $hid")
+                return@also
+            }
+            // The home row's cached copy too, which otherwise waits for the next Comick check.
+            if (!isAnime) sendProgress?.toDoubleOrNull()?.let {
+                UnreadCache.raiseComickProgress(hid, floor(it).toInt())
+            }
             // What was written, so the bulk sync's snapshot doesn't go stale under it.
-            else snapshot?.second?.let { library ->
+            snapshot?.second?.let { library ->
                 val before = followed ?: ComickLibraryEntry(hid = hid)
                 library[hid] = before.copy(
                     status = sendStatus ?: before.status,

@@ -275,7 +275,7 @@ class HomeFragment : Fragment() {
             ) return@forEach
             val progress = maxOf(
                 entry.progress,
-                al?.let { continueById?.get(it.id)?.userProgress } ?: 0,
+                (al?.id ?: entry.anilistId)?.let { continueById?.get(it)?.userProgress } ?: 0,
                 mu?.let { muById?.get(it.id)?.userChapter } ?: 0,
             )
             if (entry.latestChapter <= progress) return@forEach

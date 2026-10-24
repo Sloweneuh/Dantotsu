@@ -2,6 +2,7 @@ package ani.dantotsu.notifications.unread
 
 import android.content.Context
 import android.content.Intent
+import ani.dantotsu.App
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.media.Media
@@ -130,6 +131,33 @@ object UnreadCache {
             Logger.log("UnreadCache: saved Comick unread (size=${entries.size})")
         } catch (e: Exception) {
             Logger.log("UnreadCache: Failed to save Comick cache: ${e.message}")
+        }
+    }
+
+    /**
+     * Brings the cached Comick title [hid] up to [progress] after the app wrote that chapter to
+     * Comick, dropping it once nothing is left unread, and broadcasts the change.
+     *
+     * The cache is otherwise only as fresh as the last Comick check. The home row brings a title
+     * up to the live AniList and MangaUpdates lists, but one read from a page that wrote to Comick
+     * and a list the row doesn't consult — a title shown as its MangaUpdates series, read on
+     * AniList — stayed on the row as unread until that check next ran.
+     */
+    fun raiseComickProgress(hid: String, progress: Int) {
+        try {
+            val cached = cachedComick()
+            var changed = false
+            val updated = cached.mapNotNull { entry ->
+                if (entry.hid != hid || progress <= entry.progress) return@mapNotNull entry
+                changed = true
+                entry.copy(progress = progress).takeIf { it.latestChapter > progress }
+            }
+            if (!changed) return
+            PrefManager.setCustomVal("cached_comick_unread", ArrayList(updated))
+            Logger.log("UnreadCache: Comick $hid read to $progress (${cached.size - updated.size} dropped)")
+            (App.instance ?: App.context)?.let(::broadcastUpdate)
+        } catch (e: Exception) {
+            Logger.log("UnreadCache: Failed to raise Comick progress for $hid: ${e.message}")
         }
     }
 

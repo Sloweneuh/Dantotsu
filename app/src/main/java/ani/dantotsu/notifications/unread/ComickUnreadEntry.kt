@@ -38,6 +38,11 @@ data class ComickUnreadEntry(
     val publicationStatus: String? = null,
     /** Comick's site-wide score, 0–10, for a Comick-only card's score badge. */
     val bayesianRating: Double? = null,
+    /**
+     * The AniList id Comick links, also when the title is shown as [muMedia] — so progress saved
+     * on AniList since the check still counts. Null in entries cached before it was kept.
+     */
+    val anilistId: Int? = null,
 ) : Serializable {
 
     /** The id this title's unread info is keyed by in the row, matching what it is shown as. */
