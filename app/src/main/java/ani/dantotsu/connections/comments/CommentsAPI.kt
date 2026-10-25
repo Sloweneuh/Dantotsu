@@ -34,6 +34,7 @@ object CommentsAPI {
     private const val TOKEN_LIFETIME_MS = 1000L * 60 * 60 * 24 * 6
     private const val MAX_SIGN_IN_ATTEMPTS = 5
     private const val RATE_LIMIT_WAIT_MS = 60_000L
+    private val NO_COMMENTS = CommentResponse(emptyList(), 1)
     private var isOnline: Boolean = true
     /**
      * Read on every use. It was read once, when this object was first touched, so switching comments
@@ -59,25 +60,26 @@ object CommentsAPI {
     ): CommentResponse? {
         val query = listOfNotNull(tag?.let { "tag=$it" }, sort?.let { "sort=$it" })
             .joinToString("&").takeIf { it.isNotEmpty() }?.let { "?$it" }.orEmpty()
-        return getJson<CommentResponse>("/comments/$id/$page$query", "Failed to fetch comments")
+        return getJson("/comments/$id/$page$query", "Failed to fetch comments", NO_COMMENTS)
     }
 
     suspend fun getRepliesFromId(id: Int, page: Int = 1): CommentResponse? =
-        getJson("/comments/parent/$id/$page", "Failed to fetch comments")
+        getJson("/comments/parent/$id/$page", "Failed to fetch comments", NO_COMMENTS)
 
     suspend fun getSingleComment(id: Int): Comment? =
         getJson("/comments/$id", "Failed to fetch comment")
 
     /**
-     * A GET of [path], decoded as [T]: null on a network error, an error answer (404 meaning there is
-     * nothing there), or a body that isn't the JSON expected — a Cloudflare error page, say.
+     * A GET of [path], decoded as [T]: null on a network error, an error answer, or a body that isn't
+     * the JSON expected — a Cloudflare error page, say. Nothing there (a 404, or an empty body) gives
+     * [missing] instead, so a media with no comments yet isn't mistaken for a failed load.
      *
      * Every read needs a signed-in token — the server answers 401 without one and 403 to one it no
      * longer accepts. So a read signs in first if nothing has yet, and on a 401 or 403 signs in
      * afresh and tries once more, rather than toasting the code: a token can expire with the app
      * open, and without this the comments simply stopped loading until it was restarted.
      */
-    private suspend inline fun <reified T> getJson(path: String, failure: String): T? {
+    private suspend inline fun <reified T> getJson(path: String, failure: String, missing: T? = null): T? {
         if (!commentsEnabled) return null
         if (authToken == null) fetchAuthToken(null)
         var json = try {
@@ -96,13 +98,16 @@ object CommentsAPI {
                 return null
             }
         }
+        if (json.code == 404) return missing
         if (json.code != 200) {
-            if (json.code != 404) errorReason(json.code, json.text)
+            errorReason(json.code, json.text)
             return null
         }
-        if (!json.text.startsWith("{")) return null
+        val body = json.text.trim()
+        if (body.isEmpty() || body == "[]" || body == "null") return missing
+        if (!body.startsWith("{")) return null
         return try {
-            Json.decodeFromString<T>(json.text)
+            Json.decodeFromString<T>(body)
         } catch (e: Exception) {
             Logger.log(e)
             null
