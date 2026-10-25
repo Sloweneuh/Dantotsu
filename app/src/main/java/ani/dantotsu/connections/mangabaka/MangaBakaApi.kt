@@ -418,6 +418,8 @@ object MangaBakaApi {
      * `genres` are slug values (e.g. `slice_of_life`); `tags`/`excludedTags` are tag names or ids,
      * resolved to ids before they are sent (see [resolveTagIds]). When [allowAdult] is false and the
      * caller supplied no explicit content rating, results are limited to `safe`/`suggestive`.
+     * [excludeUserLibrary] is a MangaBaka user id whose library is left out (`exclude_user_library`,
+     * an alpha parameter the site may change or drop).
      */
     suspend fun searchSeries(
         query: String?,
@@ -440,6 +442,7 @@ object MangaBakaApi {
         sort: String? = null,
         allowAdult: Boolean = true,
         counts: CountFilters = CountFilters(),
+        excludeUserLibrary: String? = null,
     ): SearchPage? = tryWithSuspend {
         val q = query?.trim()?.takeIf { it.isNotBlank() }
 
@@ -454,6 +457,7 @@ object MangaBakaApi {
             statuses, excludedStatuses, contentRatings, excludedContentRatings,
             hasAnime, fromYear, toYear, sort, allowAdult, counts,
         )
+        excludeUserLibrary?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("exclude_user_library", it) }
 
         val request = Request.Builder().url(urlBuilder.build()).get().build()
         val response = execute(request)

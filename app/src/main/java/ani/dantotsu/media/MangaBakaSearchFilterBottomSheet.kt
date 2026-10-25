@@ -10,18 +10,20 @@ import android.text.style.ForegroundColorSpan
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.ConcatAdapter
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.MangaBakaSearchResults
+import ani.dantotsu.connections.mangabaka.MangaBaka
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.databinding.BottomSheetMangabakaSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
@@ -30,6 +32,7 @@ import ani.dantotsu.media.savedfilters.SavedFilterEntry
 import ani.dantotsu.media.savedfilters.SavedFiltersDialog
 import ani.dantotsu.media.savedfilters.SavedFiltersStore
 import ani.dantotsu.media.savedfilters.SavedMangaBakaFilter
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.chip.Chip
 import eu.kanade.tachiyomi.util.system.getResourceColor
 import kotlinx.coroutines.CoroutineScope
@@ -58,6 +61,8 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         val mangaBakaFilterApplyLabel: Int? get() = null
         /** The active-filters popup edits the live state on its own; off where Apply starts something. */
         val mangaBakaManageFilters: Boolean get() = true
+        /** Offers "Exclude my library"; off where the route behind the sheet doesn't take it. */
+        val mangaBakaLibraryFilter: Boolean get() = true
     }
 
     private lateinit var host: Host
@@ -72,9 +77,6 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
     private var excludedStatuses = mutableListOf<String>()
     private var selectedContentRatings = mutableListOf<String>()
     private var excludedContentRatings = mutableListOf<String>()
-    /** The one "has anime" chip: included means `has_anime=true`, excluded `has_anime=false`. */
-    private var selectedAnime = mutableListOf<String>()
-    private var excludedAnime = mutableListOf<String>()
     private var selectedSort: String? = null
 
     private var allGenres: List<FilterOption> = emptyList()
@@ -122,11 +124,14 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         excludedStatuses = r.excludedStatuses?.toMutableList() ?: mutableListOf()
         selectedContentRatings = r.contentRatings?.toMutableList() ?: mutableListOf()
         excludedContentRatings = r.excludedContentRatings?.toMutableList() ?: mutableListOf()
-        selectedAnime = if (r.hasAnime == true) mutableListOf(HAS_ANIME) else mutableListOf()
-        excludedAnime = if (r.hasAnime == false) mutableListOf(HAS_ANIME) else mutableListOf()
         selectedSort = r.sort
 
         setupEnumFilters()
+        setupHasAnime(r.hasAnime)
+        // Leaving the library out needs the user's id, so it's only offered when signed in.
+        binding.mbFilterExcludeLibrary.visibility =
+            if (host.mangaBakaLibraryFilter && !MangaBaka.userid.isNullOrBlank()) View.VISIBLE else View.GONE
+        binding.mbFilterExcludeLibrary.isChecked = r.excludeLibrary
         setupSortButton()
         setupYearSlider(r.fromYear, r.toYear)
         binding.mbFilterChaptersMin.setText(r.chaptersMin?.toString().orEmpty())
@@ -141,8 +146,8 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         val ctx = requireContext()
         binding.mbSectionFormat.summarizeWhenClosed {
             FilterSummary.choices(ctx,
-                selectedTypes.size + selectedStatuses.size + selectedContentRatings.size + selectedAnime.size,
-                excludedTypes.size + excludedStatuses.size + excludedContentRatings.size + excludedAnime.size)
+                selectedTypes.size + selectedStatuses.size + selectedContentRatings.size + switchesOn(),
+                excludedTypes.size + excludedStatuses.size + excludedContentRatings.size)
         }
         binding.mbSectionGenres.summarizeWhenClosed {
             FilterSummary.choices(ctx, selectedGenres.size, excludedGenres.size)
@@ -210,16 +215,35 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         )
         includeExclude(binding.mbFilterTypeRecycler, types, selectedTypes, excludedTypes, grid = false)
         includeExclude(binding.mbFilterStatusRecycler, statuses, selectedStatuses, excludedStatuses, grid = false)
-        // "Has anime" rides at the end of the status row rather than taking a section of its own;
-        // it keeps its own include/exclude lists, since it maps to `has_anime`, not `status`.
-        binding.mbFilterStatusRecycler.adapter = ConcatAdapter(
-            binding.mbFilterStatusRecycler.adapter!!,
-            IncludeExcludeAdapter(
-                listOf(FilterOption(HAS_ANIME, getString(R.string.mb_has_anime))), selectedAnime, excludedAnime
-            ),
-        )
         includeExclude(binding.mbFilterContentRecycler, contentRatings, selectedContentRatings, excludedContentRatings, grid = false)
     }
+
+    /**
+     * "Has anime" is tri-state, like AniList's "List only": unchecked for either, checked for
+     * `has_anime=true`, indeterminate for `has_anime=false`. A tap steps through the three.
+     */
+    private fun setupHasAnime(hasAnime: Boolean?) {
+        binding.mbFilterHasAnime.checkedState = when (hasAnime) {
+            null -> MaterialCheckBox.STATE_UNCHECKED
+            true -> MaterialCheckBox.STATE_CHECKED
+            false -> MaterialCheckBox.STATE_INDETERMINATE
+        }
+        binding.mbFilterHasAnime.setOnTouchListener { _, event ->
+            (event.actionMasked == MotionEvent.ACTION_DOWN).also {
+                if (it) binding.mbFilterHasAnime.checkedState = (binding.mbFilterHasAnime.checkedState + 1) % 3
+            }
+        }
+    }
+
+    private fun selectedHasAnime(): Boolean? = when (binding.mbFilterHasAnime.checkedState) {
+        MaterialCheckBox.STATE_CHECKED -> true
+        MaterialCheckBox.STATE_INDETERMINATE -> false
+        else -> null
+    }
+
+    /** The anime row and library switch, counted for the format card's closed summary. */
+    private fun switchesOn(): Int = (if (selectedHasAnime() != null) 1 else 0) +
+        (if (binding.mbFilterExcludeLibrary.isVisible && binding.mbFilterExcludeLibrary.isChecked) 1 else 0)
 
     private fun includeExclude(
         recycler: RecyclerView,
@@ -400,11 +424,8 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         r.excludedStatuses = excludedStatuses.toMutableList().ifEmpty { null }
         r.contentRatings = selectedContentRatings.toMutableList().ifEmpty { null }
         r.excludedContentRatings = excludedContentRatings.toMutableList().ifEmpty { null }
-        r.hasAnime = when {
-            selectedAnime.isNotEmpty() -> true
-            excludedAnime.isNotEmpty() -> false
-            else -> null
-        }
+        r.hasAnime = selectedHasAnime()
+        r.excludeLibrary = binding.mbFilterExcludeLibrary.isVisible && binding.mbFilterExcludeLibrary.isChecked
         r.sort = selectedSort
         val values = binding.mbFilterYearRange.values
         val from = values[0].toInt()
@@ -463,7 +484,8 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         selectedTypes.clear(); excludedTypes.clear()
         selectedStatuses.clear(); excludedStatuses.clear()
         selectedContentRatings.clear(); excludedContentRatings.clear()
-        selectedAnime.clear(); excludedAnime.clear()
+        binding.mbFilterHasAnime.checkedState = MaterialCheckBox.STATE_UNCHECKED
+        binding.mbFilterExcludeLibrary.isChecked = false
         selectedSort = null
         binding.mbGenreSearchText.setText("")
         binding.mbTagSearchText.setText("")
@@ -484,7 +506,6 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
     }
 
     companion object {
-        private const val HAS_ANIME = "has_anime"
 
         fun newInstance() = MangaBakaSearchFilterBottomSheet()
     }

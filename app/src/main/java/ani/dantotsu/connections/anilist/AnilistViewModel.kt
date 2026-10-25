@@ -12,6 +12,7 @@ import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.kitsu.KitsuApi
 import ani.dantotsu.connections.mal.MALSearchItem
 import ani.dantotsu.connections.simkl.SimklApi
+import ani.dantotsu.connections.mangabaka.MangaBaka
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangaupdates.MUMedia
@@ -1072,6 +1073,7 @@ class AnilistSearch : ViewModel() {
             sort = r.sort,
             allowAdult = PrefManager.getVal(PrefName.AdultOnly),
             counts = r.counts,
+            excludeUserLibrary = MangaBaka.userid?.takeIf { r.excludeLibrary },
         )
         return MangaBakaSearchResults(
             search = r.search,
@@ -1096,6 +1098,7 @@ class AnilistSearch : ViewModel() {
             chaptersMax = r.chaptersMax,
             volumesMin = r.volumesMin,
             volumesMax = r.volumesMax,
+            excludeLibrary = r.excludeLibrary,
         )
     }
 

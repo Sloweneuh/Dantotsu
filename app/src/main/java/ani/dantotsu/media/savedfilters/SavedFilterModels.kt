@@ -292,6 +292,7 @@ data class SavedMangaBakaFilter(
     val chaptersMax: Int? = null,
     val volumesMin: Int? = null,
     val volumesMax: Int? = null,
+    val excludeLibrary: Boolean = false,
 ) : Serializable {
     companion object {
         private const val serialVersionUID: Long = 1L
@@ -316,6 +317,7 @@ data class SavedMangaBakaFilter(
             chaptersMax = r.chaptersMax,
             volumesMin = r.volumesMin,
             volumesMax = r.volumesMax,
+            excludeLibrary = r.excludeLibrary,
         )
     }
 
@@ -338,6 +340,7 @@ data class SavedMangaBakaFilter(
         r.chaptersMax = chaptersMax
         r.volumesMin = volumesMin
         r.volumesMax = volumesMax
+        r.excludeLibrary = excludeLibrary
     }
 
     fun chips(): List<String> {
@@ -352,6 +355,7 @@ data class SavedMangaBakaFilter(
         contentRatings?.forEach { out += "Rating: $it" }
         excludedContentRatings?.forEach { out += excludeLabel(it) }
         hasAnime?.let { out += if (it) "Has anime" else "No anime" }
+        if (excludeLibrary) out += "Exclude my library"
         if (fromYear != null || toYear != null) {
             out += "Year: ${fromYear ?: "?"}-${toYear ?: "?"}"
         }

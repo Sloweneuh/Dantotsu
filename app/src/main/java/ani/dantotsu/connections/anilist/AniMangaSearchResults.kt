@@ -469,6 +469,8 @@ data class MangaBakaSearchResults(
     var chaptersMax: Int? = null,
     var volumesMin: Int? = null,
     var volumesMax: Int? = null,
+    /** Leave out what is in the signed-in user's MangaBaka library (`exclude_user_library`). */
+    var excludeLibrary: Boolean = false,
 ) : SearchResults<MangaBakaApi.Series>, Serializable {
 
     val counts: MangaBakaApi.CountFilters
@@ -484,6 +486,7 @@ data class MangaBakaSearchResults(
         contentRatings?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_CONTENT", context.getString(R.string.comick_content_rating) + ": " + titleCase(it))) }
         excludedContentRatings?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_EXCL_CONTENT", context.getString(R.string.filter_exclude, titleCase(it)))) }
         hasAnime?.let { list.add(AniMangaSearchResults.SearchChip("MB_HAS_ANIME", hasAnimeLabel())) }
+        if (excludeLibrary) list.add(AniMangaSearchResults.SearchChip("MB_EXCL_LIBRARY", context.getString(R.string.mb_exclude_library)))
         genres?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_GENRE", MangaBakaApi.resolveGenreName(it))) }
         excludedGenres?.forEach {
             list.add(AniMangaSearchResults.SearchChip("MB_EXCL_GENRE", context.getString(R.string.filter_exclude, MangaBakaApi.resolveGenreName(it))))
@@ -542,6 +545,7 @@ data class MangaBakaSearchResults(
                 excludedContentRatings?.remove(excludedContentRatings?.firstOrNull { titleCase(it).equals(label, true) })
             }
             "MB_HAS_ANIME" -> hasAnime = null
+            "MB_EXCL_LIBRARY" -> excludeLibrary = false
             "MB_YEAR_RANGE" -> { fromYear = null; toYear = null }
             "MB_CHAPTERS" -> { chaptersMin = null; chaptersMax = null }
             "MB_VOLUMES" -> { volumesMin = null; volumesMax = null }

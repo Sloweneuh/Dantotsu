@@ -49,6 +49,8 @@ class DiscoverActivity : AppCompatActivity(), MangaBakaSearchFilterBottomSheet.H
         private set
     override val mangaBakaFilterApplyLabel = R.string.discover_start_queue
     override val mangaBakaManageFilters = false
+    // The queue runs on the recommendations route, which doesn't take `exclude_user_library`.
+    override val mangaBakaLibraryFilter = false
     /** Skips from the finished queue, for the queue the sheet is about to start. */
     private var pendingCarrySkipped: List<Long> = emptyList()
 

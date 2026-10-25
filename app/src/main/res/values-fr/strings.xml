@@ -3036,6 +3036,7 @@
     <string name="quick_tile_needs_mangabaka">MangaBaka requis</string>
     <string name="mb_has_anime">A un anime</string>
     <string name="mb_no_anime">Sans anime</string>
+    <string name="mb_exclude_library">Exclure ma bibliothèque</string>
     <string name="discover_remove_filter">Retirer le filtre %1$s</string>
     <!-- Read tab chapter selection (long-press a chapter) -->
     <string name="mark_as_read">Marquer comme lu</string>
