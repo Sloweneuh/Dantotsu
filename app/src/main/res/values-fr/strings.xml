@@ -3353,4 +3353,7 @@
     <string name="comment_view_profile">Voir le profil</string>
     <string name="comment_filter_friends">Seulement les personnes que je suis</string>
     <string name="comment_filter_friends_failed">Impossible de charger les personnes que vous suivez sur AniList</string>
+    <string name="top_banner_less">Moins</string>
+    <string name="top_banner_show_all">Afficher les %d notifications</string>
+    <string name="top_banner_show_less">Replier les notifications</string>
 </resources>

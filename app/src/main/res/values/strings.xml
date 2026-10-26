@@ -3476,4 +3476,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="comment_view_profile">View profile</string>
     <string name="comment_filter_friends">Only people I follow</string>
     <string name="comment_filter_friends_failed">Couldn’t load who you follow on AniList</string>
+    <string name="top_banner_less">Less</string>
+    <string name="top_banner_show_all">Show all %d notices</string>
+    <string name="top_banner_show_less">Fold the notices back up</string>
 </resources>

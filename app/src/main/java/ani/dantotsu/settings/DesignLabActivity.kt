@@ -148,6 +148,12 @@ class DesignLabActivity : AppCompatActivity() {
                     AppUpdateNotice.offer("99.0.0", again = true) { it.startActivity(updateIntent()) }
                     AppNotices.showPending(this@DesignLabActivity)
                 },
+                // Two notices at once, to see them stack: the update offer behind a reload prompt.
+                button("Stack") {
+                    AppUpdateNotice.offer("99.0.0", again = true) { it.startActivity(updateIntent()) }
+                    ani.dantotsu.connections.sync.SyncReloadNotice.raise()
+                    AppNotices.showPending(this@DesignLabActivity)
+                },
                 button("Open", filled = true) { startActivity(updateIntent()) },
             )
         }

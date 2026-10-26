@@ -5,6 +5,7 @@ import ani.dantotsu.R
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.toast
+import ani.dantotsu.util.AppNotices
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.TopBanner
 import kotlinx.coroutines.CoroutineScope
@@ -104,7 +105,8 @@ object SyncConflictNotice {
                     is CloudSync.SyncOutcome.Pulled -> {
                         divergent = false
                         SyncReloadNotice.raise()
-                        SyncReloadNotice.spec(activity).let { TopBanner.show(activity, it) }
+                        // Restacked rather than shown on its own, so the notices behind stay put.
+                        AppNotices.showPending(activity)
                     }
 
                     is CloudSync.SyncOutcome.Pushed,

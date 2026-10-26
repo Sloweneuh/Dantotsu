@@ -18,11 +18,11 @@ import ani.dantotsu.settings.ExtensionUpdateNotice
 import ani.dantotsu.settings.SettingsBackupSyncActivity
 
 /**
- * Decides which pending [TopBanner] gets the screen.
+ * Decides the order pending [TopBanner]s stack in.
  *
- * There is one banner slot, so the notices have to be ordered rather than left to whichever fires
- * last — otherwise a low-stakes one repeatedly displaces the one that matters, and the important
- * notice is never seen. The order is by what happens if it's ignored:
+ * Only the top card of the stack can be read without unfolding it, so the notices have to be
+ * ordered rather than left to whichever fires last — otherwise a low-stakes one repeatedly takes the
+ * top from the one that matters. The order is by what happens if it's ignored:
  *
  *  0. a device left in offline mode after its connection came back is cut off from everything
  *     below — the network notices are held back while offline — and from the app besides,
@@ -135,64 +135,33 @@ object AppNotices {
 
     fun showPending(activity: Activity) {
         if (activity.javaClass.name in IMMERSIVE) return
-        // Cheap and idempotent; the result is what the first branch below reads.
+        // Cheap and idempotent; the result is what the stack below is built from.
         SyncLinkNotice.checkOnce()
         // A banner raised earlier may have been settled elsewhere since — resolved on another
         // screen, or made moot by sync being switched off.
         dismissStale()
-        val states = states(activity).toMap()
-        fun pending(id: String) = states[id] == true
-        when {
-            pending(BackOnlineNotice.ID) -> show(activity, BackOnlineNotice.ID) {
-                TopBanner.show(activity, BackOnlineNotice.spec(activity))
-            }
-
-            pending(SyncLinkNotice.ID) -> show(activity, SyncLinkNotice.ID) {
-                TopBanner.show(activity, SyncLinkNotice.spec(activity))
-            }
-
-            pending(SyncConflictNotice.ID) -> show(activity, SyncConflictNotice.ID) {
-                TopBanner.show(activity, SyncConflictNotice.spec(activity))
-            }
-
-            pending(AnilistOutageNotice.ID) -> show(activity, AnilistOutageNotice.ID) {
-                TopBanner.show(activity, AnilistOutageNotice.spec(activity))
-            }
-
-            pending(SyncReloadNotice.ID) -> show(activity, SyncReloadNotice.ID) {
-                TopBanner.show(activity, SyncReloadNotice.spec(activity))
-            }
-
-            pending(ExtensionSyncNotice.ID) -> show(activity, ExtensionSyncNotice.ID) {
-                TopBanner.show(activity, ExtensionSyncNotice.spec(activity))
-            }
-
-            pending(AppUpdateNotice.ID) -> show(activity, AppUpdateNotice.ID) {
-                TopBanner.show(activity, AppUpdateNotice.spec(activity))
-                AppUpdateNotice.markShown()
-            }
-
-            pending(ExtensionUpdateNotice.ID) -> show(activity, ExtensionUpdateNotice.ID) {
-                TopBanner.show(activity, ExtensionUpdateNotice.spec(activity))
-                ExtensionUpdateNotice.markShown()
-            }
-
-            pending(ExtensionObsoleteNotice.ID) -> show(activity, ExtensionObsoleteNotice.ID) {
-                TopBanner.show(activity, ExtensionObsoleteNotice.spec(activity))
-                ExtensionObsoleteNotice.markShown()
-            }
-        }
+        // Every pending notice, in the order above: the most pressing on top, the rest stacked
+        // behind it rather than held back unseen until it goes.
+        val pending = states(activity)
+            .filter { (id, pending) -> pending && REDUNDANT_ON[id] != activity.javaClass }
+            .map { (id, _) -> spec(activity, id) }
+        TopBanner.show(activity, pending)
     }
 
-    /**
-     * Re-showing the banner already on *this* screen would restart its entrance animation for
-     * nothing. On any other screen it has to be raised again: the card belongs to the activity it
-     * was added to, so a rotation or a move to another screen leaves the notice with nowhere to be
-     * — see [TopBanner.isShowingIn], which is the difference between "raised" and "visible here".
-     */
-    private inline fun show(activity: Activity, id: String, block: () -> Unit) {
-        if (REDUNDANT_ON[id] == activity.javaClass) return
-        if (TopBanner.isShowingIn(activity, id)) return
-        block()
+    private fun spec(activity: Activity, id: String): TopBanner.Spec = when (id) {
+        BackOnlineNotice.ID -> BackOnlineNotice.spec(activity)
+        SyncLinkNotice.ID -> SyncLinkNotice.spec(activity)
+        SyncConflictNotice.ID -> SyncConflictNotice.spec(activity)
+        AnilistOutageNotice.ID -> AnilistOutageNotice.spec(activity)
+        SyncReloadNotice.ID -> SyncReloadNotice.spec(activity)
+        ExtensionSyncNotice.ID -> ExtensionSyncNotice.spec(activity)
+        // Shown once per process: marked once the user has actually been able to read them, which
+        // a card peeking out from behind another isn't.
+        AppUpdateNotice.ID -> AppUpdateNotice.spec(activity).copy(onShown = AppUpdateNotice::markShown)
+        ExtensionUpdateNotice.ID ->
+            ExtensionUpdateNotice.spec(activity).copy(onShown = ExtensionUpdateNotice::markShown)
+        ExtensionObsoleteNotice.ID ->
+            ExtensionObsoleteNotice.spec(activity).copy(onShown = ExtensionObsoleteNotice::markShown)
+        else -> error("No notice $id")
     }
 }
