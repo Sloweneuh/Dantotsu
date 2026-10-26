@@ -3,6 +3,7 @@ package ani.dantotsu.settings
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.view.MotionEvent
@@ -35,10 +36,13 @@ import ani.dantotsu.R
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.others.AppUpdateNotice
+import ani.dantotsu.others.AppUpdater
 import ani.dantotsu.px
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.AppNotices
 import ani.dantotsu.util.Logger
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
@@ -115,6 +119,38 @@ class DesignLabActivity : AppCompatActivity() {
         }
 
         addHeader()
+
+        // TEMP: a way into the app update screen without a real update being out.
+        section("App update screen", "For a made-up version. Downloading it will fail.") {
+            // By name: the screen is only in the google flavour.
+            fun updateIntent() = Intent().setClassName(this@DesignLabActivity, "ani.dantotsu.others.AppUpdateActivity")
+                .putExtra("version", "99.0.0")
+                .putExtra("repo", getString(R.string.repo))
+                .putExtra("releasedAt", System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000L)
+                .putExtra(
+                    "changelog",
+                    "- **Changes:**\n  - Added a thing\n  - Changed another thing\n" +
+                        "- **Fixes:**\n  - Fixed a bug\n  - Fixed a much longer bug whose description wraps onto a second line"
+                )
+            buttonRow(
+                button("Notify") {
+                    AppUpdater.notifyUpdate(
+                        this@DesignLabActivity,
+                        AppUpdater.Update(
+                            "99.0.0",
+                            updateIntent().getStringExtra("changelog").orEmpty(),
+                            getString(R.string.repo),
+                            System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000L,
+                        )
+                    )
+                },
+                button("Show notice") {
+                    AppUpdateNotice.offer("99.0.0", again = true) { it.startActivity(updateIntent()) }
+                    AppNotices.showPending(this@DesignLabActivity)
+                },
+                button("Open", filled = true) { startActivity(updateIntent()) },
+            )
+        }
 
         tierLabel("Tier 1 — Views-only wins")
         section(

@@ -14,6 +14,7 @@ import ani.dantotsu.client
 import ani.dantotsu.databinding.ActivitySettingsAboutBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.others.AppUpdater
 import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.restartApp
 import ani.dantotsu.settings.saving.PrefManager
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 
 class SettingsAboutActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsAboutBinding
+    private lateinit var settings: ArrayList<Settings>
 
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
@@ -73,6 +75,23 @@ class SettingsAboutActivity : AppCompatActivity() {
                         isChecked = PrefManager.getVal(PrefName.CheckUpdate),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.CheckUpdate, isChecked)
+                            AppUpdater.scheduleBackgroundCheck(this@SettingsAboutActivity)
+                            setBackgroundCheckEnabled(isChecked)
+                        },
+                        isVisible = !BuildConfig.FLAVOR.contains("fdroid")
+                    ),
+                    Settings(
+                        type = 2,
+                        name = getString(R.string.check_app_updates_background),
+                        desc = getString(R.string.check_app_updates_background_desc),
+                        icon = R.drawable.ic_round_notifications_active_24,
+                        anchorKey = BACKGROUND_CHECK_KEY,
+                        isChecked = PrefManager.getVal(PrefName.CheckUpdateBackground),
+                        // Only a refinement of the switch above: nothing to check without it.
+                        isEnabled = PrefManager.getVal(PrefName.CheckUpdate),
+                        switch = { isChecked, _ ->
+                            PrefManager.setVal(PrefName.CheckUpdateBackground, isChecked)
+                            AppUpdater.scheduleBackgroundCheck(this@SettingsAboutActivity)
                         },
                         isVisible = !BuildConfig.FLAVOR.contains("fdroid")
                     ),
@@ -191,11 +210,23 @@ class SettingsAboutActivity : AppCompatActivity() {
                             }
                         }
                     ),
-                ),
+                ).also { settings = it },
                 tiled = true,
             )
             binding.settingsRecyclerView.layoutManager =
                 LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
         }
+    }
+
+    /** Greys the background-check row out, or back in, as "Check for Updates" is switched. */
+    private fun setBackgroundCheckEnabled(enabled: Boolean) {
+        val i = settings.indexOfFirst { it.anchorKey == BACKGROUND_CHECK_KEY }
+        if (i < 0) return
+        settings[i] = settings[i].copy(isEnabled = enabled)
+        binding.settingsRecyclerView.adapter?.notifyItemChanged(i)
+    }
+
+    private companion object {
+        const val BACKGROUND_CHECK_KEY = "check_app_updates_background"
     }
 }

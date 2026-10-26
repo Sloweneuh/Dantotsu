@@ -2,11 +2,18 @@ package ani.dantotsu.others
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.Animatable
 import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.updateLayoutParams
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.BuildConfig
 import ani.dantotsu.R
@@ -17,13 +24,19 @@ import ani.dantotsu.getThemeColor
 import ani.dantotsu.initActivity
 import ani.dantotsu.logError
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.px
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import com.google.android.material.card.MaterialCardView
+import eu.kanade.tachiyomi.data.notification.Notifications
+import eu.kanade.tachiyomi.util.system.cancelNotification
 import io.noties.markwon.AbstractMarkwonPlugin
 import io.noties.markwon.core.MarkwonTheme
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.text.DateFormat
+import java.util.Date
 
 /**
  * Full screen counterpart to the update bottom sheet: shows the release's patch notes and drives
@@ -61,14 +74,45 @@ class AppUpdateActivity : AppCompatActivity() {
             return
         }
 
-        binding.appUpdateLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            topMargin = statusBarHeight
-            bottomMargin = navBarHeight
+        // The globals can be a resource-dimension guess (a three-button bar's height under gesture
+        // navigation, say) when this is the first screen opened, as from the update notification;
+        // the real insets replace them once they arrive. Padding rather than margin, so the screen's
+        // background runs under the bars instead of leaving the window's showing there.
+        val actionsBottom = binding.appUpdateActions.paddingBottom
+        binding.appUpdateLayout.updatePadding(top = statusBarHeight)
+        binding.appUpdateActions.updatePadding(bottom = actionsBottom + navBarHeight)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.appUpdateLayout) { _, insets ->
+            val status = insets.getInsets(
+                WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
+            ).top
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            if (status > 0) statusBarHeight = status
+            navBarHeight = nav
+            binding.appUpdateLayout.updatePadding(top = status.takeIf { it > 0 } ?: statusBarHeight)
+            binding.appUpdateActions.updatePadding(bottom = actionsBottom + nav)
+            insets
         }
         binding.appUpdateBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
-        binding.appUpdateVersion.text =
-            getString(R.string.update_version_change, BuildConfig.VERSION_NAME, version)
+        // Here is where the "update available" notification leads, however it was reached; its
+        // View action doesn't dismiss it on its own the way tapping the notification does.
+        cancelNotification(Notifications.ID_APP_UPDATE_PROMPT)
+
+        binding.appUpdateCurrentVersion.text = BuildConfig.VERSION_NAME
+        binding.appUpdateVersion.text = version
+        (binding.appUpdateLogo.drawable as? Animatable)?.start()
+        // Only the update check knows the date; reopened from the download notification, it's 0.
+        val releasedAt = intent.getLongExtra(EXTRA_RELEASED_AT, 0)
+        if (releasedAt > 0) {
+            binding.appUpdateReleased.visibility = View.VISIBLE
+            binding.appUpdateReleased.text = getString(
+                R.string.update_released,
+                DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(releasedAt))
+            )
+        }
+        binding.appUpdateGithub.setOnClickListener {
+            openLinkInBrowser("https://github.com/$repo/releases")
+        }
 
         renderPatchNotes()
 
@@ -96,11 +140,11 @@ class AppUpdateActivity : AppCompatActivity() {
         val themed = object : AbstractMarkwonPlugin() {
             override fun configureTheme(builder: MarkwonTheme.Builder) {
                 builder
-                    .headingBreakHeight(0) // no rule under the section titles
+                    .headingBreakHeight(0)
                     .headingTextSizeMultipliers(floatArrayOf(1.35f, 1.2f, 1.1f, 1f, 1f, 1f))
                     .bulletWidth(5f.px)
-                    .listItemColor(getThemeColor(com.google.android.material.R.attr.colorSecondary))
-                    .blockMargin(20f.px)
+                    .listItemColor(getThemeColor(androidx.appcompat.R.attr.colorPrimary))
+                    .blockMargin(16f.px)
             }
         }
         val markwon = try {
@@ -109,8 +153,19 @@ class AppUpdateActivity : AppCompatActivity() {
             binding.appUpdatePatchNotes.text = changelog
             return
         }
-        markwon.setMarkdown(binding.appUpdatePatchNotes, sectionsToHeadings(changelog))
+        val notes = parseSections(changelog)
+        if (notes == null) {
+            markwon.setMarkdown(binding.appUpdatePatchNotes, changelog)
+            return
+        }
+        if (notes.intro.isBlank()) binding.appUpdatePatchNotes.visibility = View.GONE
+        else markwon.setMarkdown(binding.appUpdatePatchNotes, notes.intro)
+        notes.sections.forEach { binding.appUpdateNotes.addView(sectionCard(it, markwon)) }
     }
+
+    private class Item(val depth: Int, val text: StringBuilder)
+    private class Section(val title: String, val items: List<Item>)
+    private class Notes(val intro: String, val sections: List<Section>)
 
     /**
      * Releases are written as a bullet per section with the items nested under it:
@@ -120,34 +175,81 @@ class AppUpdateActivity : AppCompatActivity() {
      *   - Added a thing
      * ```
      *
-     * Rendered literally that puts a bullet on the section title and indents every item twice, which
-     * wastes most of a phone's width. This promotes those title bullets to headings and pulls their
-     * items up a level. Anything that isn't in that shape is returned untouched.
+     * Rendered as markdown that is a bulleted title with every item indented twice, and Markwon's
+     * block spacing leaves each title as far from its own items as from the section before. So the
+     * sections are pulled out here and drawn as cards. Null when the changelog isn't in that shape.
      */
-    private fun sectionsToHeadings(raw: String): String {
+    private fun parseSections(raw: String): Notes? {
         val title = Regex("""^ {0,3}[-*+] +\*\*\s*(.+?)\s*:?\s*\*\*:?\s*$""")
+        val bullet = Regex("""^( *)[-*+] +(.*)$""")
         val lines = raw.replace("\r\n", "\n").lines()
-        if (lines.none { title.matches(it) }) return raw
+        if (lines.none { title.matches(it) }) return null
 
-        val out = StringBuilder()
-        var itemIndent = -1
+        val intro = StringBuilder()
+        val sections = mutableListOf<Section>()
+        var items: MutableList<Item>? = null
+        var baseIndent = -1
         for (line in lines) {
-            val match = title.find(line)
+            val heading = title.find(line)
+            val item = bullet.find(line)
             when {
-                match != null -> {
-                    out.append("\n## ").append(match.groupValues[1]).append("\n\n")
-                    itemIndent = -1
+                heading != null -> {
+                    items = mutableListOf()
+                    sections += Section(heading.groupValues[1], items)
+                    baseIndent = -1
                 }
-                line.isBlank() -> out.append('\n')
-                else -> {
-                    val indent = line.takeWhile { it == ' ' }.length
-                    // Dedent by the section's own first-item indent, so deeper nesting is kept.
-                    if (indent > 0 && itemIndent < 0) itemIndent = indent
-                    out.append(line.drop(minOf(indent, itemIndent.coerceAtLeast(0)))).append('\n')
+                items == null -> intro.append(line).append('\n')
+                line.isBlank() -> {}
+                item != null -> {
+                    val indent = item.groupValues[1].length
+                    // Depth counts from the section's first item, so deeper nesting is kept.
+                    if (baseIndent < 0) baseIndent = indent
+                    val depth = ((indent - baseIndent).coerceAtLeast(0) + 1) / 2
+                    items += Item(depth.coerceAtMost(2), StringBuilder(item.groupValues[2].trim()))
                 }
+                // A wrapped line continues the item above it.
+                else -> items.lastOrNull()?.text?.append(' ')?.append(line.trim())
+                    ?: intro.append(line).append('\n')
             }
         }
-        return out.toString().replace(Regex("\n{3,}"), "\n\n").trim()
+        return Notes(intro.toString().trim(), sections.filter { it.items.isNotEmpty() })
+    }
+
+    /** One section as a filled card: an accent title, then its items with dot bullets. */
+    private fun sectionCard(section: Section, markwon: io.noties.markwon.Markwon): View {
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16f.px, 14f.px, 16f.px, 12f.px)
+        }
+        body.addView(TextView(this).apply {
+            text = section.title
+            textSize = 16f
+            typeface = ResourcesCompat.getFont(this@AppUpdateActivity, R.font.poppins_bold)
+            setTextColor(getThemeColor(androidx.appcompat.R.attr.colorPrimary))
+        })
+        section.items.forEach { item ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(item.depth * 16f.px, 6f.px, 0, 0)
+            }
+            row.addView(TextView(this).apply {
+                text = if (item.depth == 0) "•" else "◦"
+                textSize = 14f
+                setTextColor(getThemeColor(androidx.appcompat.R.attr.colorPrimary))
+            }, LinearLayout.LayoutParams(14f.px, WRAP_CONTENT))
+            row.addView(TextView(this).apply {
+                textSize = 14f
+                typeface = ResourcesCompat.getFont(this@AppUpdateActivity, R.font.poppins)
+                setLineSpacing(2f.px.toFloat(), 1f)
+                setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
+                markwon.setMarkdown(this, item.text.toString())
+            }, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+            body.addView(row)
+        }
+        return MaterialCardView(this, null, com.google.android.material.R.attr.materialCardViewFilledStyle).apply {
+            addView(body)
+            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = 12f.px }
+        }
     }
 
     /** Looks up the APK's size so it can be shown above the button before downloading. */
@@ -240,11 +342,19 @@ class AppUpdateActivity : AppCompatActivity() {
         private const val EXTRA_VERSION = "version"
         private const val EXTRA_CHANGELOG = "changelog"
         private const val EXTRA_REPO = "repo"
+        private const val EXTRA_RELEASED_AT = "releasedAt"
 
-        fun newIntent(context: Context, version: String, changelog: String, repo: String): Intent =
+        fun newIntent(
+            context: Context,
+            version: String,
+            changelog: String,
+            repo: String,
+            releasedAt: Long = 0,
+        ): Intent =
             Intent(context, AppUpdateActivity::class.java)
                 .putExtra(EXTRA_VERSION, version)
                 .putExtra(EXTRA_CHANGELOG, changelog)
                 .putExtra(EXTRA_REPO, repo)
+                .putExtra(EXTRA_RELEASED_AT, releasedAt)
     }
 }

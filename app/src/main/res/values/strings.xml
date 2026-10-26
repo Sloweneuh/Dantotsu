@@ -1092,12 +1092,17 @@
     <string name="deleted_from_list">Deleted from List</string>
     <string name="no_list_id">No List ID found…</string>
     <string name="checking_for_update">Checking for Update</string>
-    <string name="dont_show_again">Don\'t show again for version %1$s</string>
     <string name="no_update_found">No Update Found</string>
     <!-- App update activity -->
     <string name="app_update">App Update</string>
-    <string name="update_version_change" translatable="false">%1$s → %2$s</string>
-    <string name="update_sheet_message">You\'re on version %1$s — version %2$s is available.\n\nContinue to read the patch notes and download the update.</string>
+    <string name="app_update_available">Update available</string>
+    <string name="app_update_notice_subtitle">Version %1$s · you\'re on %2$s</string>
+    <string name="check_app_updates_background">Check in the background</string>
+    <string name="check_app_updates_background_desc">Look for updates every 12 hours and send a notification when one is out</string>
+    <string name="search_kw_check_app_updates_background">update notification background automatic</string>
+    <string name="view">View</string>
+    <string name="update_released">"Released %1$s  ·  "</string>
+    <string name="update_view_on_github">View on GitHub</string>
     <string name="download_update">Download</string>
     <string name="install_update">Install</string>
     <string name="update_download_failed">Download failed</string>

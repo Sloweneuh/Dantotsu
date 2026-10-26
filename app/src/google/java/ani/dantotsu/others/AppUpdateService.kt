@@ -89,6 +89,8 @@ class AppUpdateService : Service() {
         repo = intent?.getStringExtra(EXTRA_REPO) ?: getString(R.string.repo)
 
         startForegroundCompat(progressNotification(indeterminate = true))
+        // The "update available" notification is done with once its download is under way.
+        notificationManager.cancel(Notifications.ID_APP_UPDATE_PROMPT)
         AppUpdateDownloader.setDownloading(version)
 
         downloadJob = scope.launch {

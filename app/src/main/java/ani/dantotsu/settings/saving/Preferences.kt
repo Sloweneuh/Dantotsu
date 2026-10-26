@@ -52,6 +52,7 @@ enum class PrefName(val data: Pref) {
     UnreadMangaNotificationsEnabled(Pref(Location.General, Boolean::class, true)),
     UnreadEpisodeNotificationsEnabled(Pref(Location.General, Boolean::class, true)),
     CheckUpdate(Pref(Location.General, Boolean::class, true)),
+    CheckUpdateBackground(Pref(Location.General, Boolean::class, false)),
     VerboseLogging(Pref(Location.General, Boolean::class, false)),
     DohProvider(Pref(Location.General, Int::class, 0)),
     HidePrivate(Pref(Location.General, Boolean::class, false)),

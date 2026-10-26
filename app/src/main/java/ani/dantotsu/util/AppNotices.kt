@@ -12,6 +12,7 @@ import ani.dantotsu.connections.sync.SyncConflictNotice
 import ani.dantotsu.connections.sync.SyncLinkNotice
 import ani.dantotsu.connections.sync.SyncReloadNotice
 import ani.dantotsu.offline.BackOnlineNotice
+import ani.dantotsu.others.AppUpdateNotice
 import ani.dantotsu.settings.ExtensionObsoleteNotice
 import ani.dantotsu.settings.ExtensionUpdateNotice
 import ani.dantotsu.settings.SettingsBackupSyncActivity
@@ -30,8 +31,9 @@ import ani.dantotsu.settings.SettingsBackupSyncActivity
  *  3. an AniList outage leaves every screen empty with nothing to explain it,
  *  4. a pending reload leaves the current screen showing values that are no longer stored,
  *  5. mismatched extensions leave a device without sources another one has,
- *  6. extension updates are simply waiting, and lose nothing by waiting longer,
- *  7. an obsolete extension has no one-tap fix — reviewing it can wait for whenever the user
+ *  6. an app update is waiting, and the fixes in it with it,
+ *  7. extension updates are simply waiting, and lose nothing by waiting longer,
+ *  8. an obsolete extension has no one-tap fix — reviewing it can wait for whenever the user
  *     gets to the extensions screen on their own.
  *
  * The first two and the fifth share a property the others don't: they can *only* be finished by a
@@ -76,7 +78,7 @@ object AppNotices {
 
     /**
      * Notices whose offer cannot be taken up without a connection: linking a device, settling a
-     * conflict, installing or updating extensions, and an AniList outage — which says nothing at
+     * conflict, downloading an app update, installing or updating extensions, and an AniList outage — which says nothing at
      * all to someone who is not trying to reach AniList.
      *
      * [SyncReloadNotice] is deliberately absent. The pull that raised it has already landed in
@@ -87,6 +89,7 @@ object AppNotices {
         SyncConflictNotice.ID,
         AnilistOutageNotice.ID,
         ExtensionSyncNotice.ID,
+        AppUpdateNotice.ID,
         ExtensionUpdateNotice.ID,
     )
 
@@ -110,6 +113,7 @@ object AppNotices {
         AnilistOutageNotice.ID to AnilistOutageNotice.isPending(),
         SyncReloadNotice.ID to SyncReloadNotice.isPending(),
         ExtensionSyncNotice.ID to ExtensionSyncNotice.isPending(),
+        AppUpdateNotice.ID to AppUpdateNotice.isPending(),
         ExtensionUpdateNotice.ID to ExtensionUpdateNotice.isPending(),
         ExtensionObsoleteNotice.ID to ExtensionObsoleteNotice.isPending(),
     ).map { (id, pending) -> id to (pending && allowed(context, id)) }
@@ -161,6 +165,11 @@ object AppNotices {
 
             pending(ExtensionSyncNotice.ID) -> show(activity, ExtensionSyncNotice.ID) {
                 TopBanner.show(activity, ExtensionSyncNotice.spec(activity))
+            }
+
+            pending(AppUpdateNotice.ID) -> show(activity, AppUpdateNotice.ID) {
+                TopBanner.show(activity, AppUpdateNotice.spec(activity))
+                AppUpdateNotice.markShown()
             }
 
             pending(ExtensionUpdateNotice.ID) -> show(activity, ExtensionUpdateNotice.ID) {

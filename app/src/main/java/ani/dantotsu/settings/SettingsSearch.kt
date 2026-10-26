@@ -628,6 +628,7 @@ object SettingsSearch {
         l += SearchableSetting(FAQActivity::class.java, R.string.faq, R.string.about, R.drawable.ic_round_quiz_24, R.string.faq_desc, keywordsRes = R.string.search_kw_faq)
 
         l += SearchableSetting(SettingsAboutActivity::class.java, R.string.check_app_updates, R.string.about, R.drawable.ic_round_new_releases_24, R.string.check_app_updates_desc, keywordsRes = R.string.search_kw_check_app_updates)
+        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.check_app_updates_background, R.string.about, R.drawable.ic_round_notifications_active_24, R.string.check_app_updates_background_desc, keywordsRes = R.string.search_kw_check_app_updates_background)
 
         l += SearchableSetting(SettingsAboutActivity::class.java, R.string.share_username_in_crash_reports, R.string.about, R.drawable.ic_round_badge_24, R.string.share_username_in_crash_reports_desc, keywordsRes = R.string.search_kw_share_username_in_crash_reports)
 

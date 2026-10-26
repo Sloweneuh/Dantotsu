@@ -59,14 +59,15 @@ object AppUpdateDownloader {
     }
 
     fun start(context: Context, version: String, changelog: String, repo: String) {
-        ContextCompat.startForegroundService(
-            context,
-            Intent(context, AppUpdateService::class.java)
-                .putExtra(AppUpdateService.EXTRA_VERSION, version)
-                .putExtra(AppUpdateService.EXTRA_CHANGELOG, changelog)
-                .putExtra(AppUpdateService.EXTRA_REPO, repo)
-        )
+        ContextCompat.startForegroundService(context, serviceIntent(context, version, changelog, repo))
     }
+
+    /** Starts [AppUpdateService] on [version]; also what the update notification's action sends. */
+    fun serviceIntent(context: Context, version: String, changelog: String, repo: String): Intent =
+        Intent(context, AppUpdateService::class.java)
+            .putExtra(AppUpdateService.EXTRA_VERSION, version)
+            .putExtra(AppUpdateService.EXTRA_CHANGELOG, changelog)
+            .putExtra(AppUpdateService.EXTRA_REPO, repo)
 
     fun cancel(context: Context) {
         context.sendBroadcast(

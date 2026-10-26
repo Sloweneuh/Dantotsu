@@ -908,7 +908,6 @@
     <string name="deleted_from_list">Supprimé de la liste</string>
     <string name="no_list_id">Aucun ID de liste trouvé…</string>
     <string name="checking_for_update">Vérification des mises à jour</string>
-    <string name="dont_show_again">Ne plus afficher pour la version %1$s</string>
     <string name="no_update_found">Aucune mise à jour trouvée</string>
     <string name="install_1dm">Veuillez installer 1DM</string>
     <string name="install_adm">Veuillez installer ADM</string>
@@ -2544,7 +2543,14 @@
     <string name="update_ready_to_install">Téléchargé · %1$s</string>
     <string name="update_ready_title">Mise à jour prête à installer</string>
     <string name="update_downloading">Téléchargement</string>
-    <string name="update_sheet_message">Vous utilisez la version %1$s — la version %2$s est disponible.\n\nContinuez pour consulter les notes de version et télécharger la mise à jour.</string>
+    <string name="app_update_available">Mise à jour disponible</string>
+    <string name="app_update_notice_subtitle">Version %1$s · vous avez la %2$s</string>
+    <string name="check_app_updates_background">Vérifier en arrière-plan</string>
+    <string name="check_app_updates_background_desc">Chercher des mises à jour toutes les 12 heures et envoyer une notification quand il y en a une</string>
+    <string name="search_kw_check_app_updates_background">mise à jour notification arrière-plan automatique</string>
+    <string name="view">Voir</string>
+    <string name="update_released">"Publiée le %1$s  ·  "</string>
+    <string name="update_view_on_github">Voir sur GitHub</string>
 
     <!-- Captures : clips vidéo/GIF et réglages partagés avec les captures d'écran -->
     <string name="capture_defaults_card">Affiché sur la carte</string>

@@ -698,6 +698,7 @@ object BackupTree {
                     listOf(
                         BackupItem(PrefName.SharedUserID, R.string.backup_shared_user_id),
                         BackupItem(PrefName.CheckUpdate, R.string.check_app_updates),
+                        BackupItem(PrefName.CheckUpdateBackground, R.string.check_app_updates_background),
                         BackupItem(PrefName.VerboseLogging, R.string.log_to_file),
                         BackupItem(PrefName.DisableCrashReports, R.string.disable_crash_reports),
                     )

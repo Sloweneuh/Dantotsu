@@ -241,6 +241,7 @@ class App : MultiDexApplication() {
         // off when the preference is off. Safe to run every launch — the unique work is UPDATEd, so
         // an unchanged request keeps the countdown it is already on.
         scope.launch { runCatching { ExtensionUpdateScheduler.apply(this@App) } }
+        scope.launch { runCatching { ani.dantotsu.others.AppUpdater.scheduleBackgroundCheck(this@App) } }
         scope.launch {
             animeExtensionManager = Injekt.get()
             launch {
