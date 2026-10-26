@@ -69,7 +69,6 @@ object SettingsPageTransitions : Application.ActivityLifecycleCallbacks {
         ComickMatchesActivity::class.java,
         ToolboxActivity::class.java,
         ToolResultsActivity::class.java,
-        DesignLabActivity::class.java,
     )
 
     /** Per page, the row icon last given [ICON_TRANSITION]; see [open]. */

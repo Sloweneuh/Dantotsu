@@ -183,7 +183,7 @@ class SettingsActivity : AppCompatActivity() {
                         // Debug console for manually triggering/testing background notification
                         // tasks; the activity itself also finishes immediately outside debug
                         // builds, so this is just keeping it out of the list release users see.
-                        if (BuildConfig.DEBUG) Settings(
+                        if (ani.dantotsu.notifications.firebase.FirebaseTestActivity.enabled) Settings(
                             type = 1,
                             name = "Firebase Test Console",
                             desc = "Debug: test notifications and background tasks",
@@ -198,19 +198,6 @@ class SettingsActivity : AppCompatActivity() {
                             },
                             isActivity = true,
                             startsGroup = true
-                        ) else null,
-                        // Debug playground comparing current components and motion with the
-                        // proposed modernisation (Material 1.14 Expressive, transitions, springs).
-                        if (DesignLabActivity.enabled) Settings(
-                            type = 1,
-                            name = "Design Lab",
-                            desc = "Debug: compare current UI with proposed changes",
-                            icon = R.drawable.ic_round_bug_report_24,
-                            onClick = {
-                                openPage(it, DesignLabActivity::class.java)
-                            },
-                            isActivity = true,
-                            startsGroup = !BuildConfig.DEBUG
                         ) else null
                     ).toTypedArray()
                 ),

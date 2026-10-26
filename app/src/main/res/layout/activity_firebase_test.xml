@@ -174,6 +174,43 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="App updates (made-up v99.0.0, downloading it will fail)"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"
+                android:textColor="?attr/colorOnSurface" />
+
+            <Button
+                android:id="@+id/btnUpdateNotify"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Post Update Notification"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnUpdateNotice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Show Update Notice"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnUpdateNoticeStack"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Show Stacked Notices (sync reload + update)"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnUpdateOpen"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Open Update Screen"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:text="Utilities"
                 android:textStyle="bold"
                 android:textSize="14sp"

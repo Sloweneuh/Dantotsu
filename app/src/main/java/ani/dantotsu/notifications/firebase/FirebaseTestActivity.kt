@@ -1,6 +1,7 @@
 package ani.dantotsu.notifications.firebase
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ScrollView
@@ -10,12 +11,17 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import ani.dantotsu.R
+import ani.dantotsu.connections.sync.SyncReloadNotice
 import ani.dantotsu.initActivity
 import ani.dantotsu.notifications.anilist.AnilistNotificationTask
 import ani.dantotsu.notifications.subscription.SubscriptionNotificationTask
 import ani.dantotsu.notifications.unread.ComickUnreadNotificationTask
 import ani.dantotsu.notifications.unread.MuUnreadNotificationTask
 import ani.dantotsu.notifications.unread.UnreadChapterNotificationTask
+import ani.dantotsu.others.AppUpdateActivity
+import ani.dantotsu.others.AppUpdateNotice
+import ani.dantotsu.others.AppUpdater
+import ani.dantotsu.util.AppNotices
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.themes.ThemeManager
@@ -57,7 +63,7 @@ class FirebaseTestActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Only allow access in debug builds
-        if (!ani.dantotsu.BuildConfig.DEBUG) {
+        if (!enabled) {
             finish()
             return
         }
@@ -175,7 +181,40 @@ class FirebaseTestActivity : AppCompatActivity() {
         btnTestComickImage.setOnClickListener {
             sendTestNotification("Comick") { ComickUnreadNotificationTask().sendTestNotification(this) }
         }
+
+        findViewById<Button>(R.id.btnUpdateNotify).setOnClickListener {
+            AppUpdater.notifyUpdate(
+                this,
+                AppUpdater.Update(TEST_VERSION, TEST_CHANGELOG, getString(R.string.repo), testReleasedAt())
+            )
+            tvStatus.append("\n\n🔔 Update notification posted — check the notification shade")
+        }
+
+        findViewById<Button>(R.id.btnUpdateNotice).setOnClickListener {
+            AppUpdateNotice.offer(TEST_VERSION, again = true) { it.startActivity(updateIntent()) }
+            AppNotices.showPending(this)
+        }
+
+        // Two notices at once, to see them stack: the update offer behind a reload prompt.
+        findViewById<Button>(R.id.btnUpdateNoticeStack).setOnClickListener {
+            AppUpdateNotice.offer(TEST_VERSION, again = true) { it.startActivity(updateIntent()) }
+            SyncReloadNotice.raise()
+            AppNotices.showPending(this)
+        }
+
+        findViewById<Button>(R.id.btnUpdateOpen).setOnClickListener {
+            startActivity(updateIntent())
+        }
     }
+
+    /** The app update screen, for a made-up release; downloading it will fail. */
+    private fun updateIntent() = Intent(this, AppUpdateActivity::class.java)
+        .putExtra("version", TEST_VERSION)
+        .putExtra("repo", getString(R.string.repo))
+        .putExtra("releasedAt", testReleasedAt())
+        .putExtra("changelog", TEST_CHANGELOG)
+
+    private fun testReleasedAt() = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(2)
 
     /**
      * Posts a synthetic notification carrying a real cover image, bypassing the account state
@@ -474,6 +513,20 @@ class FirebaseTestActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         ThemeManager(this).applyTheme()
+    }
+
+    companion object {
+        /**
+         * Whether this console is reachable. Not just `BuildConfig.DEBUG`: the debug build type
+         * isn't debuggable, so that is false in the APK actually installed for testing.
+         */
+        val enabled
+            get() = ani.dantotsu.BuildConfig.DEBUG || ani.dantotsu.BuildConfig.BUILD_TYPE == "debug"
+
+        private const val TEST_VERSION = "99.0.0"
+        private const val TEST_CHANGELOG =
+            "- **Changes:**\n  - Added a thing\n  - Changed another thing\n" +
+                "- **Fixes:**\n  - Fixed a bug\n  - Fixed a much longer bug whose description wraps onto a second line"
     }
 }
 
