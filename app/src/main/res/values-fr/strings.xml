@@ -2549,6 +2549,7 @@
     <string name="check_app_updates_background_desc">Chercher des mises à jour toutes les 12 heures et envoyer une notification quand il y en a une</string>
     <string name="search_kw_check_app_updates_background">mise à jour notification arrière-plan automatique</string>
     <string name="view">Voir</string>
+    <string name="update_check_failed">Impossible de vérifier les mises à jour</string>
     <string name="update_released">"Publiée le %1$s  ·  "</string>
     <string name="update_view_on_github">Voir sur GitHub</string>
 

@@ -163,15 +163,23 @@ object AppUpdater {
         get() = TEST_UPDATE_FLOW || BuildConfig.BUILD_TYPE == "release"
 
     /** The newest release if it's newer than this build; null when it isn't, or on any failure. */
-    suspend fun findUpdate(context: Context): Update? {
-        if (!checksForUpdates) return null
+    suspend fun findUpdate(context: Context): Update? = (lookUp(context) as? Lookup.Found)?.update
+
+    /** What a check came back with: a manual one answers each of these differently. */
+    private sealed interface Lookup {
+        class Found(val update: Update) : Lookup
+        data object UpToDate : Lookup
+        /** Neither GitHub nor the fallback answered — offline, say. Not the same as no update. */
+        data object Failed : Lookup
+    }
+
+    private suspend fun lookUp(context: Context): Lookup {
+        if (!checksForUpdates) return Lookup.UpToDate
         val repo = context.getString(R.string.repo)
-        return tryWithSuspend {
-            val info = fetchUpdateInfo(repo, isDebugChannel) ?: return@tryWithSuspend null
-            Logger.log("Git Version : ${info.version}")
-            if (!TEST_UPDATE_FLOW && !compareVersion(info.version)) return@tryWithSuspend null
-            Update(info.version, info.changelog, repo, info.releasedAt)
-        }
+        val info = tryWithSuspend { fetchUpdateInfo(repo, isDebugChannel) } ?: return Lookup.Failed
+        Logger.log("Git Version : ${info.version}")
+        if (!TEST_UPDATE_FLOW && !compareVersion(info.version)) return Lookup.UpToDate
+        return Lookup.Found(Update(info.version, info.changelog, repo, info.releasedAt))
     }
 
     fun openIntent(context: Context, update: Update): Intent = AppUpdateActivity.newIntent(
@@ -184,17 +192,31 @@ object AppUpdater {
             return
         }
         if (post) snackString(currContext()?.getString(R.string.checking_for_update))
-        val update = findUpdate(activity)
-        if (update == null) {
-            if (post) snackString(currContext()?.getString(R.string.no_update_found))
-            return
+        val update = when (val result = lookUp(activity)) {
+            is Lookup.Found -> result.update
+            Lookup.UpToDate -> {
+                if (post) snackString(currContext()?.getString(R.string.no_update_found))
+                return
+            }
+            Lookup.Failed -> {
+                if (post) snackString(currContext()?.getString(R.string.update_check_failed))
+                return
+            }
         }
-        // A manual check asks to see it, even if the banner was already swiped away.
-        AppUpdateNotice.offer(update.version, again = post) { it.startActivity(openIntent(it, update)) }
-        // Raised here rather than on the next screen change; the check runs early enough to race
-        // activity startup, so whether there is still a screen is asked again.
+        AppUpdateNotice.offer(update.version) { it.startActivity(openIntent(it, update)) }
         activity.runOnUiThread {
-            if (!activity.isDestroyed && !activity.isFinishing) AppNotices.showPending(activity)
+            // The check runs early enough to race activity startup, so whether there is still a
+            // screen is asked again.
+            if (activity.isDestroyed || activity.isFinishing) return@runOnUiThread
+            if (post) {
+                // Asked for by hand: straight to the update, rather than a banner that may have to
+                // wait behind a more important notice. Already open, it needn't be raised as well.
+                AppUpdateNotice.markShown()
+                activity.startActivity(openIntent(activity, update))
+            } else {
+                // Raised here rather than on the next screen change.
+                AppNotices.showPending(activity)
+            }
         }
     }
 

@@ -1101,6 +1101,7 @@
     <string name="check_app_updates_background_desc">Look for updates every 12 hours and send a notification when one is out</string>
     <string name="search_kw_check_app_updates_background">update notification background automatic</string>
     <string name="view">View</string>
+    <string name="update_check_failed">Couldn’t check for updates</string>
     <string name="update_released">"Released %1$s  ·  "</string>
     <string name="update_view_on_github">View on GitHub</string>
     <string name="download_update">Download</string>
