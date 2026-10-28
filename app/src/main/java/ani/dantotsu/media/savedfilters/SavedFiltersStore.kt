@@ -411,14 +411,19 @@ object SavedFiltersStore {
      * Produces one chip label per active extension filter by walking the live
      * FilterList in parallel with the saved snapshot. Falls back to the model's
      * own placeholder chips on shape mismatch.
+     *
+     * [defaults] is the source's untouched filter list snapshotted the same way: an entry equal to
+     * it is left out, as the active-filter chips leave it out — otherwise a source with a default
+     * sort (most have one) gets a sort chip on every preset.
      */
-    fun chipsForExtension(states: List<Any?>, fl: Any): List<String> {
+    fun chipsForExtension(states: List<Any?>, fl: Any, defaults: List<Any?>? = null): List<String> {
         val out = mutableListOf<String>()
         val cursor = intArrayOf(0)
+        val isDefault = { i: Int -> defaults != null && i < defaults.size && defaults[i] == states.getOrNull(i) }
         try {
             when (fl) {
-                is FilterList -> fl.list.forEach { addMangaSummary(it, states, cursor, out) }
-                is AnimeFilterList -> fl.list.forEach { addAnimeSummary(it, states, cursor, out) }
+                is FilterList -> fl.list.forEach { addMangaSummary(it, states, cursor, out, isDefault) }
+                is AnimeFilterList -> fl.list.forEach { addAnimeSummary(it, states, cursor, out, isDefault) }
             }
         } catch (_: Throwable) {
             return SavedExtensionFilter("", states).chips()
@@ -428,12 +433,17 @@ object SavedFiltersStore {
 
     private fun addMangaSummary(
         f: Filter<*>, states: List<Any?>, cursor: IntArray, out: MutableList<String>,
+        isDefault: (Int) -> Boolean,
     ) {
+        if (f !is Filter.Header && f !is Filter.Separator && f !is Filter.Group<*> && isDefault(cursor[0])) {
+            cursor[0]++
+            return
+        }
         when (f) {
             is Filter.Header, is Filter.Separator -> Unit
             is Filter.Group<*> -> @Suppress("UNCHECKED_CAST")
                 (f.state as? List<*>)?.forEach { c ->
-                    if (c is Filter<*>) addMangaSummary(c, states, cursor, out)
+                    if (c is Filter<*>) addMangaSummary(c, states, cursor, out, isDefault)
                 }
             is Filter.Select<*> -> {
                 val v = states.getOrNull(cursor[0]) as? Int
@@ -474,12 +484,17 @@ object SavedFiltersStore {
 
     private fun addAnimeSummary(
         f: AnimeFilter<*>, states: List<Any?>, cursor: IntArray, out: MutableList<String>,
+        isDefault: (Int) -> Boolean,
     ) {
+        if (f !is AnimeFilter.Header && f !is AnimeFilter.Separator && f !is AnimeFilter.Group<*> && isDefault(cursor[0])) {
+            cursor[0]++
+            return
+        }
         when (f) {
             is AnimeFilter.Header, is AnimeFilter.Separator -> Unit
             is AnimeFilter.Group<*> -> @Suppress("UNCHECKED_CAST")
                 (f.state as? List<*>)?.forEach { c ->
-                    if (c is AnimeFilter<*>) addAnimeSummary(c, states, cursor, out)
+                    if (c is AnimeFilter<*>) addAnimeSummary(c, states, cursor, out, isDefault)
                 }
             is AnimeFilter.Select<*> -> {
                 val v = states.getOrNull(cursor[0]) as? Int

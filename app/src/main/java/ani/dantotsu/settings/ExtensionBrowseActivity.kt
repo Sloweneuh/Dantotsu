@@ -47,6 +47,7 @@ import ani.dantotsu.util.showError
 import ani.dantotsu.util.showNoResults
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilter
+import ani.dantotsu.media.savedfilters.SavedFiltersStore
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
 import eu.kanade.tachiyomi.animesource.model.SAnime
@@ -510,6 +511,16 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     fun hasActiveFilterChips(): Boolean = buildActiveFilterChips().isNotEmpty()
 
     fun activeFilterCount(): Int = buildActiveFilterChips().size
+
+    /** The source's untouched filters, in [SavedFiltersStore]'s snapshot form. */
+    fun defaultFilterStates(): List<Any?>? {
+        ensureDefaultFilters()
+        return when (val d = defaultFilters) {
+            is FilterList -> SavedFiltersStore.snapshotMangaFilters(d)
+            is AnimeFilterList -> SavedFiltersStore.snapshotAnimeFilters(d)
+            else -> null
+        }
+    }
 
     private fun reload() = load(modeForState(), currentFilters)
 

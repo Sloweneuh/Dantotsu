@@ -220,6 +220,14 @@ data class MUSearchResults(
             )
         }
         categories?.forEach { list.add(AniMangaSearchResults.SearchChip("MU_CAT", it)) }
+        excludedCategories?.forEach {
+            list.add(
+                AniMangaSearchResults.SearchChip(
+                    "MU_EXCL_CAT",
+                    currContext()!!.getString(R.string.filter_exclude, it)
+                )
+            )
+        }
         statusFilters?.forEach {
             list.add(AniMangaSearchResults.SearchChip("MU_FILTER_$it", STATUS_FILTER_LABELS[it] ?: it))
         }
@@ -240,6 +248,12 @@ data class MUSearchResults(
                 excludedGenres?.remove(value)
             }
             chip.type == "MU_CAT" -> categories?.remove(chip.text)
+            chip.type == "MU_EXCL_CAT" -> {
+                val value = excludedCategories?.firstOrNull {
+                    currContext()?.getString(R.string.filter_exclude, it) == chip.text
+                } ?: chip.text
+                excludedCategories?.remove(value)
+            }
             chip.type.startsWith("MU_FILTER_") -> statusFilters?.remove(chip.type.removePrefix("MU_FILTER_"))
         }
     }
@@ -305,6 +319,10 @@ data class ComickSearchResults(
     fun toChipList(): List<AniMangaSearchResults.SearchChip> {
         val list = mutableListOf<AniMangaSearchResults.SearchChip>()
         val context = currContext()!!
+        // "created_at" is the sheet's default, the same one the saved-filter summary leaves out.
+        sort?.takeIf { it.isNotBlank() && it != "created_at" }?.let {
+            list.add(AniMangaSearchResults.SearchChip("COMICK_SORT", context.getString(R.string.filter_sort, ComickApi.SEARCH_SORT_LABELS[it] ?: labelForSort(it))))
+        }
         genres?.forEach { list.add(AniMangaSearchResults.SearchChip("COMICK_GENRE", ComickApi.resolveGenreName(it) ?: it)) }
         excludedGenres?.forEach {
             val displayName = ComickApi.resolveGenreName(it) ?: it
@@ -479,6 +497,9 @@ data class MangaBakaSearchResults(
     fun toChipList(): List<AniMangaSearchResults.SearchChip> {
         val list = mutableListOf<AniMangaSearchResults.SearchChip>()
         val context = currContext()!!
+        sort?.takeIf { it.isNotBlank() }?.let {
+            list.add(AniMangaSearchResults.SearchChip("MB_SORT", context.getString(R.string.filter_sort, SORT_LABELS[it] ?: titleCase(it))))
+        }
         types?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_TYPE", context.getString(R.string.format) + ": " + labelForType(it))) }
         excludedTypes?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_EXCL_TYPE", context.getString(R.string.filter_exclude, labelForType(it)))) }
         statuses?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_STATUS", context.getString(R.string.status_title) + ": " + labelForStatus(it))) }
@@ -544,6 +565,7 @@ data class MangaBakaSearchResults(
                 val label = chip.text.rawNotPrefixed(context)
                 excludedContentRatings?.remove(excludedContentRatings?.firstOrNull { titleCase(it).equals(label, true) })
             }
+            "MB_SORT" -> sort = null
             "MB_HAS_ANIME" -> hasAnime = null
             "MB_EXCL_LIBRARY" -> excludeLibrary = false
             "MB_YEAR_RANGE" -> { fromYear = null; toYear = null }
@@ -582,4 +604,18 @@ data class MangaBakaSearchResults(
     fun titleCase(text: String): String =
         text.split('_', '-').filter { it.isNotBlank() }
             .joinToString(" ") { p -> p.replaceFirstChar { c -> c.uppercase() } }
+
+    companion object {
+        /** Sort values (minus the blank "Relevance" default) to the labels the filter sheet shows. */
+        val SORT_LABELS = mapOf(
+            "popularity_desc" to "Popularity",
+            "score_desc" to "Rating",
+            "latest" to "Latest",
+            "trending_7d" to "Trending (7d)",
+            "trending_30d" to "Trending (30d)",
+            "name_asc" to "Name A-Z",
+            "published_year_desc" to "Year (newest)",
+            "chapters_desc" to "Chapters",
+        )
+    }
 }

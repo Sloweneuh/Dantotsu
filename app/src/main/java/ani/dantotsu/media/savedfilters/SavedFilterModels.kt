@@ -345,7 +345,7 @@ data class SavedMangaBakaFilter(
 
     fun chips(): List<String> {
         val out = mutableListOf<String>()
-        sort?.takeIf { it.isNotBlank() }?.let { out += "Sort : ${it.replace('_', ' ')}" }
+        sort?.takeIf { it.isNotBlank() }?.let { out += "Sort : ${MangaBakaSearchResults.SORT_LABELS[it] ?: it.replace('_', ' ')}" }
         if (chaptersMin != null || chaptersMax != null) out += "Chapters: ${chaptersMin ?: "?"}-${chaptersMax ?: "?"}"
         if (volumesMin != null || volumesMax != null) out += "Volumes: ${volumesMin ?: "?"}-${volumesMax ?: "?"}"
         types?.forEach { out += "Format: $it" }

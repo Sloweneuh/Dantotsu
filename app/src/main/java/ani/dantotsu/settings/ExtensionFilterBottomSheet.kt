@@ -128,8 +128,9 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
         SavedFiltersDialog.show(
             context = requireContext(),
             loadPresets = {
+                val defaults = (activity as? ExtensionBrowseActivity)?.defaultFilterStates()
                 SavedFiltersStore.loadExtension(sourceId).map {
-                    SavedFilterEntry(it.name, SavedFiltersStore.chipsForExtension(it.states, fl))
+                    SavedFilterEntry(it.name, SavedFiltersStore.chipsForExtension(it.states, fl, defaults))
                 }
             },
             onSaveCurrent = { name ->
