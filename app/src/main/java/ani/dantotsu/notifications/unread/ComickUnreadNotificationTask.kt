@@ -853,7 +853,7 @@ class ComickUnreadNotificationTask : Task {
             // The exact number ("13.5"); the count stays in whole chapters.
             val chapterText = context.newReleaseText(item.latestExact, unreadCount)
             val sourceText = context.getString(R.string.notification_source_subtext, item.source)
-            val plainBodyText = "$title: $chapterText · $sourceText"
+            val plainBodyText = "$chapterText · $sourceText"
 
             val readKey = NotificationReadState.chapterKey(item.notifId, item.latestChapter)
             val intent = (inAppIntentForLink(context, item.link) ?: return@forEach).apply {

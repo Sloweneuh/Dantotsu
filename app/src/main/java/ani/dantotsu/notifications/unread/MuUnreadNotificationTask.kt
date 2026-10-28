@@ -337,8 +337,9 @@ class MuUnreadNotificationTask : Task {
                 source ?: "MangaUpdates"
             )
             // In the body rather than the header's subtext slot, which the header keeps reserved
-            // even without a cover image, and which some launchers otherwise hide entirely.
-            val plainBodyText = "$title: $chapterText · $sourceText"
+            // even without a cover image, and which some launchers otherwise hide entirely. No title
+            // prefix: the collapsed group stack shows each child as content title + text already.
+            val plainBodyText = "$chapterText · $sourceText"
 
             val notifId = muMediaKey(muMedia.id)
             val readKey = NotificationReadState.chapterKey(notifId, latestChapter)

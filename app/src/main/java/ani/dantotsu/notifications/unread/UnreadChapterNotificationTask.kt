@@ -515,8 +515,9 @@ class UnreadChapterNotificationTask : Task {
             }
             val fallbackSourceLine = sourceText ?: LanguageMapper.displayWithType(info.language!!)
             // In the body rather than the header's subtext slot, which the header keeps reserved
-            // even without a cover image, and which some launchers otherwise hide entirely.
-            val plainBodyText = "$title: $chapterText · $fallbackSourceLine"
+            // even without a cover image, and which some launchers otherwise hide entirely. No title
+            // prefix: the collapsed group stack shows each child as content title + text already.
+            val plainBodyText = "$chapterText · $fallbackSourceLine"
 
             val readKey = NotificationReadState.chapterKey(media.id, info.lastChapter)
             val intent = Intent(context, MediaDetailsActivity::class.java).apply {
