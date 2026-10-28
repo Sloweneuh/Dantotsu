@@ -57,6 +57,12 @@ class CalendarActivity : AppCompatActivity(), AniMangaFilterHost {
         scope.launch { model.loadCalendar(aniMangaResult) }
     }
 
+    override fun onDestroy() {
+        // Refresh.activity holds an entry per open screen; without this every visit leaves one.
+        Refresh.activity.remove(this.hashCode())
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

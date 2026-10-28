@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.content.Intent
+import ani.dantotsu.util.Logger
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -56,13 +57,13 @@ class QuicklinksBottomSheetFragment : CustomBottomDialog() {
                             } else {
                                 startActivity(Intent(Intent.ACTION_VIEW, uri))
                             }
-                        } catch (_: Throwable) {}
+                        } catch (e: Throwable) { Logger.log(e) }
                     }
                     itemView.setOnLongClickListener { copyToClipboard(url); true }
                 }
 
                 addView(itemView)
-            } catch (_: Throwable) {}
+            } catch (e: Throwable) { Logger.log(e) }
         }
     }
 }

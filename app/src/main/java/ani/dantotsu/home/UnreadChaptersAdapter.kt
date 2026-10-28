@@ -1,6 +1,7 @@
 package ani.dantotsu.home
 
 import android.annotation.SuppressLint
+import ani.dantotsu.util.Logger
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -215,14 +216,14 @@ class UnreadChaptersAdapter(
                         if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
                     )
                     itemCompactLanguageBG.backgroundTintList = itemCompactScoreBG.backgroundTintList
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
                 try {
                     val isUser = media.userScore != 0
                     itemCompactSourceBadge.setBackgroundResource(
                         if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
                     )
                     itemCompactSourceBadge.backgroundTintList = itemCompactScoreBG.backgroundTintList
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE
@@ -342,7 +343,7 @@ class UnreadChaptersAdapter(
                         val dot = itemCompactOngoing.getChildAt(0)
                         if (isHiatus) dot?.setBackgroundResource(R.drawable.item_hiatus)
                         else dot?.setBackgroundResource(R.drawable.item_ongoing)
-                    } catch (e: Exception) { }
+                    } catch (e: Exception) { Logger.log(e) }
                 } else {
                     itemCompactOngoing.visibility = View.GONE
                 }
@@ -363,14 +364,14 @@ class UnreadChaptersAdapter(
                         if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
                     )
                     itemCompactLanguageBG.backgroundTintList = itemCompactScoreBG.backgroundTintList
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
                 try {
                     val isUser = media.userScore != 0
                     itemCompactSourceBadge.setBackgroundResource(
                         if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
                     )
                     itemCompactSourceBadge.backgroundTintList = itemCompactScoreBG.backgroundTintList
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE
@@ -461,7 +462,7 @@ class UnreadChaptersAdapter(
                 try {
                     itemCompactSourceBadge.setBackgroundResource(R.drawable.item_language_badge)
                     itemCompactSourceBadge.backgroundTintList = itemCompactScoreBG.backgroundTintList
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE
@@ -558,7 +559,7 @@ class UnreadChaptersAdapter(
                 try {
                     itemCompactSourceBadge.setBackgroundResource(R.drawable.item_language_badge)
                     itemCompactSourceBadge.backgroundTintList = itemCompactScoreBG.backgroundTintList
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE

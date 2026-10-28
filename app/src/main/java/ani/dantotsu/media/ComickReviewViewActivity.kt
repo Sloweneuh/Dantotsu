@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.content.Intent
+import ani.dantotsu.util.Logger
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -68,7 +69,7 @@ class ComickReviewViewActivity : AppCompatActivity() {
         try {
             binding.closeButton.enableSettingsLongPress()
             binding.closeButton.setOnClickListener { finish() }
-        } catch (_: Throwable) {}
+        } catch (e: Throwable) { Logger.log(e) }
     }
 
     private fun hashEmailToGravatar(email: String): String {

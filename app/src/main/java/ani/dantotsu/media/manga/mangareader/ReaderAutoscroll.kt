@@ -1,6 +1,7 @@
 package ani.dantotsu.media.manga.mangareader
 
 import android.view.Choreographer
+import ani.dantotsu.util.Logger
 import ani.dantotsu.R
 import ani.dantotsu.settings.CurrentReaderSettings
 import ani.dantotsu.settings.saving.PrefManager
@@ -45,7 +46,7 @@ class ReaderAutoscroll(private val activity: MangaReaderActivity) {
         // Only allow autoscroll when using Continuous layout
         if (activity.defaultSettings.layout != CurrentReaderSettings.Layouts.CONTINUOUS) {
             // Inform user and do not toggle
-            try { snackString(activity.getString(R.string.autoscroll_only_continuous)) } catch (_: Exception) {}
+            try { snackString(activity.getString(R.string.autoscroll_only_continuous)) } catch (e: Exception) { Logger.log(e) }
             return
         }
         if (isOn) stop() else start()

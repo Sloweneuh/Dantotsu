@@ -34,7 +34,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -807,13 +806,8 @@ class VideoServerPassthrough(
         }
     }
 
-    private fun trackToSubtitle(track: Track): Subtitle {
-        var type: SubtitleType?
-        runBlocking {
-            type = findSubtitleType(track.url)
-        }
-        return Subtitle(track.lang, track.url, type ?: SubtitleType.SRT)
-    }
+    private fun trackToSubtitle(track: Track): Subtitle =
+        Subtitle(track.lang, track.url, findSubtitleType(track.url))
 
     private fun findSubtitleType(url: String): SubtitleType {
         // First, try to determine the type based on the URL file extension

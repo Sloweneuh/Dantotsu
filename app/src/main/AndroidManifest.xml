@@ -99,6 +99,8 @@
     <application
         android:name=".App"
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:banner="@mipmap/ic_banner_foreground"
         android:enableOnBackInvokedCallback="true"
         android:icon="${icon_placeholder}"
@@ -469,7 +471,7 @@
             android:name=".media.manga.mangareader.MangaReaderActivity"
             android:configChanges="uiMode|density|fontScale|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|locale|layoutDirection"
             android:excludeFromRecents="true"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/manga" />
         <activity android:name=".media.GenreActivity" />
         <activity
@@ -505,14 +507,14 @@
         <activity android:name=".home.NoInternet" />
         <activity android:name=".others.CrashActivity"
             android:excludeFromRecents="true"
-            android:exported="true"
+            android:exported="false"
             android:process=":error_process"
             android:launchMode="singleTask" />
         <activity
             android:name=".media.anime.ExoplayerView"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation"
             android:excludeFromRecents="true"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/video"
             android:launchMode="singleTask"
             android:supportsPictureInPicture="true"

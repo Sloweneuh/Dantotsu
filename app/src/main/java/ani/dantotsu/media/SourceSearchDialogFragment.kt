@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.content.Context
+import ani.dantotsu.util.Logger
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -245,7 +246,7 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                                             try {
                                                                 val intent = Intent(requireContext(), ExtensionsActivity::class.java)
                                                                 startActivity(intent)
-                                                            } catch (_: Throwable) {}
+                                                            } catch (e: Throwable) { Logger.log(e) }
                                                         }
                                                     }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                                                     val finalText: CharSequence = if (reason != null) {
@@ -409,7 +410,7 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                         popup.setBackgroundDrawable(
                             ContextCompat.getDrawable(requireContext(), R.drawable.dropdown_background)
                         )
-                        try { popup.listView?.elevation = 12f } catch (_: Throwable) {}
+                        try { popup.listView?.elevation = 12f } catch (e: Throwable) { Logger.log(e) }
                         popup.show()
                     }
 
@@ -458,8 +459,8 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
 
     override fun onDestroyView() {
         // Cancel pending search and watchdog to avoid UI leaks
-        try { searchJob?.cancel() } catch (_: Throwable) {}
-        try { searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) } } catch (_: Throwable) {}
+        try { searchJob?.cancel() } catch (e: Throwable) { Logger.log(e) }
+        try { searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) } } catch (e: Throwable) { Logger.log(e) }
         searchWatchdog = null
         super.onDestroyView()
         _binding = null

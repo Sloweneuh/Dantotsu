@@ -35,7 +35,6 @@ import ani.dantotsu.snackString
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
@@ -258,9 +257,9 @@ class AnilistQueries {
         return options.associate { it.type to it.enabled }.also { Anilist.notificationOptions = it }
     }
 
-    fun mediaDetails(media: Media): Media {
+    suspend fun mediaDetails(media: Media): Media {
         media.cameFromContinue = false
-        runBlocking {
+        coroutineScope {
             val anilist = async {
                 var response =
                     executeQuery<Query.Media>(fullMediaInformation(media.id), force = true)
@@ -568,10 +567,10 @@ class AnilistQueries {
         return media
     }
 
-    fun userMediaDetails(media: Media): Media {
+    suspend fun userMediaDetails(media: Media): Media {
         val query =
             """{Media(id:${media.id}){id mediaListEntry{id status progress progressVolumes private repeat customLists updatedAt startedAt{year month day}completedAt{year month day}}isFavourite idMal}}"""
-        runBlocking {
+        coroutineScope {
             val anilist = async {
                 var response = executeQuery<Query.Media>(query, force = true, show = true)
                 if (response != null) {

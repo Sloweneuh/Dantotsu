@@ -1,6 +1,7 @@
 package ani.dantotsu.parsers
 
 import ani.dantotsu.FileUrl
+import ani.dantotsu.media.SubtitleDownloader
 import ani.dantotsu.others.AniSkip
 import eu.kanade.tachiyomi.animesource.model.Track
 import java.io.Serializable
@@ -33,7 +34,12 @@ abstract class VideoExtractor : Serializable {
     open suspend fun load(): VideoExtractor {
         extract().also {
             videos = it.videos
-            subtitles = it.subtitles
+            // Sniffed here, off the main thread: the player builds its subtitle configurations
+            // synchronously in initPlayer(), and used to fetch each of these from there.
+            subtitles = it.subtitles.map { sub ->
+                if (sub.type != SubtitleType.UNKNOWN) sub
+                else sub.copy(type = SubtitleDownloader.loadSubtitleType(sub.file.url))
+            }
             audioTracks = it.audioTracks
             timestamps = it.timestamps
             return this

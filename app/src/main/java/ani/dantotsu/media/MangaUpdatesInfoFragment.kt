@@ -588,7 +588,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                                 popup.width = searchBarLayout.width
                                 popup.verticalOffset = searchBarLayout.height
                                 popup.setBackgroundDrawable(androidx.core.content.ContextCompat.getDrawable(fragmentContext, R.drawable.dropdown_background))
-                                try { popup.listView?.elevation = 12f } catch (_: Throwable) {}
+                                try { popup.listView?.elevation = 12f } catch (e: Throwable) { Logger.log(e) }
                                 popup.show()
                             }
                             popup.setOnItemClickListener { _, _, position, _ ->

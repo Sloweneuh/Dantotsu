@@ -540,7 +540,7 @@ class ComickInfoFragment : Fragment() {
                         )
                         try {
                             popup.listView?.elevation = 12f
-                        } catch (_: Throwable) {}
+                        } catch (e: Throwable) { Logger.log(e) }
                         popup.show()
                     }
 

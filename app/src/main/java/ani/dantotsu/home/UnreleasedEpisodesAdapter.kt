@@ -1,6 +1,7 @@
 package ani.dantotsu.home
 
 import android.content.Intent
+import ani.dantotsu.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -123,7 +124,7 @@ class UnreleasedEpisodesAdapter(
                             if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
                         )
                         itemCompactLanguageBG.backgroundTintList = itemCompactScoreBG.backgroundTintList
-                    } catch (e: Exception) {}
+                    } catch (e: Exception) { Logger.log(e) }
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE
@@ -244,7 +245,7 @@ class UnreleasedEpisodesAdapter(
                         val dot = itemCompactOngoing.getChildAt(0)
                         if (isHiatus) dot?.setBackgroundResource(R.drawable.item_hiatus)
                         else dot?.setBackgroundResource(R.drawable.item_ongoing)
-                    } catch (e: Exception) { }
+                    } catch (e: Exception) { Logger.log(e) }
                 } else {
                     itemCompactOngoing.visibility = View.GONE
                 }
@@ -270,7 +271,7 @@ class UnreleasedEpisodesAdapter(
                         itemCompactLanguageBG.background = _copy
                         itemCompactLanguageBG.backgroundTintList = itemCompactScoreBG.backgroundTintList
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
                 try {
                     val _bg2 = itemCompactScoreBG.background
                     if (_bg2 != null) {
@@ -278,7 +279,7 @@ class UnreleasedEpisodesAdapter(
                         itemCompactSourceBadge.background = _copy2
                         itemCompactSourceBadge.backgroundTintList = itemCompactScoreBG.backgroundTintList
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE

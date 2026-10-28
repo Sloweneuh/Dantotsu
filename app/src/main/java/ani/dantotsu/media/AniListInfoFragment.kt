@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.animation.ObjectAnimator
+import ani.dantotsu.util.Logger
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Build
@@ -413,10 +414,10 @@ class AniListInfoFragment : Fragment() {
                                                         try {
                                                             val list = ArrayList(entriesMap.values)
                                                             QuicklinksBottomSheetFragment.newInstance(siteName, list).show(childFragmentManager, "quicklinks_$siteName")
-                                                        } catch (_: Throwable) {}
+                                                        } catch (e: Throwable) { Logger.log(e) }
                                                     }
                                                     bindQuick.itemChipGroup.addView(chip)
-                                                } catch (_: Throwable) {}
+                                                } catch (e: Throwable) { Logger.log(e) }
                                             }
 
                                             // Insert after external_links block if present. If not present,
@@ -432,11 +433,11 @@ class AniListInfoFragment : Fragment() {
                                                 } ?: -1
                                                 if (synopsisIndex >= 0) parent.addView(bindQuick.root, synopsisIndex + 1) else parent.addView(bindQuick.root)
                                             }
-                                        } catch (_: Throwable) {}
+                                        } catch (e: Throwable) { Logger.log(e) }
                                     }
                                 }
                             }
-                        } catch (_: Throwable) {}
+                        } catch (e: Throwable) { Logger.log(e) }
 
                     // Quicklinks removed - use tabs instead
 

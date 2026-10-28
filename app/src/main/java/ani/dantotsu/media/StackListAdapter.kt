@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import ani.dantotsu.blurImage
+import ani.dantotsu.util.Logger
 import android.content.Intent
 import android.net.Uri
 import android.view.LayoutInflater
@@ -225,7 +226,7 @@ class StackListAdapter(private val items: List<InterestStack>, private val isAni
             if (ani.dantotsu.openLinkInApp(url)) return
             try {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-            } catch (_: Exception) {}
+            } catch (e: Exception) { Logger.log(e) }
         }
     }
 }

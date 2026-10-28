@@ -53,6 +53,12 @@ class CharacterDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChang
     private var mMaxScrollSize = 0
     private var screenWidth: Float = 0f
 
+    override fun onDestroy() {
+        // Refresh.activity holds an entry per open screen; without this every visit leaves one.
+        Refresh.activity.remove(this.hashCode())
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

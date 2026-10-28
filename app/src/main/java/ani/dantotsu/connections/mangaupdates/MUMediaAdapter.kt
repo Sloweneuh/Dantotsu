@@ -1,6 +1,7 @@
 package ani.dantotsu.connections.mangaupdates
 
 import ani.dantotsu.blurImage
+import ani.dantotsu.util.Logger
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -58,7 +59,7 @@ class MUMediaAdapter(
                             ?: ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                         lp.width = ViewGroup.LayoutParams.MATCH_PARENT
                         vh.itemView.layoutParams = lp
-                    } catch (e: Exception) { }
+                    } catch (e: Exception) { Logger.log(e) }
                 }
                 vh
             }

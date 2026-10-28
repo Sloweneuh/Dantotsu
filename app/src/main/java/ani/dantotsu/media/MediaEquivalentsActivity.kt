@@ -261,7 +261,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                     val intent = android.content.Intent(ctx, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
                     intent.putExtra("muMedia", item.mu as java.io.Serializable)
                     ctx.startActivity(intent)
-                } catch (_: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
             }
             holder.muTitle.isClickable = true
             holder.muTitle.setOnClickListener {
@@ -269,7 +269,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                     val intent = android.content.Intent(ctx, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
                     intent.putExtra("muMedia", item.mu as java.io.Serializable)
                     ctx.startActivity(intent)
-                } catch (_: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
             }
             val muCoverUrl = item.mu.coverUrl ?: MUDetailsCache.get(item.mu.id)?.coverUrl
             if (muCoverUrl.isNullOrBlank()) {
@@ -315,7 +315,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                             val i = android.content.Intent(ctx, ani.dantotsu.media.MediaDetailsActivity::class.java)
                             i.putExtra("mediaId", aniId)
                             ctx.startActivity(i)
-                        } catch (_: Exception) {}
+                        } catch (e: Exception) { Logger.log(e) }
                     }
                     holder.matchTitle.isClickable = true
                     holder.matchTitle.setOnClickListener {
@@ -323,7 +323,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                             val i = android.content.Intent(ctx, ani.dantotsu.media.MediaDetailsActivity::class.java)
                             i.putExtra("mediaId", aniId)
                             ctx.startActivity(i)
-                        } catch (_: Exception) {}
+                        } catch (e: Exception) { Logger.log(e) }
                     }
                 } else {
                     // No AniList match: tapping the placeholder cover starts a quick search.

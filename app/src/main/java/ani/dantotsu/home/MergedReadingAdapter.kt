@@ -1,6 +1,7 @@
 package ani.dantotsu.home
 
 import android.content.Intent
+import ani.dantotsu.util.Logger
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.view.LayoutInflater
@@ -122,7 +123,7 @@ class MergedReadingAdapter(
                     val lp = vh.itemView.layoutParams ?: ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                     lp.width = ViewGroup.LayoutParams.MATCH_PARENT
                     vh.itemView.layoutParams = lp
-                } catch (e: Exception) { }
+                } catch (e: Exception) { Logger.log(e) }
             }
             return vh
         }

@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.content.Intent
+import ani.dantotsu.util.Logger
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -52,7 +53,7 @@ class ReviewViewActivity : AppCompatActivity() {
         try {
             binding.closeButton.enableSettingsLongPress()
             binding.closeButton.setOnClickListener { finish() }
-        } catch (_: Throwable) {}
+        } catch (e: Throwable) { Logger.log(e) }
         binding.userName.text = review.user?.name
         binding.userAvatar.loadImage(review.user?.avatar?.medium)
         binding.userTime.text = ActivityItemBuilder.getDateTime(review.createdAt)

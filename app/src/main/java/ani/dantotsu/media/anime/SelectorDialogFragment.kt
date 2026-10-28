@@ -25,6 +25,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.activityViewModels
 //import androidx.glance.visibility
 //import androidx.glance.visibility
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withCreated
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -72,7 +73,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.withContext
 import tachiyomi.core.util.lang.launchIO
 import uy.kohesive.injekt.Injekt
@@ -293,50 +294,57 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                             val selectedVideo =
                                 if (extractor.videos.size > episode.selectedVideo) extractor.videos[episode.selectedVideo] else null
                             val activity = currActivity() ?: requireActivity()
-                            selectedVideo?.file?.url?.let { url ->
-                                if (url.startsWith("magnet:") || url.endsWith(".torrent")) {
-                                    val torrentExtension = Injekt.get<TorrentAddonManager>()
-                                    if (!torrentExtension.isAvailable()) {
-                                        toast(R.string.torrent_addon_not_available)
-                                        return false
-                                    }
-                                    runBlocking {
-                                        try {
-                                            withContext(Dispatchers.IO) {
-                                                val extension =
-                                                    torrentExtension.extension!!.extension
-                                                torrentExtension.torrentHash?.let {
-                                                    extension.removeTorrent(it)
-                                                }
-                                                val index = if (url.contains("index=")) {
-                                                    url.substringAfter("index=")
-                                                        .toIntOrNull() ?: 0
-                                                } else 0
-                                                Logger.log("Sending: ${url}, ${selectedVideo.quality}, $index")
-                                                val currentTorrent = extension.addTorrent(
-                                                    url,
-                                                    selectedVideo.quality.toString(),
-                                                    "",
-                                                    "",
-                                                    false
-                                                )
-                                                torrentExtension.torrentHash =
-                                                    currentTorrent.hash
-                                                selectedVideo.file.url =
-                                                    extension.getLink(currentTorrent, index)
-                                                Logger.log("Received: ${selectedVideo.file.url}")
+                            if (selectedVideo == null) {
+                                snackString(R.string.no_video_selected)
+                                return true
+                            }
+                            val url = selectedVideo.file.url
+                            val isTorrent = url.startsWith("magnet:") || url.endsWith(".torrent")
+                            val torrentExtension = Injekt.get<TorrentAddonManager>()
+                            if (isTorrent && !torrentExtension.isAvailable()) {
+                                toast(R.string.torrent_addon_not_available)
+                                return false
+                            }
+                            // The activity's scope, not this dialog's: it is dismissed as soon as
+                            // this returns, while the torrent add-on may still be answering.
+                            ((activity as? LifecycleOwner) ?: requireActivity()).lifecycleScope.launch {
+                                if (isTorrent) {
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            val extension =
+                                                torrentExtension.extension!!.extension
+                                            torrentExtension.torrentHash?.let {
+                                                extension.removeTorrent(it)
                                             }
-                                        } catch (e: Exception) {
-                                            Injekt.get<CrashlyticsInterface>()
-                                                .logException(e)
-                                            Logger.log(e)
-                                            toast("Error starting video: ${e.message}")
-                                            return@runBlocking
+                                            val index = if (url.contains("index=")) {
+                                                url.substringAfter("index=")
+                                                    .toIntOrNull() ?: 0
+                                            } else 0
+                                            Logger.log("Sending: ${url}, ${selectedVideo.quality}, $index")
+                                            val currentTorrent = extension.addTorrent(
+                                                url,
+                                                selectedVideo.quality.toString(),
+                                                "",
+                                                "",
+                                                false
+                                            )
+                                            torrentExtension.torrentHash =
+                                                currentTorrent.hash
+                                            selectedVideo.file.url =
+                                                extension.getLink(currentTorrent, index)
+                                            Logger.log("Received: ${selectedVideo.file.url}")
                                         }
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        Injekt.get<CrashlyticsInterface>()
+                                            .logException(e)
+                                        Logger.log(e)
+                                        toast("Error starting video: ${e.message}")
+                                        // The url is still the magnet link; downloading it would fail.
+                                        return@launch
                                     }
                                 }
-                            }
-                            if (selectedVideo != null) {
                                 Helper.startAnimeDownloadService(
                                     activity,
                                     media!!.mainName(),
@@ -357,9 +365,6 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                                         putExtra("mediaId", media?.id)
                                     }
                                 activity.sendBroadcast(intent)
-
-                            } else {
-                                snackString(R.string.no_video_selected)
                             }
                         }
                         return true

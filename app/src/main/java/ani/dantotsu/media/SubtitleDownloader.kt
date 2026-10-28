@@ -30,18 +30,9 @@ class SubtitleDownloader {
                             .url(url)
                             .build()
 
-                        val response = networkHelper.client.newCall(request).execute()
-
-                        // Check if response is successful
-                        if (response.isSuccessful) {
-                            val responseBody = response.body.string()
-
-
-                            val subtitleType = getType(responseBody)
-
-                            subtitleType
-                        } else {
-                            SubtitleType.UNKNOWN
+                        networkHelper.client.newCall(request).execute().use { response ->
+                            if (response.isSuccessful) getType(response.body.string())
+                            else SubtitleType.UNKNOWN
                         }
                     } else {
                         val uri = url.toUri()

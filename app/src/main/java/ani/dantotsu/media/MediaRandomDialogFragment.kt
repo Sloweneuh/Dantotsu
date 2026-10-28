@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.os.Bundle
+import ani.dantotsu.util.Logger
 import android.text.method.ScrollingMovementMethod
 import android.view.LayoutInflater
 import android.view.View
@@ -110,7 +111,7 @@ class MediaRandomDialogFragment : DialogFragment() {
         // tapping the full-screen dialog background should dismiss the dialog;
         // the `card` child will consume clicks, so this only fires when outside the card.
         view.setOnClickListener {
-            try { dismissAllowingStateLoss() } catch (_: Exception) {}
+            try { dismissAllowingStateLoss() } catch (e: Exception) { Logger.log(e) }
         }
 
         fun bindMedia(media: Media, drawable: Drawable? = null, backgroundDrawable: Drawable? = null) {
@@ -347,8 +348,8 @@ class MediaRandomDialogFragment : DialogFragment() {
 
                 // remove overlay and dismiss the dialog shortly after starting the activity
                 overlay.postDelayed({
-                    try { decor.removeView(overlay) } catch (_: Exception) {}
-                    try { dismissAllowingStateLoss() } catch (_: Exception) {}
+                    try { decor.removeView(overlay) } catch (e: Exception) { Logger.log(e) }
+                    try { dismissAllowingStateLoss() } catch (e: Exception) { Logger.log(e) }
                 }, 300)
             } catch (e: Exception) {
                 // fallback: just open activity without transition
@@ -356,7 +357,7 @@ class MediaRandomDialogFragment : DialogFragment() {
                     val intent = Intent(requireActivity(), MediaDetailsActivity::class.java).putExtra("media", media as java.io.Serializable)
                     ContextCompat.startActivity(requireContext(), intent, null)
                     dismiss()
-                } catch (_: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
             }
         }
     }
@@ -377,7 +378,7 @@ class MediaRandomDialogFragment : DialogFragment() {
             target.animate().rotationY(90f).setDuration(200).withEndAction {
                 try {
                     onMidFlip()
-                } catch (_: Exception) {}
+                } catch (e: Exception) { Logger.log(e) }
                 target.rotationY = -90f
                 target.animate().rotationY(0f).setDuration(200).setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
                     // restore layer type

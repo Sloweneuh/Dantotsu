@@ -116,6 +116,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         startPostponedEnterTransition()
     }
 
+    override fun onDestroy() {
+        // Refresh.activity holds an entry per open screen; without this every visit leaves one.
+        Refresh.activity.remove(this.hashCode())
+        super.onDestroy()
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

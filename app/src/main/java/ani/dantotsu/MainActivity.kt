@@ -599,14 +599,8 @@ class MainActivity : AppCompatActivity() {
             if (name.endsWith(".sani")) {
                 passwordAlertDialog { password ->
                     if (password != null) {
-                        val salt = jsonString.copyOfRange(0, 16)
-                        val encrypted = jsonString.copyOfRange(16, jsonString.size)
                         val decryptedJson = try {
-                            PreferenceKeystore.decryptWithPassword(
-                                password,
-                                encrypted,
-                                salt
-                            )
+                            PreferenceKeystore.decryptBackup(password, jsonString)
                         } catch (e: Exception) {
                             toast("Incorrect password")
                             return@passwordAlertDialog

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and lower. Account tokens stay on the device: a restored backup would otherwise hand
+     them to whatever phone the backup lands on. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="ani.dantotsu.protected.xml" />
+</full-backup-content>

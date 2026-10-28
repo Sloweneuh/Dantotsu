@@ -18,7 +18,6 @@ import ani.dantotsu.defaultHeaders
 import ani.dantotsu.download.DownloadsManager.Companion.getSubDirectory
 import ani.dantotsu.download.video.Helper
 import ani.dantotsu.media.MediaType
-import ani.dantotsu.media.SubtitleDownloader
 import ani.dantotsu.okHttpClient
 import ani.dantotsu.others.LanguageMapper
 import ani.dantotsu.parsers.SubtitleType
@@ -28,7 +27,6 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.snackString
 import com.anggrayudi.storage.file.extension
 import com.lagradost.nicehttp.ignoreAllSSLErrors
-import kotlinx.coroutines.runBlocking
 import okhttp3.Dns
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -150,25 +148,17 @@ object PlayerSources {
         val sub = mutableListOf<MediaItem.SubtitleConfiguration>()
         ext.subtitles.forEach { subtitle ->
             val subtitleUrl = if (!hasExtSubtitles) video.file.url else subtitle.file.url
+            // VideoExtractor.load() has already sniffed what it could; one still UNKNOWN here
+            // couldn't be fetched, and fetching it again on the main thread won't help.
             if (subtitle.type == SubtitleType.UNKNOWN) {
-                runBlocking {
-                    val type = SubtitleDownloader.loadSubtitleType(subtitleUrl)
-                    val fileUri = (subtitleUrl).toUri()
-                    sub +=
-                        MediaItem.SubtitleConfiguration
-                            .Builder(fileUri)
-                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                            .setMimeType(
-                                when (type) {
-                                    SubtitleType.VTT -> MimeTypes.TEXT_VTT
-                                    SubtitleType.ASS -> MimeTypes.TEXT_SSA
-                                    SubtitleType.SRT -> MimeTypes.APPLICATION_SUBRIP
-                                    else -> MimeTypes.TEXT_UNKNOWN
-                                },
-                            ).setId("69")
-                            .setLanguage(subtitle.language)
-                            .build()
-                }
+                sub +=
+                    MediaItem.SubtitleConfiguration
+                        .Builder(subtitleUrl.toUri())
+                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                        .setMimeType(MimeTypes.TEXT_UNKNOWN)
+                        .setId("69")
+                        .setLanguage(subtitle.language)
+                        .build()
             } else {
                 val subUri = subtitleUrl.toUri()
                 sub +=

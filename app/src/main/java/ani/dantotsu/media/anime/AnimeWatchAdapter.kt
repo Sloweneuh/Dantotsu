@@ -1,6 +1,7 @@
 package ani.dantotsu.media.anime
 
 import android.content.Intent
+import ani.dantotsu.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -77,7 +78,7 @@ class AnimeWatchAdapter(
                     if (langIndex != -1) return langIndex
                 }
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) { Logger.log(e) }
         return if (preferred >= 0) preferred else 0
     }
 
@@ -161,7 +162,7 @@ class AnimeWatchAdapter(
             // stale online source with no network to answer it - hanging the spinner instead of
             // ever reaching the Downloaded source's (synchronous) load.
             if (!offline) fragment.loadEpisodes(source, true)
-        } catch (_: Exception) { }
+        } catch (e: Exception) { Logger.log(e) }
         if (watchSources.names.isNotEmpty() && source in 0 until watchSources.names.size) {
             binding.mediaSource.setText(watchSources.names[source])
             watchSources[source].apply {
@@ -224,7 +225,7 @@ class AnimeWatchAdapter(
                 source = i
                 val newDefault = defaultLangIndexForSource(i, 0)
                 setLanguageList(newDefault, i)
-                try { fragment.onLangChange(newDefault) } catch (_: Exception) { }
+                try { fragment.onLangChange(newDefault) } catch (e: Exception) { Logger.log(e) }
             }
             setupBrowserButton(binding, i)
             updateSettingsButton(binding, i)
@@ -634,7 +635,7 @@ class AnimeWatchAdapter(
                             binding.animeSourceDubbedCont.isVisible = isDubAvailableSeparately()
                             val nd = defaultLangIndexForSource(nextIndex, 0)
                             setLanguageList(nd, nextIndex)
-                            try { fragment.onLangChange(nd) } catch (_: Exception) { }
+                            try { fragment.onLangChange(nd) } catch (e: Exception) { Logger.log(e) }
                         }
                         subscribeButton(false)
                         downloadButton(false)

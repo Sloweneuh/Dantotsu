@@ -1,6 +1,7 @@
 package ani.dantotsu.connections.comick
 
 import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.util.Logger
 import ani.dantotsu.settings.saving.PrefName
 import java.io.Serializable
 import java.time.Instant
@@ -620,7 +621,7 @@ fun ComickRawReview.toComickReview(): ComickReview {
                 }
             }
         }
-    } catch (_: Exception) {}
+    } catch (e: Exception) { Logger.log(e) }
 
     return ComickReview(
         id = id ?: java.util.UUID.randomUUID().toString(),

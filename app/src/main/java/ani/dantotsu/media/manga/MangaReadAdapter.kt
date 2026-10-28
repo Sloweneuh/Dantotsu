@@ -1,6 +1,7 @@
 package ani.dantotsu.media.manga
 
 import java.util.Locale
+import ani.dantotsu.util.Logger
 import android.content.Intent
 import android.text.SpannableStringBuilder
 import android.text.style.RelativeSizeSpan
@@ -109,7 +110,7 @@ class MangaReadAdapter(
                     if (langIndex != -1) return langIndex
                 }
             }
-        } catch (ignored: Exception) { }
+        } catch (e: Exception) { Logger.log(e) }
         return if (preferred >= 0) preferred else 0
     }
 
@@ -168,7 +169,7 @@ class MangaReadAdapter(
         // set language UI and inform fragment so chapter loading uses the chosen language
         (mangaReadSources[source] as? DynamicMangaParser)?.let { ext ->
             setLanguageList(defaultLang, source)
-            try { fragment.onLangChange(defaultLang, ext.saveName) } catch (_: Exception) { }
+            try { fragment.onLangChange(defaultLang, ext.saveName) } catch (e: Exception) { Logger.log(e) }
         } ?: run {
             setLanguageList(defaultLang, source)
         }
@@ -212,7 +213,7 @@ class MangaReadAdapter(
                 val newDefault = defaultLangIndexForSource(i, 0)
                 (mangaReadSources[i] as? DynamicMangaParser)?.let { ext ->
                     setLanguageList(newDefault, i)
-                    try { fragment.onLangChange(newDefault, ext.saveName) } catch (_: Exception) { }
+                    try { fragment.onLangChange(newDefault, ext.saveName) } catch (e: Exception) { Logger.log(e) }
                 } ?: setLanguageList(newDefault, i)
             }
             setupBrowserButton(binding, i)
@@ -783,9 +784,9 @@ class MangaReadAdapter(
                             val nd = defaultLangIndexForSource(nextIndex, 0)
                             (mangaReadSources[nextIndex] as? DynamicMangaParser)?.let { ext ->
                                 setLanguageList(nd, nextIndex)
-                                try { fragment.onLangChange(nd, ext.saveName) } catch (_: Exception) { }
+                                try { fragment.onLangChange(nd, ext.saveName) } catch (e: Exception) { Logger.log(e) }
                                 // trigger a reload so chapters for the selected language are fetched
-                                try { fragment.loadChapters(nextIndex, true) } catch (_: Exception) { }
+                                try { fragment.loadChapters(nextIndex, true) } catch (e: Exception) { Logger.log(e) }
                             } ?: setLanguageList(nd, nextIndex)
                         }
                         subscribeButton(false)

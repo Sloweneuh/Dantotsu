@@ -114,7 +114,6 @@ import ani.dantotsu.profile.ProfileActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.saving.internal.PreferenceKeystore
-import ani.dantotsu.settings.saving.internal.PreferenceKeystore.Companion.generateSalt
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.ShimmerDrawable
 import ani.dantotsu.util.shineCrossFade
@@ -1270,15 +1269,8 @@ fun savePrefs(
         counter++
     }
 
-    val salt = generateSalt()
-
     return try {
-        val encryptedData = PreferenceKeystore.encryptWithPassword(password, serialized, salt)
-
-        // Combine salt and encrypted data
-        val dataToSave = salt + encryptedData
-
-        file.writeBytes(dataToSave)
+        file.writeBytes(PreferenceKeystore.encryptBackup(password, serialized))
         scanFile(file.absolutePath, context)
         toast(String.format(context.getString(R.string.saved_to_path, file.absolutePath)))
         file

@@ -1,6 +1,7 @@
 package ani.dantotsu.media.user
 
 import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.Logger
 import ani.dantotsu.util.showNoResults
 import ani.dantotsu.util.cancelSwitch
 import ani.dantotsu.util.jumpTo
@@ -88,6 +89,12 @@ class ListActivity : AppCompatActivity() {
     private var isRebuildingTabs = false
     /** Held so each rebuild can retire the previous one; see buildTabs. */
     private var tabMediator: PagerTabsMediator? = null
+
+    override fun onDestroy() {
+        // Refresh.activity holds an entry per open screen; without this every visit leaves one.
+        Refresh.activity.remove(this.hashCode())
+        super.onDestroy()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -286,7 +293,7 @@ class ListActivity : AppCompatActivity() {
                 val helper = field.get(popup)
                 helper.javaClass.getMethod("setForceShowIcon", Boolean::class.java)
                     .invoke(helper, true)
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Logger.log(e) }
             // Highlight the currently active sort method with colorPrimary
             val prefName2 = if (anime) PrefName.AnimeListSortOrder else PrefName.MangaListSortOrder
             val activeSort: String = PrefManager.getVal(prefName2)

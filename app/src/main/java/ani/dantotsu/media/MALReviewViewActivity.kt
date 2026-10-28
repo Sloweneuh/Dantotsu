@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.os.Bundle
+import ani.dantotsu.util.Logger
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
@@ -59,6 +60,6 @@ class MALReviewViewActivity : AppCompatActivity() {
         try {
             binding.closeButton.enableSettingsLongPress()
             binding.closeButton.setOnClickListener { finish() }
-        } catch (_: Throwable) {}
+        } catch (e: Throwable) { Logger.log(e) }
     }
 }
