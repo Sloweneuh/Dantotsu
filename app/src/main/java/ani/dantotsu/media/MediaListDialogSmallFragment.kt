@@ -119,6 +119,8 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
 
         var total: Int? = null
         var totalVolumes: Int? = null
+        // Latest release known before the MALSync lookup lands — see MediaListDialogFragment.
+        var knownLatest: Int? = null
         binding.mediaListProgress.setText(if (media.userProgress != null) media.userProgress.toString() else "")
         binding.mediaListVolume.setText(if (media.userVolume != null) media.userVolume.toString() else "")
         binding.mediaListVolumeCont.visibility =
@@ -132,6 +134,7 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                         LengthFilter(total.toString().length)
                     )
             }
+            knownLatest = media.anime!!.displayReleaseProgress
 
             // Fetch MALSync data for anime if MAL ID is available and MALSync enabled and mode allows anime
             val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
@@ -202,28 +205,24 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                     )
             }
 
+            knownLatest = ani.dantotsu.notifications.unread.UnreadCache.knownLatestChapter(media.id)
+
             // Always fetch MALSync data for manga to get the latest chapter info
             // This helps when AniList doesn't have totalChapters even for finished manga
             val malMode2 = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
             if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode2 != "anime") {
+                val cachedLatest = knownLatest
                 scope.launch(Dispatchers.IO) {
                 try {
                     val malSyncResult = ani.dantotsu.connections.malsync.MalSyncApi.getLastChapter(media.id, media.idMAL)
                     if (malSyncResult?.lastEp?.total != null) {
-                        val malSyncChapter = malSyncResult.lastEp.total
+                        // MALSync only takes over when it is ahead of the other providers.
+                        val latest = maxOf(malSyncResult.lastEp.total, cachedLatest ?: 0)
                         val userProgress = media.userProgress ?: 0
 
                         withContext(Dispatchers.Main) {
-                            // Only display MALSync total if:
-                            // 1. User progress hasn't exceeded it (malSyncChapter >= userProgress)
-                            // 2. Either no AniList total exists, OR MALSync total is less than AniList total
-                            val shouldShowMalSync = malSyncChapter >= userProgress &&
-                                                   (total == null || malSyncChapter < total)
-
-                            if (shouldShowMalSync) {
-                                // Update suffix text with MALSync data, showing " / X / Y" or " / X / ?" to indicate it's temporary
-                                _binding?.mediaListProgressLayout?.suffixText = " / $malSyncChapter / ${total ?: '?'}"
-                            }
+                            _binding?.mediaListProgressLayout?.suffixText =
+                                releaseProgressSuffix(latest, total, userProgress)
                         }
                     }
                 } catch (e: Exception) {
@@ -232,7 +231,8 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
             }
             }
         }
-        binding.mediaListProgressLayout.suffixText = " / ${total ?: '?'}"
+        binding.mediaListProgressLayout.suffixText =
+            releaseProgressSuffix(knownLatest, total, media.userProgress ?: 0)
         binding.mediaListProgressLayout.suffixTextView.updateLayoutParams {
             height = ViewGroup.LayoutParams.MATCH_PARENT
         }

@@ -169,6 +169,17 @@ object UnreadCache {
     fun cachedInfo(): Map<Int, UnreadChapterInfo> = read("cached_unread_info") as? Map<Int, UnreadChapterInfo>
         ?: emptyMap()
 
+    /**
+     * The newest chapter the last unread checks found for AniList manga [anilistId] — over the
+     * MALSync / MangaUpdates info and the Comick entries tied to that AniList title — or null when
+     * none of them has it. What the media page shows before its own MALSync lookup lands.
+     */
+    fun knownLatestChapter(anilistId: Int): Int? {
+        val info = cachedInfo()[anilistId]?.lastChapter
+        val comick = cachedComick().filter { it.anilistMedia?.id == anilistId }.maxOfOrNull { it.latestChapter }
+        return listOfNotNull(info, comick).maxOrNull()
+    }
+
     @Suppress("UNCHECKED_CAST")
     fun cachedMedia(): List<Media> = read("cached_unread_chapters") as? List<Media> ?: emptyList()
 
