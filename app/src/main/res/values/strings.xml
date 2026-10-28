@@ -3480,4 +3480,37 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="top_banner_less">Less</string>
     <string name="top_banner_show_all">Show all %d notices</string>
     <string name="top_banner_show_less">Fold the notices back up</string>
+    <!-- Content descriptions for icon-only controls (screen readers) -->
+    <string name="cd_more_options">More options</string>
+    <string name="cd_autoscroll">Autoscroll</string>
+    <string name="cd_cancel_reply">Cancel reply</string>
+    <string name="cd_comment_tag">Tag a chapter or episode</string>
+    <string name="cd_send">Send</string>
+    <string name="cd_list_view">List view</string>
+    <string name="cd_grid_view">Grid view</string>
+    <string name="cd_list_description">List description</string>
+    <string name="cd_show_novels">Show novels</string>
+    <string name="cd_notification_settings">Notification settings</string>
+    <string name="cd_read_aloud">Read aloud</string>
+    <string name="cd_reset_filters">Reset filters</string>
+    <string name="cd_select_all">Select or clear all</string>
+    <string name="cd_reset_progress">Reset progress</string>
+    <string name="cd_player_settings">Player settings</string>
+    <string name="cd_create_clip">Create clip</string>
+    <string name="cd_audio_track">Audio track</string>
+    <string name="cd_rotate_screen">Rotate screen</string>
+    <string name="cd_skip_op_ed">Skip opening or ending</string>
+    <string name="cd_resize_video">Resize video</string>
+    <string name="cd_previous_episode">Previous episode</string>
+    <string name="cd_rewind">Rewind</string>
+    <string name="cd_play_pause">Play or pause</string>
+    <string name="cd_fast_forward">Fast forward</string>
+    <string name="cd_next_episode">Next episode</string>
+    <string name="cd_playback_speed">Playback speed</string>
+    <string name="cd_lock_controls">Lock controls</string>
+    <string name="cd_unlock_controls">Unlock controls</string>
+    <string name="cd_account_info">About this account</string>
+    <string name="cd_toggle_seen">Mark as seen</string>
+    <string name="cd_remove_repository">Remove repository</string>
+    <string name="cd_copy_link">Copy link</string>
 </resources>

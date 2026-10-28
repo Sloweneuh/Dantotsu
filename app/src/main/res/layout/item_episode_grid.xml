@@ -126,6 +126,7 @@
         tools:ignore="ContentDescription" />
 
     <ImageButton
+        android:contentDescription="@string/open_in_browser"
         android:id="@+id/itemEpisodeBrowser"
         android:layout_width="24dp"
         android:layout_height="24dp"

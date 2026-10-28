@@ -22,6 +22,7 @@
             app:cardElevation="0dp">
 
             <ImageButton
+                android:contentDescription="@string/back"
                 android:id="@+id/aboutSettingsBack"
                 android:layout_width="64dp"
                 android:layout_height="64dp"

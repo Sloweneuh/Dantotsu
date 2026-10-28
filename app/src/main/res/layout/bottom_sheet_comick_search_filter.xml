@@ -38,6 +38,7 @@
                     android:orientation="horizontal">
     
                     <ImageButton
+                        android:contentDescription="@string/cd_reset_filters"
                         android:id="@+id/comickFilterReset"
                         android:layout_width="40dp"
                         android:layout_height="40dp"

@@ -7,6 +7,7 @@ import ani.dantotsu.R
 import ani.dantotsu.settings.saving.internal.Compat
 import ani.dantotsu.settings.saving.internal.Location
 import ani.dantotsu.settings.saving.internal.PreferencePackager
+import ani.dantotsu.settings.saving.internal.SqlitePreferences
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import java.io.ByteArrayInputStream
@@ -34,29 +35,21 @@ object PrefManager {
             context.getSharedPreferences(Location.Player.location, Context.MODE_PRIVATE)
         readerPreferences =
             context.getSharedPreferences(Location.Reader.location, Context.MODE_PRIVATE)
-        irrelevantPreferences =
+        // SQLite-backed, so a per-media write doesn't rewrite the whole file (see SqlitePreferences).
+        // Should the database fail to open or import, the XML file is still there and still whole.
+        irrelevantPreferences = try {
+            SqlitePreferences.open(context, Location.Irrelevant.location)
+        } catch (e: Exception) {
+            Logger.log("PrefManager: falling back to the Irrelevant XML file: ${e.message}")
+            Logger.log(e)
             context.getSharedPreferences(Location.Irrelevant.location, Context.MODE_PRIVATE)
+        }
         animeDownloadsPreferences =
             context.getSharedPreferences(Location.AnimeDownloads.location, Context.MODE_PRIVATE)
         protectedPreferences =
             context.getSharedPreferences(Location.Protected.location, Context.MODE_PRIVATE)
         ResumePositions.init(context)
         Compat.importOldPrefs(context)
-        // TEMPORARY INSTRUMENTATION — grep DantotsuPerf. How big the Irrelevant file actually is,
-        // and what it costs to have it resident: SharedPreferences parses the whole XML on first
-        // touch and re-serialises all of it on every apply(), so the key count is the multiplier on
-        // every per-media write in the app.
-        try {
-            val t0 = System.nanoTime()
-            val count = irrelevantPreferences!!.all.size
-            val showResponses = irrelevantPreferences!!.all.keys.count { it.startsWith("ShowResponse") }
-            android.util.Log.i(
-                "DantotsuPerf",
-                "prefs irrelevantKeys=$count showResponses=$showResponses " +
-                    "firstRead=${(System.nanoTime() - t0) / 1_000_000}ms"
-            )
-        } catch (_: Exception) {
-        }
     }
 
     @Suppress("UNCHECKED_CAST")

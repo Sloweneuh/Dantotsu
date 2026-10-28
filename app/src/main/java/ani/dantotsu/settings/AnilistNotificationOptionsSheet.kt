@@ -21,7 +21,7 @@ import ani.dantotsu.toPx
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.checkbox.MaterialCheckBox
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import ani.dantotsu.util.AppScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -112,7 +112,7 @@ class AnilistNotificationOptionsSheet : BottomSheetDialogFragment() {
         val update = state.mapKeys { it.key.name }
         // The sheet is gone by now, so this can't ride on its lifecycle.
         @Suppress("OPT_IN_USAGE")
-        GlobalScope.launch(Dispatchers.IO) {
+        AppScope.launch {
             val saved = Anilist.mutation.updateNotificationOptions(update)
             withContext(Dispatchers.Main) {
                 snackString(

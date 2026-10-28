@@ -38,6 +38,7 @@
             tools:text="Notifications" />
 
         <ImageView
+            android:contentDescription="@string/cd_notification_settings"
             android:id="@+id/notificationSettings"
             android:layout_width="48dp"
             android:layout_height="48dp"

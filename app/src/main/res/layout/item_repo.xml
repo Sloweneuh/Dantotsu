@@ -21,6 +21,7 @@
         android:textSize="15sp" />
 
     <ImageView
+        android:contentDescription="@string/cd_remove_repository"
         android:id="@+id/repoDeleteImageView"
         android:layout_width="40dp"
         android:layout_height="40dp"
@@ -35,6 +36,7 @@
         tools:ignore="ContentDescription" />
 
     <ImageView
+        android:contentDescription="@string/cd_copy_link"
         android:id="@+id/repoCopyImageView"
         android:layout_width="40dp"
         android:layout_height="40dp"

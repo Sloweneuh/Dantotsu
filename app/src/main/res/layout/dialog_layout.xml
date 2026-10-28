@@ -228,6 +228,7 @@
                 android:layout_height="48dp">
 
                 <ImageView
+                    android:contentDescription="@string/open_in_browser"
                     android:id="@+id/mediaWebViewTop"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
@@ -276,6 +277,7 @@
                 android:layout_height="48dp">
 
                 <ImageView
+                    android:contentDescription="@string/cd_reset_progress"
                     android:id="@+id/resetProgress"
                     android:layout_width="24dp"
                     android:layout_height="24dp"

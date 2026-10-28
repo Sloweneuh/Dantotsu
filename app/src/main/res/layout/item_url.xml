@@ -67,6 +67,7 @@
         </LinearLayout>
 
         <ImageButton
+            android:contentDescription="@string/download_subtitle"
             android:id="@+id/urlSub"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
@@ -81,6 +82,7 @@
             tools:visibility="visible" />
 
         <ImageButton
+            android:contentDescription="@string/download"
             android:id="@+id/urlDownload"
             android:layout_width="wrap_content"
             android:layout_height="48dp"

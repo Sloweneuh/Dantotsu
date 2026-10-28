@@ -78,3 +78,25 @@
 #-keepnames class <1>$$serializer { # -keepnames suffices; class is kept when serializer() is kept.
 #    static <1>$$serializer INSTANCE;
 #}
+# --- Extensions ---------------------------------------------------------------------------------
+# Mihon/Aniyomi extensions and LNReader plugins are compiled against these libraries but load our
+# copies at runtime, so their names and signatures are part of our ABI. Shrinking only: nothing is
+# renamed or rewritten, and every package an extension can reach is kept whole.
+-dontobfuscate
+-dontoptimize
+-keepattributes SourceFile,LineNumberTable,InnerClasses
+-keep class tachiyomi.** { *; }
+-keep class mihon.** { *; }
+-keep class okhttp3.** { *; }
+-keep class okio.** { *; }
+-keep class rx.** { *; }
+-keep class com.jakewharton.rxrelay.** { *; }
+-keep class app.cash.quickjs.** { *; }
+-keep class wang.harlon.quickjs.** { *; }
+-keep class androidx.preference.** { *; }
+-keep class logcat.** { *; }
+-keep class com.hippo.unifile.** { *; }
+-keep class com.lagradost.nicehttp.** { *; }
+# Native code looks these up by name.
+-keep class io.github.peerless2012.** { *; }
+-keep class io.github.anilbeesetti.nextlib.** { *; }

@@ -54,6 +54,7 @@
                     android:orientation="horizontal">
 
                     <ImageButton
+                        android:contentDescription="@string/back"
                         android:id="@+id/novelReaderBack"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -110,6 +111,7 @@
                             tools:ignore="ImageContrastCheck" />
 
                         <ImageButton
+                            android:contentDescription="@string/cd_read_aloud"
                             android:id="@+id/novelReaderTts"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
@@ -122,6 +124,7 @@
                         <!-- Reader settings live in this "more" menu too (see action_reader_settings
                              in manga_reader_more.xml) rather than a separate button next to it. -->
                         <ImageButton
+                            android:contentDescription="@string/cd_more_options"
                             android:id="@+id/novelReaderMore"
                             android:layout_width="48dp"
                             android:layout_height="48dp"

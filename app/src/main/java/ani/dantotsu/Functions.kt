@@ -6,7 +6,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ComponentName
@@ -15,10 +14,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Resources.getSystem
-import android.graphics.Bitmap
-import android.graphics.Color
 import android.graphics.drawable.Drawable
-import android.media.MediaScannerConnection
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities.TRANSPORT_BLUETOOTH
 import android.net.NetworkCapabilities.TRANSPORT_CELLULAR
@@ -28,16 +24,13 @@ import android.net.NetworkCapabilities.TRANSPORT_USB
 import android.net.NetworkCapabilities.TRANSPORT_VPN
 import android.net.NetworkCapabilities.TRANSPORT_WIFI
 import android.net.NetworkCapabilities.TRANSPORT_WIFI_AWARE
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
-import android.provider.DocumentsContract
 import android.provider.Settings
 import android.telephony.TelephonyManager
 import android.text.Editable
@@ -77,7 +70,6 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat.getSystemService
-import androidx.core.content.FileProvider
 import androidx.core.math.MathUtils.clamp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -91,43 +83,25 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.MutableLiveData
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
-import ani.dantotsu.BuildConfig.APPLICATION_ID
 import ani.dantotsu.connections.anilist.Genre
-import ani.dantotsu.connections.anilist.api.FuzzyDate
-import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.databinding.ItemCountDownBinding
-import ani.dantotsu.media.ComickMediaActivity
-import ani.dantotsu.media.KitsuMediaActivity
-import ani.dantotsu.media.MalMediaActivity
-import ani.dantotsu.media.MangaBakaMediaActivity
-import ani.dantotsu.media.StackResolver
 import ani.dantotsu.media.Media
-import ani.dantotsu.media.MediaDetailsActivity
-import ani.dantotsu.media.SimklMediaActivity
 import ani.dantotsu.notifications.IncognitoNotificationClickReceiver
 import ani.dantotsu.others.AlignTagHandler
 import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.others.SpoilerPlugin
 import ani.dantotsu.parsers.ShowResponse
-import ani.dantotsu.profile.ProfileActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.settings.saving.internal.PreferenceKeystore
 import ani.dantotsu.util.Logger
-import ani.dantotsu.util.ShimmerDrawable
-import ani.dantotsu.util.shineCrossFade
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.RequestManager
 import com.bumptech.glide.load.DataSource
-import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.engine.GlideException
-import com.bumptech.glide.load.model.GlideUrl
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
 import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.bumptech.glide.request.RequestListener
-import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -149,18 +123,13 @@ import io.noties.markwon.html.TagHandlerNoOp
 import io.noties.markwon.image.AsyncDrawable
 import io.noties.markwon.image.glide.GlideImagesPlugin
 import io.noties.markwon.linkify.LinkifyPlugin
-import jp.wasabeef.glide.transformations.BlurTransformation
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nl.joery.animatedbottombar.AnimatedBottomBar
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStream
 import java.lang.reflect.Field
-import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 import java.util.Timer
@@ -174,7 +143,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import androidx.core.view.isVisible
-
 
 var statusBarHeight = 0
 var navBarHeight = 0
@@ -502,7 +470,6 @@ fun startMainActivity(activity: Activity, bundle: Bundle? = null) {
     )
 }
 
-
 class InputFilterMinMax(
     private val min: Double,
     private val max: Double,
@@ -537,7 +504,6 @@ class InputFilterMinMax(
     }
 }
 
-
 fun setAnimation(
     context: Context,
     viewToAnimate: View,
@@ -561,7 +527,6 @@ fun setAnimation(
         viewToAnimate.startAnimation(anim)
     }
 }
-
 
 class FadingEdgeRecyclerView : RecyclerView {
 
@@ -661,188 +626,6 @@ fun String.findBetween(a: String, b: String): String? {
     return string.ifEmpty { null }
 }
 
-/**
- * A per-item shared-element transition name for a media cover. Every row in a RecyclerView
- * reusing the same static "mediaCover" name broke Activity shared-element transitions as soon as
- * more than one row was attached at once: Android re-resolves the shared element by name within
- * the departing window at transition-start time, not by the exact View reference passed to
- * ActivityOptions, so it always latched onto whichever same-named view it found first (in
- * practice, always the first list row) regardless of which item was actually tapped.
- */
-fun mediaCoverTransitionName(id: Any?): String = "mediaCover_$id"
-
-/**
- * Wraps a Glide RequestListener around [onReady] so it fires once regardless of success/failure —
- * used to gate a postponed shared-element transition on the cover actually having pixels, instead
- * of releasing the transition while the ImageView is still blank and animating nothing visible.
- */
-private fun onReadyListener(onReady: (() -> Unit)?): RequestListener<Drawable>? = onReady?.let { cb ->
-    object : RequestListener<Drawable> {
-        override fun onLoadFailed(
-            e: com.bumptech.glide.load.engine.GlideException?,
-            model: Any?,
-            target: Target<Drawable>,
-            isFirstResource: Boolean
-        ): Boolean {
-            cb()
-            return false
-        }
-
-        override fun onResourceReady(
-            resource: Drawable,
-            model: Any,
-            target: Target<Drawable>?,
-            dataSource: DataSource,
-            isFirstResource: Boolean
-        ): Boolean {
-            cb()
-            return false
-        }
-    }
-}
-
-fun ImageView.loadImage(url: String?, size: Int = 0) {
-    if (!url.isNullOrEmpty()) {
-        val localFile = File(url)
-        if (localFile.exists()) {
-            loadLocalImage(localFile, size)
-        } else {
-            loadImage(FileUrl(url), size)
-        }
-    } else {
-        Glide.with(this).clear(this)
-        setImageDrawable(null)
-    }
-}
-
-fun ImageView.loadImage(file: FileUrl?, size: Int = 0) {
-    file?.url = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { file?.url ?: "" }
-    if (file?.url?.isNotEmpty() == true) {
-        tryWith {
-            if (file.url.startsWith("content://")) {
-                Glide.with(this.context).load(Uri.parse(file.url))
-                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
-                    .override(size).into(this)
-            } else {
-                val glideUrl = GlideUrl(file.url) { file.headers }
-                Glide.with(this.context).load(glideUrl)
-                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade).override(size)
-                    .into(this)
-            }
-        }
-    } else {
-        Glide.with(this).clear(this)
-        setImageDrawable(null)
-    }
-}
-
-/**
- * Like [ImageView.loadImage], but invokes [onReady] once the load resolves (success or failure)
- * instead of leaving it fire-and-forget. Used to gate a postponed shared-element transition on
- * the cover actually having pixels — Glide never resolves synchronously, even on a cache hit, so
- * releasing the transition purely on layout timing can animate an empty view.
- */
-fun ImageView.loadCoverImage(url: String?, onReady: () -> Unit) {
-    if (url.isNullOrEmpty()) {
-        Glide.with(this).clear(this)
-        setImageDrawable(null)
-        onReady()
-        return
-    }
-    val localFile = File(url)
-    if (localFile.exists()) {
-        loadLocalImage(localFile, onReady = onReady)
-        return
-    }
-    val file = FileUrl(url).also { it.url = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { it.url } }
-    if (file.url.isEmpty()) {
-        Glide.with(this).clear(this)
-        setImageDrawable(null)
-        onReady()
-        return
-    }
-    tryWith {
-        val listener = onReadyListener(onReady)
-        if (file.url.startsWith("content://")) {
-            Glide.with(this.context).load(Uri.parse(file.url))
-                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
-                .listener(listener).into(this)
-        } else {
-            val glideUrl = GlideUrl(file.url) { file.headers }
-            Glide.with(this.context).load(glideUrl)
-                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
-                .listener(listener).into(this)
-        }
-    }
-}
-
-/** [loadCoverImage] overload for sources (e.g. extension CDNs) that need [file]'s auth headers. */
-fun ImageView.loadCoverImage(file: FileUrl?, onReady: () -> Unit) {
-    if (file == null) {
-        Glide.with(this).clear(this)
-        setImageDrawable(null)
-        onReady()
-        return
-    }
-    file.url = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { file.url }
-    if (file.url.isEmpty()) {
-        Glide.with(this).clear(this)
-        setImageDrawable(null)
-        onReady()
-        return
-    }
-    tryWith {
-        val listener = onReadyListener(onReady)
-        if (file.url.startsWith("content://")) {
-            Glide.with(this.context).load(Uri.parse(file.url))
-                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
-                .listener(listener).into(this)
-        } else {
-            val glideUrl = GlideUrl(file.url) { file.headers }
-            Glide.with(this.context).load(glideUrl)
-                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
-                .listener(listener).into(this)
-        }
-    }
-}
-
-fun ImageView.loadImage(file: FileUrl?, width: Int = 0, height: Int = 0) {
-    file?.url = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { file?.url ?: "" }
-    if (file?.url?.isNotEmpty() == true) {
-        tryWith {
-            if (file.url.startsWith("content://")) {
-                Glide.with(this.context).load(Uri.parse(file.url))
-                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
-                    .override(width, height).into(this)
-            } else {
-                val glideUrl = GlideUrl(file.url) { file.headers }
-                Glide.with(this.context).load(glideUrl)
-                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
-                    .override(width, height)
-                    .into(this)
-            }
-        }
-    } else {
-        Glide.with(this).clear(this)
-        setImageDrawable(null)
-    }
-}
-
-
-fun ImageView.loadLocalImage(file: File?, size: Int = 0, onReady: (() -> Unit)? = null) {
-    if (file?.exists() == true) {
-        tryWith {
-            val listener = onReadyListener(onReady)
-            Glide.with(this.context).load(file).transition(withCrossFade())
-                .let { if (listener != null) it.listener(listener) else it }
-                .override(size)
-                .into(this)
-        }
-    } else {
-        onReady?.invoke()
-    }
-}
-
 class SafeClickListener(
     private var defaultInterval: Int = 1000,
     private val onSafeCLick: (View) -> Unit
@@ -882,7 +665,6 @@ suspend fun getSize(file: FileUrl): Double? {
 suspend fun getSize(file: String): Double? {
     return getSize(FileUrl(file))
 }
-
 
 abstract class GesturesListener : GestureDetector.SimpleOnGestureListener() {
     private var timer: Timer? = null //at class level;
@@ -986,335 +768,6 @@ fun View.circularReveal(ex: Int, ey: Int, subX: Boolean, time: Long) {
         0f,
         max(height, width).toFloat()
     ).setDuration(time).start()
-}
-
-fun openLinkInBrowser(link: String?) {
-    link?.let {
-        try {
-            val emptyBrowserIntent = Intent(Intent.ACTION_VIEW).apply {
-                addCategory(Intent.CATEGORY_BROWSABLE)
-                data = Uri.fromParts("http", "", null)
-            }
-            val sendIntent = Intent().apply {
-                action = Intent.ACTION_VIEW
-                addCategory(Intent.CATEGORY_BROWSABLE)
-                data = Uri.parse(link)
-                selector = emptyBrowserIntent
-            }
-            currContext()!!.startActivity(sendIntent)
-        } catch (e: ActivityNotFoundException) {
-            snackString("No browser found")
-        } catch (e: Exception) {
-            Logger.log(e)
-        }
-    }
-}
-
-/**
- * Opens a MangaUpdates *series* link directly inside the app via [MUMediaDetailsActivity] instead
- * of routing it through an external browser. Opening such a link with a plain browser intent makes
- * the browser flash on screen before its deep-link filter bounces control back into the app; going
- * straight to the activity avoids that.
- *
- * Accepts both link shapes MangaUpdates uses — `/series/<slugOrId>` and `/series.html?id=<num>` —
- * and normalizes them to the `/series/<slugOrId>` form the activity's deep-link handler expects.
- *
- * @param configure extras for the activity beyond the link itself (e.g. the extension entry the
- *   series was reached from, so the page can link the two).
- * @return true if [link] was a MangaUpdates series link and was handled in-app; false otherwise, in
- *   which case the caller should fall back to [openLinkInBrowser].
- */
-fun openMangaUpdatesSeriesInApp(link: String?, configure: Intent.() -> Unit = {}): Boolean {
-    val normalized = mangaUpdatesSeriesUri(link) ?: return false
-    return try {
-        val ctx = currContext() ?: return false
-        val intent = Intent(Intent.ACTION_VIEW, normalized).apply {
-            setClass(ctx, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
-            if (ctx !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            configure()
-        }
-        ctx.startActivity(intent)
-        true
-    } catch (e: Exception) {
-        Logger.log(e)
-        false
-    }
-}
-
-/** A MangaUpdates series link in the `/series/<slugOrId>` form, or null if [link] isn't one. */
-private fun mangaUpdatesSeriesUri(link: String?): Uri? {
-    val uri = link?.let { Uri.parse(it) } ?: return null
-    val host = uri.host?.lowercase()?.removePrefix("www.")
-    if (host != "mangaupdates.com") return null
-
-    val segments = uri.pathSegments ?: emptyList()
-    val slugOrId = when (segments.firstOrNull()) {
-        "series" -> segments.getOrNull(1)
-        "series.html" -> uri.getQueryParameter("id")
-        else -> null
-    }?.takeIf { it.isNotBlank() } ?: return null
-    return Uri.parse("https://www.mangaupdates.com/series/$slugOrId")
-}
-
-/**
- * The intent [openLinkInApp] would start for [link], without starting it — for a tap target that
- * fires later, such as a notification's. Null when the app has no screen for [link].
- */
-fun inAppIntentForLink(ctx: Context, link: String): Intent? {
-    mangaUpdatesSeriesUri(link)?.let { uri ->
-        return Intent(Intent.ACTION_VIEW, uri)
-            .setClass(ctx, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
-    }
-    val uri = Uri.parse(link)
-    if (uri.scheme != "http" && uri.scheme != "https") return null
-    return inAppIntentFor(ctx, uri)
-}
-
-/**
- * Opens [link] on the app's own screen for it, when it has one: AniList media and profiles,
- * MangaUpdates series, MyAnimeList media, and the Comick, MangaBaka, Kitsu and Simkl pages the
- * manifest also deep-links. [openLinkInBrowser] pins a browser, so those deep-link filters never
- * get a say there; and re-dispatching the URL at the app instead would land AniList and MAL links
- * on [ani.dantotsu.connections.anilist.UrlMedia], which restarts the whole task — hence explicit
- * intents.
- *
- * @return false when the app has no screen for [link]; callers usually fall back to the browser,
- *   see [openLinkInAppOrBrowser].
- */
-fun openLinkInApp(link: String?): Boolean {
-    if (openMangaUpdatesSeriesInApp(link)) return true
-    val uri = link?.let { Uri.parse(it) } ?: return false
-    if (uri.scheme != "http" && uri.scheme != "https") return false
-    val ctx = currContext() ?: return false
-    val intent = inAppIntentFor(ctx, uri) ?: return false
-    return try {
-        if (ctx !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ctx.startActivity(intent)
-        true
-    } catch (e: Exception) {
-        Logger.log(e)
-        false
-    }
-}
-
-/** [openLinkInApp], and the browser for everything else. */
-fun openLinkInAppOrBrowser(link: String?) {
-    if (!openLinkInApp(link)) openLinkInBrowser(link)
-}
-
-/**
- * The screen for a `<site>/<kind>/<id-or-slug>` link, or null when the app has none. MangaUpdates
- * isn't here: its two link shapes are [openMangaUpdatesSeriesInApp]'s.
- */
-private fun inAppIntentFor(ctx: Context, uri: Uri): Intent? {
-    val host = uri.host?.lowercase()?.removePrefix("www.") ?: return null
-    val segments = uri.pathSegments.orEmpty()
-    val kind = segments.getOrNull(0) ?: return null
-    val target = segments.getOrNull(1)?.takeIf { it.isNotBlank() } ?: return null
-    return when (host) {
-        "anilist.co" -> when (kind) {
-            "anime", "manga" -> target.toIntOrNull()?.let {
-                Intent(ctx, MediaDetailsActivity::class.java).putExtra("mediaId", it)
-            }
-            "user" -> Intent(ctx, ProfileActivity::class.java).apply {
-                val id = target.toIntOrNull()
-                if (id != null) putExtra("userId", id) else putExtra("username", target)
-            }
-            else -> null
-        }
-        "myanimelist.net" -> when (kind) {
-            "anime", "manga" -> target.toIntOrNull()?.let {
-                Intent(ctx, MalMediaActivity::class.java)
-                    .putExtra(MalMediaActivity.EXTRA_MEDIA_ID, it)
-                    .putExtra(MalMediaActivity.EXTRA_IS_ANIME, kind == "anime")
-            }
-            else -> null
-        }
-        "comick.io", "comick.dev", "comick.app", "comick.cc" -> when (kind) {
-            "comic", "anime" -> Intent(ctx, ComickMediaActivity::class.java)
-                .putExtra(ComickMediaActivity.EXTRA_SLUG, target)
-                .putExtra(
-                    ComickMediaActivity.EXTRA_MEDIA_TYPE,
-                    if (kind == "anime") ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
-                )
-            else -> null
-        }
-        "mangabaka.org" -> when (kind) {
-            "series" -> target.toLongOrNull()?.let {
-                Intent(ctx, MangaBakaMediaActivity::class.java)
-                    .putExtra(MangaBakaMediaActivity.EXTRA_SERIES_ID, it)
-            }
-            "stacks" -> StackResolver.mangaBakaStackId(target)?.let {
-                StackResolver.mangaBakaIntent(ctx, it, title = null, description = null)
-            }
-            else -> null
-        }
-        "kitsu.io", "kitsu.app" -> when (kind) {
-            "anime", "manga" -> Intent(ctx, KitsuMediaActivity::class.java)
-                .putExtra(KitsuMediaActivity.EXTRA_MEDIA_ID, target)
-                .putExtra(KitsuMediaActivity.EXTRA_IS_ANIME, kind == "anime")
-            else -> null
-        }
-        "simkl.com" -> if (kind == "anime") target.toLongOrNull()?.let {
-            Intent(ctx, SimklMediaActivity::class.java)
-                .putExtra(SimklMediaActivity.EXTRA_SIMKL_ID, it)
-        } else null
-        else -> null
-    }
-}
-
-fun openLinkInYouTube(link: String?) {
-    link?.let {
-        try {
-            val videoIntent = Intent(Intent.ACTION_VIEW).apply {
-                addCategory(Intent.CATEGORY_BROWSABLE)
-                data = Uri.parse(link)
-                setPackage("com.google.android.youtube")
-            }
-            currContext()!!.startActivity(videoIntent)
-        } catch (e: ActivityNotFoundException) {
-            openLinkInBrowser(link)
-        } catch (e: Exception) {
-            Logger.log(e)
-        }
-    }
-}
-
-fun openInFileManager(context: Context, uri: Uri) {
-    try {
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        context.startActivity(intent)
-    } catch (e: ActivityNotFoundException) {
-        snackString(context.getString(R.string.no_file_manager_found))
-    } catch (e: Exception) {
-        Logger.log(e)
-    }
-}
-
-fun saveImageToDownloads(title: String, bitmap: Bitmap, context: Activity) {
-    FileProvider.getUriForFile(
-        context,
-        "$APPLICATION_ID.provider",
-        saveImage(
-            bitmap,
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath,
-            title
-        ) ?: return
-    )
-}
-
-fun savePrefsToDownloads(
-    title: String,
-    serialized: String,
-    context: Activity,
-    password: CharArray? = null
-) {
-    FileProvider.getUriForFile(
-        context,
-        "$APPLICATION_ID.provider",
-        if (password != null) {
-            savePrefs(
-                serialized,
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath,
-                title,
-                context,
-                password
-            ) ?: return
-        } else {
-            savePrefs(
-                serialized,
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath,
-                title,
-                context
-            ) ?: return
-        }
-    )
-}
-
-@SuppressLint("StringFormatMatches")
-fun savePrefs(serialized: String, path: String, title: String, context: Context): File? {
-    var file = File(path, "$title.ani")
-    var counter = 1
-    while (file.exists()) {
-        file = File(path, "${title}_${counter}.ani")
-        counter++
-    }
-
-    return try {
-        file.writeText(serialized)
-        scanFile(file.absolutePath, context)
-        toast(String.format(context.getString(R.string.saved_to_path, file.absolutePath)))
-        file
-    } catch (e: Exception) {
-        snackString("Failed to save settings: ${e.localizedMessage}")
-        null
-    }
-}
-
-@SuppressLint("StringFormatMatches")
-fun savePrefs(
-    serialized: String,
-    path: String,
-    title: String,
-    context: Context,
-    password: CharArray
-): File? {
-    var file = File(path, "$title.sani")
-    var counter = 1
-    while (file.exists()) {
-        file = File(path, "${title}_${counter}.sani")
-        counter++
-    }
-
-    return try {
-        file.writeBytes(PreferenceKeystore.encryptBackup(password, serialized))
-        scanFile(file.absolutePath, context)
-        toast(String.format(context.getString(R.string.saved_to_path, file.absolutePath)))
-        file
-    } catch (e: Exception) {
-        snackString("Failed to save settings: ${e.localizedMessage}")
-        null
-    }
-}
-
-fun shareImage(title: String, bitmap: Bitmap, context: Context) {
-
-    val contentUri = FileProvider.getUriForFile(
-        context,
-        "$APPLICATION_ID.provider",
-        saveImage(bitmap, context.cacheDir.absolutePath, title) ?: return
-    )
-
-    val intent = Intent(Intent.ACTION_SEND)
-    intent.type = "image/png"
-    intent.putExtra(Intent.EXTRA_STREAM, contentUri)
-    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    context.startActivity(Intent.createChooser(intent, "Share $title"))
-}
-
-@SuppressLint("StringFormatMatches")
-fun saveImage(image: Bitmap, path: String, imageFileName: String): File? {
-    val imageFile = File(path, "$imageFileName.png")
-    return try {
-        val fOut: OutputStream = FileOutputStream(imageFile)
-        image.compress(Bitmap.CompressFormat.PNG, 0, fOut)
-        fOut.close()
-        scanFile(imageFile.absolutePath, currContext()!!)
-        toast(String.format(currContext()!!.getString(R.string.saved_to_path, path)))
-        imageFile
-    } catch (e: Exception) {
-        snackString("Failed to save image: ${e.localizedMessage}")
-        null
-    }
-}
-
-private fun scanFile(path: String, context: Context) {
-    MediaScannerConnection.scanFile(context, arrayOf(path), null) { p, _ ->
-        Logger.log("Finished scanning $p")
-    }
 }
 
 class MediaPageTransformer : ViewPager2.PageTransformer {
@@ -1680,7 +1133,6 @@ fun brightnessConverter(it: Float, fromLog: Boolean) =
         else it, 0.001f, 1f
     )
 
-
 fun checkCountry(context: Context): Boolean {
     val telMgr = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
     return when (telMgr.simState) {
@@ -1759,53 +1211,6 @@ suspend fun View.pop() {
     delay(100)
 }
 
-fun blurImage(imageView: ImageView, banner: String?, headers: Map<String, String> = emptyMap()) {
-    if (banner != null) {
-        val radius = PrefManager.getVal<Float>(PrefName.BlurRadius).toInt()
-        val sampling = PrefManager.getVal<Float>(PrefName.BlurSampling).toInt()
-        val context = imageView.context
-        // Safely resolve Activity from context (context can be a ContextThemeWrapper in dialogs)
-        val activity = when (context) {
-            is Activity -> context
-            is android.content.ContextWrapper -> {
-                var base = context
-                var act: Activity? = null
-                while (base is android.content.ContextWrapper) {
-                    if (base is Activity) { act = base; break }
-                    val b = base.baseContext
-                    if (b is android.content.ContextWrapper) base = b else { base = object : android.content.ContextWrapper(b) {} }
-                }
-                act
-            }
-            else -> null
-        }
-        // Proceed if activity is not destroyed or if we couldn't resolve an Activity (use context directly)
-        if (activity == null || !activity.isDestroyed) {
-            val url = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { banner }
-            val model: Any = when {
-                banner.startsWith("http") -> if (headers.isNotEmpty()) GlideUrl(url) { headers } else GlideUrl(url)
-                banner.startsWith("content://") -> Uri.parse(url)
-                else -> File(url)
-            }
-            if (PrefManager.getVal(PrefName.BlurBanners)) {
-                Glide.with(context as Context)
-                    .load(model)
-                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE).override(400)
-                    .apply(RequestOptions.bitmapTransform(BlurTransformation(radius, sampling)))
-                    .into(imageView)
-
-            } else {
-                Glide.with(context as Context)
-                    .load(model)
-                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE).override(400)
-                    .into(imageView)
-            }
-        }
-    } else {
-        imageView.setImageResource(R.drawable.linear_gradient_bg)
-    }
-}
-
 fun Context.getThemeColor(@AttrRes attribute: Int): Int {
     val typedValue = TypedValue()
     theme.resolveAttribute(attribute, typedValue, true)
@@ -1817,24 +1222,6 @@ fun ImageView.openImage(title: String, image: String) {
         ImageViewDialog.newInstance(
             context as FragmentActivity, title, image
         )
-    }
-}
-
-/**
- * The link resolver for user-written AniList content (comments, activities): AniList media and
- * profiles open in-app, YouTube in its app, and anything else is only copied — never opened.
- * @param link the link to open
- */
-fun openOrCopyAnilistLink(link: String) {
-    val ctx = currContext()
-    val uri = Uri.parse(link)
-    val anilist = if (ctx != null && uri.host?.removePrefix("www.") == "anilist.co") {
-        inAppIntentFor(ctx, uri)
-    } else null
-    when {
-        anilist != null -> ctx!!.startActivity(anilist)
-        getYoutubeId(link).isNotEmpty() -> openLinkInYouTube(link)
-        else -> copyToClipboard(link, true)
     }
 }
 
@@ -1920,7 +1307,6 @@ fun buildMarkwon(
         .build()
     return markwon
 }
-
 
 fun getYoutubeId(url: String): String {
     val regex =

@@ -162,6 +162,7 @@
                     app:layout_constraintBottom_toBottomOf="parent">
 
                     <ImageButton
+                        android:contentDescription="@string/cd_player_settings"
                         android:id="@+id/exo_settings"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -173,6 +174,7 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:contentDescription="@string/continue_on_another_device"
                         android:id="@+id/exo_handoff"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -182,6 +184,7 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:contentDescription="@string/screenshot"
                         android:id="@+id/exo_screenshot"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -191,6 +194,7 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:contentDescription="@string/cd_create_clip"
                         android:id="@+id/exo_clip"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -200,6 +204,7 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:contentDescription="@string/source"
                         android:id="@+id/exo_source"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -210,6 +215,7 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:contentDescription="@string/subtitles"
                         android:id="@+id/exo_sub"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -221,6 +227,7 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:contentDescription="@string/cd_audio_track"
                         android:id="@+id/exo_audio"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -236,6 +243,7 @@
                         android:layout_weight="1" />
 
                     <ImageButton
+                        android:contentDescription="@string/cd_rotate_screen"
                         android:id="@+id/exo_rotate"
                         android:layout_width="wrap_content"
                         android:layout_height="48dp"
@@ -256,6 +264,7 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:contentDescription="@string/picture_in_picture"
                         android:id="@+id/exo_pip"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -265,6 +274,7 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:contentDescription="@string/cd_skip_op_ed"
                         android:id="@+id/exo_skip_op_ed"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -275,6 +285,7 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:contentDescription="@string/cd_resize_video"
                         android:id="@+id/exo_screen"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
@@ -312,6 +323,7 @@
                     app:cardElevation="0dp">
 
                     <ImageButton
+                        android:contentDescription="@string/cd_previous_episode"
                         android:id="@+id/exo_prev_ep"
                         style="@style/ExoMediaButton.Pause"
                         android:layout_width="72dp"
@@ -335,6 +347,7 @@
                     app:cardElevation="0dp">
 
                     <ImageButton
+                        android:contentDescription="@string/cd_rewind"
                         android:id="@+id/exo_fast_rewind_button"
                         style="@style/ExoMediaButton.Pause"
                         android:layout_width="72dp"
@@ -353,6 +366,7 @@
                     app:cardElevation="0dp">
 
                     <ImageButton
+                        android:contentDescription="@string/cd_play_pause"
                         android:id="@id/exo_play"
                         style="@style/ExoMediaButton.Play"
                         android:layout_width="72dp"
@@ -373,6 +387,7 @@
                     app:cardElevation="0dp">
 
                     <ImageButton
+                        android:contentDescription="@string/cd_fast_forward"
                         android:id="@+id/exo_fast_forward_button"
                         style="@style/ExoMediaButton.Pause"
                         android:layout_width="72dp"
@@ -392,6 +407,7 @@
                     app:cardElevation="0dp">
 
                     <ImageButton
+                        android:contentDescription="@string/cd_next_episode"
                         android:id="@+id/exo_next_ep"
                         android:layout_width="72dp"
                         android:layout_height="72dp"
@@ -413,6 +429,7 @@
                 android:padding="8dp">
 
                 <ImageButton
+                    android:contentDescription="@string/back"
                     android:id="@+id/exo_back"
                     android:layout_width="43dp"
                     android:layout_height="match_parent"
@@ -468,6 +485,7 @@
                         android:orientation="horizontal">
 
                         <ImageButton
+                            android:contentDescription="@string/cd_playback_speed"
                             android:id="@id/exo_playback_speed"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
@@ -486,6 +504,7 @@
                             app:tint="#fff" />
 
                         <ImageButton
+                            android:contentDescription="@string/cd_lock_controls"
                             android:id="@+id/exo_lock"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
@@ -608,6 +627,7 @@
             app:cardElevation="0dp">
 
             <ImageButton
+                android:contentDescription="@string/cd_unlock_controls"
                 android:id="@+id/exo_unlock"
                 android:layout_width="48dp"
                 android:layout_height="48dp"

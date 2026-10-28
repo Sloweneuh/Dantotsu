@@ -42,7 +42,6 @@ android {
             dimension "store"
             isDefault true
             apply plugin: 'com.google.gms.google-services'
-            apply plugin: 'com.google.firebase.crashlytics'
         }
     }
 
@@ -69,8 +68,32 @@ android {
             manifestPlaceholders.icon_placeholder = "@mipmap/ic_launcher"
             manifestPlaceholders.icon_placeholder_round = "@mipmap/ic_launcher_round"
             debuggable false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-gson.pro', 'proguard-rules.pro'
+            // Shrinking only: proguard-rules.pro turns off obfuscation and optimisation and keeps
+            // every package extensions link against, since they resolve our copies at runtime.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    // One apk per ABI for release (plus a universal one), since native libraries are most of the
+    // size: about 35 MB per ABI. 32-bit x86 is dropped everywhere; almost nothing runs it any more.
+    // Other builds stay a single apk so they install on both WSA (x86_64) and phones (arm64).
+    // AppUpdater.RELEASE_ABIS picks the matching split, so keep it in step with this list.
+    def releaseAbis = ["arm64-v8a", "armeabi-v7a", "x86_64"]
+    def buildingRelease = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
+    splits {
+        abi {
+            enable buildingRelease
+            reset()
+            include(*releaseAbis)
+            universalApk true
+        }
+    }
+    // Not ndk.abiFilters: AGP refuses those alongside abi splits, and the universal apk ignores
+    // the splits' include list.
+    packaging {
+        jniLibs { excludes += "lib/x86/**" }
     }
     // LeakCanary goes to `alpha` alone: it is the one debuggable build type, and LeakCanary
     // aborts the process at startup on a non-debuggable APK. `debug` (the -beta01 channel) and
@@ -94,6 +117,10 @@ android {
         freeCompilerArgs = ["-Xcontext-parameters", "-Xmulti-platform"]
     }
     namespace 'ani.dantotsu'
+    // JVM unit tests: android.* calls (Logger's Log.*) return defaults instead of throwing.
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -111,7 +138,6 @@ dependencies {
 //  FireBase
     googleImplementation platform('com.google.firebase:firebase-bom:34.16.0')
     googleImplementation 'com.google.firebase:firebase-analytics'
-    googleImplementation 'com.google.firebase:firebase-crashlytics'
     googleImplementation 'com.google.firebase:firebase-messaging'
     googleImplementation 'com.google.firebase:firebase-database'
 //  Core
@@ -268,6 +294,11 @@ dependencies {
 //  ships in the package. Free, offline once downloaded, and needs no key, which makes it the
 //  engine to prove the pipeline against before any of the network-backed ones are written.
     implementation 'com.google.mlkit:translate:17.0.3'
+
+//  Unit tests (app/src/test). BouncyCastle stands in for Android's provider, which is what
+//  supplies "AES/CBC/PKCS7Padding" to the legacy .sani path.
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
 
 }
 

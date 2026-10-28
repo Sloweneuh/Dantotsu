@@ -378,6 +378,7 @@
                     tools:ignore="HardcodedText" />
 
                 <ImageView
+                    android:contentDescription="@string/cd_cancel_reply"
                     android:id="@+id/commentReplyToCancel"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
@@ -463,6 +464,7 @@
                     tools:visibility="visible" />
 
                 <ImageButton
+                    android:contentDescription="@string/cd_comment_tag"
                     android:id="@+id/commentLabel"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
@@ -474,6 +476,7 @@
                     tools:visibility="visible" />
 
                 <ImageButton
+                    android:contentDescription="@string/cd_send"
                     android:id="@+id/commentSend"
                     android:layout_width="32dp"
                     android:layout_height="32dp"

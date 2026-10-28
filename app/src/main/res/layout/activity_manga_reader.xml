@@ -259,6 +259,7 @@
                         android:orientation="horizontal">
 
                         <ImageButton
+                            android:contentDescription="@string/back"
                             android:id="@+id/mangaReaderBack"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
@@ -309,6 +310,7 @@
                             android:orientation="horizontal">
 
                             <ImageButton
+                                android:contentDescription="@string/download"
                                 android:id="@+id/mangaReaderDownload"
                                 android:layout_width="wrap_content"
                                 android:layout_height="48dp"
@@ -320,6 +322,7 @@
                                 tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
 
                             <ImageButton
+                                android:contentDescription="@string/cd_autoscroll"
                                 android:id="@+id/mangaReaderAutoscroll"
                                 android:layout_width="48dp"
                                 android:layout_height="48dp"
@@ -332,6 +335,7 @@
                             <!-- Reader settings live in this "more" menu too (see action_reader_settings
                                  in manga_reader_more.xml) rather than a separate button next to it. -->
                             <ImageButton
+                                android:contentDescription="@string/cd_more_options"
                                 android:id="@+id/mangaReaderMore"
                                 android:layout_width="48dp"
                                 android:layout_height="48dp"

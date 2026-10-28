@@ -74,8 +74,6 @@ abstract class BaseParser {
     open suspend fun autoSearch(mediaObj: Media): ShowResponse? {
         applySourceLanguage(mediaObj)
 
-        // TEMPORARY INSTRUMENTATION — grep DantotsuPerf.
-        val perfMatchStart = System.nanoTime()
         val saved = loadSavedShowResponse(mediaObj.id)
         if (saved != null) {
             if (this !is OfflineMangaParser && this !is OfflineAnimeParser) {
@@ -90,10 +88,6 @@ abstract class BaseParser {
                 // [ani.dantotsu.connections.IdCache] for the same problem, and what it cost.
                 setUserText("${currContext()!!.getString(R.string.selected)} : ${saved.name}")
             }
-            android.util.Log.i(
-                "DantotsuPerf",
-                "autoSearch[$name] cachedMatch=${(System.nanoTime() - perfMatchStart) / 1_000_000}ms"
-            )
             return saved
         }
 

@@ -848,6 +848,9 @@
             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
             android:value="androidx.media3.cast.DefaultCastOptionsProvider" />
     
+    <!-- Started by SentryCrashlytics only when crash reports are enabled, so the "disable crash
+         reports" setting covers Sentry too. -->
+    <meta-data android:name="io.sentry.auto-init" android:value="false" />
     <!-- Required: set your sentry.io project identifier (DSN) -->
     <meta-data android:name="io.sentry.dsn" android:value="https://7b111dc63dcb38c85e379f351a32c78e@o4510858195959808.ingest.de.sentry.io/4510858199367760" />
 

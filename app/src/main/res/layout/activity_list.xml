@@ -33,6 +33,7 @@
                 android:orientation="horizontal">
 
                 <ImageButton
+                    android:contentDescription="@string/back"
                     android:id="@+id/listBack"
                     android:layout_width="40dp"
                     android:layout_height="40dp"

@@ -203,8 +203,9 @@ class FinalExceptionHandler : Thread.UncaughtExceptionHandler {
             return
         }
 
+        // Not reported here: defaultUEH below is Sentry's handler when reports are on, and it
+        // records the crash as fatal. Reporting it here as well sent every crash twice.
         val stackTraceString = Log.getStackTraceString(e)
-        Injekt.get<CrashlyticsInterface>().logException(e)
 
         if (App.instance?.applicationContext != null) {
             App.instance?.applicationContext?.let {

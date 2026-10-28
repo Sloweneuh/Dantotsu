@@ -15,6 +15,7 @@ import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.notify
 import java.util.concurrent.TimeUnit
+import android.os.Build
 import android.os.Environment
 import androidx.fragment.app.FragmentActivity
 import ani.dantotsu.BuildConfig
@@ -119,14 +120,23 @@ object AppUpdater {
      * costs nothing, the other two each cost a network round trip.
      */
 
+    /** The split this device should install, or null when none of ours runs on it. */
+    private val deviceAbi: String?
+        get() = Build.SUPPORTED_ABIS.firstOrNull { it in RELEASE_ABIS }
+
+    // Keep in step with splits.abi.include in app/build.gradle.
+    private val RELEASE_ABIS = setOf("arm64-v8a", "armeabi-v7a", "x86_64")
+
     /**
-     * Canonical GitHub releases download URL, derived from the version alone. Stable releases
-     * publish the APK under the predictable `app-google-release.apk` name used by CI; pre-releases
-     * don't, so they have to go through the releases API.
+     * Canonical GitHub releases download URL, derived from the version alone. Release builds are
+     * split per ABI (`app-google-<abi>-release.apk`, plus `app-google-universal-release.apk`);
+     * pre-releases don't follow the naming, so they have to go through the releases API. A release
+     * published before the split 404s here, and the service falls through to [githubApkUrl].
      */
     internal fun constructedApkUrl(repo: String, version: String, isDebug: Boolean): String? =
         if (isDebug) null
-        else "https://github.com/$repo/releases/download/$version/app-google-release.apk"
+        else "https://github.com/$repo/releases/download/$version/" +
+                "app-google-${deviceAbi ?: "universal"}-release.apk"
 
     internal suspend fun githubApkUrl(repo: String, version: String): String? {
         // Always use the releases list endpoint and filter by tag_name to find the matching release
@@ -138,7 +148,12 @@ object AppUpdater {
             val match = res.firstOrNull { it.tagName == version || it.tagName == "v$version" }
                 ?: res.firstOrNull { it.tagName.equals(version, ignoreCase = true) || it.tagName.equals("v$version", ignoreCase = true) }
 
-            val apk = match?.assets?.firstOrNull { it.browserDownloadURL.endsWith(".apk") }?.browserDownloadURL
+            // This device's split, then the universal apk, then whatever single apk an older
+            // release carries.
+            val apks = match?.assets?.map { it.browserDownloadURL }?.filter { it.endsWith(".apk") }.orEmpty()
+            val apk = deviceAbi?.let { abi -> apks.firstOrNull { it.contains("-$abi-") } }
+                ?: apks.firstOrNull { it.contains("universal") }
+                ?: apks.firstOrNull()
             if (!apk.isNullOrBlank()) return apk
 
         } catch (e: Exception) {

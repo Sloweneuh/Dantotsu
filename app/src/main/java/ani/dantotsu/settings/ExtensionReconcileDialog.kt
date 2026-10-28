@@ -17,6 +17,8 @@ import ani.dantotsu.util.materialDialog
  * every other kind of sync this one always ends at a list somebody has to agree to.
  */
 fun Activity.showExtensionReconcileDialog(diff: ExtensionSync.Diff) {
+    // Called when a background diff comes back, which can be after the screen closed.
+    if (isFinishing || isDestroyed) return
     // One flat, user-driven list: installs first, then removals. Installs that can still be
     // found in the repos are pre-checked (additive, safe); removals are unchecked so deleting
     // an extension is always a deliberate opt-in.

@@ -46,7 +46,7 @@ import ani.dantotsu.notifications.extension.ExtensionUpdateScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import ani.dantotsu.util.AppScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import logcat.AndroidLogcatLogger
@@ -172,6 +172,10 @@ class App : MultiDexApplication() {
             ani.dantotsu.connections.crashlytics.CrashlyticsFactory.createCrashlytics()
         Injekt.addSingletonFactory<CrashlyticsInterface> { crashlytics }
         crashlytics.initialize(this)
+        // Settled before FinalExceptionHandler goes in: enabling starts Sentry, whose own handler
+        // has to be the one FinalExceptionHandler passes crashes on to.
+        val disableCrashReports = DisabledReports || PrefManager.getVal(PrefName.DisableCrashReports)
+        crashlytics.setCrashlyticsCollectionEnabled(!disableCrashReports)
         Logger.init(this)
         Thread.setDefaultUncaughtExceptionHandler(FinalExceptionHandler())
         Logger.log(Log.WARN, "App: Logging started")
@@ -189,10 +193,6 @@ class App : MultiDexApplication() {
         // Settings pages move on a shared X axis between each other.
         registerActivityLifecycleCallbacks(ani.dantotsu.settings.SettingsPageTransitions)
         runCatching { ani.dantotsu.notifications.NotificationReadState.migrateLegacyCounter() }
-
-        // Check both the hardcoded constant and user preference
-        val disableCrashReports = DisabledReports || PrefManager.getVal(PrefName.DisableCrashReports)
-        crashlytics.setCrashlyticsCollectionEnabled(!disableCrashReports)
 
         if (!disableCrashReports) {
             (PrefManager.getVal(PrefName.SharedUserID) as Boolean).let {
@@ -281,7 +281,7 @@ class App : MultiDexApplication() {
                 lnReaderPluginManager.installedPluginsFlow,
             )
         }
-        GlobalScope.launch {
+        AppScope.launch(Dispatchers.Default) {
             torrentAddonManager = Injekt.get()
             downloadAddonManager = Injekt.get()
             torrentAddonManager.init()

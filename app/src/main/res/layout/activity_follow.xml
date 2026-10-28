@@ -70,6 +70,7 @@
             app:cardElevation="0dp">
 
             <ImageButton
+                android:contentDescription="@string/cd_list_view"
                 android:id="@+id/followerList"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
@@ -91,6 +92,7 @@
             app:cardElevation="0dp">
 
             <ImageButton
+                android:contentDescription="@string/cd_grid_view"
                 android:id="@+id/followerGrid"
                 android:layout_width="48dp"
                 android:layout_height="48dp"

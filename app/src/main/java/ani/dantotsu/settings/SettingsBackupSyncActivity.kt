@@ -61,7 +61,7 @@ import ani.dantotsu.util.customAlertDialog
 import ani.dantotsu.util.materialDialog
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import ani.dantotsu.util.AppScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -289,7 +289,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                             // A manual sync is a round trip to the cloud and back with no other
                             // progress to show, so spin the row's icon until it resolves.
                             view.settingsIcon.setSpinning(true)
-                            GlobalScope.launch(Dispatchers.IO) {
+                            AppScope.launch {
                                 val result = CloudSync.syncManual()
                                 runOnUiThread { view.settingsIcon.setSpinning(false) }
                                 when (result) {
@@ -364,7 +364,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
 
                         else -> {
                             toast(getString(R.string.please_wait))
-                            GlobalScope.launch(Dispatchers.IO) {
+                            AppScope.launch {
                                 // Don't push here: computeDiff() compares against the other
                                 // device's cloud set and publishes ours itself when appropriate.
                                 val diff = ExtensionSync.computeDiff()
@@ -411,7 +411,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                             setMessage(R.string.force_upload_confirm_msg)
                             setPosButton(R.string.force_upload) {
                                 toast(getString(R.string.please_wait))
-                                GlobalScope.launch(Dispatchers.IO) {
+                                AppScope.launch {
                                     val settingsOk = CloudSync.forcePush()
                                     val extOk = ExtensionSync.forcePush()
                                     // Only push extension settings (may hold logins) when opted in.
@@ -453,7 +453,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                             setMessage(R.string.force_download_confirm_msg)
                             setPosButton(R.string.force_download) {
                                 toast(getString(R.string.please_wait))
-                                GlobalScope.launch(Dispatchers.IO) {
+                                AppScope.launch {
                                     val settingsOk = CloudSync.forcePull()
                                     // Was reported as success on the settings pull alone, so a
                                     // failed extension-settings pull looked like it had worked.
@@ -499,7 +499,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                             setMessage(R.string.cloud_wipe_confirm_msg)
                             setPosButton(R.string.cloud_wipe) {
                                 toast(getString(R.string.please_wait))
-                                GlobalScope.launch(Dispatchers.IO) {
+                                AppScope.launch {
                                     val ok = CloudWipe.run()
                                     runOnUiThread {
                                         // The wipe cleared the notices' state and the local
@@ -563,8 +563,11 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    private fun showConflictDialog(conflict: CloudSync.SyncOutcome.Conflict) =
+    // The sync behind these runs in AppScope and can finish after this screen has gone.
+    private fun showConflictDialog(conflict: CloudSync.SyncOutcome.Conflict) {
+        if (isFinishing || isDestroyed) return
         showCloudSyncConflictDialog(conflict) { applyRestore() }
+    }
 
     /**
      * The "Sync now" row's description: the conflict, if there is one, then when this device last
@@ -894,7 +897,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
 
     private fun applyRestore() {
         PrefManager.setCustomVal("reload", true)
-        recreate()
+        if (!isFinishing && !isDestroyed) recreate()
     }
 
     private fun showPermissionWarningDialog(missingPermissions: List<String>, hasDisabledSettings: Boolean) {

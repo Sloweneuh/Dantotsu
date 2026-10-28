@@ -83,7 +83,6 @@ import tachiyomi.core.util.lang.launchIO
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.Serializable
-import io.sentry.Sentry
 
 
 

@@ -11,7 +11,7 @@ import ani.dantotsu.toast
 import ani.dantotsu.util.customAlertDialog
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import ani.dantotsu.util.AppScope
 import kotlinx.coroutines.launch
 
 /**
@@ -116,7 +116,7 @@ private fun Activity.resolve(
     onApplied: () -> Unit,
     fallback: suspend () -> Boolean,
 ) {
-    GlobalScope.launch(Dispatchers.IO) {
+    AppScope.launch {
         val ok = if (payload != null) CloudSync.resolveWith(payload, conflict.remoteTs)
         else fallback()
         runOnUiThread {
