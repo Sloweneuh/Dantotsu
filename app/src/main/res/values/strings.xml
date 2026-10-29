@@ -3568,4 +3568,17 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="widget_continue">Continue</string>
     <string name="widget_continue_empty">Nothing to continue yet</string>
     <string name="widget_continue_desc">Jump back into what you last watched or read</string>
+    <!-- Automatic downloads -->
+    <string name="auto_download">Download new releases automatically</string>
+    <string name="auto_download_desc">When you open the app: up to 5 unread per title, from the source you last used for it. Titles you never opened on a source are skipped.</string>
+    <string name="auto_download_manga">Chapters</string>
+    <string name="auto_download_manga_desc">Manga you\'re reading</string>
+    <string name="auto_download_anime">Episodes</string>
+    <string name="auto_download_anime_desc">Anime you\'re watching. Needs the download add-on.</string>
+    <string name="auto_download_planning">Include the Planning list</string>
+    <string name="auto_download_planning_desc">Also download the first unread ones of titles you plan to start</string>
+    <string name="auto_download_queued">Downloading %1$d new releases</string>
+    <string name="download_settings_general">General</string>
+    <string name="auto_download_header">Automatic downloads</string>
+    <string name="download_settings_delete">Delete downloads</string>
 </resources>

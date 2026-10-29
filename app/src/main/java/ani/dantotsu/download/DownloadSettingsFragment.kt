@@ -39,8 +39,16 @@ class DownloadSettingsFragment : Fragment() {
             setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom + navBarHeight)
         }
         binding.downloadSettingsRecycler.layoutManager = LinearLayoutManager(requireContext())
-        binding.downloadSettingsRecycler.adapter =
-            SettingsAdapter(ArrayList(requireContext().downloadSettingsRows()))
+        showRows()
+    }
+
+    /** Grouped tiles, as the other settings screens draw them; rebuilt when a master switch flips. */
+    private fun showRows() {
+        val binding = _binding ?: return
+        binding.downloadSettingsRecycler.adapter = SettingsAdapter(
+            ArrayList(requireContext().downloadSettingsRows(onRebuild = { showRows() })),
+            tiled = true,
+        )
     }
 
 

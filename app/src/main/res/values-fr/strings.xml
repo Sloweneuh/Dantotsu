@@ -3444,4 +3444,17 @@
     <string name="widget_continue">Reprendre</string>
     <string name="widget_continue_empty">Rien à reprendre pour l\'instant</string>
     <string name="widget_continue_desc">Reprenez ce que vous avez regardé ou lu en dernier</string>
+    <!-- Automatic downloads -->
+    <string name="auto_download">Télécharger automatiquement les nouveautés</string>
+    <string name="auto_download_desc">À l\'ouverture de l\'application : jusqu\'à 5 non lus par titre, depuis la dernière source utilisée. Les titres jamais ouverts sur une source sont ignorés.</string>
+    <string name="auto_download_manga">Chapitres</string>
+    <string name="auto_download_manga_desc">Les mangas que vous lisez</string>
+    <string name="auto_download_anime">Épisodes</string>
+    <string name="auto_download_anime_desc">Les animes que vous regardez. Nécessite le module de téléchargement.</string>
+    <string name="auto_download_planning">Inclure la liste À voir</string>
+    <string name="auto_download_planning_desc">Télécharger aussi les premiers non lus des titres prévus</string>
+    <string name="auto_download_queued">Téléchargement de %1$d nouveautés</string>
+    <string name="download_settings_general">Général</string>
+    <string name="auto_download_header">Téléchargements automatiques</string>
+    <string name="download_settings_delete">Supprimer les téléchargements</string>
 </resources>

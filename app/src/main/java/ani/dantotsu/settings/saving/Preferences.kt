@@ -26,6 +26,12 @@ enum class PrefName(val data: Pref) {
     OfflineView(Pref(Location.General, Int::class, 0)),
     DownloadManager(Pref(Location.General, Int::class, 0)),
     AllowMeteredDownloads(Pref(Location.General, Boolean::class, true)),
+    // Automatic downloads of new releases when the app is opened; see AutoDownloads.
+    AutoDownloadEnabled(Pref(Location.General, Boolean::class, false)),
+    AutoDownloadAnime(Pref(Location.General, Boolean::class, true)),
+    AutoDownloadManga(Pref(Location.General, Boolean::class, true)),
+    AutoDownloadPlanning(Pref(Location.General, Boolean::class, false)),
+    AutoDownloadLastRun(Pref(Location.Irrelevant, Long::class, 0L)),
     MangaDownloadPdf(Pref(Location.General, Boolean::class, false)),
     AskDownloadPdf(Pref(Location.General, Boolean::class, true)),
     // EPUB is the default because it is what the in-app reader opens directly; HTML is for

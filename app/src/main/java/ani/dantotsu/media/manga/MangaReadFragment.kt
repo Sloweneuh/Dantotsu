@@ -45,6 +45,7 @@ import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.DownloadsManager.Companion.compareName
 import ani.dantotsu.download.manga.MangaDownloaderService
 import ani.dantotsu.download.manga.MangaServiceDataSingleton
+import ani.dantotsu.download.manga.MangaDownloadQueue
 import ani.dantotsu.downloadStats
 import ani.dantotsu.dp
 import ani.dantotsu.formatBytes
@@ -438,7 +439,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                             chapterAdapter.startDownload(it)
                         }
                     }
-                    enqueueMangaDownload(task)
+                    MangaDownloadQueue.enqueue(requireContext(), media, task)
                 }
             } else {
                 // One PDF per chapter — fetched and enqueued strictly one at a time (instead of
@@ -818,25 +819,11 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         val parser =
             model.mangaReadSources?.get(media.selected!!.sourceIndex) as? DynamicMangaParser
                 ?: return
-        val images = parser.imageList(mangaChapter.sChapter)
-        if (images.isEmpty()) {
+        if (!MangaDownloadQueue.enqueue(requireContext(), media, mangaChapter, parser, asPdf)) {
             withContext(Dispatchers.Main) {
                 chapterAdapter.purgeDownload(chapter.uniqueNumber())
             }
-            return
         }
-        val downloadTask = MangaDownloaderService.DownloadTask(
-            title = media.mainName(),
-            chapter = mangaChapter.title ?: mangaChapter.number,
-            scanlator = mangaChapter.scanlator ?: "Unknown",
-            imageData = images,
-            sourceMedia = media,
-            retries = 25,
-            simultaneousDownloads = 2,
-            asPdf = asPdf,
-            language = sourceLanguageCode()
-        )
-        enqueueMangaDownload(downloadTask)
     }
 
     /**
@@ -872,31 +859,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             }
         } else {
             action()
-        }
-    }
-
-    private suspend fun enqueueMangaDownload(task: MangaDownloaderService.DownloadTask) {
-        MangaServiceDataSingleton.downloadQueue.offer(task)
-        DownloadTracker.enqueue(
-            DownloadItem(
-                id = DownloadTracker.idOf(MediaType.MANGA, task.title, task.chapter),
-                type = MediaType.MANGA,
-                mediaId = media.id,
-                serviceKey = task.chapter,
-                title = task.title,
-                coverUrl = media.cover,
-                label = task.chapter
-            )
-        )
-        // If the service is not already running, start it
-        if (!MangaServiceDataSingleton.isServiceRunning) {
-            withContext(Dispatchers.Main) {
-                ContextCompat.startForegroundService(
-                    requireContext(),
-                    Intent(context, MangaDownloaderService::class.java)
-                )
-            }
-            MangaServiceDataSingleton.isServiceRunning = true
         }
     }
 

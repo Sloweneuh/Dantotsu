@@ -663,6 +663,8 @@ class MainActivity : AppCompatActivity() {
         // Request a layout pass to ensure window insets are recalculated
         // This fixes layout issues after screen turns off and back on
         binding.root.requestApplyInsets()
+        // New releases of what's being read or watched, if switched on; at most hourly.
+        ani.dantotsu.download.AutoDownloads.runIfDue(this)
     }
 
     //ViewPager

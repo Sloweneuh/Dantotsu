@@ -22,11 +22,31 @@ import uy.kohesive.injekt.api.get
  * keeps its tab, which is the convenient place to reach them while looking at downloads, and
  * Settings gains the path it was missing.
  *
+ * Grouped as the screen reads them: how downloads are made, the automatic ones, and the
+ * irreversible purges set apart at the end. The automatic group's own switches only mean anything
+ * with its master one on, and grey out without it — [onRebuild] redraws the rows when it flips.
+ *
  * @param compact tightens row spacing for the rows nested inside a settings card.
+ * @param onRebuild redraws these rows from the prefs; the host knows how.
  */
-fun Context.downloadSettingsRows(compact: Boolean = false): List<Settings> {
+fun Context.downloadSettingsRows(compact: Boolean = false, onRebuild: () -> Unit = {}): List<Settings> {
     val context = this
     val downloadsManager: DownloadsManager = Injekt.get()
+    val autoOn = PrefManager.getVal<Boolean>(PrefName.AutoDownloadEnabled)
+
+    fun header(res: Int) = Settings(type = 3, name = getString(res), desc = "", icon = 0)
+
+    fun autoRow(pref: PrefName, titleRes: Int, descRes: Int, iconRes: Int, key: String) = Settings(
+        type = 2,
+        name = getString(titleRes),
+        desc = getString(descRes),
+        icon = iconRes,
+        compact = compact,
+        anchorKey = key,
+        isEnabled = autoOn,
+        isChecked = PrefManager.getVal(pref),
+        switch = { isChecked, _ -> PrefManager.setVal(pref, isChecked) },
+    )
 
     fun purgeRow(
         type: MediaType,
@@ -35,6 +55,7 @@ fun Context.downloadSettingsRows(compact: Boolean = false): List<Settings> {
         mediaNameRes: Int,
         iconRes: Int,
         key: String,
+        startsGroup: Boolean = false,
     ) = Settings(
         type = 1,
         name = getString(titleRes),
@@ -42,6 +63,7 @@ fun Context.downloadSettingsRows(compact: Boolean = false): List<Settings> {
         icon = iconRes,
         compact = compact,
         anchorKey = key,
+        startsGroup = startsGroup,
         onClick = {
             context.customAlertDialog().apply {
                 setTitle(titleRes)
@@ -54,6 +76,7 @@ fun Context.downloadSettingsRows(compact: Boolean = false): List<Settings> {
     )
 
     return listOf(
+        header(R.string.download_settings_general),
         Settings(
             type = 1,
             name = getString(R.string.download_manager_select),
@@ -84,12 +107,36 @@ fun Context.downloadSettingsRows(compact: Boolean = false): List<Settings> {
                 PrefManager.setVal(PrefName.AllowMeteredDownloads, isChecked)
             },
         ),
+
+        header(R.string.auto_download_header),
+        Settings(
+            type = 2,
+            name = getString(R.string.auto_download),
+            desc = getString(R.string.auto_download_desc),
+            icon = R.drawable.ic_download_24,
+            compact = compact,
+            anchorKey = "auto_download",
+            startsGroup = true,
+            isChecked = autoOn,
+            switch = { isChecked, _ ->
+                PrefManager.setVal(PrefName.AutoDownloadEnabled, isChecked)
+                onRebuild()
+            },
+        ),
+        autoRow(PrefName.AutoDownloadManga, R.string.auto_download_manga, R.string.auto_download_manga_desc,
+            R.drawable.ic_round_menu_book_24, "auto_download_manga"),
+        autoRow(PrefName.AutoDownloadAnime, R.string.auto_download_anime, R.string.auto_download_anime_desc,
+            R.drawable.ic_round_movie_filter_24, "auto_download_anime"),
+        autoRow(PrefName.AutoDownloadPlanning, R.string.auto_download_planning, R.string.auto_download_planning_desc,
+            R.drawable.ic_round_calendar_today_24, "auto_download_planning"),
+
         // The media type badged with a bin. All three rows are the same irreversible action and used
         // to share one bin between them, which left the only thing that differs — which library it
         // empties — carried by the label alone.
+        header(R.string.download_settings_delete),
         purgeRow(
             MediaType.ANIME, R.string.purge_anime_downloads, R.string.purge_anime_downloads_desc,
-            R.string.anime, R.drawable.ic_round_purge_anime_24, "purge_anime",
+            R.string.anime, R.drawable.ic_round_purge_anime_24, "purge_anime", startsGroup = true,
         ),
         purgeRow(
             MediaType.MANGA, R.string.purge_manga_downloads, R.string.purge_manga_downloads_desc,

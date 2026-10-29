@@ -131,7 +131,11 @@ class SettingsSourcesActivity : AppCompatActivity() {
                     title = getString(R.string.downloads),
                     icon = R.drawable.ic_download_24,
                     summary = { getString(R.string.downloads_settings_desc) },
-                    rows = { downloadSettingsRows(compact = true) },
+                    rows = {
+                        downloadSettingsRows(compact = true, onRebuild = {
+                            sectionAdapter.notifyItemChanged(sectionAdapter.positionOf(Section.DOWNLOADS))
+                        })
+                    },
                 ),
                 SettingsSection(
                     key = Section.NETWORK,
