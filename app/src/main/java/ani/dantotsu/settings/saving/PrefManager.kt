@@ -8,6 +8,7 @@ import ani.dantotsu.settings.saving.internal.Compat
 import ani.dantotsu.settings.saving.internal.Location
 import ani.dantotsu.settings.saving.internal.PreferencePackager
 import ani.dantotsu.settings.saving.internal.SqlitePreferences
+import ani.dantotsu.settings.saving.internal.EncryptedPreferences
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import java.io.ByteArrayInputStream
@@ -46,8 +47,15 @@ object PrefManager {
         }
         animeDownloadsPreferences =
             context.getSharedPreferences(Location.AnimeDownloads.location, Context.MODE_PRIVATE)
-        protectedPreferences =
+        // The account tokens, encrypted with a Keystore key (see EncryptedPreferences). A device
+        // whose Keystore can't be used keeps the plain file, as before, rather than losing them.
+        protectedPreferences = try {
+            EncryptedPreferences.open(context, Location.Protected.location)
+        } catch (e: Exception) {
+            Logger.log("PrefManager: keeping the plain Protected file: ${e.message}")
+            Logger.log(e)
             context.getSharedPreferences(Location.Protected.location, Context.MODE_PRIVATE)
+        }
         ResumePositions.init(context)
         Compat.importOldPrefs(context)
     }

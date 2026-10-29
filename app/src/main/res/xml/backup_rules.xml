@@ -3,4 +3,5 @@
      them to whatever phone the backup lands on. -->
 <full-backup-content>
     <exclude domain="sharedpref" path="ani.dantotsu.protected.xml" />
+    <exclude domain="sharedpref" path="ani.dantotsu.protected_encrypted.xml" />
 </full-backup-content>
