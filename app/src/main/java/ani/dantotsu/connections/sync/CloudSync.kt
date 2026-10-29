@@ -121,6 +121,9 @@ object CloudSync {
         PrefName.MALUserName.name,
         PrefName.MangaUpdatesUsername.name,
         PrefName.MangaBakaUserName.name,
+        PrefName.KitsuUserName.name,
+        PrefName.SimklUserName.name,
+        PrefName.ComickUserName.name,
         PrefName.DiscordUserName.name,
     )
 
@@ -157,7 +160,7 @@ object CloudSync {
      * On a bump, re-baseline the hash instead: the settings didn't change, only which of them we
      * share. See [rebaselineForFilterChange].
      */
-    private const val FILTER_VERSION = 3
+    private const val FILTER_VERSION = 4 // 4: Kitsu, Simkl and Comick account names
 
     private val scope = CoroutineScope(Dispatchers.IO)
 

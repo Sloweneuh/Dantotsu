@@ -567,6 +567,8 @@ enum class PrefName(val data: Pref) {
     KitsuAvatar(Pref(Location.Protected, String::class, "")),
     SimklToken(Pref(Location.Protected, String::class, "")),
     SimklUserName(Pref(Location.Protected, String::class, "")),
+    /** The Comick account's name, kept past a dead session so its card can offer a reconnect. */
+    ComickUserName(Pref(Location.Protected, String::class, "")),
     SimklUserId(Pref(Location.Protected, String::class, "")),
     SimklAvatar(Pref(Location.Protected, String::class, "")),
     AppPassword(Pref(Location.Protected, String::class, "")),

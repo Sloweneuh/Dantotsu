@@ -297,7 +297,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             card(AccountProvider.COMICK, R.drawable.ic_round_comick_24, R.string.comick,
                 if (Comick.token != null) AccountState.SignedIn(
                     Comick.username ?: getString(R.string.comick_connected), Comick.avatar
-                ) else AccountState.SignedOut),
+                ) else knownOrOut(PrefName.ComickUserName)),
             AccountCard(AccountProvider.MALSYNC, R.drawable.ic_malsync, getString(R.string.malsync),
                 AccountState.NoLogin),
         )

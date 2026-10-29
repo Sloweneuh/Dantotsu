@@ -1,5 +1,7 @@
 package ani.dantotsu.connections.comick
 
+import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.saving.PrefManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.SharedPreferences
@@ -226,6 +228,8 @@ object Comick {
         runCatching {
             prefs()?.getString(KEY_PROFILE, null)?.let { gson.fromJson(it, ConnectedUser::class.java) }
         }.getOrNull()?.let(::applyProfile)
+        // Connections made before the name was kept: fill it in from the saved profile.
+        username?.let { if (PrefManager.getVal<String>(PrefName.ComickUserName).isBlank()) PrefManager.setVal(PrefName.ComickUserName, it) }
         return true
     }
 
@@ -244,6 +248,7 @@ object Comick {
             ?: return false
         applyProfile(user)
         prefs()?.edit { putString(KEY_PROFILE, gson.toJson(user)) }
+        PrefManager.setVal(PrefName.ComickUserName, username ?: "")
         Logger.log("Comick: profile is ${user.username ?: "(no username)"}")
         return true
     }
@@ -279,7 +284,7 @@ object Comick {
 
             val refreshToken = saved.refreshToken ?: run {
                 Logger.log("Comick: access token expired and no refresh token (offline access declined)")
-                clearLocal()
+                clearLocal(keepAccountName = true)
                 return@withContext null
             }
             val body = FormBody.Builder()
@@ -300,7 +305,7 @@ object Comick {
                         // invalid_grant & co: revoked, expired, or the authorizing session ended.
                         resp.code in 400..401 -> {
                             Logger.log("Comick: refresh rejected (HTTP ${resp.code}) — ${text.take(200)}")
-                            clearLocal()
+                            clearLocal(keepAccountName = true)
                             null
                         }
                         // Maintenance / rate limit: the token was never consumed, so keep it.
@@ -318,7 +323,7 @@ object Comick {
                     Logger.log("Comick: refresh not sent (${e.javaClass.simpleName}), keeping session")
                 } else {
                     Logger.log("Comick: refresh outcome unknown (${e.message}), disconnecting")
-                    clearLocal()
+                    clearLocal(keepAccountName = true)
                 }
                 null
             } catch (e: Exception) {
@@ -347,11 +352,18 @@ object Comick {
         }
     }
 
-    private fun clearLocal() {
+    /**
+     * Forgets the connection. A session that died on its own ([keepAccountName]) still remembers
+     * whose it was, so the Accounts card shows that account with a reconnect rather than a blank
+     * "signed out" — the known-account state a synced name gives another device. Disconnecting
+     * forgets the name too.
+     */
+    private fun clearLocal(keepAccountName: Boolean = false) {
         token = null
         username = null
         avatar = null
         prefs()?.edit(commit = true) { remove(KEY_TOKEN); remove(KEY_PROFILE) }
+        if (!keepAccountName) PrefManager.removeVal(PrefName.ComickUserName)
     }
 
     private fun readSaved(): SavedToken? = runCatching {

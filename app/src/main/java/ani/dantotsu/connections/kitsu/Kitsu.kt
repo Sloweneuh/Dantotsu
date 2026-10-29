@@ -5,6 +5,8 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -72,20 +74,36 @@ object Kitsu {
         return ok
     }
 
-    private suspend fun refreshToken(): ResponseToken? = tryWithSuspend {
-        val saved = PrefManager.getNullableVal<ResponseToken>(PrefName.KitsuToken, null)
-            ?: return@tryWithSuspend null
-        val res = client.post(
-            TOKEN_URL,
-            data = mapOf(
-                "grant_type" to "refresh_token",
-                "refresh_token" to saved.refreshToken,
-                "client_id" to CLIENT_ID,
-                "client_secret" to CLIENT_SECRET,
-            ),
-        ).parsed<ResponseToken>()
+    private suspend fun refreshToken(): ResponseToken? {
+        val saved = PrefManager.getNullableVal<ResponseToken>(PrefName.KitsuToken, null) ?: return null
+        // Nothing to refresh with: the saved sign-in can't be renewed, so it's over.
+        if (saved.refreshToken.isBlank()) {
+            dropDeadToken()
+            return null
+        }
+        val response = tryWithSuspend {
+            client.post(
+                TOKEN_URL,
+                data = mapOf(
+                    "grant_type" to "refresh_token",
+                    "refresh_token" to saved.refreshToken,
+                    "client_id" to CLIENT_ID,
+                    "client_secret" to CLIENT_SECRET,
+                ),
+            )
+        } ?: return null // offline or unreachable: keep the sign-in, try again next time
+        if (response.code != 200) {
+            // Kitsu refusing the refresh token (revoked, expired) means the sign-in is dead, and
+            // asking again every start only fails the same way. A server error might pass.
+            if (response.code == 400 || response.code == 401) {
+                Logger.log("Kitsu: refresh refused (${response.code}), dropping the token")
+                dropDeadToken()
+            }
+            return null
+        }
+        val res = tryWithSuspend { response.parsed<ResponseToken>() } ?: return null
         saveResponse(res)
-        res
+        return res
     }
 
     /** Fetches the signed-in user (`GET /users?filter[self]=true`) and caches name/slug/avatar. */
@@ -109,7 +127,9 @@ object Kitsu {
     }
 
     /** Restores a saved token (refreshing if expired) and the cached profile. */
-    suspend fun getSavedToken(): Boolean {
+    suspend fun getSavedToken(): Boolean = restoreLock.withLock {
+        // One restore at a time: startup asks from more than one place, and two refreshes racing
+        // each other would spend the same refresh token twice.
         if (!token.isNullOrBlank()) return true
         var saved = PrefManager.getNullableVal<ResponseToken>(PrefName.KitsuToken, null)
             ?: return false
@@ -121,7 +141,20 @@ object Kitsu {
         userid = PrefManager.getVal(PrefName.KitsuUserId, null as String?)
         slug = PrefManager.getVal(PrefName.KitsuSlug, null as String?)
         avatar = PrefManager.getVal(PrefName.KitsuAvatar, null as String?)
-        return if (username.isNullOrBlank() || userid.isNullOrBlank()) getUserData() else true
+        if (username.isNullOrBlank() || userid.isNullOrBlank()) getUserData() else true
+    }
+
+    private val restoreLock = Mutex()
+
+    /**
+     * Forgets a sign-in Kitsu no longer accepts, but not whose it was: the name, id and avatar stay,
+     * so the Accounts card shows that account with a reconnect rather than a blank "signed out"
+     * (the same known-account state a synced name gives another device). Signing out is
+     * [removeSavedToken].
+     */
+    private fun dropDeadToken() {
+        token = null
+        PrefManager.removeVal(PrefName.KitsuToken)
     }
 
     fun removeSavedToken() {

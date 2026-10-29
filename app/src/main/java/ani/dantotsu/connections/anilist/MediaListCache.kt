@@ -84,21 +84,30 @@ object MediaListCache {
      *
      * Written to a temporary file and moved into place, so a process that dies mid-write leaves the
      * previous response intact instead of a truncated one that parses into a half-empty library.
+     *
+     * Two saves of the same key can overlap (a refresh landing while the screen's own load saves).
+     * They used to share one temporary file, so one moved it into place while the other was still
+     * writing or about to move it — and failed. Each write now has its own temporary file, and writes
+     * of a key take turns, so the later one is the one left in place.
      */
     fun write(key: String, body: String) {
         val file = fileFor(key) ?: return
-        try {
-            file.parentFile?.mkdirs()
-            val temp = File(file.parentFile, "${file.name}.tmp")
-            GZIPOutputStream(temp.outputStream().buffered()).bufferedWriter().use { it.write(body) }
-            if (!temp.renameTo(file)) {
-                temp.copyTo(file, overwrite = true)
-                temp.delete()
+        synchronized(writeLocks.getOrPut(key) { Any() }) {
+            var temp: File? = null
+            try {
+                file.parentFile?.mkdirs()
+                temp = File.createTempFile(file.name, ".tmp", file.parentFile)
+                GZIPOutputStream(temp.outputStream().buffered()).bufferedWriter().use { it.write(body) }
+                if (!temp.renameTo(file)) temp.copyTo(file, overwrite = true)
+            } catch (e: Exception) {
+                Logger.log("MediaListCache: failed to write ${file.name}: ${e.message}")
+            } finally {
+                temp?.takeIf { it.exists() }?.delete()
             }
-        } catch (e: Exception) {
-            Logger.log("MediaListCache: failed to write ${file.name}: ${e.message}")
         }
     }
+
+    private val writeLocks = java.util.concurrent.ConcurrentHashMap<String, Any>()
 
     /** Drops one stored response, for signing out of the service that produced it. */
     fun remove(key: String) {
