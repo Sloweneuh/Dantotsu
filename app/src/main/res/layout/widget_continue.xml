@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    The Continue widget; see ContinueWidget. The newest History entry — its cover, title and the
+    episode or chapter it was left on — and a tap back into it. One centred line when History is
+    empty.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/widgetContainer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:theme="@style/Theme.Dantotsu.AppWidgetContainer">
+
+    <ImageView
+        android:id="@+id/widgetBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_background"
+        tools:ignore="ContentDescription" />
+
+    <LinearLayout
+        android:id="@+id/continueContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/continueCover"
+            android:layout_width="52dp"
+            android:layout_height="74dp"
+            android:scaleType="centerCrop"
+            tools:ignore="ContentDescription" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/continueLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_bold"
+                android:text="@string/widget_continue"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/continueTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_bold"
+                android:maxLines="2"
+                android:textSize="15sp"
+                tools:text="Frieren: Beyond Journey's End" />
+
+            <TextView
+                android:id="@+id/continueLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textSize="13sp"
+                tools:text="Episode 12 · A Real Hero" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/continueEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="12dp"
+        android:text="@string/widget_continue_empty"
+        android:textSize="14sp"
+        android:visibility="gone" />
+</FrameLayout>

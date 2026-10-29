@@ -12,6 +12,7 @@ import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.R
 import ani.dantotsu.media.MediaType
+import ani.dantotsu.others.AppShortcuts
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.AppScope
@@ -78,9 +79,19 @@ object WatchHistory {
     private const val MAX_ENTRIES = 1000
 
     private var helper: Helper? = null
+    private var appContext: Context? = null
 
     fun init(context: Context) {
         if (helper == null) helper = Helper(context.applicationContext)
+        appContext = context.applicationContext
+    }
+
+    /** The launcher's "Continue" shortcut and the Continue widget follow the newest entry. */
+    private fun changed() {
+        appContext?.let {
+            AppShortcuts.refreshContinue(it)
+            ani.dantotsu.widgets.ContinueWidget.refresh(it)
+        }
     }
 
     /** Off the main thread; a failure is logged and otherwise ignored. */
@@ -113,6 +124,7 @@ object WatchHistory {
                         "(SELECT rowid FROM $TABLE ORDER BY $COL_AT DESC LIMIT $MAX_ENTRIES)"
                 )
             }
+            changed()
         }
     }
 
@@ -154,11 +166,13 @@ object WatchHistory {
         helper?.writableDatabase?.delete(
             TABLE, "$COL_ID = ? AND $COL_TYPE = ?", arrayOf(entry.mediaId.toString(), entry.type.name)
         )
+        changed()
     }
 
     /** Blocking; call off the main thread. */
     fun clear() {
         helper?.writableDatabase?.delete(TABLE, null, null)
+        changed()
     }
 
     private const val TABLE = "history"

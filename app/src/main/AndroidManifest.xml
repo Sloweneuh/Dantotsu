@@ -175,6 +175,20 @@
                 android:resource="@xml/recommendations_widget_info" />
         </receiver>
 
+        <!-- No configure screen: it shows one thing, from History, in the app's widget colours. -->
+        <receiver
+            android:name=".widgets.ContinueWidget"
+            android:exported="true"
+            android:label="@string/widget_continue">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/continue_widget_info" />
+        </receiver>
+
         <!-- One configure screen for every widget; it resolves which one from the widget id. -->
         <activity
             android:name=".widgets.WidgetConfigureActivity"

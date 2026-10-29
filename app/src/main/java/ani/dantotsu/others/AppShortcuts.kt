@@ -15,6 +15,10 @@ import androidx.core.graphics.drawable.IconCompat
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.media.SearchActivity
+import ani.dantotsu.media.history.WatchHistory
+import ani.dantotsu.util.AppScope
+import com.bumptech.glide.Glide
+import kotlinx.coroutines.launch
 import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 
@@ -61,21 +65,81 @@ object AppShortcuts {
         .setIntent(launcherIntent(context, action))
         .build()
 
-    /** (Re)publishes the fixed four. Cheap and idempotent — safe to call on every process start. */
+    /**
+     * (Re)publishes the fixed four, then the "Continue" one above them. Cheap and idempotent — safe
+     * to call on every process start. Off the main thread: the continue entry reads the history
+     * database and may fetch a cover.
+     */
     fun publish(context: Context) {
-        // Best-effort: a failure here (ShortcutManager rate limit, a wiped user) must not take the
-        // app's startup down with it.
+        val app = context.applicationContext
+        AppScope.launch {
+            // Best-effort: a failure here (ShortcutManager rate limit, a wiped user) must not take
+            // the app's startup down with it.
+            runCatching {
+                ShortcutManagerCompat.setDynamicShortcuts(
+                    app,
+                    listOf(
+                        fixed(app, "search", R.string.search, R.drawable.sc_search, 1, ACTION_SEARCH),
+                        fixed(app, "downloads", R.string.downloads, R.drawable.sc_downloads, 2, ACTION_DOWNLOADS),
+                        fixed(app, "incognito", R.string.incognito_mode, R.drawable.sc_incognito, 3, ACTION_INCOGNITO),
+                        fixed(app, "offline", R.string.offline_mode, R.drawable.sc_offline, 4, ACTION_OFFLINE),
+                    ),
+                )
+            }.onFailure { Logger.log(it) }
+            // setDynamicShortcuts just removed it.
+            continueKey = null
+            refreshContinue(app)
+        }
+    }
+
+    private const val CONTINUE_ID = "continue"
+
+    /** The media the continue shortcut points at, so a new episode of the same one isn't a republish. */
+    @Volatile
+    private var continueKey: String? = null
+
+    /**
+     * Points the "Continue <title>" shortcut at the newest [WatchHistory] entry, or removes it when
+     * history is empty. It opens the media page over the home screen, so Back lands in the app.
+     * Ranked first, so on a launcher that shows four it is the fixed "Offline" that drops off.
+     * Blocking; call off the main thread.
+     */
+    fun refreshContinue(context: Context) {
         runCatching {
-            ShortcutManagerCompat.setDynamicShortcuts(
-                context,
-                listOf(
-                    fixed(context, "search", R.string.search, R.drawable.sc_search, 0, ACTION_SEARCH),
-                    fixed(context, "downloads", R.string.downloads, R.drawable.sc_downloads, 1, ACTION_DOWNLOADS),
-                    fixed(context, "incognito", R.string.incognito_mode, R.drawable.sc_incognito, 2, ACTION_INCOGNITO),
-                    fixed(context, "offline", R.string.offline_mode, R.drawable.sc_offline, 3, ACTION_OFFLINE),
-                ),
-            )
+            val entry = WatchHistory.entries(limit = 1).firstOrNull()
+            if (entry == null) {
+                ShortcutManagerCompat.removeDynamicShortcuts(context, listOf(CONTINUE_ID))
+                continueKey = null
+                return
+            }
+            val key = "${entry.mediaId}:${entry.type}:${entry.muSeriesId}"
+            if (key == continueKey) return
+            val home = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            val details = entry.openIntent(context).apply {
+                if (action == null) action = Intent.ACTION_VIEW
+            }
+            val info = ShortcutInfoCompat.Builder(context, CONTINUE_ID)
+                .setShortLabel(entry.title)
+                .setLongLabel(context.getString(R.string.shortcut_continue, entry.title))
+                .setIcon(coverIcon(context, entry.cover) ?: discIcon(context, R.drawable.ic_round_play_arrow_24))
+                .setRank(0)
+                .setIntents(arrayOf(home, details))
+                .build()
+            ShortcutManagerCompat.pushDynamicShortcut(context, info)
+            continueKey = key
         }.onFailure { Logger.log(it) }
+    }
+
+    /** The cover, centre-cropped to a square, or null when it can't be fetched. Blocking. */
+    private fun coverIcon(context: Context, url: String?): IconCompat? {
+        if (url.isNullOrBlank()) return null
+        return runCatching {
+            val bitmap = Glide.with(context).asBitmap().load(url).centerCrop().submit(192, 192).get()
+            IconCompat.createWithAdaptiveBitmap(bitmap)
+        }.getOrNull()
     }
 
     /**

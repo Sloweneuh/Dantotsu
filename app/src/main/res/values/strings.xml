@@ -3053,6 +3053,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="widget_preview_time_three" translatable="false">21:00</string>
     <string name="widget_preview_time_four" translatable="false">17:00</string>
     <string name="widget_preview_time_five" translatable="false">23:00</string>
+    <string name="widget_preview_subtitle_continue" translatable="false">Episode 12 · A Real Hero</string>
     <string name="widget_preview_subtitle_waiting">3 chapters out · Next : 1104</string>
     <string name="widget_preview_subtitle_waiting_two">1 episode out · Next : 8 ·</string>
     <string name="widget_preview_activity_one">You completed Vinland Saga</string>
@@ -3525,4 +3526,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="off">Off</string>
     <string name="auto_backup">Automatic backups</string>
     <string name="auto_backup_desc">Saves your settings to Downloads/Dantotsu Backups and keeps the last 5. Logins and extension settings aren\'t included.</string>
+    <!-- Continue shortcut -->
+    <string name="shortcut_continue">Continue %1$s</string>
+    <!-- Continue widget -->
+    <string name="widget_continue">Continue</string>
+    <string name="widget_continue_empty">Nothing to continue yet</string>
+    <string name="widget_continue_desc">Jump back into what you last watched or read</string>
 </resources>

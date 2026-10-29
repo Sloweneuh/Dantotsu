@@ -3402,4 +3402,10 @@
     <string name="off">Désactivé</string>
     <string name="auto_backup">Sauvegardes automatiques</string>
     <string name="auto_backup_desc">Enregistre vos paramètres dans Téléchargements/Dantotsu Backups et conserve les 5 dernières. Les identifiants et les paramètres des extensions ne sont pas inclus.</string>
+    <!-- Continue shortcut -->
+    <string name="shortcut_continue">Reprendre %1$s</string>
+    <!-- Continue widget -->
+    <string name="widget_continue">Reprendre</string>
+    <string name="widget_continue_empty">Rien à reprendre pour l\'instant</string>
+    <string name="widget_continue_desc">Reprenez ce que vous avez regardé ou lu en dernier</string>
 </resources>
