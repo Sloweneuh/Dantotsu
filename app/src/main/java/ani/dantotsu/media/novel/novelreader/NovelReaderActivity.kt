@@ -1,6 +1,8 @@
 package ani.dantotsu.media.novel.novelreader
 
 import android.animation.ObjectAnimator
+import ani.dantotsu.media.MediaType
+import ani.dantotsu.media.history.WatchHistory
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
@@ -1184,6 +1186,14 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         if (!force && chapterTitle == rpcChapterTitle) return
         if (chapterTitle != rpcChapterTitle || rpcChapterStartedAt == 0L) {
             rpcChapterStartedAt = System.currentTimeMillis()
+            // Only books read through an AniList-linked plugin session; a local epub has no media
+            // page to return to.
+            val media = LNReaderSession.media
+            if (media != null && LNReaderSession.isActive) {
+                WatchHistory.record(
+                    media, MediaType.NOVEL, sessionChapterNumber() ?: chapterTitle, chapterTitle
+                )
+            }
         }
         rpcChapterTitle = chapterTitle
         if (!RPCManager.isAllowed(this)) return

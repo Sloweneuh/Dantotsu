@@ -1,6 +1,7 @@
 package ani.dantotsu.media.anime
 
 import android.animation.ObjectAnimator
+import ani.dantotsu.media.history.WatchHistory
 import android.annotation.SuppressLint
 import android.app.Dialog
 import android.app.PictureInPictureParams
@@ -750,6 +751,7 @@ class ExoplayerView :
                         0,
                     )
                 initPlayer()
+                WatchHistory.record(media, MediaType.ANIME, ep.number, ep.title)
                 preloading = false
                 updateProgress()
             }

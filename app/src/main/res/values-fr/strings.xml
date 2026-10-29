@@ -3390,4 +3390,12 @@
     <string name="cd_toggle_seen">Marquer comme vu</string>
     <string name="cd_remove_repository">Supprimer le dépôt</string>
     <string name="cd_copy_link">Copier le lien</string>
+    <!-- History -->
+    <string name="history">Historique</string>
+    <string name="chapter_num">Chapitre %1$s</string>
+    <string name="today">Aujourd\'hui</string>
+    <string name="yesterday">Hier</string>
+    <string name="history_empty">Les épisodes et chapitres que vous ouvrez apparaîtront ici.</string>
+    <string name="history_remove">Retirer de l\'historique</string>
+    <string name="history_clear_confirm">Oublier tout ce qui a été regardé et lu sur cet appareil ? Vos listes de suivi ne sont pas modifiées.</string>
 </resources>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/historyItem"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="8dp">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/historyCover"
+        android:layout_width="52dp"
+        android:layout_height="74dp"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/roundedImageViewSmall"
+        tools:ignore="ContentDescription"
+        tools:src="@tools:sample/backgrounds/scenic" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/historyTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_bold"
+            android:maxLines="2"
+            android:textSize="15sp"
+            tools:text="Frieren: Beyond Journey's End" />
+
+        <TextView
+            android:id="@+id/historyItemLine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.75"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="13sp"
+            tools:text="Episode 12 · A Real Hero" />
+
+        <TextView
+            android:id="@+id/historyTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.55"
+            android:textSize="12sp"
+            tools:text="Anime · 21:04" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/historyRemove"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/history_remove"
+        app:srcCompat="@drawable/ic_round_close_24"
+        app:tint="?attr/colorOnBackground" />
+
+</LinearLayout>

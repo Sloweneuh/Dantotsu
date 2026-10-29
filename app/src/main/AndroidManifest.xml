@@ -237,6 +237,7 @@
         <activity android:name=".settings.FAQActivity" />
         <activity android:name=".settings.ComickMatchesActivity" />
         <activity android:name=".settings.ToolboxActivity" />
+        <activity android:name=".media.history.HistoryActivity" />
         <activity android:name=".settings.ToolResultsActivity" />
         <!-- Debug-only screen (FirebaseTestActivity finishes itself outside debug builds); exported
              so it's reachable via `adb shell am start` regardless of build type. -->

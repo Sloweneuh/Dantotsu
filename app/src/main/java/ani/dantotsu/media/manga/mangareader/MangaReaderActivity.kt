@@ -1,6 +1,8 @@
 package ani.dantotsu.media.manga.mangareader
 
 import android.animation.ObjectAnimator
+import ani.dantotsu.media.MediaType
+import ani.dantotsu.media.history.WatchHistory
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -1874,6 +1876,8 @@ class MangaReaderActivity : AppCompatActivity() {
     private fun updateDiscordRPC(chap: ani.dantotsu.media.manga.MangaChapter) {
         if (rpcChapter?.uniqueNumber() != chap.uniqueNumber() || rpcChapterStartedAt == 0L) {
             rpcChapterStartedAt = System.currentTimeMillis()
+            // Here because this is where a chapter becomes the one being read, in every mode.
+            WatchHistory.record(media, MediaType.MANGA, chap.number, chap.title)
         }
         rpcChapter = chap
         val context = this

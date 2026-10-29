@@ -318,6 +318,11 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         ) { host ->
             host.openUserList(anime = false)
         },
+        // Not a network tile: the list is on the device. Opening a row's page still needs one.
+        QuickTile.Action(
+            "history", R.string.history, R.drawable.ic_round_history_24,
+            QuickTileCategory.LIBRARY,
+        ) { it.open(ani.dantotsu.media.history.HistoryActivity::class.java) },
         QuickTile.Action(
             "calendar", R.string.release_calendar, R.drawable.ic_round_calendar_today_24,
             QuickTileCategory.LIBRARY, needsNetwork = true,
@@ -424,7 +429,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
 
     /** What the sheet held before it was customisable, so nobody's muscle memory breaks. */
     override val defaultIds = listOf(
-        "incognito", "offline", "activity", "extensions", "downloads", "handoff", "settings",
+        "incognito", "offline", "activity", "history", "extensions", "downloads", "handoff", "settings",
     )
 }
 

@@ -3513,4 +3513,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="cd_toggle_seen">Mark as seen</string>
     <string name="cd_remove_repository">Remove repository</string>
     <string name="cd_copy_link">Copy link</string>
+    <!-- History -->
+    <string name="history">History</string>
+    <string name="chapter_num">Chapter %1$s</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="history_empty">Episodes and chapters you open will show up here.</string>
+    <string name="history_remove">Remove from history</string>
+    <string name="history_clear_confirm">Forget everything watched and read on this device? Your tracker lists aren\'t affected.</string>
 </resources>
