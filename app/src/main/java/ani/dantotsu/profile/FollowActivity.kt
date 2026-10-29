@@ -1,5 +1,9 @@
 package ani.dantotsu.profile
 
+import ani.dantotsu.px
+import androidx.recyclerview.widget.RecyclerView
+import android.graphics.Rect
+import ani.dantotsu.media.listColumns
 import android.content.Intent
 import android.os.Bundle
 import android.text.SpannableString
@@ -93,8 +97,21 @@ class FollowActivity : AppCompatActivity() {
     private fun fillList() {
         adapter.clear()
         val screenWidth = resources.displayMetrics.run { widthPixels / density }
+        // Rows side by side (a wide window's list view) need a gap; one column has the edges.
+        if (binding.listRecyclerView.itemDecorationCount == 0) {
+            binding.listRecyclerView.addItemDecoration(object : RecyclerView.ItemDecoration() {
+                override fun getItemOffsets(
+                    outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State
+                ) {
+                    val columns = (parent.layoutManager as? GridLayoutManager)?.spanCount ?: 1
+                    if (getLayoutType(selected) != 0 || columns < 2) return
+                    outRect.left = 4f.px
+                    outRect.right = 4f.px
+                }
+            })
+        }
         binding.listRecyclerView.layoutManager = when (getLayoutType(selected)) {
-            0 -> LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
+            0 -> GridLayoutManager(this, listColumns(this))
             1 -> GridLayoutManager(
                 this,
                 (screenWidth / 120f).toInt(),

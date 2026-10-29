@@ -1,5 +1,6 @@
 package ani.dantotsu.profile
 
+import ani.dantotsu.util.capWidth
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -57,6 +58,10 @@ class ProfileFragment : Fragment() {
         activity = requireActivity() as ProfileActivity
 
         binding.root.setBaseline(activity.navBar)
+        // A wide window's label-to-value rows would sit a screen apart; the cover rows use the width.
+        // Kept at the start edge, in line with the section titles below.
+        binding.userStatsContainer.capWidth(centred = false)
+        binding.userInfoContainer.capWidth(centred = false)
 
         user = arguments?.getSerializableCompat<Query.UserProfile>("user") as Query.UserProfile
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {

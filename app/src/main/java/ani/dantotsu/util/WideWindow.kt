@@ -31,6 +31,15 @@ fun ViewGroup.capContentWidth(maxDp: Float = 840f) {
     capChildren(this, maxDp.px)
 }
 
+/**
+ * Holds just this one block to [maxDp] in a wide window: centred in its parent, or kept at its
+ * start edge when it should line up with full-width blocks around it ([centred] false).
+ */
+fun View.capWidth(maxDp: Float = 840f, centred: Boolean = true) {
+    if (!MediaPanes.isTwoPane(resources.configuration)) return
+    capBlock(this, parent as? ViewGroup ?: return, maxDp.px, centred)
+}
+
 private fun capChildren(parent: ViewGroup, max: Int) {
     for (child in parent.children) when {
         child is PatternBackgroundView || child is ViewPager2 -> Unit
@@ -44,18 +53,21 @@ private fun ViewGroup.holdsFullWidth(): Boolean = children.any {
     it is PatternBackgroundView || it is ViewPager2 || (it is ViewGroup && it.holdsFullWidth())
 }
 
-private fun capBlock(block: View, parent: ViewGroup, max: Int) {
+private fun capBlock(block: View, parent: ViewGroup, max: Int, centred: Boolean = true) {
     val params = block.layoutParams as? ViewGroup.MarginLayoutParams ?: return
     val baseStart = params.marginStart
     val baseEnd = params.marginEnd
     fun apply() {
         val inner = parent.width - parent.paddingLeft - parent.paddingRight
         if (inner <= 0) return
-        val side = ((inner - max) / 2).coerceAtLeast(0)
-        if ((block.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart == baseStart + side) return
+        val spare = (inner - max).coerceAtLeast(0)
+        val start = baseStart + if (centred) spare / 2 else 0
+        val end = baseEnd + if (centred) spare - spare / 2 else spare
+        val now = block.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        if (now.marginStart == start && now.marginEnd == end) return
         block.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            marginStart = baseStart + side
-            marginEnd = baseEnd + side
+            marginStart = start
+            marginEnd = end
         }
     }
     parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> parent.post { apply() } }

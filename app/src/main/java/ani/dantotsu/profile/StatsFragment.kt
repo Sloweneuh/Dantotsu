@@ -8,7 +8,9 @@ import android.widget.ArrayAdapter
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import ani.dantotsu.media.MediaPanes
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.Query
@@ -64,8 +66,10 @@ class StatsFragment :
         binding.statisticList.adapter = adapter
         binding.statisticList.recycledViewPool.setMaxRecycledViews(0, 0)
         binding.statisticList.isNestedScrollingEnabled = true
+        // A wide window takes the charts two to a row rather than each a screen wide.
         binding.statisticList.layoutManager =
-            LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
+            if (MediaPanes.isTwoPane(resources.configuration)) GridLayoutManager(requireContext(), 2)
+            else LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
         binding.statisticProgressBar.visibility = View.VISIBLE
         binding.compare.visibility = if (user.id == Anilist.userid) View.GONE else View.VISIBLE
         binding.filterContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
