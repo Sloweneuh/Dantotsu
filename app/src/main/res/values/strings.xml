@@ -3536,6 +3536,23 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="skip_outro_to_next_desc">When an ending starts, count down to the next episode instead of playing the ending and preview.</string>
     <!-- Up next card -->
     <string name="up_next">Up next</string>
+    <!-- In-app notice settings -->
+    <string name="app_notices">In-app notices</string>
+    <string name="app_notices_show">Show in-app notices</string>
+    <string name="app_notices_show_desc">The banners at the top of the app for things that need your attention</string>
+    <string name="app_notices_all_on">All on</string>
+    <string name="app_notices_some_on">%1$d of %2$d on</string>
+    <string name="app_notices_off">Off</string>
+    <string name="notice_back_online">Back online while in offline mode</string>
+    <string name="notice_sync_link">Cloud sync not set up on this device</string>
+    <string name="notice_sync_conflict">Cloud sync conflicts</string>
+    <string name="notice_anilist_outage">AniList outages</string>
+    <string name="notice_sync_reload">Synced settings waiting to apply</string>
+    <string name="notice_extension_sync">Extensions differ between devices</string>
+    <string name="notice_app_update">App updates</string>
+    <string name="notice_extension_update">Extension updates</string>
+    <string name="notice_extension_obsolete">Obsolete extensions</string>
+    <string name="notice_unsaid_sync">Without it, syncing can stop with nothing saying so.</string>
     <!-- Continue widget -->
     <string name="widget_continue">Continue</string>
     <string name="widget_continue_empty">Nothing to continue yet</string>

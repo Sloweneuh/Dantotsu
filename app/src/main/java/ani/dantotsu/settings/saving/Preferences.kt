@@ -170,6 +170,9 @@ enum class PrefName(val data: Pref) {
     AutoListSyncLastRun(Pref(Location.Irrelevant, Long::class, 0L)),
     // Device-local: where the files go is this device's storage. AutoBackup.OFF/DAILY/WEEKLY.
     AutoBackupInterval(Pref(Location.Irrelevant, Int::class, 0)),
+    // In-app notices (TopBanner): all of them, and the ones turned off by id. See AppNotices.
+    AppNoticesEnabled(Pref(Location.UI, Boolean::class, true)),
+    DisabledAppNotices(Pref(Location.UI, Set::class, setOf<String>())),
     AutoListSyncLastSynced(Pref(Location.Irrelevant, Int::class, 0)),
     AutoListSyncLastFailed(Pref(Location.Irrelevant, Int::class, 0)),
     MangaUpdatesNotificationsEnabled(Pref(Location.General, Boolean::class, true)),

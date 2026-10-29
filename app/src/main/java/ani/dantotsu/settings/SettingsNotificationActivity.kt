@@ -101,6 +101,19 @@ class SettingsNotificationActivity : AppCompatActivity() {
                     summary = { comickSummary() },
                     rows = { comickRows(onChanged) },
                 ),
+                SettingsSection(
+                    key = NotificationSection.APP_NOTICES,
+                    title = getString(R.string.app_notices),
+                    icon = R.drawable.ic_round_notifications_active_24,
+                    summary = { appNoticesSummary() },
+                    rows = {
+                        appNoticeRows(onChanged) {
+                            sectionAdapter.notifyItemChanged(
+                                sectionAdapter.positionOf(NotificationSection.APP_NOTICES)
+                            )
+                        }
+                    },
+                ),
             ),
             stateKey = SettingsSectionAdapter.STATE_NOTIFICATIONS,
             keepExpanded = SettingsRouter.hasAnchor(this),

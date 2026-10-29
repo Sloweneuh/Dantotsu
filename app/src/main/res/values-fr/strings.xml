@@ -3412,6 +3412,23 @@
     <string name="skip_outro_to_next_desc">Quand un ending commence, lancer le compte à rebours vers l\'épisode suivant au lieu de lire l\'ending et l\'aperçu.</string>
     <!-- Up next card -->
     <string name="up_next">À suivre</string>
+    <!-- In-app notice settings -->
+    <string name="app_notices">Avis dans l\'application</string>
+    <string name="app_notices_show">Afficher les avis dans l\'application</string>
+    <string name="app_notices_show_desc">Les bannières en haut de l\'application pour ce qui demande votre attention</string>
+    <string name="app_notices_all_on">Tous activés</string>
+    <string name="app_notices_some_on">%1$d sur %2$d activés</string>
+    <string name="app_notices_off">Désactivés</string>
+    <string name="notice_back_online">De retour en ligne en mode hors ligne</string>
+    <string name="notice_sync_link">Synchronisation cloud non configurée sur cet appareil</string>
+    <string name="notice_sync_conflict">Conflits de synchronisation cloud</string>
+    <string name="notice_anilist_outage">Pannes d\'AniList</string>
+    <string name="notice_sync_reload">Paramètres synchronisés en attente</string>
+    <string name="notice_extension_sync">Extensions différentes entre appareils</string>
+    <string name="notice_app_update">Mises à jour de l\'application</string>
+    <string name="notice_extension_update">Mises à jour des extensions</string>
+    <string name="notice_extension_obsolete">Extensions obsolètes</string>
+    <string name="notice_unsaid_sync">Sans lui, la synchronisation peut s\'arrêter sans que rien ne le signale.</string>
     <!-- Continue widget -->
     <string name="widget_continue">Reprendre</string>
     <string name="widget_continue_empty">Rien à reprendre pour l\'instant</string>

@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.AppNotices
 import android.content.Context
 import android.text.InputType
 import android.widget.ArrayAdapter
@@ -46,6 +47,7 @@ object NotificationSection {
     const val COMMENTS = "notif_comments"
     const val MANGAUPDATES = "notif_mangaupdates"
     const val COMICK = "notif_comick"
+    const val APP_NOTICES = "notif_app_notices"
 }
 
 /**
@@ -641,5 +643,58 @@ private fun AppCompatActivity.showCustomIntervalDialog(
         }
         setNegButton(R.string.cancel)
         show()
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// In-app notices (the banners at the top of the app)
+// ---------------------------------------------------------------------------------------------
+
+fun AppCompatActivity.appNoticesSummary(): String {
+    if (!PrefManager.getVal<Boolean>(PrefName.AppNoticesEnabled)) return getString(R.string.app_notices_off)
+    val total = AppNotices.CHOICES.size
+    val on = AppNotices.CHOICES.count { AppNotices.isEnabled(it.id) }
+    return if (on == total) getString(R.string.app_notices_all_on)
+    else getString(R.string.app_notices_some_on, on, total)
+}
+
+/**
+ * The master switch, then one per notice. [onRebuild] redraws the section, which is what greys
+ * the individual switches out under the master one, since the rows are built from the prefs.
+ */
+fun AppCompatActivity.appNoticeRows(onChanged: () -> Unit, onRebuild: () -> Unit): List<Settings> {
+    val allOn = PrefManager.getVal<Boolean>(PrefName.AppNoticesEnabled)
+    val disabled = PrefManager.getVal<Set<String>>(PrefName.DisabledAppNotices)
+    return listOf(
+        Settings(
+            type = 2,
+            name = getString(R.string.app_notices_show),
+            desc = getString(R.string.app_notices_show_desc),
+            icon = R.drawable.ic_round_notifications_active_24,
+            compact = true,
+            anchorKey = "app_notices_all",
+            isChecked = allOn,
+            switch = { isChecked, _ ->
+                PrefManager.setVal(PrefName.AppNoticesEnabled, isChecked)
+                AppNotices.dismissStale()
+                onChanged()
+                onRebuild()
+            },
+        ),
+    ) + AppNotices.CHOICES.map { choice ->
+        Settings(
+            type = 2,
+            name = getString(choice.title),
+            desc = choice.warning?.let { getString(it) } ?: "",
+            icon = choice.icon,
+            compact = true,
+            anchorKey = "app_notice_${choice.id}",
+            isEnabled = allOn,
+            isChecked = choice.id !in disabled,
+            switch = { isChecked, _ ->
+                AppNotices.setEnabled(choice.id, isChecked)
+                onChanged()
+            },
+        )
     }
 }

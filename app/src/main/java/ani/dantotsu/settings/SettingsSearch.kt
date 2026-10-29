@@ -593,6 +593,8 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.mu_notifications, R.string.notifications, R.drawable.ic_round_notif_mangaupdates_24, R.string.mu_notifications_desc, keywordsRes = R.string.search_kw_mu_notifications, anchorSection = NotificationSection.MANGAUPDATES)
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.comick_notifications_section, R.string.notifications, R.drawable.ic_round_comick_24, R.string.comick_notifications_section_desc, keywordsRes = R.string.search_kw_comick_notifications, anchorSection = NotificationSection.COMICK)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.app_notices, R.string.notifications, R.drawable.ic_round_notifications_active_24, R.string.app_notices_show_desc, anchorSection = NotificationSection.APP_NOTICES)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.app_notices_show, R.string.app_notices, R.drawable.ic_round_notifications_active_24, R.string.app_notices_show_desc, anchorSection = NotificationSection.APP_NOTICES, anchorRowKey = "app_notices_all")
 
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.use_alarm_manager_reliable, R.string.notifications, R.drawable.ic_round_alarm_24, R.string.use_alarm_manager_reliable_desc, keywordsRes = R.string.search_kw_use_alarm_manager_reliable)
 
