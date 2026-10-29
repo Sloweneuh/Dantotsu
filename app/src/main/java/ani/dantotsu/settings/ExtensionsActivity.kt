@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -62,6 +63,7 @@ class ExtensionsActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
         binding = ActivityExtensionsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         initActivity(this)
         AndroidBug5497Workaround.assistActivity(this) {
             if (it) {

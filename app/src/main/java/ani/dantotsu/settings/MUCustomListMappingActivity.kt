@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -45,6 +46,7 @@ class MUCustomListMappingActivity : AppCompatActivity() {
 
         binding = ActivityMuCustomListMappingBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
 
         binding.settingsMuCustomMappingLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight

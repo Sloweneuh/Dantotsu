@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -65,6 +66,7 @@ class ToolboxActivity : AppCompatActivity() {
         initActivity(this)
         binding = ActivityToolboxBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         binding.toolboxLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }

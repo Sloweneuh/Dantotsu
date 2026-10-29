@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Bundle
@@ -44,6 +45,11 @@ class MangaExtensionsFragment : Fragment(),
 
     private var searchQuery = ""
 
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        (view as? ViewGroup)?.capContentWidth()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,

@@ -1,5 +1,10 @@
 package ani.dantotsu.settings.extensionprefs
 
+import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
+import ani.dantotsu.px
+import android.view.ViewGroup
+import android.view.LayoutInflater
+import android.graphics.drawable.Drawable
 import android.content.Context
 import android.os.Bundle
 import android.view.View
@@ -27,10 +32,20 @@ class MangaSourcePreferencesFragment : PreferenceFragmentCompat() {
 
     private var onCloseAction: (() -> Unit)? = null
 
+    /** The page's title and icon: the extension's, found while populating the screen. */
+    private var pageTitle: CharSequence = ""
+    private var pageIcon: Drawable? = null
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        val list = super.onCreateView(inflater, container, savedInstanceState)
+        return ExtensionPreferencesUi.wrap(this, inflater, container, list, pageTitle, pageIcon)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         listView.clipToPadding = false
-        listView.setPadding(0, 0, 0, navBarHeight)
+        listView.setPadding(0, 8f.px, 0, navBarHeight + 16f.px)
+        ExtensionPreferencesUi.tile(listView)
     }
 
     override fun onDestroyView() {
@@ -49,11 +64,13 @@ class MangaSourcePreferencesFragment : PreferenceFragmentCompat() {
         preferenceManager.preferenceDataStore = dataStore
         val sourceScreen = preferenceManager.createPreferenceScreen(requireContext())
         source.setupPreferenceScreen(sourceScreen)
+        pageTitle = source.name
+        pageIcon = Injekt.get<MangaExtensionManager>().installedExtensionsFlow.value
+            .find { ext -> ext.sources.any { it.id == sourceId } }?.icon
+        ExtensionPreferencesUi.style(sourceScreen)
         sourceScreen.forEach { pref ->
-            pref.isIconSpaceReserved = false
             if (pref is DialogPreference) {
                 pref.dialogTitle = pref.title
-                println("pref.dialogTitle: ${pref.dialogTitle}")
             }
 
             // Apply incognito IME for EditTextPreference

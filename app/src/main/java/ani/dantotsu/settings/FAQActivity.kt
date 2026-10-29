@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -114,6 +115,7 @@ class FAQActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
         binding = ActivityFaqBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
 
         initActivity(this)
 

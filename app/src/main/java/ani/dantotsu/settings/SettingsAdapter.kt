@@ -31,8 +31,29 @@ private val COMPACT_TOP_MARGIN get() = 10f.px
 
 /** Tiled rows: the hairline between tiles of one group, the gap between groups, and the corners
  *  at a group's ends and between its tiles. */
-private val TILE_GAP get() = 2f.px
-private val TILE_GROUP_GAP get() = 16f.px
+/**
+ * A settings row's tile: its corners round where its group begins ([groupStart]) and ends
+ * ([groupEnd]), tight in between. Shared with screens laid out by other adapters (extension
+ * preferences) so they read as the same settings.
+ */
+fun settingsTile(row: View, groupStart: Boolean, groupEnd: Boolean): Drawable {
+    val top = if (groupStart) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
+    val bottom = if (groupEnd) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
+    fun shape(color: Int) = GradientDrawable().apply {
+        cornerRadii = floatArrayOf(top, top, top, top, bottom, bottom, bottom, bottom)
+        setColor(color)
+    }
+    return RippleDrawable(
+        ColorStateList.valueOf(
+            MaterialColors.getColor(row, androidx.appcompat.R.attr.colorControlHighlight)
+        ),
+        shape(SectionCard.fill(row, false)),
+        shape(Color.WHITE),
+    )
+}
+
+internal val TILE_GAP get() = 2f.px
+internal val TILE_GROUP_GAP get() = 16f.px
 private val TILE_COLUMN_GAP get() = 12f.px
 private val TILE_OUTER_RADIUS get() = 24f.px.toFloat()
 private val TILE_INNER_RADIUS get() = 6f.px.toFloat()
@@ -113,19 +134,7 @@ class SettingsAdapter(
         val next = (position + 1 until settings.size).firstOrNull { settings[it].isVisible }
         val first = groupBreakBefore(position)
         val last = next == null || settings[next].type == 3 || groupBreakBefore(next)
-        val top = if (first || columns > 1) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
-        val bottom = if (last || columns > 1) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
-        fun shape(color: Int) = GradientDrawable().apply {
-            cornerRadii = floatArrayOf(top, top, top, top, bottom, bottom, bottom, bottom)
-            setColor(color)
-        }
-        return RippleDrawable(
-            ColorStateList.valueOf(
-                MaterialColors.getColor(row, androidx.appcompat.R.attr.colorControlHighlight)
-            ),
-            shape(SectionCard.fill(row, false)),
-            shape(Color.WHITE),
-        )
+        return settingsTile(row, first || columns > 1, last || columns > 1)
     }
 
     private fun tileTopMargin(position: Int): Int {

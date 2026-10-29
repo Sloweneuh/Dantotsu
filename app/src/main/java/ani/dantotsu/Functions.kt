@@ -178,12 +178,40 @@ val Int.toPx
         TypedValue.COMPLEX_UNIT_DIP, this.toFloat(), getSystem().displayMetrics
     ).toInt()
 
+/**
+ * Edge to edge, screens pad themselves for the bars at the top and bottom only; in landscape the
+ * navigation bar and the camera cutout sit on the sides, where content ran underneath them. This
+ * pads every screen's content in from both, re-read on each layout so turning the phone the other
+ * way (same orientation, no recreate) follows. The reader and player stay edge to edge on purpose.
+ */
+private fun keepContentInsideSideInsets(a: Activity) {
+    if (a is ani.dantotsu.media.anime.ExoplayerView ||
+        a is ani.dantotsu.media.manga.mangareader.MangaReaderActivity ||
+        a is ani.dantotsu.media.novel.novelreader.NovelReaderActivity ||
+        a is ani.dantotsu.media.manga.mangareader.TapZoneEditorActivity
+    ) return
+    val content = a.findViewById<View>(android.R.id.content) ?: return
+    if (content.getTag(R.id.side_insets_applied) == true) return
+    content.setTag(R.id.side_insets_applied, true)
+    fun apply() {
+        val sides = ViewCompat.getRootWindowInsets(content)?.getInsets(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+        ) ?: return
+        if (content.paddingLeft != sides.left || content.paddingRight != sides.right) {
+            content.setPadding(sides.left, content.paddingTop, sides.right, content.paddingBottom)
+        }
+    }
+    content.viewTreeObserver.addOnGlobalLayoutListener { apply() }
+    content.post { apply() }
+}
+
 fun initActivity(a: Activity) {
     // Apply language preference
     ani.dantotsu.util.LanguageHelper.applyLanguage(a)
 
     val window = a.window
     WindowCompat.setDecorFitsSystemWindows(window, false)
+    keepContentInsideSideInsets(a)
     val darkMode = PrefManager.getVal<Int>(PrefName.DarkMode)
     val immersiveMode: Boolean = PrefManager.getVal(PrefName.ImmersiveMode)
     darkMode.apply {

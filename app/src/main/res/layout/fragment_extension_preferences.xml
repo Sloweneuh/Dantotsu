@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An extension's preferences, laid out like the app's own settings pages: back button, title and
+     icon, then the extension's rows (put in extensionPrefsList by the fragment). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:colorBackground"
+    android:orientation="vertical">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        app:cardBackgroundColor="@color/nav_bg_inv"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp">
+
+        <ImageButton
+            android:id="@+id/extensionPrefsBack"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:background="@color/nav_bg_inv"
+            android:contentDescription="@string/back"
+            android:padding="16dp"
+            app:srcCompat="@drawable/ic_round_arrow_back_ios_new_24"
+            app:tint="?attr/colorOnBackground" />
+    </androidx.cardview.widget.CardView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/extensionPrefsTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="32dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_bold"
+            android:maxLines="2"
+            android:textSize="28sp"
+            tools:text="MangaDex" />
+
+        <ImageView
+            android:id="@+id/extensionPrefsIcon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="44dp"
+            android:importantForAccessibility="no"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/extensionPrefsList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+</LinearLayout>

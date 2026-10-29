@@ -42,6 +42,8 @@
     <item name="section_card_anim" type="id" />
     <!-- A settings row's top margin as inflated; SettingsAdapter restores it on rows it hid. -->
     <item name="settings_row_top_margin" type="id" />
+    <!-- initActivity: this screen already pads its content in from the side insets. -->
+    <item name="side_insets_applied" type="id" />
     <item name="section_height_anim" type="id" />
     <item name="section_collapsing" type="id" />
     <item name="quick_tile_relight" type="id" />

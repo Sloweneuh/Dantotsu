@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -138,6 +139,11 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         },
         skipIcons = skipIcons,
     )
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        (view as? ViewGroup)?.capContentWidth()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,

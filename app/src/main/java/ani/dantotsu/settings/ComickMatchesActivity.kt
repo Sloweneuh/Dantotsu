@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -96,6 +97,7 @@ class ComickMatchesActivity : AppCompatActivity() {
         initActivity(this)
         binding = ActivityComickMatchesBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         binding.comickMatchLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }

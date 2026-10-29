@@ -784,9 +784,8 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             }
             val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
             val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-            val rightInset = if (isLandscape) navInsets.right else 0
             navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                rightMargin = rightInset
+                rightMargin = 0
                 if (!isLandscape) bottomMargin = 0
             }
             val navZ = 8f * resources.displayMetrics.density
@@ -961,13 +960,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             }
         }
 
-        // Use the actual navigation inset on the right in landscape
-        val navRightInset = ViewCompat.getRootWindowInsets(rootViewForInsets)
-            ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
-            ?.right
-            ?: navBarHeight
         navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            rightMargin = if (showBottomInset) 0 else navRightInset
+            // initActivity insets the whole screen from the sides.
+            rightMargin = 0
             bottomMargin = 0
         }
         val rootInsetsNow = ViewCompat.getRootWindowInsets(rootViewForInsets)
@@ -1253,10 +1248,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         val windowInsets = ViewCompat.getRootWindowInsets(rootView)
         val navInsets = windowInsets?.getInsets(WindowInsetsCompat.Type.navigationBars())
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-        val rightInset = if (isLandscape) navInsets?.right ?: 0 else 0
         if (::navBar.isInitialized) {
             navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                rightMargin = rightInset
+                rightMargin = 0
                 if (!isLandscape) bottomMargin = 0
             }
         }
@@ -1306,11 +1300,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         val params = navBar.layoutParams as ViewGroup.MarginLayoutParams
         val showBottomInset = newConfig.orientation != Configuration.ORIENTATION_LANDSCAPE
         val rootViewForInsets = window.decorView.findViewById(android.R.id.content) as View
-        val navRightInset = ViewCompat.getRootWindowInsets(rootViewForInsets)
-            ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
-            ?.right
-            ?: navBarHeight
-        params.updateMargins(right = if (showBottomInset) 0 else navRightInset, bottom = 0)
+        params.updateMargins(right = 0, bottom = 0)
         val rootInsetsNow = ViewCompat.getRootWindowInsets(rootViewForInsets)
         val bottomNow = rootInsetsNow?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
         if (showBottomInset) {

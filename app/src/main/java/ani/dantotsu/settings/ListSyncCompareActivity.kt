@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -37,6 +38,7 @@ class ListSyncCompareActivity : AppCompatActivity() {
 
         binding = ActivityListSyncCompareBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         binding.listSyncCompareLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }

@@ -262,10 +262,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             }
             val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
             val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-            val rightInset = if (isLandscape) navInsets.right else 0
-            // Apply right margin for landscape so rail avoids system nav
             navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                rightMargin = rightInset
+                rightMargin = 0
                 if (!isLandscape) bottomMargin = 0
             }
             // Ensure nav bar is visually above other views
@@ -349,13 +347,9 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             }
         }
         val showBottomInset = resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
-        // Determine navigation inset on the right when in landscape so the rail avoids system nav
-        val navRightInset = ViewCompat.getRootWindowInsets(rootView)
-            ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
-            ?.right
-            ?: navBarHeight
         navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            rightMargin = if (showBottomInset) 0 else navRightInset
+            // initActivity insets the whole screen from the sides.
+            rightMargin = 0
             bottomMargin = 0
         }
         val rootInsetsNowInitial = ViewCompat.getRootWindowInsets(rootView)
@@ -1442,10 +1436,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         val navInsets = windowInsets?.getInsets(WindowInsetsCompat.Type.navigationBars())
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-        val rightInset = if (isLandscape) navInsets?.right ?: 0 else 0
-        // Update side rail/right-margin so it avoids system nav
         navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            rightMargin = rightInset
+            rightMargin = 0
             if (!isLandscape) bottomMargin = 0
         }
 
@@ -1504,11 +1496,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 navBar.layoutParams as ViewGroup.MarginLayoutParams
         val showBottomInset = newConfig.orientation != Configuration.ORIENTATION_LANDSCAPE
         val rootView = window.decorView.findViewById(android.R.id.content) as View
-        val navRightInset = ViewCompat.getRootWindowInsets(rootView)
-            ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
-            ?.right
-            ?: navBarHeight
-        params.updateMargins(right = if (showBottomInset) 0 else navRightInset, bottom = 0)
+        params.updateMargins(right = 0, bottom = 0)
         val rootInsetsNow = ViewCompat.getRootWindowInsets(rootView)
         val bottomNow = rootInsetsNow?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
         if (showBottomInset) {

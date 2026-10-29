@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Bundle
@@ -74,6 +75,11 @@ class NovelExtensionsFragment : Fragment(),
 
     /** Latest paging refresh state, kept so the empty state can be recomputed on plugin changes. */
     private var lastRefreshState: LoadState = LoadState.Loading
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        (view as? ViewGroup)?.capContentWidth()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,

@@ -1,5 +1,6 @@
 package ani.dantotsu.util
 
+import androidx.recyclerview.widget.RecyclerView
 import android.app.Activity
 import android.view.View
 import android.view.ViewGroup
@@ -41,9 +42,11 @@ fun View.capWidth(maxDp: Float = 840f, centred: Boolean = true) {
 }
 
 private fun capChildren(parent: ViewGroup, max: Int) {
+    // A list's rows are its adapter's, recycled and re-laid out: the list is capped as one block.
+    if (parent is RecyclerView) return
     for (child in parent.children) when {
         child is PatternBackgroundView || child is ViewPager2 -> Unit
-        child is ViewGroup && child.holdsFullWidth() -> capChildren(child, max)
+        child is ViewGroup && child !is RecyclerView && child.holdsFullWidth() -> capChildren(child, max)
         else -> capBlock(child, parent, max)
     }
 }
