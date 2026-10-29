@@ -295,6 +295,7 @@ object SettingsSearch {
 
         // ---- Backup & sync ----
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, R.drawable.backup_restore, R.string.backup_restore_desc, keywordsRes = R.string.search_kw_backup_restore)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.auto_backup, R.string.backup_sync, R.drawable.ic_round_schedule_24, R.string.auto_backup_desc, worksOffline = true)
 
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, R.drawable.ic_round_cloud_sync_24, R.string.cloud_sync_desc, keywordsRes = R.string.search_kw_cloud_sync, requiresOnline = true)
 

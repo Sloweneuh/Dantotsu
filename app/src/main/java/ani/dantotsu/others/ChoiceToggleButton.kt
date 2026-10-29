@@ -18,8 +18,8 @@ import com.google.android.material.color.MaterialColors
  * The code driving those rows says which option is chosen by setting `alpha` — 1 for the chosen
  * one, 0.33 for the rest, as the layouts also start them — the same protocol [ChoiceIconButton]
  * reads. This reads it as the button's checked state and stays opaque, so the rows became
- * segmented groups without rewriting any of them. A tap checks the button through the group, and
- * the code's click listener then sets the same alphas, which agree.
+ * segmented groups without rewriting any of them. Nothing else checks or unchecks it — not the tap,
+ * not the group — so which one is lit is whatever the code's click listener last set.
  */
 class ChoiceToggleButton @JvmOverloads constructor(
     context: Context,
@@ -32,6 +32,8 @@ class ChoiceToggleButton @JvmOverloads constructor(
     private var ready = false
 
     init {
+        // Checked, so the group gives the chosen segment its rounder shape, but checked only through
+        // the alpha protocol: see setChecked.
         isCheckable = true
         isChecked = super.getAlpha() >= CHOSEN_FROM
         super.setAlpha(1f)
@@ -63,6 +65,9 @@ class ChoiceToggleButton @JvmOverloads constructor(
             arrayOf(checked, other),
             intArrayOf(primary, MaterialColors.compositeARGBWithAlpha(onSurfaceVariant, 190)),
         )
+        // A labelled segment's text follows its icon; left to the tonal style, it came out in the
+        // style's own container colour, faint on both fills.
+        setTextColor(iconTint)
         // Pressed only: a mouse resting on a segment (WSA) lit it as though it were chosen.
         rippleColor = ColorStateList(
             arrayOf(intArrayOf(android.R.attr.state_pressed), other),
@@ -110,8 +115,28 @@ class ChoiceToggleButton @JvmOverloads constructor(
             return
         }
         val chosen = alpha >= CHOSEN_FROM
-        if (chosen != isChecked) isChecked = chosen
+        if (chosen != isChecked) {
+            settingFromAlpha = true
+            try {
+                isChecked = chosen
+            } finally {
+                settingFromAlpha = false
+            }
+        }
         super.setAlpha(1f)
+    }
+
+    private var settingFromAlpha = false
+
+    /**
+     * Only [setAlpha] — the code saying which option is chosen — may change this once built. The
+     * tap's own toggle and the toggle group's single-selection bookkeeping are both ignored: the
+     * group kept its own idea of the choice, so the previous segment stayed lit beside the new
+     * one, and a tap on the chosen segment cleared the row.
+     */
+    override fun setChecked(checked: Boolean) {
+        if (ready && !settingFromAlpha) return
+        super.setChecked(checked)
     }
 
     private companion object {

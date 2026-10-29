@@ -46,6 +46,7 @@ import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.parsers.NovelSources
 import ani.dantotsu.savePrefsToDownloads
+import ani.dantotsu.settings.saving.AutoBackup
 import ani.dantotsu.settings.saving.BackupArchive
 import ani.dantotsu.settings.saving.BackupSection
 import ani.dantotsu.settings.saving.BackupTree
@@ -187,6 +188,25 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 onClick = {
                     showBackupRestoreChooser(openDocumentLauncher)
                 },
+            ),
+            Settings(
+                type = 5,
+                name = getString(R.string.auto_backup),
+                desc = getString(R.string.auto_backup_desc),
+                icon = R.drawable.ic_round_schedule_24,
+                choice = ChoiceConfig(
+                    options = listOf(
+                        ChoiceOption(R.drawable.ic_round_close_24, getString(R.string.off)),
+                        ChoiceOption(R.drawable.ic_round_calendar_today_24, getString(R.string.daily)),
+                        ChoiceOption(R.drawable.ic_round_date_range_24, getString(R.string.weekly)),
+                    ),
+                    selected = PrefManager.getVal(PrefName.AutoBackupInterval),
+                    showLabels = true,
+                    onSelect = {
+                        PrefManager.setVal(PrefName.AutoBackupInterval, it)
+                        AutoBackup.schedule(this, changed = true)
+                    },
+                ),
             ),
             *(if (offline) emptyList() else listOf(
             Settings(

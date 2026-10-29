@@ -291,6 +291,9 @@ class App : MultiDexApplication() {
                 CommentsAPI.fetchAuthToken(this@App)
             }
 
+            runCatching { ani.dantotsu.settings.saving.AutoBackup.schedule(this@App) }
+                .onFailure { Logger.log(it) }
+
             val useAlarmManager = PrefManager.getVal<Boolean>(PrefName.UseAlarmManager)
             val scheduler = TaskScheduler.create(this@App, useAlarmManager)
             try {

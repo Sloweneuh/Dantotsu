@@ -62,8 +62,11 @@ data class ChoiceOption(
  */
 data class ChoiceConfig(
     val options: List<ChoiceOption>,
-    val selected: Int,
+    /** Updated on each tap, so a re-bind of the row shows the current choice, not the first one. */
+    var selected: Int,
     val onSelect: (Int) -> Unit,
+    /** Labels beside the icons, for choices an icon alone doesn't name (Off / Daily / Weekly). */
+    val showLabels: Boolean = false,
 )
 
 data class Settings(

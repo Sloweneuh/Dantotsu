@@ -3398,4 +3398,8 @@
     <string name="history_empty">Les épisodes et chapitres que vous ouvrez apparaîtront ici.</string>
     <string name="history_remove">Retirer de l\'historique</string>
     <string name="history_clear_confirm">Oublier tout ce qui a été regardé et lu sur cet appareil ? Vos listes de suivi ne sont pas modifiées.</string>
+    <!-- Automatic backups -->
+    <string name="off">Désactivé</string>
+    <string name="auto_backup">Sauvegardes automatiques</string>
+    <string name="auto_backup_desc">Enregistre vos paramètres dans Téléchargements/Dantotsu Backups et conserve les 5 dernières. Les identifiants et les paramètres des extensions ne sont pas inclus.</string>
 </resources>

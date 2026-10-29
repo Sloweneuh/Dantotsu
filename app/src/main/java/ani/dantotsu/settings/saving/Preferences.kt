@@ -168,6 +168,8 @@ enum class PrefName(val data: Pref) {
 
     /** When the last automatic run finished (epoch ms, 0 = never), and what it did. */
     AutoListSyncLastRun(Pref(Location.Irrelevant, Long::class, 0L)),
+    // Device-local: where the files go is this device's storage. AutoBackup.OFF/DAILY/WEEKLY.
+    AutoBackupInterval(Pref(Location.Irrelevant, Int::class, 0)),
     AutoListSyncLastSynced(Pref(Location.Irrelevant, Int::class, 0)),
     AutoListSyncLastFailed(Pref(Location.Irrelevant, Int::class, 0)),
     MangaUpdatesNotificationsEnabled(Pref(Location.General, Boolean::class, true)),

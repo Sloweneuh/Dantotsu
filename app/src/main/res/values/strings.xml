@@ -3521,4 +3521,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="history_empty">Episodes and chapters you open will show up here.</string>
     <string name="history_remove">Remove from history</string>
     <string name="history_clear_confirm">Forget everything watched and read on this device? Your tracker lists aren\'t affected.</string>
+    <!-- Automatic backups -->
+    <string name="off">Off</string>
+    <string name="auto_backup">Automatic backups</string>
+    <string name="auto_backup_desc">Saves your settings to Downloads/Dantotsu Backups and keeps the last 5. Logins and extension settings aren\'t included.</string>
 </resources>

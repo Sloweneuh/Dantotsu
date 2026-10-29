@@ -388,6 +388,10 @@ class SettingsAdapter(
                 // drops a button for each hidden tab), so a recycled holder's children are the
                 // wrong shape as often as not.
                 b.settingsChoices.removeAllViews()
+                // The adapter alone decides what is lit, through the segments' alpha. Left on, the
+                // group's own required single selection put the previous choice back.
+                b.settingsChoices.isSelectionRequired = false
+                b.settingsChoices.isSingleSelection = false
                 val inflater = LayoutInflater.from(b.root.context)
                 cfg.options.forEachIndexed { index, option ->
                     if (!option.visible) return@forEachIndexed
@@ -398,11 +402,25 @@ class SettingsAdapter(
                         icon = ContextCompat.getDrawable(b.root.context, option.icon)
                         turnIcon(option.flipHorizontally, option.rotation)
                         contentDescription = option.label
+                        if (cfg.showLabels) {
+                            text = option.label
+                            iconPadding = 8f.px
+                            val pad = 16f.px
+                            setPaddingRelative(pad, 0, pad, 0)
+                            layoutParams = layoutParams.apply { width = ViewGroup.LayoutParams.WRAP_CONTENT }
+                        }
                         // The segment reads alpha as its checked state; see ChoiceToggleButton.
                         alpha = if (index == cfg.selected) 1f else 0.33f
                         isEnabled = settings.isEnabled
                         setOnClickListener {
                             if (!settings.isEnabled) return@setOnClickListener
+                            // Every segment, not just this one: the group's own single-selection
+                            // left the previously chosen one checked as well.
+                            for (i in 0 until b.settingsChoices.childCount) {
+                                val child = b.settingsChoices.getChildAt(i)
+                                child.alpha = if (child === this) 1f else 0.33f
+                            }
+                            cfg.selected = index
                             cfg.onSelect(index)
                         }
                     }
