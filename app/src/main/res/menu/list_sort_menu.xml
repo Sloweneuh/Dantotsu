@@ -16,4 +16,12 @@
         android:id="@+id/updated"
         android:icon="@drawable/ic_round_history_24"
         android:title="@string/sort_by_last_updated" />
+    <!-- Not a sort: the grid/list switch, in its own group under a divider so the header needs no
+         extra button. Its title and icon name the view it switches to (set in code). -->
+    <group android:id="@+id/view_group">
+        <item
+            android:id="@+id/view_mode"
+            android:icon="@drawable/ic_round_view_list_24"
+            android:title="@string/cd_list_view" />
+    </group>
 </menu>

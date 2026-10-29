@@ -425,11 +425,15 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost, MangaBakaSearchF
         }
 
         val gridSize = (screenWidth / 120f).toInt()
-        val gridLayoutManager = GridLayoutManager(this, gridSize)
+        // Spans for both styles at once: a cover takes listCols of them (gridSize a row), a list
+        // row gridSize (listCols a row, more than one on a wide window).
+        val listCols = listColumns(this)
+        val totalSpans = gridSize * listCols
+        val gridLayoutManager = GridLayoutManager(this, totalSpans)
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
                 return when (position) {
-                    concatAdapter.itemCount - 1 -> gridSize
+                    concatAdapter.itemCount - 1 -> totalSpans
                     else -> {
                         val currentStyle = when (searchType) {
                             SearchType.MANGAUPDATES, SearchType.COMICK, SearchType.COMICK_ANIME,
@@ -439,7 +443,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost, MangaBakaSearchF
                             else -> 0
                         }
                         when (currentStyle) {
-                            0 -> 1
+                            0 -> listCols
                             else -> gridSize
                         }
                     }

@@ -1,5 +1,6 @@
 package ani.dantotsu.media.user
 
+import ani.dantotsu.media.listColumns
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -96,7 +97,7 @@ class ListFragment : Fragment() {
             val aniList = list ?: return
             val muItems = muList ?: emptyList()
 
-            val spanCount = if (g) (screenWidth / 120f).toInt() else 1
+            val spanCount = if (g) (screenWidth / 120f).toInt() else listColumns(requireContext())
 
             // Recreating the layout manager (like swapping the adapter below) resets scroll
             // position and detaches every row. A background list refresh can call update() again

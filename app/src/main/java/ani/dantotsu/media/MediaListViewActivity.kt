@@ -519,7 +519,7 @@ class MediaListViewActivity : AppCompatActivity() {
             else MergedReadingAdapter(combined, mode)
             binding.mediaRecyclerView.layoutManager = GridLayoutManager(
                 this,
-                if (mode == 1) 1 else (screenWidth / 120f).toInt()
+                if (mode == 1) listColumns(this) else (screenWidth / 120f).toInt()
             )
             return
         }
@@ -556,7 +556,7 @@ class MediaListViewActivity : AppCompatActivity() {
         }
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(
             this,
-            if (mode == 1) 1 else (screenWidth / 120f).toInt()
+            if (mode == 1) listColumns(this) else (screenWidth / 120f).toInt()
         )
     }
 

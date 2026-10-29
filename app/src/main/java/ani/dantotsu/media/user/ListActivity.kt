@@ -237,6 +237,12 @@ class ListActivity : AppCompatActivity() {
         binding.listSort.setOnClickListener {
             val popup = PopupMenu(this, it)
             popup.setOnMenuItemClickListener { item ->
+                if (item.itemId == R.id.view_mode) {
+                    val grid = !(model.grid.value ?: true)
+                    PrefManager.setVal(PrefName.ListGrid, grid)
+                    model.grid.value = grid
+                    return@setOnMenuItemClickListener true
+                }
                 val prefName = if (anime) PrefName.AnimeListSortOrder else PrefName.MangaListSortOrder
                 val currentSort: String = PrefManager.getVal(prefName)
                 // Default directions: score/release/updated → desc, title → asc
@@ -286,6 +292,13 @@ class ListActivity : AppCompatActivity() {
                 true
             }
             popup.inflate(R.menu.list_sort_menu)
+            androidx.core.view.MenuCompat.setGroupDividerEnabled(popup.menu, true)
+            // The view switch names the view it switches to.
+            popup.menu.findItem(R.id.view_mode)?.let { viewItem ->
+                val grid = model.grid.value ?: true
+                viewItem.setTitle(if (grid) R.string.cd_list_view else R.string.cd_grid_view)
+                viewItem.setIcon(if (grid) R.drawable.ic_round_view_list_24 else R.drawable.ic_round_grid_view_24)
+            }
             // Force icons to show in the popup menu
             try {
                 val field = popup.javaClass.getDeclaredField("mPopup")

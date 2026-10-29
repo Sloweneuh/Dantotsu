@@ -24,6 +24,15 @@ object MediaWindow {
     const val COMMENTS = 2
 }
 
+/**
+ * Columns for a list in its list (rows) style: one on phones; on a wide window, as many ~480dp
+ * rows as fit, so each row stays readable rather than stretching across the screen.
+ */
+fun listColumns(context: android.content.Context): Int {
+    val config = context.resources.configuration
+    return if (MediaPanes.isTwoPane(config)) (config.screenWidthDp / 480).coerceAtLeast(2) else 1
+}
+
 /** Pages are keyed by window, so the fragments the pager restores after a resize between one and
  *  two panes land on the right page. */
 class MediaPagerAdapter(

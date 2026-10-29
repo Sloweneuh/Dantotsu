@@ -138,7 +138,7 @@ class StackListViewActivity : AppCompatActivity() {
         binding.mediaRecyclerView.adapter =
             if (mode == 1) StackListAdapter(stacks, isAnime) else StackAdapter(stacks, isAnime)
         binding.mediaRecyclerView.layoutManager =
-            GridLayoutManager(this, if (mode == 1) 1 else (screenWidth / 120f).toInt())
+            GridLayoutManager(this, if (mode == 1) listColumns(this) else (screenWidth / 120f).toInt())
     }
 
     // ---- MangaBaka ----

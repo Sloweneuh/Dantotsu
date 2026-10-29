@@ -1,5 +1,6 @@
 package ani.dantotsu.media.user
 
+import ani.dantotsu.media.listColumns
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -53,7 +54,7 @@ class MUOnlyListFragment : Fragment() {
         }
 
         fun update() {
-            val spanCount = if (currentGrid) (screenWidth / 120f).toInt() else 1
+            val spanCount = if (currentGrid) (screenWidth / 120f).toInt() else listColumns(requireContext())
             binding.listRecyclerView.layoutManager = GridLayoutManager(requireContext(), spanCount)
             val density = requireContext().resources.displayMetrics.density
             val basePad = (8 * density).toInt()
