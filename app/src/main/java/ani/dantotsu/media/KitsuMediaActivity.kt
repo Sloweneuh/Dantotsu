@@ -119,7 +119,9 @@ class KitsuMediaActivity : AppCompatActivity() {
         // instead, which is what actually plays the cover flying back to the list.
         binding.kitsuMediaClose.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
-        isAnime = intent.getBooleanExtra(EXTRA_IS_ANIME, false)
+        // A kitsu.app link opened from outside lands here straight from the manifest, without the
+        // extras: its path (/anime/<id> or /manga/<id>) says which it is.
+        isAnime = intent.getBooleanExtra(EXTRA_IS_ANIME, intent.data?.pathSegments?.firstOrNull() == "anime")
         val mediaId = intent.getStringExtra(EXTRA_MEDIA_ID)
             ?: intent.data?.pathSegments?.getOrNull(1)
             ?: run { finish(); return }
@@ -142,6 +144,7 @@ class KitsuMediaActivity : AppCompatActivity() {
         } else {
             binding.kitsuMediaBottomBar.visibility = View.GONE
             binding.kitsuMediaPages.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = navBarHeight }
+            StackedPanes.capInfoWidth(binding.kitsuMediaInfoScroll)
         }
 
         lifecycleScope.launch {

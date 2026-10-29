@@ -2,6 +2,7 @@ package ani.dantotsu.media
 
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -29,7 +30,7 @@ class TrackerEpisodesController(
     private val chipScroll: View,
     private val chipGroup: ChipGroup,
     private val scrollTopButton: View,
-    private val pagesWidthSource: View,
+    private val pagesWidthSource: FrameLayout,
     startOnEpisodes: Boolean,
 ) {
     var currentTabIndex = if (startOnEpisodes) 1 else 0
@@ -43,6 +44,8 @@ class TrackerEpisodesController(
 
     private var rows: List<TrackerEpisodeRenderer.EpisodeRow> = emptyList()
 
+    private val panes = StackedPanes(pagesWidthSource, infoScroll, episodesScroll, bottomBar)
+
     fun setup() {
         bottomBar.addTab(bottomBar.createTab(R.drawable.ic_round_info_24, R.string.info, R.id.info))
         bottomBar.addTab(bottomBar.createTab(R.drawable.ic_round_playlist_play_24, R.string.eps, R.id.watch))
@@ -50,6 +53,7 @@ class TrackerEpisodesController(
         infoScroll.visibility = View.GONE
         episodesScroll.visibility = View.GONE
         scrollTopButton.bindScrollToTop(episodesScroll)
+        panes.setUp()
         bottomBar.setOnTabSelectListener(object : AnimatedBottomBar.OnTabSelectListener {
             override fun onTabSelected(
                 lastIndex: Int, lastTab: AnimatedBottomBar.Tab?, newIndex: Int, newTab: AnimatedBottomBar.Tab,
@@ -63,7 +67,8 @@ class TrackerEpisodesController(
 
     /** Reveal whichever tab is current — called once content has loaded. */
     fun revealCurrentTab() {
-        (if (currentTabIndex == 0) infoScroll else episodesScroll).visibility = View.VISIBLE
+        if (panes.twoPane) panes.reveal()
+        else (if (currentTabIndex == 0) infoScroll else episodesScroll).visibility = View.VISIBLE
     }
 
     fun setEpisodes(episodes: List<TrackerEpisodeRenderer.EpisodeRow>) {

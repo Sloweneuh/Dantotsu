@@ -109,6 +109,7 @@ class MalMediaActivity : AppCompatActivity() {
         binding.malMediaPages.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }
+        StackedPanes.capInfoWidth(binding.malMediaInfoScroll)
         binding.malMediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight + 16f.px
         }

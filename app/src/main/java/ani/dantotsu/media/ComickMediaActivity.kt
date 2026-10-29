@@ -229,7 +229,12 @@ class ComickMediaActivity : AppCompatActivity() {
             binding.comickMediaProgress.visibility = View.GONE
             displayInfo(comic)
             // Reveal the correct tab after data is ready — no animation on initial show
-            if (currentTabIndex == 0) {
+            if (panes.twoPane) {
+                // Both panes show at once, so the list loads now rather than on its tab's first visit.
+                panes.reveal()
+                if (isAnimeMode) loadChapters(comic.hid.orEmpty())
+                else comic.hid?.let { loadChapters(it) }
+            } else if (currentTabIndex == 0) {
                 binding.comickMediaInfoScroll.visibility = View.VISIBLE
             } else {
                 binding.comickMediaChaptersScroll.visibility = View.VISIBLE
@@ -237,6 +242,13 @@ class ComickMediaActivity : AppCompatActivity() {
                 else comic.hid?.let { loadChapters(it) }
             }
         }
+    }
+
+    private val panes by lazy {
+        StackedPanes(
+            binding.comickMediaPages, binding.comickMediaInfoScroll,
+            binding.comickMediaChaptersScroll, binding.comickMediaBottomBar
+        )
     }
 
     private fun setupBottomBar(startOnChapters: Boolean) {
@@ -256,6 +268,7 @@ class ComickMediaActivity : AppCompatActivity() {
         binding.comickMediaInfoScroll.visibility = View.GONE
         binding.comickMediaChaptersScroll.visibility = View.GONE
         binding.comickChaptersScrollTop.bindScrollToTop(binding.comickMediaChaptersScroll)
+        panes.setUp()
 
         navBar.setOnTabSelectListener(object : AnimatedBottomBar.OnTabSelectListener {
             override fun onTabSelected(lastIndex: Int, lastTab: AnimatedBottomBar.Tab?, newIndex: Int, newTab: AnimatedBottomBar.Tab) {

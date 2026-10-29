@@ -260,6 +260,16 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         binding.extensionInfoScroll.visibility = View.VISIBLE
         binding.extensionChaptersScroll.visibility = View.GONE
         binding.extensionChaptersScrollTop.bindScrollToTop(binding.extensionChaptersScroll)
+        if (isManga || isNovel) {
+            val panes = ani.dantotsu.media.StackedPanes(
+                binding.extensionInfoPages, binding.extensionInfoScroll,
+                binding.extensionChaptersScroll, navBar
+            )
+            panes.setUp()
+            if (panes.twoPane) panes.reveal()
+        } else {
+            ani.dantotsu.media.StackedPanes.capInfoWidth(binding.extensionInfoScroll)
+        }
 
         navBar.setOnTabSelectListener(object : AnimatedBottomBar.OnTabSelectListener {
             override fun onTabSelected(lastIndex: Int, lastTab: AnimatedBottomBar.Tab?, newIndex: Int, newTab: AnimatedBottomBar.Tab) {
