@@ -75,6 +75,17 @@ class MangaReadAdapter(
     var scanlatorSelectionListener: ScanlatorSelectionListener? = null
     var options = listOf<String>()
 
+    /** The continue card's art. A MangaUpdates page can learn its cover after this is bound, and
+     *  with two panes the list is on screen (and bound) from the start. */
+    private var art: String? = media.banner ?: media.cover
+
+    fun updateArt(updated: Media) {
+        val url = updated.banner ?: updated.cover ?: return
+        if (url == art) return
+        art = url
+        _binding?.itemMediaImage?.loadImage(url)
+    }
+
     // The picker only needs the chapter number, but MangaChapter.number is actually the source's
     // full chapter name (e.g. "Chapter 5: The Awakening") - resolve just the number out of it,
     // falling back to the raw string when it can't be parsed.
@@ -663,7 +674,7 @@ class MangaReadAdapter(
                             )
                         }
                     }
-                    binding.itemMediaImage.loadImage(media.banner ?: media.cover)
+                    binding.itemMediaImage.loadImage(art)
                     val chapterNumber = continueEp!!.number
                     val chapterTitle = continueEp!!.title
                         ?.trim()

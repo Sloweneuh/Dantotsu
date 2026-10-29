@@ -31,7 +31,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
 import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
 import ani.dantotsu.connections.handoff.HandoffNavigator
@@ -308,6 +307,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                         }
                         loaded = true
                     } else {
+                        headerAdapter.updateArt(it)
                         reload()
                         // Refresh browser button after reload completes
                         lifecycleScope.launch {
@@ -635,11 +635,11 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 activity is ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
             if (isKnownActivity && isAdded) {
                 activity!!.findViewById<AppBarLayout>(R.id.mediaAppBar).isVisible = show
-                activity.findViewById<ViewPager2>(R.id.mediaViewPager).isVisible = show
+                activity.findViewById<View>(R.id.mediaViewPagerContainer).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaCover).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaClose).isVisible = show
                 activity.findViewById<CardView>(R.id.quickSettings)?.isVisible = show
-                activity.findViewById<nl.joery.animatedbottombar.AnimatedBottomBar>(R.id.mediaBottomBar).isVisible = show
+                activity.findViewById<nl.joery.animatedbottombar.AnimatedBottomBar>(R.id.mediaBottomBar).let { it.isVisible = show && it.tabCount > 1 }
                 activity.findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
             }
         }

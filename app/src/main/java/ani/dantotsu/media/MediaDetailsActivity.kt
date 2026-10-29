@@ -1,5 +1,7 @@
 package ani.dantotsu.media
 
+import androidx.core.view.updatePadding
+import android.view.Gravity
 import ani.dantotsu.connections.discord.PresenceSources
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
@@ -13,7 +15,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
-import android.widget.LinearLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -29,11 +30,8 @@ import androidx.core.view.updateMargins
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.GesturesListener
 import ani.dantotsu.R
 import ani.dantotsu.connections.discord.BrowsingPresence
@@ -57,7 +55,6 @@ import ani.dantotsu.media.anime.AnimeWatchFragment
 import ani.dantotsu.media.discover.DiscoverQueueSheet
 import ani.dantotsu.media.discover.DiscoveryQueue
 import ani.dantotsu.media.discover.DiscoverySource
-import ani.dantotsu.util.materialDialog
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import ani.dantotsu.media.comments.CommentsFragment
 import ani.dantotsu.media.manga.MangaReadFragment
@@ -348,7 +345,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 binding.mediaViewPager.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                     bottomMargin = oldMargin
                 }
-                navBar.visibility = View.VISIBLE
+                navBar.isVisible = navBar.tabCount > 1
             }
         }
         val showBottomInset = resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
@@ -1204,26 +1201,18 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             }
         }
         adult = media.isAdult
-        if (media.anime != null) {
-            viewPager.adapter =
-                    ViewPagerAdapter(
-                            supportFragmentManager,
-                            lifecycle,
-                            SupportedMedia.ANIME,
-                            media,
-                            intent.getIntExtra("commentId", -1)
-                    )
-        } else if (media.manga != null) {
-            viewPager.adapter =
-                    ViewPagerAdapter(
-                            supportFragmentManager,
-                            lifecycle,
-                            if (media.format == "NOVEL") SupportedMedia.NOVEL
-                            else SupportedMedia.MANGA,
-                            media,
-                            intent.getIntExtra("commentId", -1)
-                    )
-            anime = false
+        val mediaType = when {
+            media.anime != null -> SupportedMedia.ANIME
+            media.format == "NOVEL" -> SupportedMedia.NOVEL
+            else -> SupportedMedia.MANGA
+        }
+        if (media.anime != null || media.manga != null) {
+            val commentId = intent.getIntExtra("commentId", -1)
+            viewPager.adapter = MediaPagerAdapter(this, pageWindows) {
+                pageFragment(it, mediaType, media, commentId)
+            }
+            if (media.anime == null) anime = false
+            panes.setUp { listFragment(mediaType) }
         }
         val comment = PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 2
         selected = media.selected!!.window.coerceIn(0, if (comment) 2 else 3)
@@ -1249,11 +1238,17 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         val commentTab =
                 navBar.createTab(R.drawable.ic_round_comment_24, R.string.comments, R.id.comment)
         navBar.addTab(infoTab)
-        navBar.addTab(watchTab)
+        tabWindows.add(0)
+        // Two panes keep the list on screen, so it needs no tab.
+        if (!panes.twoPane) {
+            navBar.addTab(watchTab)
+            tabWindows.add(1)
+        }
         // Comments need the network, so drop the tab entirely when offline.
         val offlineMode = isDownload || !isOnline(this)
         if (PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1 && !offlineMode) {
             navBar.addTab(commentTab)
+            tabWindows.add(2)
         }
         if (offlineMode) selected = selected.coerceIn(0, 1)
         if (model.continueMedia == null && media.cameFromContinue) {
@@ -1263,10 +1258,14 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         if (intent.getStringExtra("FRAGMENT_TO_LOAD") != null) selected = 2
         // A queue pick always opens on Info, where its "why" is — whatever tab the last one was on.
         if (discoverSource != null) selected = 0
-        if (viewPager.currentItem != selected)
-                viewPager.post { viewPager.jumpTo(selected) }
+        if (panes.twoPane && selected == MediaWindow.LIST) selected = MediaWindow.INFO
+        val page = pageWindows.indexOf(selected).coerceAtLeast(0)
+        if (viewPager.currentItem != page)
+                viewPager.post { viewPager.jumpTo(page) }
         binding.commentInputLayout.isVisible = selected == 2
-        navBar.selectTabAt(selected)
+        navBar.selectTabAt(tabWindows.indexOf(selected).coerceAtLeast(0))
+        // Info alone: a bar with one tab is just noise.
+        if (navBar.tabCount < 2) hideNavBar()
         navBar.setOnTabSelectListener(
                 object : AnimatedBottomBar.OnTabSelectListener {
                     override fun onTabSelected(
@@ -1275,9 +1274,9 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                             newIndex: Int,
                             newTab: AnimatedBottomBar.Tab
                     ) {
-                        selected = newIndex
+                        selected = tabWindows[newIndex]
                         binding.commentInputLayout.isVisible = selected == 2
-                        viewPager.setCurrentItem(selected, false)
+                        viewPager.setCurrentItem(pageWindows.indexOf(selected), false)
                         queueSheet?.let {
                             it.setPageMode(queuePageMode(selected))
                             applyQueuePadding()
@@ -1431,7 +1430,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         // is still in flight — nothing here is needed before then, since setUpWithMedia() applies
         // this same insets/immersive setup itself once it does run.
         if (!::navBar.isInitialized) return
-        navBar.selectTabAt(selected)
+        tabWindows.indexOf(selected).takeIf { it >= 0 }?.let { navBar.selectTabAt(it) }
         // Re-apply activity-level UI settings (immersive, insets)
         initActivity(this)
 
@@ -1542,37 +1541,38 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     }
 
     // ViewPager
-    private class ViewPagerAdapter(
-            fragmentManager: FragmentManager,
-            lifecycle: Lifecycle,
-            private val mediaType: SupportedMedia,
-            private val media: Media,
-            private val commentId: Int
-    ) : FragmentStateAdapter(fragmentManager, lifecycle) {
-
-        override fun getItemCount(): Int = 3
-
-        override fun createFragment(position: Int): Fragment =
-                when (position) {
-                    0 -> MediaInfoFragment()
-                    1 ->
-                            when (mediaType) {
-                                SupportedMedia.ANIME -> AnimeWatchFragment()
-                                SupportedMedia.MANGA -> MangaReadFragment()
-                                SupportedMedia.NOVEL -> NovelReadFragment()
-                            }
-                    2 -> {
-                        val fragment = CommentsFragment()
-                        val bundle = Bundle()
-                        bundle.putInt("mediaId", media.id)
-                        bundle.putString("mediaName", media.mainName())
-                        if (commentId != -1) bundle.putInt("commentId", commentId)
-                        fragment.arguments = bundle
-                        fragment
-                    }
-                    else -> MediaInfoFragment()
-                }
+    private val panes by lazy { MediaPanes(this, binding) }
+    private val pageWindows by lazy {
+        panes.pageWindows(listOf(MediaWindow.INFO, MediaWindow.LIST, MediaWindow.COMMENTS))
     }
+    /** The window each tab of [navBar] opens, in tab order. */
+    private val tabWindows = mutableListOf<Int>()
+
+    private fun hideNavBar() {
+        navBar.isVisible = false
+        binding.mediaViewPagerContainer.updatePadding(bottom = 0)
+    }
+
+    private fun listFragment(mediaType: SupportedMedia): Fragment = when (mediaType) {
+        SupportedMedia.ANIME -> AnimeWatchFragment()
+        SupportedMedia.MANGA -> MangaReadFragment()
+        SupportedMedia.NOVEL -> NovelReadFragment()
+    }
+
+    private fun pageFragment(window: Int, mediaType: SupportedMedia, media: Media, commentId: Int): Fragment =
+            when (window) {
+                MediaWindow.LIST -> listFragment(mediaType)
+                MediaWindow.COMMENTS -> {
+                    val fragment = CommentsFragment()
+                    val bundle = Bundle()
+                    bundle.putInt("mediaId", media.id)
+                    bundle.putString("mediaName", media.mainName())
+                    if (commentId != -1) bundle.putInt("commentId", commentId)
+                    fragment.arguments = bundle
+                    fragment
+                }
+                else -> MediaInfoFragment()
+            }
 
     // Collapsing UI Stuff
     private var isCollapsed = false
@@ -1699,132 +1699,23 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     }
 
     private fun shareMediaLinks(media: Media) {
-        val isAnime = media.anime != null
-        val mediaType = if (isAnime) "anime" else "manga"
-
-        // Build list of available links with their labels and icons
-        val linkOptions = mutableListOf<Triple<String, String, Int>>() // label, url, iconRes
-
-        // AniList link
-        val anilistLink = "https://anilist.co/$mediaType/${media.id}"
-        linkOptions.add(Triple("AniList", anilistLink, R.drawable.ic_anilist))
-
-        // MAL link
-        if (media.idMAL != null) {
-            val malLink = "https://myanimelist.net/$mediaType/${media.idMAL}"
-            linkOptions.add(Triple("MyAnimeList", malLink, R.drawable.ic_myanimelist))
+        // MangaUpdates: the resolved link, else one from AniList's external links.
+        val muLink = model.mangaUpdatesLink.value ?: media.externalLinks.firstNotNullOfOrNull { entry ->
+            (entry.getOrNull(1) ?: entry.getOrNull(0))
+                ?.takeIf { it.isNotBlank() && it.contains("mangaupdates", ignoreCase = true) }
         }
-
-        // Comick link — anime entries sit under /anime/ in a separate catalogue, so the path
-        // follows the media type rather than being hardcoded to /comic/.
-        val comickSlug = model.comickSlug.value
-        if (comickSlug != null) {
-            val comickLink = ani.dantotsu.connections.comick.ComickApi.webUrl(
-                comickSlug,
-                if (isAnime) ani.dantotsu.connections.comick.ComickApi.MEDIA_TYPE_ANIME
-                else ani.dantotsu.connections.comick.ComickApi.MEDIA_TYPE_MANGA
+        showShareDialog(
+            media.userPreferredName,
+            mediaShareLinks(
+                order = InfoTabContext.forAniList(media),
+                isAnime = media.anime != null,
+                aniListId = media.id,
+                malId = media.idMAL,
+                comickSlug = model.comickSlug.value,
+                mangaUpdatesUrl = muLink,
+                mangaBakaId = model.mangaBakaId.value
             )
-            linkOptions.add(Triple("Comick", comickLink, R.drawable.ic_round_comick_24))
-        }
-
-        // For manga only: MangaUpdates and MangaBaka
-        if (!isAnime) {
-            // MangaUpdates link - check ViewModel first
-            var muLink = model.mangaUpdatesLink.value
-
-            // If not in ViewModel, check external links
-            if (muLink == null) {
-                media.externalLinks.forEach { linkEntry ->
-                    val candidate = linkEntry.getOrNull(1) ?: linkEntry.getOrNull(0)
-                    if (!candidate.isNullOrBlank() &&
-                                    candidate.contains("mangaupdates", ignoreCase = true)
-                    ) {
-                        muLink = candidate
-                        return@forEach
-                    }
-                }
-            }
-
-            if (muLink != null) {
-                linkOptions.add(Triple("MangaUpdates", muLink, R.drawable.ic_round_mangaupdates_24))
-            }
-
-            // MangaBaka link (resolved id from the ViewModel)
-            val mangaBakaId = model.mangaBakaId.value
-            if (mangaBakaId != null && mangaBakaId > 0) {
-                linkOptions.add(
-                    Triple("MangaBaka", "https://mangabaka.org/$mangaBakaId", R.drawable.ic_round_mangabaka_24)
-                )
-            }
-        }
-
-        // Create custom dialog with icons in a row
-        val dialog = materialDialog().create()
-
-        // Create custom title view with centered text
-        val titleView =
-                android.widget.TextView(this).apply {
-                    setText(R.string.share)
-                    textSize = 20f
-                    gravity = android.view.Gravity.CENTER
-                    setPadding(32, 32, 32, 16)
-                    setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
-                }
-        dialog.setCustomTitle(titleView)
-
-        // Create horizontal layout with icons
-        val iconLayout =
-                LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = android.view.Gravity.CENTER
-                    setPadding(32, 16, 32, 32)
-                }
-
-        linkOptions.forEach { (label, link, iconRes) ->
-            val iconButton =
-                    ImageView(this).apply {
-                        setImageResource(iconRes)
-                        val size = (56 * resources.displayMetrics.density).toInt()
-                        layoutParams =
-                                LinearLayout.LayoutParams(size, size).apply {
-                                    setMargins(16, 0, 16, 0)
-                                }
-                        setPadding(12, 12, 12, 12)
-                        // Set icon color to match tab icons (bg_opp: black in light theme, white in
-                        // dark theme)
-                        setColorFilter(
-                                ContextCompat.getColor(context, R.color.bg_opp),
-                                android.graphics.PorterDuff.Mode.SRC_IN
-                        )
-                        // Add ripple effect without background
-                        val outValue = android.util.TypedValue()
-                        context.theme.resolveAttribute(
-                                android.R.attr.selectableItemBackgroundBorderless,
-                                outValue,
-                                true
-                        )
-                        setBackgroundResource(outValue.resourceId)
-                        contentDescription = label
-                        setOnClickListener {
-                            // Open share sheet directly - it will dismiss the dialog automatically
-                            val shareIntent =
-                                    Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, link)
-                                        putExtra(
-                                                Intent.EXTRA_SUBJECT,
-                                                "${media.userPreferredName} - $label"
-                                        )
-                                    }
-                            startActivity(Intent.createChooser(shareIntent, "Share $label link"))
-                            dialog.dismiss()
-                        }
-                    }
-            iconLayout.addView(iconButton)
-        }
-
-        dialog.setView(iconLayout)
-        dialog.show()
+        )
     }
 
     companion object {

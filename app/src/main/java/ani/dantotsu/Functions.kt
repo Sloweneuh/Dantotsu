@@ -300,15 +300,24 @@ fun ViewGroup.setBaseline(navBar: AnimatedBottomBar, extraPaddingBottom: Int = 0
 
         clipToPadding = false
 
-        if (isLandscape) {
+        if (ani.dantotsu.media.MediaPanes.isTwoPane(resources.configuration)) {
+            // A wide window's pane ends at the screen's edge: clear the comment box, nothing more.
+            setPadding(paddingLeft, paddingTop, paddingRight, 80.dp.toInt() + extraPaddingBottom)
+            if ((layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin != 0) {
+                updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = 0 }
+            }
+        } else if (isLandscape) {
             setPadding(
                 paddingLeft,
                 paddingTop,
                 paddingRight,
                 34
             )
-            updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                bottomMargin = 364.dp.toInt()
+            // Only on a change: setting layout params lays out again, which runs the global
+            // layout listener below, which lands back here — a layout every frame for good.
+            val margin = 364.dp.toInt()
+            if ((layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin != margin) {
+                updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = margin }
             }
         } else {
             setPadding(

@@ -26,7 +26,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
 import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
 import ani.dantotsu.connections.handoff.HandoffNavigator
@@ -638,11 +637,11 @@ class AnimeWatchFragment : Fragment() {
             val activity = activity
             if (activity is MediaDetailsActivity && isAdded) {
                 activity.findViewById<AppBarLayout>(R.id.mediaAppBar).isVisible = show
-                activity.findViewById<ViewPager2>(R.id.mediaViewPager).isVisible = show
+                activity.findViewById<View>(R.id.mediaViewPagerContainer).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaCover).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaClose).isVisible = show
                 activity.findViewById<CardView>(R.id.quickSettings)?.isVisible = show
-                activity.navBar.isVisible = show
+                activity.navBar.isVisible = show && activity.navBar.tabCount > 1
                 activity.findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
             }
         }

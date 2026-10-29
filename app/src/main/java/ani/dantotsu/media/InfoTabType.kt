@@ -97,6 +97,9 @@ enum class InfoTabContext(
         return if (saved.size == tabs.size) saved else tabs.map { it.defaultVisible }
     }
 
+    /** Every tab of this context in the user's order, hidden ones included. */
+    fun orderedTabs(): List<InfoTabType> = savedOrder().mapNotNull { tabs.getOrNull(it) }
+
     /**
      * Final ordered list of tabs to actually display: user-visible AND fetch-enabled. Data
      * fetching for a given [InfoTabType] must never be gated on whether it appears here - see

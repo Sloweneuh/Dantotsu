@@ -11,11 +11,8 @@ import android.text.SpannableStringBuilder
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
-import android.widget.ImageView
-import android.widget.LinearLayout
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.text.bold
 import androidx.core.text.color
 import androidx.core.view.marginBottom
@@ -25,11 +22,8 @@ import androidx.core.view.updatePadding
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
-import androidx.lifecycle.Lifecycle
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
-import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.R
 import ani.dantotsu.connections.handoff.HandoffBottomSheet
 import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
@@ -79,6 +73,12 @@ import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.media.MediaDetailsActivity
+import ani.dantotsu.media.MediaPagerAdapter
+import ani.dantotsu.media.MediaPanes
+import ani.dantotsu.media.InfoTabContext
+import ani.dantotsu.media.MediaWindow
+import ani.dantotsu.media.mediaShareLinks
+import ani.dantotsu.media.showShareDialog
 import ani.dantotsu.settings.ExtensionMediaLinker
 import eu.kanade.tachiyomi.source.model.SManga
 import androidx.appcompat.app.AlertDialog
@@ -496,7 +496,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                         binding.loadingOverlay?.visibility = View.GONE
                         binding.mediaAppBar?.visibility = View.VISIBLE
                         binding.mediaViewPagerContainer?.visibility = View.VISIBLE
-                        binding.mediaBottomBar?.visibility = View.VISIBLE
+                        binding.mediaBottomBar?.isVisible = !panes.twoPane
                         binding.mediaClose?.visibility = View.VISIBLE
                         binding.quickSettings.root.visibility = View.VISIBLE
                         binding.mediaCover?.visibility = View.VISIBLE
@@ -933,8 +933,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 if (switchToNovel) {
                     val currentItem = binding.mediaViewPager.currentItem
                     binding.mediaViewPager.adapter =
-                        ViewPagerAdapter(supportFragmentManager, lifecycle, useNovelReader)
+                        pagerAdapter()
                     binding.mediaViewPager.setCurrentItem(currentItem, false)
+                    panes.setUp(replace = true) { listFragment() }
                 }
             }
         }
@@ -956,7 +957,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 binding.mediaViewPager.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                     bottomMargin = oldMargin
                 }
-                navBar.visibility = View.VISIBLE
+                navBar.isVisible = !panes.twoPane
             }
         }
 
@@ -1137,61 +1138,18 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         // Share button — shows a dialog with available links (MangaUpdates, Comick)
         binding.mediaShare.setOnClickListener {
-            val linkOptions = mutableListOf<Triple<String, String, Int>>()
-
-            val muUrl = muMedia.url ?: "https://www.mangaupdates.com/series/${muMedia.id.toString(36)}"
-            linkOptions.add(Triple("MangaUpdates", muUrl, R.drawable.ic_round_mangaupdates_24))
-
-            val comickSlug = model.comickSlug.value
-            if (comickSlug != null) {
-                linkOptions.add(Triple("Comick", "https://comick.io/comic/$comickSlug", R.drawable.ic_round_comick_24))
-            }
-
-            val dialog = materialDialog().create()
-            val titleView = android.widget.TextView(this).apply {
-                setText(R.string.share)
-                textSize = 20f
-                gravity = android.view.Gravity.CENTER
-                setPadding(32, 32, 32, 16)
-                setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
-            }
-            dialog.setCustomTitle(titleView)
-
-            val iconLayout = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER
-                setPadding(32, 16, 32, 32)
-            }
-
-            linkOptions.forEach { (label, link, iconRes) ->
-                val iconButton = ImageView(this).apply {
-                    setImageResource(iconRes)
-                    val size = (56 * resources.displayMetrics.density).toInt()
-                    layoutParams = LinearLayout.LayoutParams(size, size).apply { setMargins(16, 0, 16, 0) }
-                    setPadding(12, 12, 12, 12)
-                    setColorFilter(
-                        ContextCompat.getColor(context, R.color.bg_opp),
-                        android.graphics.PorterDuff.Mode.SRC_IN
-                    )
-                    val outValue = android.util.TypedValue()
-                    context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true)
-                    setBackgroundResource(outValue.resourceId)
-                    contentDescription = label
-                    setOnClickListener {
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, link)
-                            putExtra(Intent.EXTRA_SUBJECT, "${muMedia.title ?: ""} - $label")
-                        }
-                        startActivity(Intent.createChooser(shareIntent, "Share $label link"))
-                        dialog.dismiss()
-                    }
-                }
-                iconLayout.addView(iconButton)
-            }
-
-            dialog.setView(iconLayout)
-            dialog.show()
+            showShareDialog(
+                muMedia.title ?: "",
+                mediaShareLinks(
+                    order = InfoTabContext.forMangaUpdates(useNovelReader),
+                    isAnime = false,
+                    aniListId = detectedAniListId,
+                    malId = model.getMedia().value?.idMAL ?: model.muMalId.value,
+                    comickSlug = model.comickSlug.value,
+                    mangaUpdatesUrl = muMedia.url ?: "https://www.mangaupdates.com/series/${muMedia.id.toString(36)}",
+                    mangaBakaId = model.mangaBakaId.value
+                )
+            )
         }
 
         binding.mediaClose.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
@@ -1200,7 +1158,8 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         val viewPager = binding.mediaViewPager
         viewPager.isUserInputEnabled = false
         viewPager.useSharedAxisTransitions()
-        viewPager.adapter = ViewPagerAdapter(supportFragmentManager, lifecycle, useNovelReader)
+        viewPager.adapter = pagerAdapter()
+        panes.setUp { listFragment() }
 
         // Bottom tab bar: Info + Read
         val infoTab = navBar.createTab(R.drawable.ic_round_info_24, R.string.info, R.id.info)
@@ -1210,7 +1169,13 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             R.id.read
         )
         navBar.addTab(infoTab)
-        navBar.addTab(readTab)
+        // Two panes keep the list on screen, which leaves Info alone: no bar for one tab.
+        if (panes.twoPane) {
+            navBar.isVisible = false
+            binding.mediaViewPagerContainer.updatePadding(bottom = 0)
+        } else {
+            navBar.addTab(readTab)
+        }
         navBar.selectTabAt(selected)
         navBar.setOnTabSelectListener(object : AnimatedBottomBar.OnTabSelectListener {
             override fun onTabSelected(
@@ -1362,16 +1327,14 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         }
     }
 
-    private class ViewPagerAdapter(
-        fragmentManager: FragmentManager,
-        lifecycle: Lifecycle,
-        private val useNovelReader: Boolean
-    ) : FragmentStateAdapter(fragmentManager, lifecycle) {
-        override fun getItemCount() = 2
-        override fun createFragment(position: Int): Fragment = when (position) {
-            0 -> MUMediaInfoContainerFragment()
-            else -> if (useNovelReader) NovelReadFragment() else MangaReadFragment()
-        }
+    // Same pages as [MediaDetailsActivity], without Comments.
+    private val panes by lazy { MediaPanes(this, binding) }
+    private val pageWindows by lazy { panes.pageWindows(listOf(MediaWindow.INFO, MediaWindow.LIST)) }
+
+    private fun listFragment(): Fragment = if (useNovelReader) NovelReadFragment() else MangaReadFragment()
+
+    private fun pagerAdapter() = MediaPagerAdapter(this, pageWindows) {
+        if (it == MediaWindow.LIST) listFragment() else MUMediaInfoContainerFragment()
     }
 
     // Collapsing toolbar state

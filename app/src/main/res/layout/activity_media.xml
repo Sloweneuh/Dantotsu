@@ -335,6 +335,15 @@
             android:layout_height="match_parent"
             android:nestedScrollingEnabled="true"
             tools:ignore="SpeakableTextPresentCheck" />
+
+        <!-- Wide windows only: the Watch/Read list stays here while the pager switches Info and
+             Comments. -->
+        <FrameLayout
+            android:id="@+id/mediaSidePane"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:visibility="gone" />
     </LinearLayout>
 
     <!-- Discovery queue bar, only in queue mode. Declared before the tab bar's container so the bar
