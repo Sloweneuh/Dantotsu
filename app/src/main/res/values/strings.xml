@@ -3553,6 +3553,17 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="notice_extension_update">Extension updates</string>
     <string name="notice_extension_obsolete">Obsolete extensions</string>
     <string name="notice_unsaid_sync">Without it, syncing can stop with nothing saying so.</string>
+    <!-- Release progress sources -->
+    <string name="release_sources">Release progress sources</string>
+    <string name="release_sources_desc">The newest chapter shown is the highest any of these reports. Ignore one that\'s wrong for this series and it stops counting here, on the home screen and in notifications.</string>
+    <string name="release_sources_desc_anime">The newest episode shown comes from these. Ignore one that\'s wrong for this series and it stops counting here, on the home screen and in notifications.</string>
+    <string name="release_source_malsync">MALSync</string>
+    <string name="release_source_mangaupdates">MangaUpdates</string>
+    <string name="release_source_comick">Comick</string>
+    <string name="release_source_none">Nothing reported yet</string>
+    <string name="release_source_ignored_value">Ignored · %1$s</string>
+    <string name="release_source_ignore">Ignore</string>
+    <string name="release_source_track">Track again</string>
     <!-- Continue widget -->
     <string name="widget_continue">Continue</string>
     <string name="widget_continue_empty">Nothing to continue yet</string>

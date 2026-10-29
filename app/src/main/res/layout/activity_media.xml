@@ -182,66 +182,84 @@
                     android:paddingStart="32dp"
                     android:paddingEnd="8dp">
 
+                    <!-- Fills the row so the icons stay at its end; the tap area inside wraps the text,
+                         so its ripple is no wider than what is tapped. -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:gravity="center_vertical"
                         android:orientation="vertical">
 
+                        <!-- The progress line (and source line): tapped as one, for the release sources sheet. -->
                         <LinearLayout
-                            android:layout_width="match_parent"
+                            android:id="@+id/mediaProgressTap"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical">
+                            android:layout_marginStart="-8dp"
+                            android:background="@drawable/bg_progress_tap"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="vertical"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="2dp">
 
-                            <TextView
-                                android:id="@+id/mediaTotal"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:ellipsize="end"
-                                android:fontFamily="@font/poppins_family"
-                                android:lineSpacingExtra="-8sp"
-                                android:marqueeRepeatLimit="marquee_forever"
-                                android:maxLines="2"
-                                android:textColor="?attr/colorOnBackground"
-                                android:textSize="16sp"
-                                tools:text="Watched 10 out of 10" />
-
-                            <Button
-                                android:id="@+id/mediaLanguageButton"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
+                            <LinearLayout
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:minWidth="0dp"
-                                android:minHeight="0dp"
-                                android:paddingStart="8dp"
-                                android:paddingTop="4dp"
-                                android:paddingEnd="8dp"
-                                android:paddingBottom="4dp"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical">
+
+                                <TextView
+                                    android:id="@+id/mediaTotal"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:ellipsize="end"
+                                    android:fontFamily="@font/poppins_family"
+                                    android:lineSpacingExtra="-8sp"
+                                    android:marqueeRepeatLimit="marquee_forever"
+                                    android:maxLines="2"
+                                    android:textColor="?attr/colorOnBackground"
+                                    android:textSize="16sp"
+                                    tools:text="Watched 10 out of 10" />
+
+                                <Button
+                                    android:id="@+id/mediaLanguageButton"
+                                    style="@style/Widget.Material3.Button.OutlinedButton"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:minWidth="0dp"
+                                    android:minHeight="0dp"
+                                    android:paddingStart="8dp"
+                                    android:paddingTop="4dp"
+                                    android:paddingEnd="8dp"
+                                    android:paddingBottom="4dp"
+                                    android:textColor="?attr/colorOnBackground"
+                                    app:cornerRadius="12dp"
+                                    android:textSize="12sp"
+                                    android:visibility="gone"
+                                    tools:text="🎙️EN"
+                                    tools:visibility="visible" />
+
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/mediaUnreadSource"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:fontFamily="@font/poppins_family"
+                                android:marqueeRepeatLimit="marquee_forever"
+                                android:maxLines="1"
                                 android:textColor="?attr/colorOnBackground"
-                                app:cornerRadius="12dp"
                                 android:textSize="12sp"
+                                android:alpha="0.66"
                                 android:visibility="gone"
-                                tools:text="🎙️EN"
-                                tools:visibility="visible" />
+                                tools:text="Source: MangaSource" />
 
                         </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/mediaUnreadSource"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:ellipsize="end"
-                            android:fontFamily="@font/poppins_family"
-                            android:marqueeRepeatLimit="marquee_forever"
-                            android:maxLines="1"
-                            android:textColor="?attr/colorOnBackground"
-                            android:textSize="12sp"
-                            android:alpha="0.66"
-                            android:visibility="gone"
-                            tools:text="Source: MangaSource" />
-
                     </LinearLayout>
 
                     <ImageView

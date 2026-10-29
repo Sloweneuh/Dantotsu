@@ -119,7 +119,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
         )
 
         // Chapter progress
-        val latestChapter = muMedia.latestChapter
+        val latestChapter = ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(muMedia.id, muMedia.latestChapter)
         binding.mediaListProgress.setText(muMedia.userChapter?.toString() ?: "")
         binding.mediaListVolume.setText(muMedia.userVolume?.toString() ?: "")
         fun setProgressSuffix(latest: Int?) {
@@ -141,7 +141,12 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                     muSeriesId = muMedia.id,
                     titles = listOfNotNull(muMedia.title),
                     comickSlug = model.comickSlug.value,
-                )?.lastEp?.total ?: return@launch
+                )?.lastEp?.total
+                    ?.takeUnless {
+                        ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(
+                            ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id)
+                        )
+                    } ?: return@launch
                 withContext(Dispatchers.Main) {
                     setProgressSuffix(MalSyncMu.latestChapter(latestChapter, total))
                 }

@@ -430,7 +430,7 @@ class UnreadChaptersAdapter(
             val malSync = malSyncInfoFor(item)
             val userChapter = item.userChapter
             itemCompactUserProgress.text = userChapter?.toString() ?: "~"
-            val latest = MalSyncMu.latestChapter(item.latestChapter, malSync?.lastChapter)
+            val latest = MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), malSync?.lastChapter)
             val showLatest = latest != null && latest > 0 && (userChapter == null || latest > userChapter)
             itemCompactTotal.text = if (showLatest) " | $latest | ~" else " | ~"
 
@@ -535,7 +535,7 @@ class UnreadChaptersAdapter(
             val userChapter = item.userChapter
             itemUserProgressLarge.text = userChapter?.toString() ?: "~"
             itemProgressSeparator.visibility = View.VISIBLE
-            val latest = MalSyncMu.latestChapter(item.latestChapter, malSync?.lastChapter)
+            val latest = MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), malSync?.lastChapter)
             itemCompactTotal.text = latest?.toString() ?: "??"
             itemTotal.text = " " + root.context.getString(R.string.chapter_plural)
 

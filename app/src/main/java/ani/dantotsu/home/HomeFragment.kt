@@ -233,7 +233,7 @@ class HomeFragment : Fragment() {
             ?.filter { !excludeList.containsMediaId(muMediaKey(it.id).toString()) }
             ?.filter {
                 val latest = MalSyncMu.latestChapter(
-                    it.latestChapter,
+                    ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(it.id, it.latestChapter),
                     muUnreadInfo[muMediaKey(it.id)]?.lastChapter,
                 )
                 latest != null && latest > (it.userChapter ?: 0)
@@ -316,7 +316,7 @@ class HomeFragment : Fragment() {
             },
             latest = { (item, info) ->
                 when (item) {
-                    is MUMedia -> MalSyncMu.latestChapter(item.latestChapter, info?.lastChapter) ?: 0
+                    is MUMedia -> MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), info?.lastChapter) ?: 0
                     else -> info?.lastChapter ?: 0
                 }
             },
@@ -351,7 +351,7 @@ class HomeFragment : Fragment() {
             if (_binding == null) return@launch
             muUnreadInfoKey = key
             if (info.isEmpty() && muUnreadInfo.isEmpty()) return@launch
-            muUnreadInfo = info
+            muUnreadInfo = ani.dantotsu.connections.ReleaseSourceIgnores.filterMu(info)
             renderUnreadRow(animate = false)
         }
     }
@@ -492,8 +492,10 @@ class HomeFragment : Fragment() {
                     // the MangaUpdates entries to order these against.
                     val info = mergedCachedInfoFor(model.getMangaContinue().value) + unreadInfo
                     val (visible, reconciled) = reconcileUnread(unreadList, info)
-                    unreadAniList = visible
-                    unreadInfoMap = reconciled
+                    // Without MALSync's answer where the user ignores it for the series, and so without
+                    // the series, unless another source still puts it behind (Comick, below).
+                    unreadInfoMap = ani.dantotsu.connections.ReleaseSourceIgnores.filterAniList(reconciled)
+                    unreadAniList = visible.filter { it.id in unreadInfoMap }
                     // Persist MALSync unread info so cached UI can show source/lastEp on next load.
                     // Through UnreadCache so the media half is rewritten from the same map — see
                     // [ani.dantotsu.notifications.unread.UnreadCache.replaceInfo].
@@ -504,8 +506,10 @@ class HomeFragment : Fragment() {
                     val (visible, reconciled) =
                         if (merged.isEmpty()) emptyList<Media>() to emptyMap<Int, UnreadChapterInfo>()
                         else reconcileUnread(unreadList, merged)
-                    unreadAniList = visible
-                    unreadInfoMap = reconciled
+                    // Without MALSync's answer where the user ignores it for the series, and so without
+                    // the series, unless another source still puts it behind (Comick, below).
+                    unreadInfoMap = ani.dantotsu.connections.ReleaseSourceIgnores.filterAniList(reconciled)
+                    unreadAniList = visible.filter { it.id in unreadInfoMap }
                 }
                 unreadAniListSettled = true
                 renderUnreadRow()
@@ -1842,8 +1846,10 @@ class HomeFragment : Fragment() {
             // so [reconcileUnread] is what makes this list current rather than merely stored.
             val (visible, reconciled) =
                 reconcileUnread(cached, mergedCachedInfoFor(model.getMangaContinue().value))
-            unreadAniList = visible
-            unreadInfoMap = reconciled
+            // Without MALSync's answer where the user ignores it for the series, and so without
+            // the series, unless another source still puts it behind (Comick, below).
+            unreadInfoMap = ani.dantotsu.connections.ReleaseSourceIgnores.filterAniList(reconciled)
+            unreadAniList = visible.filter { it.id in unreadInfoMap }
             unreadAniListSettled = true
             renderUnreadRow()
         } catch (e: Exception) {

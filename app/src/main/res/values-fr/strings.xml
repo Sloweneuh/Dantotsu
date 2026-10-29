@@ -3429,6 +3429,17 @@
     <string name="notice_extension_update">Mises à jour des extensions</string>
     <string name="notice_extension_obsolete">Extensions obsolètes</string>
     <string name="notice_unsaid_sync">Sans lui, la synchronisation peut s\'arrêter sans que rien ne le signale.</string>
+    <!-- Release progress sources -->
+    <string name="release_sources">Sources de progression</string>
+    <string name="release_sources_desc">Le dernier chapitre affiché est le plus élevé de ceux signalés ici. Ignorez une source erronée pour cette série : elle ne compte plus ici, sur l\'accueil ni dans les notifications.</string>
+    <string name="release_sources_desc_anime">Le dernier épisode affiché vient de ces sources. Ignorez une source erronée pour cette série : elle ne compte plus ici, sur l\'accueil ni dans les notifications.</string>
+    <string name="release_source_malsync">MALSync</string>
+    <string name="release_source_mangaupdates">MangaUpdates</string>
+    <string name="release_source_comick">Comick</string>
+    <string name="release_source_none">Rien de signalé pour l\'instant</string>
+    <string name="release_source_ignored_value">Ignorée · %1$s</string>
+    <string name="release_source_ignore">Ignorer</string>
+    <string name="release_source_track">Suivre à nouveau</string>
     <!-- Continue widget -->
     <string name="widget_continue">Reprendre</string>
     <string name="widget_continue_empty">Rien à reprendre pour l\'instant</string>

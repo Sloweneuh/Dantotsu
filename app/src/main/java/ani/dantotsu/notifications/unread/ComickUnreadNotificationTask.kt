@@ -1,6 +1,7 @@
 package ani.dantotsu.notifications.unread
 
 import android.annotation.SuppressLint
+import ani.dantotsu.connections.ReleaseSourceIgnores
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -569,7 +570,17 @@ class ComickUnreadNotificationTask : Task {
         }
 
         val latestByHid = HashMap<String, Int>()
-        val behind = titlesBehind(candidates, latestByHid).filter { b ->
+        val behind = titlesBehind(candidates, latestByHid).also {
+            // Every title's newest chapter, behind or not, under each page it can be shown on —
+            // for the release sources sheet.
+            val answers = HashMap<String, Pair<Int, String?>>()
+            candidates.forEach { c ->
+                val latest = latestByHid[c.entry.hid] ?: return@forEach
+                c.links.anilistId?.let { answers[ReleaseSourceIgnores.anilist(it)] = latest to null }
+                c.links.mangaUpdatesIds.forEach { answers[ReleaseSourceIgnores.mu(it)] = latest to null }
+            }
+            ani.dantotsu.connections.ReleaseSourceAnswers.record(ReleaseSourceIgnores.Provider.COMICK, answers)
+        }.filter { b ->
             val links = b.candidate.links
             // The newest chapter the AniList or MangaUpdates check already knows for this title.
             val known = listOfNotNull(links.anilistId?.let { anilistKnownLatest[it] })
@@ -835,11 +846,19 @@ class ComickUnreadNotificationTask : Task {
     @SuppressLint("MissingPermission")
     private fun sendNotifications(
         context: Context,
-        items: List<UnreadItem>,
+        announced: List<UnreadItem>,
         icons: Map<Int, Bitmap?>,
         /** A repost of one already announced ([moveNotifications]): no sound or vibration. */
         silent: Boolean = false,
     ) {
+        // Not for a title whose Comick count the user said to stop believing on its page.
+        val items = announced.filterNot { item ->
+            ReleaseSourceIgnores.comickIgnored(
+                item.anilistMedia?.id ?: item.anilistId,
+                item.muSeriesIds + listOfNotNull(item.muListEntry?.id, item.muSeriesId),
+            )
+        }
+        if (items.isEmpty()) return
         val notificationManager = NotificationManagerCompat.from(context)
         // Once for the batch: see MuUnreadNotificationTask.sendNotifications.
         val isGrouped = items.size > 1 ||

@@ -81,7 +81,7 @@ object UnreadOrder {
      * [ani.dantotsu.connections.malsync.MalSyncMu.latestChapter].
      */
     private fun latestChapterOf(item: MUMedia, info: Map<Int, UnreadChapterInfo>): Int? =
-        MalSyncMu.latestChapter(item.latestChapter, info[muMediaKey(item.id)]?.lastChapter)
+        MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), info[muMediaKey(item.id)]?.lastChapter)
 
     /**
      * When an entry's newest chapter landed, epoch ms. Unknown dates sort last.

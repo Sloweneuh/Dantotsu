@@ -1,6 +1,7 @@
 package ani.dantotsu.connections.mangaupdates
 
 import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.media.addProgressChevron
 import ani.dantotsu.connections.discord.BrowsingPresence
 import android.animation.ObjectAnimator
 import android.content.Intent
@@ -154,6 +155,17 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     /** Comick's latest chapter for the series, once its Comick entry has been found. */
     private fun offerComickChapter(comic: ComickComic?) {
         val last = comic?.last_chapter?.toInt() ?: return
+        liveComickChapter = last
+        // The answer is stored once the uploader is known, as the Comick tab finds it.
+        lifecycleScope.launch(Dispatchers.IO) {
+            val group = ani.dantotsu.media.comickGroupOf(comic.hid, comic.last_chapter)
+            liveComickSource = group
+            ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK,
+                ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id), last, group,
+            )
+        }
+        if (ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id))) return
         val before = knownChapter
         offerKnownChapter(last, "Comick")
         if (knownChapter != before) progress()
@@ -200,7 +212,60 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         return type?.contains("novel", ignoreCase = true) == true
     }
 
+    /** Comick's newest chapter, once its entry is found — for the sources sheet, ignored or not. */
+    private var liveComickChapter: Int? = null
+    private var liveComickSource: String? = null
+
+    /**
+     * The sheet behind the progress line: MangaUpdates, MALSync and Comick, each with what it
+     * reports, to ignore the one that is wrong for this series.
+     */
+    private fun showReleaseSources() {
+        val key = muMediaKey(muMedia.id)
+        val cache = ani.dantotsu.notifications.unread.UnreadCache
+        val target = ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id)
+        // Live from this visit, else the last check's answer (caught up or not), else the unread
+        // cache from before answers were kept.
+        val malSync = malSyncChapter?.let { it to malSyncSource }
+            ?: ani.dantotsu.connections.ReleaseSourceAnswers.get(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target)
+                ?.let { it.latest to it.source }
+            ?: cache.rawMuInfo()[key]?.let { it.lastChapter to it.source }
+        val comick = cache.rawComick().firstOrNull { it.muMedia?.id == muMedia.id }
+        val comickAnswer = ani.dantotsu.connections.ReleaseSourceAnswers.get(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)
+        // Each candidate's chapter with the uploader it came with; the newest is shown.
+        val comickBest = listOfNotNull(
+            liveComickChapter?.let { it to liveComickSource },
+            comick?.let { it.latestChapter to it.source },
+            comickAnswer?.let { it.latest to it.source },
+        ).maxByOrNull { it.first }
+        val rows = listOf(
+            ani.dantotsu.media.ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MANGAUPDATES, muMedia.latestChapter),
+            ani.dantotsu.media.ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, malSync?.first, malSync?.second),
+            ani.dantotsu.media.ReleaseSourcesSheet.Row(
+                ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK,
+                comickBest?.first,
+                comickBest?.second,
+            ),
+        )
+        ani.dantotsu.media.ReleaseSourcesSheet.show(this, ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id), false, rows) {
+            // Worked out again from what is still believed: the caches read without what is
+            // ignored, and the unread row's passed-in chapter dropped, as it may be the one.
+            intent.removeExtra("lastChapter")
+            intent.removeExtra("source")
+            knownChapter = null
+            knownSource = null
+            if (muMedia.listId != 2) loadKnownChapter()
+            liveComickChapter?.let { last ->
+                if (!ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id))) {
+                    offerKnownChapter(last, "Comick")
+                }
+            }
+            progress()
+        }
+    }
+
     private fun progress() {
+        binding.mediaProgressTap.setOnClickListener { showReleaseSources() }
         val statusName = getListDisplayName(muMedia.listId)
         binding.mediaAddToList.text = statusName ?: getString(R.string.add_list)
 
@@ -218,7 +283,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             // Only show it when it is >= user progress (i.e. there are still chapters to read).
             val progress = currentChapter ?: 0
             val latest = MalSyncMu.latestChapter(
-                MalSyncMu.latestChapter(muMedia.latestChapter, malSyncChapter),
+                MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(muMedia.id, muMedia.latestChapter), believedMalSync()),
                 knownChapter,
             )
             if (latest != null && latest >= progress) {
@@ -227,13 +292,14 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             }
             bold { color(white) { append("??") } }
         }
+        binding.mediaTotal.addProgressChevron()
         binding.mediaTotal.visibility = View.VISIBLE
 
         // The source line only earns its space while there is something unread to read there.
         // MALSync only relabels the chapter when it is strictly newer than what the unread row or
         // Comick already found, as on the AniList page.
-        val malWins = (malSyncChapter ?: 0) > (knownChapter ?: 0)
-        val bestChapter = if (malWins) malSyncChapter else knownChapter
+        val malWins = (believedMalSync() ?: 0) > (knownChapter ?: 0)
+        val bestChapter = if (malWins) believedMalSync() else knownChapter
         val bestSource = if (malWins) malSyncSource else knownSource
         val unread = (bestChapter ?: 0) > (currentChapter ?: 0)
         val source = bestSource?.takeIf { it.isNotBlank() && unread }
@@ -242,6 +308,11 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             binding.mediaUnreadSource?.text =
                 getString(R.string.notification_source_subtext, source)
         }
+    }
+
+    /** [malSyncChapter], unless MALSync is ignored for this series. */
+    private fun believedMalSync(): Int? = malSyncChapter?.takeUnless {
+        ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id))
     }
 
     /**
@@ -265,6 +336,10 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 if (isDestroyed) return@withContext
                 malSyncChapter = lastEp.total
                 malSyncSource = result.source
+                ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                    ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id),
+                    lastEp.total, result.source,
+                )
                 progress()
             }
         }

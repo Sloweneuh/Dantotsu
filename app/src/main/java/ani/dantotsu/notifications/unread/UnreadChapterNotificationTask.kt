@@ -1,6 +1,7 @@
 package ani.dantotsu.notifications.unread
 
 import android.annotation.SuppressLint
+import ani.dantotsu.connections.ReleaseSourceIgnores
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -232,6 +233,16 @@ class UnreadChapterNotificationTask : Task {
 
                         Logger.log("UnreadChapterNotificationTask: found ${unreadInfo.size} manga with unread chapters")
 
+                        // Every answer, caught up or not, for the release sources sheet.
+                        ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                            ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC,
+                            batchResults.mapNotNull { (id, result) ->
+                                result.lastEp?.let {
+                                    ani.dantotsu.connections.ReleaseSourceIgnores.anilist(id) to (it.total to result.source)
+                                }
+                            }.toMap(),
+                        )
+
                         // Publish for the user's other devices, then cache + notify locally.
                         UnreadSync.push(unreadInfo)
                         anilistKnownLatest = mangaList.mapNotNull { media ->
@@ -310,6 +321,14 @@ class UnreadChapterNotificationTask : Task {
                     }
 
                     Logger.log("UnreadChapterNotificationTask: found ${unreadInfo.size} anime with unread episodes")
+                    ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                        ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC,
+                        batchResults.mapNotNull { (id, result) ->
+                            result.lastEp?.let {
+                                ani.dantotsu.connections.ReleaseSourceIgnores.anilist(id) to (it.total to result.source)
+                            }
+                        }.toMap(),
+                    )
                     handleUnreadResult(
                         context, unreadInfo, animeList, isAnime = true,
                         answeredIds = batchResults.keys,
@@ -473,12 +492,16 @@ class UnreadChapterNotificationTask : Task {
     @SuppressLint("MissingPermission")
     private fun sendNotifications(
         context: Context,
-        newChapters: List<Pair<Media, UnreadChapterInfo>>,
+        announced: List<Pair<Media, UnreadChapterInfo>>,
         icons: Map<Int, Bitmap?>,
         isAnime: Boolean = false,
         /** A repost of one already announced ([ReleaseRetraction]): no sound or vibration. */
         silent: Boolean = false,
     ) {
+        // Not for a series whose MALSync answer the user said to stop believing.
+        val kept = ReleaseSourceIgnores.filterAniList(announced.associate { it.first.id to it.second }).keys
+        val newChapters = announced.filter { it.first.id in kept }
+        if (newChapters.isEmpty()) return
         val notificationManager = NotificationManagerCompat.from(context)
         // Computed once for the whole batch rather than per item: checking "is anyone else
         // active" before any of *this* batch has posted would otherwise miss that the batch

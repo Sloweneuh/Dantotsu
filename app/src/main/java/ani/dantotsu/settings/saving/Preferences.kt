@@ -172,6 +172,9 @@ enum class PrefName(val data: Pref) {
     AutoBackupInterval(Pref(Location.Irrelevant, Int::class, 0)),
     // In-app notices (TopBanner): all of them, and the ones turned off by id. See AppNotices.
     AppNoticesEnabled(Pref(Location.UI, Boolean::class, true)),
+    // Release-progress providers ignored per series: `provider|al:<id>` / `provider|mu:<key>`. See
+    // ReleaseSourceIgnores. General, so they back up and sync like the user's other choices.
+    IgnoredReleaseSources(Pref(Location.General, Set::class, setOf<String>())),
     DisabledAppNotices(Pref(Location.UI, Set::class, setOf<String>())),
     AutoListSyncLastSynced(Pref(Location.Irrelevant, Int::class, 0)),
     AutoListSyncLastFailed(Pref(Location.Irrelevant, Int::class, 0)),

@@ -3,6 +3,7 @@ package ani.dantotsu.notifications.unread
 import android.content.Context
 import android.content.Intent
 import ani.dantotsu.App
+import ani.dantotsu.connections.ReleaseSourceIgnores
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.media.Media
@@ -51,7 +52,7 @@ object UnreadCache {
         try {
             val candidateIds = mediaList.mapTo(HashSet()) { it.id }
             val merged = LinkedHashMap<Int, UnreadChapterInfo>()
-            cachedInfo().forEach { (id, info) ->
+            rawInfo().forEach { (id, info) ->
                 if (id !in answeredIds && id in candidateIds) merged[id] = info
             }
             merged.putAll(unreadInfo)
@@ -145,7 +146,7 @@ object UnreadCache {
      */
     fun raiseComickProgress(hid: String, progress: Int) {
         try {
-            val cached = cachedComick()
+            val cached = rawComick()
             var changed = false
             val updated = cached.mapNotNull { entry ->
                 if (entry.hid != hid || progress <= entry.progress) return@mapNotNull entry
@@ -161,12 +162,24 @@ object UnreadCache {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
+    /*
+     * The readers below leave out what the user told [ReleaseSourceIgnores] to stop believing, so
+     * every screen built on them — the home row, the widget, the media pages, the list editor —
+     * agrees. The raw* ones are what is actually stored: what the merges here read and write back,
+     * so an ignored answer is kept and returns the moment it is tracked again.
+     */
+
     fun cachedComick(): List<ComickUnreadEntry> =
-        read("cached_comick_unread") as? List<ComickUnreadEntry> ?: emptyList()
+        rawComick().filterNot(ReleaseSourceIgnores::comickIgnored)
 
     @Suppress("UNCHECKED_CAST")
-    fun cachedInfo(): Map<Int, UnreadChapterInfo> = read("cached_unread_info") as? Map<Int, UnreadChapterInfo>
+    fun rawComick(): List<ComickUnreadEntry> =
+        read("cached_comick_unread") as? List<ComickUnreadEntry> ?: emptyList()
+
+    fun cachedInfo(): Map<Int, UnreadChapterInfo> = ReleaseSourceIgnores.filterAniList(rawInfo())
+
+    @Suppress("UNCHECKED_CAST")
+    fun rawInfo(): Map<Int, UnreadChapterInfo> = read("cached_unread_info") as? Map<Int, UnreadChapterInfo>
         ?: emptyMap()
 
     /**
@@ -183,8 +196,10 @@ object UnreadCache {
     @Suppress("UNCHECKED_CAST")
     fun cachedMedia(): List<Media> = read("cached_unread_chapters") as? List<Media> ?: emptyList()
 
+    fun cachedMuInfo(): Map<Int, UnreadChapterInfo> = ReleaseSourceIgnores.filterMu(rawMuInfo())
+
     @Suppress("UNCHECKED_CAST")
-    fun cachedMuInfo(): Map<Int, UnreadChapterInfo> =
+    fun rawMuInfo(): Map<Int, UnreadChapterInfo> =
         read("cached_mu_unread_info") as? Map<Int, UnreadChapterInfo> ?: emptyMap()
 
     @Suppress("UNCHECKED_CAST")
@@ -215,7 +230,7 @@ object UnreadCache {
             PrefManager.init(context)
             var changed = false
 
-            val info = cachedInfo().toMutableMap()
+            val info = rawInfo().toMutableMap()
             if (info.remove(mediaId) != null) {
                 val media = cachedMedia().filterNot { it.id == mediaId }
                 PrefManager.setCustomVal("cached_unread_info", HashMap(info))
@@ -223,7 +238,7 @@ object UnreadCache {
                 changed = true
             }
 
-            val muInfo = cachedMuInfo().toMutableMap()
+            val muInfo = rawMuInfo().toMutableMap()
             if (muInfo.remove(mediaId) != null) {
                 val muMedia = cachedMuMedia().filterNot {
                     ani.dantotsu.connections.mangaupdates.muMediaKey(it.id) == mediaId
@@ -233,7 +248,7 @@ object UnreadCache {
                 changed = true
             }
 
-            val comick = cachedComick()
+            val comick = rawComick()
             val comickKept = comick.filterNot { it.notifId == mediaId }
             if (comickKept.size != comick.size) {
                 PrefManager.setCustomVal("cached_comick_unread", ArrayList(comickKept))

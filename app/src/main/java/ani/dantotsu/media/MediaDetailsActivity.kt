@@ -87,6 +87,13 @@ import kotlinx.coroutines.withContext
 import nl.joery.animatedbottombar.AnimatedBottomBar
 
 class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener {
+    /** MALSync's newest chapter or episode for this media and its source, once fetched. */
+    private var liveMalSync: Pair<Int, String?>? = null
+
+    /** Comick's newest chapter for this manga, once its Comick entry is found and asked. */
+    private var liveComick: Pair<Int, String?>? = null
+    private var comickAsked = false
+
     lateinit var launcher: LauncherWrapper
     lateinit var binding: ActivityMediaBinding
     private val scope = lifecycleScope
@@ -730,6 +737,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                                             }
                                                         }
                                                 binding.mediaTotal.text = updatedText
+                                                binding.mediaTotal.addProgressChevron()
 
                                                 // Update button with new language directly
                                                 val newLangCodeUpper =
@@ -870,6 +878,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                         }
                     }
             binding.mediaTotal.text = text
+            binding.mediaTotal.addProgressChevron()
 
             // Fetch MALSync data for anime to show latest available episode (replaces
             // nextAiringEpisode display)
@@ -895,6 +904,16 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                 )
 
                         if (malSyncResult != null && malSyncResult.lastEp != null) {
+                            // Kept for the sources sheet, which shows it even when it is ignored.
+                            liveMalSync = malSyncResult.lastEp.total to malSyncResult.source
+                            ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                                ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC,
+                                ani.dantotsu.connections.ReleaseSourceIgnores.anilist(media.id),
+                                malSyncResult.lastEp.total, malSyncResult.source,
+                            )
+                            if (ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(
+                                    ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, ani.dantotsu.connections.ReleaseSourceIgnores.anilist(media.id))
+                            ) return@launch
                             val lastEpisode = malSyncResult.lastEp.total
                             val userProgress = media.userProgress ?: 0
                             val anilistTotal = media.anime!!.totalEpisodes
@@ -959,6 +978,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                             }
                                         }
                                 binding.mediaTotal.text = updatedText
+                                binding.mediaTotal.addProgressChevron()
 
                                 // Show language button with icon and lang code
                                 setupLanguageButton(media, languageOption, malSyncResult.lang)
@@ -972,197 +992,168 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 }
             }
 
-            // Check if source and lastChapter passed from intent (e.g., from unread chapters list
-            // or notification)
-            val passedSource = intent.getStringExtra("source")
-            val passedLastChapter = intent.getIntExtra("lastChapter", -1)
-
-            // Handle passed unread info
+            // Manga: the newest chapter is the highest any believed source reports — the unread
+            // row or notification that opened the page (else the last checks' caches), then
+            // MALSync and Comick asked live. On a tie the one already known keeps its source, so a
+            // site mirroring the same chapter doesn't relabel it. Ignored sources
+            // ([ReleaseSourceIgnores]) are left out throughout.
             if (media.manga != null) {
-                val userProgress = media.userProgress ?: 0
-
-                // If we have both source and lastChapter, show the full info
-                if (!passedSource.isNullOrBlank() &&
-                                passedLastChapter > 0 &&
-                                passedLastChapter > userProgress
-                ) {
-                    val updatedText =
-                            SpannableStringBuilder().apply {
-                                val white =
-                                        this@MediaDetailsActivity.getThemeColor(
-                                                com.google.android.material.R.attr.colorOnBackground
-                                        )
-                                if (media.userStatus != null) {
-                                    append(getString(R.string.read_num))
-                                    val colorSecondary =
-                                            getThemeColor(
-                                                    com.google
-                                                            .android
-                                                            .material
-                                                            .R
-                                                            .attr
-                                                            .colorSecondary
-                                            )
-                                    bold {
-                                        color(colorSecondary) { append("${media.userProgress}") }
-                                    }
-                                    append(getString(R.string.chapters_out_of))
-                                } else {
-                                    append(getString(R.string.chapters_total_of))
-                                }
-                                // Show latest available chapter (similar to nextAiringEpisode for
-                                // anime)
-                                bold { color(white) { append("$passedLastChapter") } }
-                                append(" / ")
-                                bold {
-                                    color(white) {
-                                        append("${media.manga!!.totalChapters ?: "??"}")
-                                    }
-                                }
-                            }
-                    binding.mediaTotal.text = updatedText
-
-                    binding.mediaUnreadSource?.text =
-                            getString(R.string.notification_source_subtext, passedSource)
-                    binding.mediaUnreadSource?.visibility = View.VISIBLE
-                } else if (!passedSource.isNullOrBlank()) {
-                    // Show source only (from notification or when we have source but no
-                    // lastChapter)
-                    binding.mediaUnreadSource?.text =
-                            getString(R.string.notification_source_subtext, passedSource)
-                    binding.mediaUnreadSource?.visibility = View.VISIBLE
+                val ignores = ani.dantotsu.connections.ReleaseSourceIgnores
+                val target = ignores.anilist(media.id)
+                val passedSource = intent.getStringExtra("source")?.takeIf { it.isNotBlank() }
+                val passedLastChapter = intent.getIntExtra("lastChapter", -1)
+                val candidates = mutableListOf<Pair<Int, String?>>()
+                if (passedLastChapter > 0) {
+                    candidates += passedLastChapter to passedSource
+                } else if (passedSource == null) {
+                    val cache = ani.dantotsu.notifications.unread.UnreadCache
+                    cache.cachedInfo()[media.id]
+                        ?.let { candidates += it.lastChapter to it.source.takeIf { s -> s.isNotBlank() } }
+                    cache.cachedComick()
+                        .filter { (it.anilistMedia?.id ?: it.anilistId) == media.id }
+                        .maxByOrNull { it.latestChapter }
+                        ?.let { candidates += it.latestChapter to it.source }
                 }
-            }
+                liveComick?.takeUnless { ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target) }
+                    ?.let { candidates += it }
 
-            // Fetch MalSync data for manga to show latest available chapter (or update cached data)
-            // Don't show for manga marked as COMPLETED
-
-                val malModeForManga = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
-                if (media.manga != null && isOnline(this) && media.userStatus != "COMPLETED" && PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malModeForManga != "anime") {
-                lifecycleScope.launch(Dispatchers.IO) {
-                    try {
-                        val malSyncResult =
-                                ani.dantotsu.connections.malsync.MalSyncApi.getLastChapter(
-                                        media.id,
-                                        media.idMAL
-                                )
-                        if (malSyncResult != null && malSyncResult.lastEp != null) {
-                            val userProgress = media.userProgress ?: 0
-                            // The unread list/notification (or, failing those, the unread cache)
-                            // already picked the source with the newest chapter across MALSync,
-                            // MangaUpdates and Comick. MALSync only takes over when it reports a
-                            // strictly newer chapter, so its mirror doesn't relabel a chapter that
-                            // came from somewhere else.
-                            val cached = if (passedSource.isNullOrBlank())
-                                ani.dantotsu.notifications.unread.UnreadCache.cachedInfo()[media.id]
-                                    ?.takeIf { it.source.isNotBlank() }
-                            else null
-                            val knownSource = passedSource?.takeIf { it.isNotBlank() } ?: cached?.source
-                            val knownChapter = if (cached != null) cached.lastChapter else passedLastChapter
-                            val malWins = knownSource == null || malSyncResult.lastEp.total > knownChapter
-                            val lastChapter = if (malWins) malSyncResult.lastEp.total else knownChapter
-
-                            withContext(Dispatchers.Main) {
-                                // Check if there are unread chapters
-                                val hasUnreadChapters = lastChapter > userProgress
-
-                                if (hasUnreadChapters) {
-                                    // Update chapter count display
-                                    val updatedText =
-                                            SpannableStringBuilder().apply {
-                                                val white =
-                                                        this@MediaDetailsActivity.getThemeColor(
-                                                                com.google
-                                                                        .android
-                                                                        .material
-                                                                        .R
-                                                                        .attr
-                                                                        .colorOnBackground
-                                                        )
-                                                if (media.userStatus != null) {
-                                                    append(getString(R.string.read_num))
-                                                    val colorSecondary =
-                                                            getThemeColor(
-                                                                    com.google
-                                                                            .android
-                                                                            .material
-                                                                            .R
-                                                                            .attr
-                                                                            .colorSecondary
-                                                            )
-                                                    bold {
-                                                        color(colorSecondary) {
-                                                            append("${media.userProgress}")
-                                                        }
-                                                    }
-                                                    append(getString(R.string.chapters_out_of))
-                                                } else {
-                                                    append(getString(R.string.chapters_total_of))
-                                                }
-                                                // Show latest available chapter (similar to
-                                                // nextAiringEpisode for anime)
-                                                bold { color(white) { append("$lastChapter") } }
-                                                append(" / ")
-                                                bold {
-                                                    color(white) {
-                                                        append(
-                                                                "${media.manga!!.totalChapters ?: "??"}"
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                    binding.mediaTotal.text = updatedText
-                                }
-
-                                // Show source from MalSync result (prefer MalSync source, fallback
-                                // to passed source)
-                                val malSource = malSyncResult.source
-                                val sourceToShow =
-                                        if (!malWins) {
-                                            knownSource
-                                        } else if (!malSource.isNullOrBlank()) {
-                                            malSource
-                                        } else if (!knownSource.isNullOrBlank()) {
-                                            knownSource
-                                        } else if (hasUnreadChapters) {
-                                            // MalSync reports unread but no source - show unknown
-                                            getString(R.string.notification_unknown_source)
-                                        } else {
-                                            null
-                                        }
-
-                                if (!sourceToShow.isNullOrBlank() &&
-                                                (hasUnreadChapters || !passedSource.isNullOrBlank())
-                                ) {
-                                    // Show source if: 1) has unread chapters, OR 2) source was
-                                    // explicitly passed
-                                    binding.mediaUnreadSource?.text =
-                                            getString(
-                                                    R.string.notification_source_subtext,
-                                                    sourceToShow
-                                            )
-                                    binding.mediaUnreadSource?.visibility = View.VISIBLE
-                                } else {
-                                    // Hide source if user is caught up and no explicit passed
-                                    // source
-                                    if (passedSource.isNullOrBlank()) {
-                                        binding.mediaUnreadSource?.visibility = View.GONE
-                                    }
-                                }
-                            }
+                fun renderLatest() {
+                    val userProgress = media.userProgress ?: 0
+                    var best: Pair<Int, String?>? = null
+                    candidates.forEach { if (best == null || it.first > best!!.first) best = it }
+                    val latest = best?.first?.takeIf { it > userProgress }
+                    val white = getThemeColor(com.google.android.material.R.attr.colorOnBackground)
+                    val colorSecondary = getThemeColor(com.google.android.material.R.attr.colorSecondary)
+                    binding.mediaTotal.text = SpannableStringBuilder().apply {
+                        if (media.userStatus != null) {
+                            append(getString(R.string.read_num))
+                            bold { color(colorSecondary) { append("${media.userProgress}") } }
+                            append(getString(R.string.chapters_out_of))
+                        } else {
+                            append(getString(R.string.chapters_total_of))
                         }
-                    } catch (e: Exception) {
-                        ani.dantotsu.util.Logger.log(
-                                "MediaDetails: MalSync API error: ${e.message}"
-                        )
-                        e.printStackTrace()
-                        // Silently fail - just keep showing the original text
+                        // The latest released chapter, like nextAiringEpisode for anime — only while
+                        // there is something left to read.
+                        if (latest != null) {
+                            bold { color(white) { append("$latest") } }
+                            append(" / ")
+                        }
+                        bold { color(white) { append("${media.manga!!.totalChapters ?: "??"}") } }
+                    }
+                    binding.mediaTotal.addProgressChevron()
+                    // Where to read it, while there is something unread; otherwise only the source
+                    // the page was explicitly opened for.
+                    val source = if (latest != null) {
+                        best?.second ?: getString(R.string.notification_unknown_source)
+                    } else passedSource
+                    binding.mediaUnreadSource?.isVisible = source != null
+                    if (source != null) {
+                        binding.mediaUnreadSource?.text =
+                            getString(R.string.notification_source_subtext, source)
                     }
                 }
-            } else {
-                ani.dantotsu.util.Logger.log(
-                        "MediaDetails: NOT calling MalSync API - condition failed"
-                )
+                renderLatest()
+
+                val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                val known = liveMalSync
+                if (known != null) {
+                    // Already asked on this visit: a redraw (a list edit, a source toggled in the
+                    // sheet) doesn't ask again.
+                    if (!ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target)) {
+                        candidates += known
+                        renderLatest()
+                    }
+                } else if (isOnline(this) && media.userStatus != "COMPLETED" &&
+                    PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode != "anime"
+                ) {
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        try {
+                            val result = ani.dantotsu.connections.malsync.MalSyncApi
+                                .getLastChapter(media.id, media.idMAL)
+                            val lastEp = result?.lastEp ?: return@launch
+                            val answer = lastEp.total to result.source.takeIf { it.isNotBlank() }
+                            liveMalSync = answer
+                            ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                                ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target, lastEp.total, result.source,
+                            )
+                            if (ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target)) return@launch
+                            withContext(Dispatchers.Main) {
+                                if (isDestroyed) return@withContext
+                                candidates += answer
+                                renderLatest()
+                            }
+                        } catch (e: Exception) {
+                            ani.dantotsu.util.Logger.log("MediaDetails: MalSync API error: ${e.message}")
+                        }
+                    }
+                }
+            }
+        }
+
+        // Comick's newest chapter, asked as soon as the series' Comick entry is known, for the
+        // progress line (unless ignored) and the sources sheet.
+        if (media.manga != null) {
+            model.comickSlug.observe(this) { slug ->
+                if (slug.isNullOrBlank() || comickAsked || !isOnline(this)) return@observe
+                comickAsked = true
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val comic = runCatching {
+                        ani.dantotsu.connections.comick.ComickApi.getComicDetails(slug)?.comic
+                    }.getOrNull()
+                    val lastExact = comic?.last_chapter
+                    val last = lastExact?.toInt()?.takeIf { it > 0 } ?: return@launch
+                    // Who uploaded it, as the Comick tab shows it.
+                    val group = comickGroupOf(comic.hid, lastExact)
+                    val target = ani.dantotsu.connections.ReleaseSourceIgnores.anilist(media.id)
+                    ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                        ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target, last, group,
+                    )
+                    withContext(Dispatchers.Main) {
+                        if (isDestroyed) return@withContext
+                        liveComick = last to (group ?: "Comick")
+                        if (!ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)) {
+                            total()
+                        }
+                    }
+                }
+            }
+        }
+
+        // Tapping the progress line lists where its newest chapter comes from, to ignore one
+        // that is wrong for this series.
+        binding.mediaProgressTap.setOnClickListener {
+            val target = ani.dantotsu.connections.ReleaseSourceIgnores.anilist(media.id)
+            val anime = media.anime != null
+            // Live from this visit, else the last check's answer (caught up or not), else the
+            // unread cache from before answers were kept.
+            val malSync = liveMalSync
+                ?: ani.dantotsu.connections.ReleaseSourceAnswers.get(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target)
+                    ?.let { it.latest to it.source }
+                ?: ani.dantotsu.notifications.unread.UnreadCache.rawInfo()[media.id]
+                    ?.let { it.lastChapter to it.source }
+            val rows = mutableListOf(
+                ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, malSync?.first, malSync?.second)
+            )
+            if (!anime) {
+                val comick = ani.dantotsu.notifications.unread.UnreadCache.rawComick()
+                    .filter { (it.anilistMedia?.id ?: it.anilistId) == media.id }
+                    .maxByOrNull { it.latestChapter }
+                val answer = ani.dantotsu.connections.ReleaseSourceAnswers.get(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)
+                val live = liveComick
+                rows += if (live != null && live.first >= maxOf(comick?.latestChapter ?: 0, answer?.latest ?: 0)) {
+                    ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, live.first, live.second)
+                } else if (comick != null && comick.latestChapter >= (answer?.latest ?: 0)) {
+                    ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, comick.latestChapter, comick.source)
+                } else {
+                    ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, answer?.latest, answer?.source)
+                }
+            }
+            ReleaseSourcesSheet.show(this, target, anime, rows) {
+                // What the unread row passed in may have come from the source just changed.
+                intent.removeExtra("lastChapter")
+                intent.removeExtra("source")
+                binding.mediaUnreadSource?.visibility = View.GONE
+                total()
             }
         }
 

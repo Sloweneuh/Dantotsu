@@ -1,6 +1,7 @@
 package ani.dantotsu.notifications.unread
 
 import android.annotation.SuppressLint
+import ani.dantotsu.connections.ReleaseSourceIgnores
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -279,7 +280,16 @@ class MuUnreadNotificationTask : Task {
         // ahead of MangaUpdates' own count, and with the source it landed on. The rest are unchanged.
         val settled = java.util.Collections.synchronizedSet(HashSet<Long>())
         val malSyncInfo = try {
-            MalSyncMu.unreadInfo(readingList, settled)
+            val all = MalSyncMu.unreadInfo(readingList, settled)
+            // Every answer, for the release sources sheet; then without the ones the user said
+            // to stop believing for a series.
+            ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                ReleaseSourceIgnores.Provider.MALSYNC,
+                all.entries.associate { (key, info) ->
+                    ReleaseSourceIgnores.muKey(key) to (info.lastChapter to info.source)
+                },
+            )
+            ReleaseSourceIgnores.filterMu(all)
         } catch (e: Exception) {
             Logger.log("MuUnreadNotificationTask: MALSync lookup failed: ${e.message}")
             settled.clear()
@@ -290,13 +300,13 @@ class MuUnreadNotificationTask : Task {
         val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         readingListLatest = readingList.mapNotNull { muMedia ->
             val info = malSyncInfo[muMediaKey(muMedia.id)]
-            MalSyncMu.latestChapter(muMedia.latestChapter, info?.lastChapter)?.let { muMedia.id to it }
+            MalSyncMu.latestChapter(ReleaseSourceIgnores.muLatest(muMedia.id, muMedia.latestChapter), info?.lastChapter)?.let { muMedia.id to it }
         }.toMap()
 
         return readingList.mapNotNull { muMedia ->
             if (excludeList.containsMediaId(muMediaKey(muMedia.id).toString())) return@mapNotNull null
             val info = malSyncInfo[muMediaKey(muMedia.id)]
-            val latest = MalSyncMu.latestChapter(muMedia.latestChapter, info?.lastChapter)
+            val latest = MalSyncMu.latestChapter(ReleaseSourceIgnores.muLatest(muMedia.id, muMedia.latestChapter), info?.lastChapter)
                 ?: return@mapNotNull null
             if (latest <= (muMedia.userChapter ?: 0)) return@mapNotNull null
             // Where to read the chapter being announced, whenever MALSync's site actually has it —
