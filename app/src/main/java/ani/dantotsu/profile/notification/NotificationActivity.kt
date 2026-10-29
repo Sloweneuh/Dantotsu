@@ -1,5 +1,6 @@
 package ani.dantotsu.profile.notification
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Intent
 import android.os.Bundle
 import android.view.ViewGroup
@@ -51,6 +52,7 @@ class NotificationActivity : AppCompatActivity() {
         initActivity(this)
         binding = ActivityNotificationBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         binding.notificationTitle.text = getString(R.string.notifications)
         binding.notificationToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight

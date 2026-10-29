@@ -1,5 +1,6 @@
 package ani.dantotsu.download.manage
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -61,6 +62,7 @@ class DownloadManagementFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        (view as? ViewGroup)?.capContentWidth()
         adapter = DownloadManagementAdapter(
             onDeleteMedia = { confirmDeleteMedia(it) },
             onDeleteChild = { confirmDeleteChild(it) },

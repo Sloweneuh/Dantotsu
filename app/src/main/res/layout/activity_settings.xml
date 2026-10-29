@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     tools:context=".settings.SettingsActivity">
 
     <LinearLayout
@@ -69,10 +70,12 @@
         </LinearLayout>
 
 
+        <!-- Takes the height left under the header, so the empty search state can fill it. The side
+             margins sit on its rows, letting that state's pattern run edge to edge. -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_marginHorizontal="24dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"
             android:animateLayoutChanges="true"
             android:clipToPadding="false"
             android:orientation="vertical"
@@ -83,6 +86,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
+                android:layout_marginHorizontal="24dp"
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="8dp"
                 app:boxBackgroundColor="@color/bg"
@@ -114,8 +118,8 @@
             <FrameLayout
                 android:id="@+id/settingsSearchEmptyFrame"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginVertical="32dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
                 android:visibility="gone">
 
                 <ani.dantotsu.others.PatternBackgroundView
@@ -144,6 +148,7 @@
             <ani.dantotsu.FadingEdgeRecyclerView
                 android:id="@+id/settingsRecyclerView"
                 android:layout_width="match_parent"
+                android:layout_marginHorizontal="24dp"
                 android:layout_height="wrap_content"
                 android:nestedScrollingEnabled="false"
                 android:requiresFadingEdge="vertical"
@@ -152,7 +157,7 @@
 
             <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:alpha="0.5"
                 android:gravity="center"

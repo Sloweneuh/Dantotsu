@@ -1,5 +1,6 @@
 package ani.dantotsu.profile.activity
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -46,6 +47,7 @@ class ActivityFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        (view as? ViewGroup)?.capContentWidth()
         super.onViewCreated(view, savedInstanceState)
         arguments?.let {
             type = it.getSerializableCompat<ActivityType>("type") as ActivityType

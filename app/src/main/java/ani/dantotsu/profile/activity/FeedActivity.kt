@@ -1,5 +1,6 @@
 package ani.dantotsu.profile.activity
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -38,6 +39,7 @@ class FeedActivity : AppCompatActivity() {
         initActivity(this)
         binding = ActivityNotificationBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         binding.notificationTitle.text = getString(R.string.activities)
         // Reads real insets rather than the app's statusBarHeight/navBarHeight globals: those are only
         // filled in as a side effect of some other activity's initActivity() call having already run in

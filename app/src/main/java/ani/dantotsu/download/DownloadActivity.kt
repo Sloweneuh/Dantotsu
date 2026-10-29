@@ -1,5 +1,6 @@
 package ani.dantotsu.download
 
+import ani.dantotsu.util.capContentWidth
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,6 +34,7 @@ class DownloadActivity : AppCompatActivity() {
         initActivity(this)
         binding = ActivityDownloadBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         launcher = LauncherWrapper(this, ActivityResultContracts.OpenDocumentTree())
 
         binding.downloadContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {

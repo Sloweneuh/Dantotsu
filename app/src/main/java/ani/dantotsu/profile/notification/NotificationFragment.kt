@@ -1,5 +1,6 @@
 package ani.dantotsu.profile.notification
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -57,6 +58,7 @@ class NotificationFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        (view as? ViewGroup)?.capContentWidth()
         super.onViewCreated(view, savedInstanceState)
         arguments?.let {
             getID = it.getInt("id")

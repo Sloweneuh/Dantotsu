@@ -6,14 +6,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingStart="26dp"
-    android:paddingEnd="26dp"
     tools:context=".media.history.HistoryActivity">
 
     <androidx.cardview.widget.CardView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="-10dp"
+        android:layout_marginStart="16dp"
         android:layout_marginTop="32dp"
         app:cardBackgroundColor="@color/nav_bg_inv"
         app:cardCornerRadius="16dp"
@@ -33,6 +31,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="26dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -55,21 +54,37 @@
             app:icon="@drawable/ic_round_delete_sweep_24" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/historyEmpty"
+    <!-- Empty state: the message over its drifting pattern, filling the rest of the screen. -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="48dp"
-        android:alpha="0.6"
-        android:gravity="center"
-        android:text="@string/history_empty"
-        android:textSize="15sp"
-        android:visibility="gone" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone"
+        android:id="@+id/historyEmptyFrame">
+
+        <ani.dantotsu.others.PatternBackgroundView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:patternIcon="@drawable/ic_round_history_24"
+            app:patternAnchor="@id/historyEmpty" />
+
+        <TextView
+            android:id="@+id/historyEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="26dp"
+            android:alpha="0.6"
+            android:gravity="center"
+            android:text="@string/history_empty"
+            android:textSize="15sp" />
+    </FrameLayout>
 
     <ani.dantotsu.FadingEdgeRecyclerView
         android:id="@+id/historyRecyclerView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginHorizontal="26dp"
         android:clipToPadding="false"
         android:paddingBottom="16dp"
         android:requiresFadingEdge="vertical"

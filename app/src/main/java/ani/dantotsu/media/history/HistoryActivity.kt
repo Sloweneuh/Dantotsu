@@ -1,5 +1,6 @@
 package ani.dantotsu.media.history
 
+import ani.dantotsu.util.capContentWidth
 import android.os.Bundle
 import android.text.format.DateFormat
 import android.text.format.DateUtils
@@ -48,6 +49,7 @@ class HistoryActivity : AppCompatActivity() {
         initActivity(this)
         binding = ActivityHistoryBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         binding.historyLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }
@@ -79,7 +81,8 @@ class HistoryActivity : AppCompatActivity() {
     private fun reload() {
         lifecycleScope.launch {
             val entries = withContext(Dispatchers.IO) { WatchHistory.entries() }
-            binding.historyEmpty.isVisible = entries.isEmpty()
+            binding.historyEmptyFrame.isVisible = entries.isEmpty()
+            binding.historyRecyclerView.isVisible = entries.isNotEmpty()
             binding.historyClear.isVisible = entries.isNotEmpty()
             adapter.submitList(rows(entries))
         }

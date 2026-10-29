@@ -1,5 +1,6 @@
 package ani.dantotsu.download.manage
 
+import ani.dantotsu.util.capContentWidth
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -35,6 +36,7 @@ class DownloadQueueFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        (view as? ViewGroup)?.capContentWidth()
         adapter = DownloadQueueAdapter(
             onCancel = { DownloadTracker.cancel(requireContext(), it) },
             onStartDrag = { itemTouchHelper.startDrag(it) }
