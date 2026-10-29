@@ -3404,6 +3404,14 @@
     <string name="auto_backup_desc">Enregistre vos paramètres dans Téléchargements/Dantotsu Backups et conserve les 5 dernières. Les identifiants et les paramètres des extensions ne sont pas inclus.</string>
     <!-- Continue shortcut -->
     <string name="shortcut_continue">Reprendre %1$s</string>
+    <!-- Next-episode countdown -->
+    <string name="next_episode_in">Épisode suivant dans %1$d</string>
+    <string name="play_now">Lire maintenant</string>
+    <string name="next_episode_countdown">Compte à rebours avant l\'épisode suivant</string>
+    <string name="skip_outro_to_next">Passer les endings vers l\'épisode suivant</string>
+    <string name="skip_outro_to_next_desc">Quand un ending commence, lancer le compte à rebours vers l\'épisode suivant au lieu de lire l\'ending et l\'aperçu.</string>
+    <!-- Up next card -->
+    <string name="up_next">À suivre</string>
     <!-- Continue widget -->
     <string name="widget_continue">Reprendre</string>
     <string name="widget_continue_empty">Rien à reprendre pour l\'instant</string>

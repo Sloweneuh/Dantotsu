@@ -20,6 +20,7 @@ import ani.dantotsu.others.AniSkip.getType
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
+import ani.dantotsu.util.Logger
 import com.google.android.material.slider.Slider
 
 /**
@@ -38,6 +39,12 @@ class PlayerSkipStamps(
         /** Only read once [isInitialized]: it is the activity's lateinit player. */
         val exoPlayer: ExoPlayer
         val isInitialized: Boolean
+
+        /** An ending marker has just started. True when the host took it over (the countdown). */
+        fun onEndingReached(): Boolean = false
+
+        /** Every check, twice a second, with the position: for what isn't tied to a marker. */
+        fun onPosition(positionMs: Long) {}
     }
 
     private val exoPlayer: ExoPlayer get() = host.exoPlayer
@@ -59,6 +66,23 @@ class PlayerSkipStamps(
     private var disappeared = false
     private var functionstarted = false
 
+    /** Where this episode's ending starts, in ms, when it has a marker for one. */
+    fun endingStartMs(): Long? = model.timeStamps.value
+        ?.filter { it.skipType == "ed" || it.skipType == "mixed-ed" }
+        ?.minOfOrNull { (it.interval.startTime * 1000).toLong() }
+
+    /**
+     * Lets ending markers after [positionMs] fire again, once a seek has gone back before them —
+     * so the "Up next" card comes back when the ending is reached a second time.
+     */
+    fun rearmEndings(positionMs: Long) {
+        val after: (AniSkip.Stamp) -> Boolean = {
+            (it.skipType == "ed" || it.skipType == "mixed-ed") && it.interval.startTime * 1000 > positionMs
+        }
+        skippedTimeStamps.removeAll(after)
+        offeredEndings.removeAll(after)
+    }
+
     /** Lets the next marker show its full skip button again. */
     fun resetHint() {
         disappeared = false
@@ -77,6 +101,9 @@ class PlayerSkipStamps(
         // TimeStamps
         model.timeStamps.observe(activity) { it ->
             loaded = true
+            Logger.log(
+                "PlayerSkipStamps: ${it?.joinToString { s -> "${s.skipType} ${s.interval.startTime}-${s.interval.endTime}" } ?: "none"}"
+            )
             exoSkipOpEd.visibility =
                 if (it != null) {
                     val adGroups =
@@ -172,9 +199,13 @@ class PlayerSkipStamps(
     private var currentTimeStamp: AniSkip.Stamp? = null
     private var skippedTimeStamps: MutableList<AniSkip.Stamp> = mutableListOf()
 
+    /** Endings [Host.onEndingReached] has been called for, so the next-episode card comes up once. */
+    private val offeredEndings = mutableSetOf<AniSkip.Stamp>()
+
     private fun updateTimeStamp() {
         if (activity.isDestroyed) return
         if (isInitialized) {
+            host.onPosition(exoPlayer.currentPosition)
             val playerCurrentTime = exoPlayer.currentPosition / 1000
             currentTimeStamp =
                 model.timeStamps.value?.find { timestamp ->
@@ -244,7 +275,14 @@ class PlayerSkipStamps(
                             }
                         }
                     }
-                    if (PrefManager.getVal(PrefName.AutoSkipOPED) &&
+                    // AniSkip files an ending that overlaps the episode's last scene as "mixed-ed".
+                    // Asked once per ending, whatever the answer: an "Up next" offer the user
+                    // cancelled must not come straight back on the next check.
+                    val ending = new.skipType == "ed" || new.skipType == "mixed-ed"
+                    val tookOver = ending && offeredEndings.add(new) && host.onEndingReached()
+                    if (tookOver) {
+                        skippedTimeStamps.add(new)
+                    } else if (PrefManager.getVal(PrefName.AutoSkipOPED) &&
                         (new.skipType == "op" || new.skipType == "ed") &&
                         !skippedTimeStamps.contains(new)
                     ) {

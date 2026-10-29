@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
     <androidx.media3.ui.PlayerView
         android:id="@+id/player_view"
@@ -13,4 +12,108 @@
         app:animation_enabled="false"
         app:resize_mode="fit"
         app:show_buffering="when_playing"></androidx.media3.ui.PlayerView>
-</LinearLayout>
+
+    <!-- Above the player view rather than in its overlay frame, so the controls can't cover it or
+         take its taps. Fixed dark-on-video colours, like the rest of the player chrome. Bottom end;
+         PlayerNextCountdown.avoid() raises it above the controls and the skip-timestamp button
+         while they are up. -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/nextCountdownCard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#E6101010"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <!-- The next episode's thumbnail, when the source has one, under a scrim that keeps the
+             text readable on any frame. Constrained to the text block rather than filling the
+             card: a match_parent image in a wrap_content card measures at its own pixel size and
+             blew the card up to the whole screen. -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/nextCountdownThumb"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/nextCountdownContent"
+            app:layout_constraintEnd_toEndOf="@id/nextCountdownContent"
+            app:layout_constraintStart_toStartOf="@id/nextCountdownContent"
+            app:layout_constraintTop_toTopOf="@id/nextCountdownContent" />
+
+        <View
+            android:id="@+id/nextCountdownScrim"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="#99000000"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/nextCountdownContent"
+            app:layout_constraintEnd_toEndOf="@id/nextCountdownContent"
+            app:layout_constraintStart_toStartOf="@id/nextCountdownContent"
+            app:layout_constraintTop_toTopOf="@id/nextCountdownContent" />
+
+        <LinearLayout
+            android:id="@+id/nextCountdownContent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="240dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/nextCountdownText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_bold"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/nextCountdownEpisode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:alpha="0.75"
+                android:ellipsize="end"
+                android:maxWidth="320dp"
+                android:maxLines="1"
+                android:textColor="@android:color/white"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/nextCountdownCancel"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/cancel"
+                    android:textColor="@android:color/white" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/nextCountdownPlay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/play_now"
+                    app:icon="@drawable/ic_round_skip_next_24" />
+            </LinearLayout>
+        </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>

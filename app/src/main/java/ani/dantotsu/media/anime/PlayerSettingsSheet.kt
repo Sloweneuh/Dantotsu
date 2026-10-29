@@ -106,6 +106,9 @@ class PlayerSettingsSheet : BottomSheetDialogFragment() {
             homeActionRefresh = refresh
             listOf(
                 pref(PrefName.AutoPlay, R.string.auto_play_next_episode, R.drawable.ic_round_play_arrow_24),
+                pref(PrefName.NextEpisodeCountdown, R.string.next_episode_countdown, R.drawable.ic_round_schedule_24),
+                pref(PrefName.SkipOutroToNext, R.string.skip_outro_to_next, R.drawable.ic_round_fast_forward_24,
+                    R.string.skip_outro_to_next_desc),
                 pref(PrefName.AlwaysContinue, R.string.always_continue, R.drawable.ic_round_replay_10_24),
                 pref(PrefName.AutoSkipOPED, R.string.auto_skip_op_ed, R.drawable.ic_round_fast_forward_24) {
                     player.refreshSkipButton()

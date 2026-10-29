@@ -300,6 +300,8 @@ enum class PrefName(val data: Pref) {
     AutoSkipOPED(Pref(Location.Player, Boolean::class, false)),
     AutoSkipRecap(Pref(Location.Player, Boolean::class, false)),
     AutoPlay(Pref(Location.Player, Boolean::class, true)),
+    NextEpisodeCountdown(Pref(Location.Player, Boolean::class, true)),
+    SkipOutroToNext(Pref(Location.Player, Boolean::class, false)),
     AutoSkipFiller(Pref(Location.Player, Boolean::class, false)),
     AskIndividualPlayer(Pref(Location.Player, Boolean::class, true)),
     ChapterZeroPlayer(Pref(Location.Player, Boolean::class, true)),

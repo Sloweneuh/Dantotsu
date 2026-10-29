@@ -420,6 +420,8 @@ object SettingsSearch {
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_skip_recap, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoSkipRecap, keywordsRes = R.string.search_kw_auto_skip_recap)
 
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_play_next_episode, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoPlay, keywordsRes = R.string.search_kw_auto_play_next_episode)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.next_episode_countdown, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsNextCountdown)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.skip_outro_to_next, R.string.anime_and_player, IC_PLAYER, R.string.skip_outro_to_next_desc, anchorViewId = R.id.playerSettingsSkipOutroToNext)
 
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_skip_fillers, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoSkip, keywordsRes = R.string.search_kw_auto_skip_fillers)
 

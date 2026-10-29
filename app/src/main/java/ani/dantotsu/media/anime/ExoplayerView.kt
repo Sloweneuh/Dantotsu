@@ -267,6 +267,8 @@ class ExoplayerView :
     private var audioLanguages = mutableListOf<Pair<String, String>>()
 
     companion object {
+        /** How long before the end an episode with no ending marker brings up the next-episode card. */
+        private const val LAST_SECONDS_MS = 10_000L
         var initialized = false
         lateinit var media: Media
 
@@ -349,6 +351,7 @@ class ExoplayerView :
     val model: MediaDetailsViewModel by viewModels()
 
     private lateinit var skipStamps: PlayerSkipStamps
+    private lateinit var nextCountdown: PlayerNextCountdown
     private var locked = false
 
     var rotation = 0
@@ -452,6 +455,16 @@ class ExoplayerView :
         ThemeManager(this).applyTheme()
         binding = ActivityExoplayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        nextCountdown = PlayerNextCountdown(
+            binding.nextCountdownCard,
+            binding.nextCountdownContent,
+            binding.nextCountdownText,
+            binding.nextCountdownEpisode,
+            binding.nextCountdownThumb,
+            binding.nextCountdownScrim,
+            binding.nextCountdownCancel,
+            binding.nextCountdownPlay,
+        )
 
         pip.register()
 
@@ -625,9 +638,20 @@ class ExoplayerView :
             timeline.setForceDisabled(false)
         }
 
+        // The next-episode card moves up out of the way of the controls and the skip button.
+        val countdownObstacles = listOf(
+            playerView.findViewById<View>(R.id.exo_bottom_cont),
+            playerView.findViewById<View>(R.id.exo_skip_timestamp),
+        )
+        binding.root.viewTreeObserver.addOnGlobalLayoutListener {
+            nextCountdown.avoid(countdownObstacles)
+        }
+
         skipStamps = PlayerSkipStamps(this, playerView, model, object : PlayerSkipStamps.Host {
             override val exoPlayer: ExoPlayer get() = this@ExoplayerView.exoPlayer
             override val isInitialized: Boolean get() = this@ExoplayerView.isInitialized
+            override fun onEndingReached(): Boolean = skipOutroToNext()
+            override fun onPosition(positionMs: Long) = offerInLastSeconds(positionMs)
         })
 
         gestures = PlayerGestures(this, playerView, keyMap, object : PlayerGestures.Host {
@@ -745,6 +769,8 @@ class ExoplayerView :
                 currentEpisodeIndex = episodeArr.indexOf(ep.number)
                 episodeTitle.setSelection(currentEpisodeIndex)
                 if (isInitialized) releasePlayer()
+                nextCountdown.hide()
+                lastSecondsOffered = false
                 playbackPosition =
                     PrefManager.getCustomVal(
                         "${media.id}_${ep.number}",
@@ -1830,8 +1856,60 @@ class ExoplayerView :
         super.onPositionDiscontinuity(oldPosition, newPosition, reason)
         if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
             discordRPC()
+            // Back before where the next-episode card came up: it goes, countdown and all, and
+            // reaching the ending again brings it back. Forward seeks (auto-skip's own) leave it.
+            val pos = newPosition.positionMs
+            if (nextCountdown.isShowing && pos < nextCardFromMs - 1500) {
+                // With no ending marker, its last seconds stand in for one.
+                val endingStart = skipStamps.endingStartMs()
+                    ?: exoPlayer.duration.takeIf { it > 0 }?.minus(LAST_SECONDS_MS)
+                if (nextCountdown.isCentered && endingStart != null && pos >= endingStart) {
+                    // From the end back into the ending: the card goes back to its corner, as the
+                    // ending would have shown it.
+                    backToEndingCard(endingStart)
+                } else {
+                    nextCountdown.hide()
+                    skipStamps.rearmEndings(pos)
+                }
+            }
+            // Back before the last seconds: they offer the card again when reached.
+            val duration = exoPlayer.duration
+            if (duration > 0 && pos < duration - LAST_SECONDS_MS) lastSecondsOffered = false
         }
     }
+
+    /** The card as the ending shows it — counting down only when the ending is being skipped. */
+    private fun backToEndingCard(endingStart: Long) {
+        val counting = PrefManager.getVal<Boolean>(PrefName.AutoPlay) &&
+            PrefManager.getVal<Boolean>(PrefName.SkipOutroToNext)
+        if (startNextCountdown(counting = counting, cancelled = if (counting) ({}) else null, force = true)) {
+            nextCardFromMs = endingStart
+        }
+    }
+
+    /** Whether this episode's last seconds have brought up the card yet; see [offerInLastSeconds]. */
+    private var lastSecondsOffered = false
+
+    /**
+     * For an episode with no ending marker — AniSkip has none for it, and the source gave none —
+     * the card comes up in its last [LAST_SECONDS_MS] instead, the same as at an ending: a
+     * countdown when skipping endings, else the "Up next" offer. Once per pass; a seek back before
+     * them offers it again.
+     */
+    private fun offerInLastSeconds(positionMs: Long) {
+        if (lastSecondsOffered || nextCountdown.isShowing) return
+        // Wait for the markers when they are being fetched, so an episode that has one isn't
+        // offered early; with timestamps off there are none to wait for.
+        if (!skipStamps.loaded && PrefManager.getVal<Boolean>(PrefName.TimeStampsEnabled)) return
+        if (skipStamps.endingStartMs() != null) return
+        val duration = exoPlayer.duration.takeIf { it > 0 && it != C.TIME_UNSET } ?: return
+        if (positionMs < duration - LAST_SECONDS_MS || positionMs >= duration) return
+        lastSecondsOffered = true
+        skipOutroToNext()
+    }
+
+    /** Where the next-episode card came up, for [onPositionDiscontinuity] to tell a seek back. */
+    private var nextCardFromMs = 0L
 
     override fun onRenderedFirstFrame() {
         super.onRenderedFirstFrame()
@@ -2153,12 +2231,21 @@ class ExoplayerView :
             super.onPlaybackStateChanged(playbackState)
             return
         }
+        // Autoplay off: the same card, centred, but it waits for Play now.
+        if (playbackState == Player.STATE_ENDED && !PrefManager.getVal<Boolean>(PrefName.AutoPlay) &&
+            !inBackground && !cast.isCasting
+        ) {
+            startNextCountdown(centered = true, counting = false)
+        }
         if (playbackState == Player.STATE_ENDED && PrefManager.getVal(PrefName.AutoPlay)) {
             if (inBackground) {
                 // Loading the next episode can need the server picker, which can't show out of
                 // sight; the episode just ends, and the notification stays to start it again.
             } else if (interacted) {
-                exoNext.performClick()
+                val countdown = PrefManager.getVal<Boolean>(PrefName.NextEpisodeCountdown)
+                Logger.log("NextCountdown: episode ended, countdown=$countdown")
+                if (countdown) startNextCountdown(centered = true)
+                else exoNext.performClick()
             } else {
                 toast(getString(R.string.autoplay_cancelled))
             }
@@ -2195,6 +2282,65 @@ class ExoplayerView :
                 }
             }
         }
+    }
+
+    /**
+     * Shows the countdown to the next episode, then moves on through [exoNext] — the same path a tap
+     * on it takes. With no next episode, it says so the way that tap would.
+     */
+    private fun startNextCountdown(
+        centered: Boolean = false,
+        counting: Boolean = true,
+        cancelled: (() -> Unit)? = null,
+        /** Re-show it as asked even when it is up already: a seek moving it back to the corner. */
+        force: Boolean = false,
+    ): Boolean {
+        // An "Up next" offer still showing when the episode ends gives way to the countdown, or —
+        // with autoplay off — moves to the middle as it is.
+        if (!force) {
+            if (nextCountdown.isCounting) return true
+            if (nextCountdown.isShowing && !counting && (!centered || nextCountdown.isCentered)) return true
+        }
+        var started = false
+        // "No next episode" only where autoplay itself was going to move on; the "Up next" offers
+        // just don't appear on the last episode.
+        nextEpisode(toast = counting && cancelled == null) { i ->
+            started = true
+            // Every time it is shown or moved — an outro card turned into the end card included —
+            // so a seek back is measured from where it is now, not from where it first came up.
+            nextCardFromMs = exoPlayer.currentPosition
+            val next = episodes[episodeArr[currentEpisodeIndex + i]]
+            val number = getString(R.string.episode_num, next?.number ?: episodeArr[currentEpisodeIndex + i])
+            val label = next?.title?.takeIf { it.isNotBlank() }?.let { "$number · $it" } ?: number
+            nextCountdown.start(
+                label, nextThumb = next?.thumb, centered = centered,
+                seconds = if (counting) PlayerNextCountdown.SECONDS else null, cancelled = cancelled,
+            ) {
+                // Out of sight the server picker can't show, the same reason autoplay stops there.
+                if (!inBackground && !isFinishing) exoNext.performClick()
+            }
+        }
+        return started
+    }
+
+    /**
+     * Called as an episode's ending starts: the next episode's card comes up over it. With outro
+     * skipping and autoplay on, it counts down and takes over the ending (true); otherwise it is a
+     * plain "Up next" offer and the ending is left to the usual skip handling (false). No card for
+     * the last episode, or with a sleep timer set to stop at the end of this one.
+     */
+    private fun skipOutroToNext(): Boolean {
+        val autoPlay = PrefManager.getVal<Boolean>(PrefName.AutoPlay)
+        val skipOutro = PrefManager.getVal<Boolean>(PrefName.SkipOutroToNext)
+        if (sleepTimer?.endOfEpisode == true || inBackground || cast.isCasting) return false
+        if (!autoPlay || !skipOutro) {
+            val offered = startNextCountdown(counting = false)
+            Logger.log("NextCountdown: ending reached, up-next offer shown=$offered (autoPlay=$autoPlay skipOutro=$skipOutro)")
+            return false
+        }
+        val started = startNextCountdown(cancelled = {})
+        Logger.log("NextCountdown: ending reached, countdown started=$started")
+        return started
     }
 
     private fun nextEpisode(
@@ -2286,6 +2432,7 @@ class ExoplayerView :
     private fun onPiPChanged(isInPictureInPictureMode: Boolean) {
         isEnteringPip = false
         playerView.useController = !isInPictureInPictureMode
+        nextCountdown.inPip = isInPictureInPictureMode
         if (isInPictureInPictureMode) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             orientationListener?.disable()

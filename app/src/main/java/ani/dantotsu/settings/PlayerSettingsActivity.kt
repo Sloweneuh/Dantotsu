@@ -206,6 +206,19 @@ class PlayerSettingsActivity :
         binding.playerSettingsAutoPlay.isChecked = PrefManager.getVal(PrefName.AutoPlay)
         binding.playerSettingsAutoPlay.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.AutoPlay, isChecked)
+            binding.playerSettingsNextCountdown.isEnabled = isChecked
+            binding.playerSettingsSkipOutroToNext.isEnabled = isChecked
+        }
+        // Both only change how autoplay moves on, so they're greyed out without it.
+        binding.playerSettingsNextCountdown.isChecked = PrefManager.getVal(PrefName.NextEpisodeCountdown)
+        binding.playerSettingsNextCountdown.isEnabled = binding.playerSettingsAutoPlay.isChecked
+        binding.playerSettingsNextCountdown.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.NextEpisodeCountdown, isChecked)
+        }
+        binding.playerSettingsSkipOutroToNext.isChecked = PrefManager.getVal(PrefName.SkipOutroToNext)
+        binding.playerSettingsSkipOutroToNext.isEnabled = binding.playerSettingsAutoPlay.isChecked
+        binding.playerSettingsSkipOutroToNext.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.SkipOutroToNext, isChecked)
         }
 
         binding.playerSettingsAutoSkip.isChecked = PrefManager.getVal(PrefName.AutoSkipFiller)
