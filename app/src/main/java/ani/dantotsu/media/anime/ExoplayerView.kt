@@ -1355,7 +1355,14 @@ class ExoplayerView :
                 .setRendererDisabled(TRACK_TYPE_TEXT, false)
                 .setMaxVideoSize(1, 1)
         // .setOverrideForType(TrackSelectionOverride(trackSelector, TRACK_TYPE_VIDEO))
-        if (PrefManager.getVal(PrefName.SettingsPreferDub)) {
+        // The audio track last picked for this series wins over the global dub preference, so a
+        // show watched in Japanese doesn't come back dubbed next episode, or the other way round.
+        val seriesAudio = PrefManager.getNullableCustomVal(
+            "audioLang_${media.id}", null, String::class.java
+        )
+        if (seriesAudio != null) {
+            parameters.setPreferredAudioLanguage(seriesAudio)
+        } else if (PrefManager.getVal(PrefName.SettingsPreferDub)) {
             parameters.setPreferredAudioLanguage(Locale.getDefault().language)
         }
         trackSelector.setParameters(parameters)
@@ -2008,6 +2015,11 @@ class ExoplayerView :
         if (type == TRACK_TYPE_TEXT) {
             PlayerSubtitleStyle.applyTo(this, playerView)
             PlayerSubtitleStyle.applyTo(this, customSubtitleView)
+        }
+        if (type == TRACK_TYPE_AUDIO) {
+            trackGroup.getTrackFormat(index).language
+                ?.takeIf { it.isNotBlank() && it != C.LANGUAGE_UNDETERMINED && it != "none" }
+                ?.let { PrefManager.setCustomVal("audioLang_${media.id}", it) }
         }
         playerView.subtitleView?.alpha =
             when (isDisabled) {

@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
  *    (`<id>_<chapter>` / `<id>_<chapter>_max`), current chapter/episode (`<id>_current_chp|_ep`)
  *  - the user's per-media choices: which source is selected (`SelectedSource-<id>`, plus the
  *    `Selected-<id>` blob holding language/scanlators/dub preference), and the per-media lookups
- *    `comick_slug_<id>` / `subLang_<id>`
+ *    `comick_slug_<id>` / `subLang_<id>` / `audioLang_<id>`
  *  - novel bookmarks (`lnreader_bm-<id>-<novel>`), alongside the novel reading positions
  *  - which entry on that source the media was matched to (`ShowResponse-<id>-<extension>`, see
  *    [ani.dantotsu.parsers.SavedShowResponse]) — without it the other device knows the extension
@@ -53,7 +53,7 @@ object ProgressSync {
 
     // Per-media user choices, keyed with the id as a suffix instead of a prefix.
     private val SELECTION_RE =
-        Regex("""^(?:Selected|SelectedSource|comick_slug|subLang)[-_](\d+)$|^(\d+)_novel_reversed$""")
+        Regex("""^(?:Selected|SelectedSource|comick_slug|subLang|audioLang)[-_](\d+)$|^(\d+)_novel_reversed$""")
 
     // The entry an extension was matched to, one per extension the media was searched on. The
     // trailing part is a free-form extension name, which is exactly why the id comes first.
