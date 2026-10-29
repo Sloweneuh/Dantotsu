@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
@@ -81,6 +82,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
         val context = this
         binding = ActivitySettingsAppearanceBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
 
         binding.settingsAppearanceLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight

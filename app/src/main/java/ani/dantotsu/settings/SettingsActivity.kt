@@ -20,9 +20,12 @@ import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.BuildConfig
 import ani.dantotsu.R
+import ani.dantotsu.media.MediaPanes
+import ani.dantotsu.util.capContentWidth
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivitySettingsBinding
 import ani.dantotsu.initActivity
@@ -57,6 +60,7 @@ class SettingsActivity : AppCompatActivity() {
 
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth(1200f)
 
         val context = this
         // Opened from another settings page's search button: just the search, nothing to browse.
@@ -207,7 +211,16 @@ class SettingsActivity : AppCompatActivity() {
             val idleAdapter = if (searchOnly) SettingsAdapter(arrayListOf()) else sectionsAdapter
             settingsRecyclerView.adapter = idleAdapter
             settingsRecyclerView.apply {
-                layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
+                // A wide window shows the categories two to a row; search results stay one list.
+                layoutManager = if (MediaPanes.isTwoPane(resources.configuration)) {
+                    sectionsAdapter.columns = 2
+                    GridLayoutManager(context, 2).apply {
+                        spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                            override fun getSpanSize(position: Int) =
+                                if (settingsRecyclerView.adapter === sectionsAdapter) 1 else 2
+                        }
+                    }
+                } else LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
                 setHasFixedSize(true)
             }
             if (searchOnly) {

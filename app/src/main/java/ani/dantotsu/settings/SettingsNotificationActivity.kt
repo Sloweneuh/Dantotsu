@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
@@ -43,6 +44,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsNotificationsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
 
         binding.settingsNotificationsLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight

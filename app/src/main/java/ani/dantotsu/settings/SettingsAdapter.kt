@@ -33,6 +33,7 @@ private val COMPACT_TOP_MARGIN get() = 10f.px
  *  at a group's ends and between its tiles. */
 private val TILE_GAP get() = 2f.px
 private val TILE_GROUP_GAP get() = 16f.px
+private val TILE_COLUMN_GAP get() = 12f.px
 private val TILE_OUTER_RADIUS get() = 24f.px.toFloat()
 private val TILE_INNER_RADIUS get() = 6f.px.toFloat()
 
@@ -51,6 +52,12 @@ class SettingsAdapter(
     private val afterOtherContent: Boolean = false,
 ) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+    /**
+     * Columns the list is laid out in (a wide window's settings home). Past one, each tile stands
+     * alone — round on every corner, evenly spaced — since a group can't run down a grid.
+     */
+    var columns = 1
+
     inner class SettingsViewHolder(val binding: ItemSettingsBinding) :
         RecyclerView.ViewHolder(binding.root) {
         // Captured once at inflation, before any row can override it (the account cards' Discord
@@ -106,8 +113,8 @@ class SettingsAdapter(
         val next = (position + 1 until settings.size).firstOrNull { settings[it].isVisible }
         val first = groupBreakBefore(position)
         val last = next == null || settings[next].type == 3 || groupBreakBefore(next)
-        val top = if (first) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
-        val bottom = if (last) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
+        val top = if (first || columns > 1) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
+        val bottom = if (last || columns > 1) TILE_OUTER_RADIUS else TILE_INNER_RADIUS
         fun shape(color: Int) = GradientDrawable().apply {
             cornerRadii = floatArrayOf(top, top, top, top, bottom, bottom, bottom, bottom)
             setColor(color)
@@ -122,6 +129,7 @@ class SettingsAdapter(
     }
 
     private fun tileTopMargin(position: Int): Int {
+        if (columns > 1) return if (position < columns) 0 else TILE_COLUMN_GAP
         val prev = (position - 1 downTo 0).firstOrNull { settings[it].isVisible }
         return when {
             prev == null -> if (afterOtherContent) TILE_GROUP_GAP else 0
@@ -205,6 +213,11 @@ class SettingsAdapter(
                     tiled -> tileTopMargin(position)
                     settings.compact -> COMPACT_TOP_MARGIN
                     else -> inflated
+                }
+                if (tiled && columns > 1) {
+                    val column = position % columns
+                    marginStart = if (column > 0) TILE_COLUMN_GAP / 2 else 0
+                    marginEnd = if (column < columns - 1) TILE_COLUMN_GAP / 2 else 0
                 }
             }
         }

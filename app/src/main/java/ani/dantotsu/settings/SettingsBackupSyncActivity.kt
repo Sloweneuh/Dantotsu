@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.Manifest
 import android.app.AlarmManager
 import androidx.appcompat.app.AlertDialog
@@ -114,6 +115,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsBackupSyncBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         SettingsRouter.handleHighlight(this, binding.backupSyncRecyclerView)
 
         val openDocumentLauncher =

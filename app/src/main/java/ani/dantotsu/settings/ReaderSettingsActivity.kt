@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Intent
 import android.os.Bundle
 import android.text.util.Linkify
@@ -43,6 +44,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
         binding = ActivityReaderSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         SettingsRouter.handleHighlight(
             this, binding.settingsRecyclerView, binding.readerMangaLayoutRows,
             binding.readerMangaDisplayRows, binding.readerMangaControlsRows, binding.readerMtlRows,

@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import androidx.core.view.isVisible
 import com.google.android.material.chip.Chip
 import androidx.recyclerview.widget.GridLayoutManager
@@ -78,6 +79,7 @@ class PlayerSettingsActivity :
         ThemeManager(this).applyTheme()
         binding = ActivityPlayerSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         SettingsRouter.handleHighlight(this, binding.settingsRecyclerView, binding.subtitleSettingsRecycler)
         bindLibraryRows()
         // Every group has now read the relaunch marker; consume it so one restart restores once.

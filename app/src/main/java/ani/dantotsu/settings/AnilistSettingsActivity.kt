@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
@@ -44,6 +45,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsAnilistBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         SettingsRouter.handleHighlight(this, binding.settingsRecyclerView1, binding.settingsRecyclerView2)
         // Every group has now read the relaunch marker; consume it so one restart restores once.
         Xpandable.consumeRelaunch(Xpandable.SCOPE_ANILIST)

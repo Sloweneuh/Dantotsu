@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import ani.dantotsu.connections.comick.Comick
 import android.os.Bundle
 import android.view.View
@@ -44,6 +45,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
 
         binding = ActivitySettingsListSyncBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         SettingsRouter.handleHighlight(this, binding.listSyncRecyclerView)
 
         binding.settingsListSyncLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {

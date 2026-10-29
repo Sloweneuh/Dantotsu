@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -42,6 +43,7 @@ class SettingsAboutActivity : AppCompatActivity() {
 
         binding = ActivitySettingsAboutBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
         SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
 
         binding.apply {

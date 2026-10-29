@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.util.capContentWidth
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -93,6 +94,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsSourcesBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capContentWidth()
 
         binding.settingsSourcesLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight
