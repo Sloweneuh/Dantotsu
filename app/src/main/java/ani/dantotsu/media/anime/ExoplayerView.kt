@@ -1942,8 +1942,8 @@ class ExoplayerView :
                 exoPlayer.seekTo(0)
             }
 
-            // if playbackPosition is within 92% of the episode length, reset it to 0
-            if (playbackPosition > duration.toFloat() * 0.92) {
+            // Past WATCHED_FRACTION it was watched to the end: start over, as the list's full bar says.
+            if (playbackPosition > duration.toFloat() * WATCHED_FRACTION) {
                 playbackPosition = 0
                 exoPlayer.seekTo(0)
             }

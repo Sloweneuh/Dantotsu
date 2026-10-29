@@ -31,12 +31,18 @@ import ani.dantotsu.download.anime.AnimeDownloader
 import kotlin.math.ln
 import kotlin.math.pow
 
+/**
+ * Past this share of an episode it counts as watched: the player starts it over rather than
+ * resuming a few seconds from the end, and the episode list shows its bar full to match.
+ */
+const val WATCHED_FRACTION = 0.92f
+
 fun handleProgress(cont: LinearLayout, bar: View, empty: View, mediaId: Int, ep: String) {
     val curr = PrefManager.getNullableCustomVal("${mediaId}_${ep}", null, Long::class.java)
     val max = PrefManager.getNullableCustomVal("${mediaId}_${ep}_max", null, Long::class.java)
     if (curr != null && max != null) {
         cont.visibility = View.VISIBLE
-        val div = curr.toFloat() / max.toFloat()
+        val div = (curr.toFloat() / max.toFloat()).let { if (it > WATCHED_FRACTION) 1f else it }
         val barParams = bar.layoutParams as LinearLayout.LayoutParams
         barParams.weight = div
         bar.layoutParams = barParams
