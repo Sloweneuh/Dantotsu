@@ -203,7 +203,7 @@ class AnilistQueries {
         Anilist.adult = user.options?.displayAdultContent ?: false
         // The count alone can't say *which* notifications are new; one page fetch files them
         // as unread (see NotificationReadState). Skipped when AniList has nothing new.
-        if ((user.unreadNotificationCount ?: 0) > 0) {
+        if ((user.unreadNotificationCount ?: 0) > 0 && ani.dantotsu.App.context?.let { ani.dantotsu.tv.TvMode.isOn(it) } != true) {
             getNotifications(user.id, resetNotification = false)
         }
         Anilist.initialized = true
@@ -1221,6 +1221,40 @@ plannedManga: ${plannedMediaQuery("MANGA")}
                 }
             }
         }
+    }
+
+    /**
+     * Each genre's picture, as [getGenres] picks them (the first trending Japanese anime with a
+     * banner not already another genre's), from the same weekly store — but every stale one fetched
+     * in a single aliased request. [getGenres] asks once a genre: eighteen requests in a burst, which
+     * alone can use up AniList's per-minute allowance. Genres it found nothing for are left out.
+     */
+    suspend fun getGenreThumbnails(genres: List<String>): Map<String, String> {
+        val stored: MutableMap<String, Genre> =
+            loadSerializableMap<String, Genre>("genre_thumb")?.toMutableMap() ?: mutableMapOf()
+        val stale = genres.filter { stored.checkGenreTime(it) }
+        if (stale.isNotEmpty()) {
+            val body = stale.mapIndexed { i, genre ->
+                "g$i: Page(perPage: 10) { media(genre: \"$genre\", sort: TRENDING_DESC, type: ANIME, countryOfOrigin: \"JP\") { id bannerImage } }"
+            }.joinToString("\n")
+            val pages = try {
+                executeQuery<Query.BatchedPageResponse>("{\n$body\n}", force = true)?.data
+            } catch (e: Exception) {
+                logError(e)
+                null
+            }
+            if (pages != null) {
+                stale.forEachIndexed { i, genre ->
+                    val pick = pages["g$i"]?.media.orEmpty()
+                        .firstOrNull { it.bannerImage != null && stored.checkId(it.id) }
+                    if (pick != null) {
+                        stored[genre] = Genre(genre, pick.id, pick.bannerImage!!, System.currentTimeMillis())
+                    }
+                }
+                saveSerializableMap("genre_thumb", stored)
+            }
+        }
+        return genres.mapNotNull { genre -> stored[genre]?.let { genre to it.thumbnail } }.toMap()
     }
 
     private fun <K, V : Serializable> saveSerializableMap(prefKey: String, map: Map<K, V>) {

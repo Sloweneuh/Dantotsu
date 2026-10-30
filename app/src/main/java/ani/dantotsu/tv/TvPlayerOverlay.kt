@@ -38,6 +38,10 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +63,7 @@ class TvPlayerController(private val actions: Actions) {
     interface Actions {
         fun playPause()
         fun seekBy(deltaMs: Long)
+        fun seekTo(positionMs: Long)
         fun previous()
         fun next()
         fun audio()
@@ -126,7 +131,8 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
     }
 
     AnimatedVisibility(visible = controller.visible, enter = fadeIn(), exit = fadeOut()) {
-        Box(Modifier.fillMaxSize()) {
+        // A mouse click on the picture itself, not a button, puts the controls away.
+        Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { controller.hide() } }) {
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -202,9 +208,19 @@ private fun Timeline(controller: TvPlayerController) {
     var focused by remember { mutableStateOf(false) }
     val fraction = if (controller.duration > 0) (controller.position.toFloat() / controller.duration).coerceIn(0f, 1f) else 0f
     val primary = MaterialTheme.colorScheme.primary
+    var width by remember { mutableFloatStateOf(1f) }
+    fun seekAt(x: Float) {
+        if (controller.duration > 0) controller.act {
+            seekTo((x / width).coerceIn(0f, 1f).times(controller.duration).toLong())
+        }
+    }
     Column(
         Modifier
             .fillMaxWidth()
+            .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }
+            // A mouse seeks by clicking the bar, or dragging along it.
+            .pointerInput(Unit) { detectTapGestures { seekAt(it.x) } }
+            .pointerInput(Unit) { detectHorizontalDragGestures { change, _ -> seekAt(change.position.x) } }
             .onFocusChanged { focused = it.isFocused }
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -264,7 +280,8 @@ private fun ControlButton(
             enabled = enabled,
             modifier = modifier
                 .size(if (large) 60.dp else 48.dp)
-                .onFocusChanged { focused = it.isFocused },
+                .onFocusChanged { focused = it.isFocused }
+                .then(if (enabled) Modifier.pointerClick(onClick = onClick) else Modifier),
             scale = IconButtonDefaults.scale(focusedScale = 1.12f),
             colors = IconButtonDefaults.colors(
                 containerColor = Color.White.copy(alpha = 0.12f),

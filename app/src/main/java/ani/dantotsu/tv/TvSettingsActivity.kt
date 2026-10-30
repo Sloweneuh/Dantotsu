@@ -36,13 +36,20 @@ import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.media.anime.PlayerSources
+import ani.dantotsu.util.LanguageHelper
+import androidx.compose.foundation.layout.heightIn
 
 /**
  * TV mode's own settings: only what matters from the couch — the account, how episodes play, the
- * sources, and TV mode itself. Everything else is set from the phone interface, and cloud sync
+ * languages, the sources, and TV mode itself. Everything else is set from the phone interface, and cloud sync
  * carries it here.
  */
 class TvSettingsActivity : AppCompatActivity(), TvScreen {
+
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // TV mode is dark whatever the system says: a bright screen glares across a dark room.
@@ -92,6 +99,10 @@ private fun TvSettings(onExit: (() -> Unit)?) {
             item { Toggle(R.string.auto_skip_fillers, PrefName.AutoSkipFiller) }
             item { Toggle(R.string.prefer_dub, PrefName.SettingsPreferDub) }
 
+            item { Header(R.string.tv_settings_language) }
+            item { AppLanguageChoice() }
+            item { SubtitleLanguageChoice() }
+
             item { Header(R.string.tv_settings_sources) }
             // Downloads are a source too (OfflineAnimeParser), but not one to list here.
             val sources = AnimeSources.names.filterNot { it == "Offline" || it == "Downloaded" }
@@ -108,6 +119,7 @@ private fun TvSettings(onExit: (() -> Unit)?) {
                         selected = false,
                         onClick = onExit,
                         headlineContent = { Text(stringResource(R.string.tv_exit)) },
+                        modifier = Modifier.pointerClick(onClick = onExit),
                     )
                 }
             }
@@ -140,15 +152,16 @@ private fun Info(text: String, dim: Boolean = false) {
 @Composable
 private fun Toggle(title: Int, pref: PrefName, modifier: Modifier = Modifier) {
     var on by remember { mutableStateOf(PrefManager.getVal<Boolean>(pref)) }
+    val flip = {
+        on = !on
+        PrefManager.setVal(pref, on)
+    }
     ListItem(
         selected = false,
-        onClick = {
-            on = !on
-            PrefManager.setVal(pref, on)
-        },
+        onClick = flip,
         headlineContent = { Text(stringResource(title)) },
         trailingContent = { Switch(checked = on, onCheckedChange = null) },
-        modifier = modifier,
+        modifier = modifier.pointerClick(onClick = flip),
     )
 }
 
@@ -162,15 +175,105 @@ private fun TvModeChoice() {
             TvMode.ON to R.string.tv_big_picture_on,
             TvMode.OFF to R.string.tv_big_picture_off,
         ).forEach { (value, label) ->
+            val pick = {
+                mode = value
+                PrefManager.setVal(PrefName.BigPictureMode, value)
+            }
             ListItem(
                 selected = mode == value,
-                onClick = {
-                    mode = value
-                    PrefManager.setVal(PrefName.BigPictureMode, value)
-                },
+                onClick = pick,
+                modifier = Modifier.pointerClick(onClick = pick),
                 headlineContent = { Text(stringResource(R.string.tv_big_picture) + " · " + stringResource(label)) },
                 trailingContent = { RadioButton(selected = mode == value, onClick = null) },
             )
+        }
+    }
+}
+
+/**
+ * The app's language. Applying it means starting the screens again, so TV mode opens afresh in it —
+ * on a TV there's no other interface to switch through to see it take effect.
+ */
+@Composable
+private fun AppLanguageChoice() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val languages = remember { LanguageHelper.getSupportedLanguages() }
+    val current = LanguageHelper.getCurrentLanguageCode()
+    ChoiceRow(
+        title = stringResource(R.string.language_setting),
+        options = languages.map { it.getDisplayName() },
+        selected = languages.indexOfFirst { it.code == current }.coerceAtLeast(0),
+    ) { which ->
+        val picked = languages[which].code
+        if (picked == current) return@ChoiceRow
+        LanguageHelper.setLanguage(context, picked)
+        context.startActivity(
+            android.content.Intent(context, TvHomeActivity::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        )
+    }
+}
+
+/** The subtitle track the player picks first, as the phone's player settings set it. */
+@Composable
+private fun SubtitleLanguageChoice() {
+    var selected by remember { mutableIntStateOf(PrefManager.getVal<Int>(PrefName.SubLanguage)) }
+    ChoiceRow(
+        title = stringResource(R.string.tv_subtitle_language),
+        options = PlayerSources.SUB_LANGUAGES.toList(),
+        selected = selected,
+    ) { which ->
+        selected = which
+        PrefManager.setVal(PrefName.SubLanguage, which)
+    }
+}
+
+/** A setting with one value of several: the row shows it, and opens the list to pick another. */
+@Composable
+private fun ChoiceRow(title: String, options: List<String>, selected: Int, onPick: (Int) -> Unit) {
+    var picking by remember { mutableStateOf(false) }
+    ListItem(
+        selected = false,
+        onClick = { picking = true },
+        headlineContent = { Text(title) },
+        trailingContent = {
+            Text(
+                options.getOrNull(selected).orEmpty(),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        },
+        modifier = Modifier.pointerClick { picking = true },
+    )
+    if (picking) TvDialog(onDismissRequest = { picking = false }) {
+        val current = remember { FocusRequester() }
+        LaunchedEffect(Unit) { runCatching { current.requestFocus() } }
+        androidx.tv.material3.Surface(shape = CARD_SHAPE, modifier = Modifier.width(460.dp)) {
+            androidx.compose.foundation.layout.Column(Modifier.padding(24.dp)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                )
+                FocusRestingAt(48.dp) {
+                    LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                        items(options.size) { index ->
+                            val pick = {
+                                picking = false
+                                onPick(index)
+                            }
+                            ListItem(
+                                selected = index == selected,
+                                onClick = pick,
+                                headlineContent = { Text(options[index]) },
+                                trailingContent = { RadioButton(selected = index == selected, onClick = null) },
+                                modifier = (if (index == selected) Modifier.focusRequester(current) else Modifier)
+                                    .pointerClick(onClick = pick),
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

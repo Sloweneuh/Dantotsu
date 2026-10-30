@@ -3623,4 +3623,47 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_forward_10">Forward 10 s</string>
     <string name="tv_play">Play</string>
     <string name="tv_server">Server</string>
+    <!-- TV mode interface: search -->
+    <string name="tv_search_hint">Search anime</string>
+    <string name="tv_search_none">No anime found for “%1$s”</string>
+    <string name="tv_search_start">Type a title to search AniList</string>
+    <!-- TV mode interface: wrong title -->
+    <string name="tv_wrong_title">Wrong title?</string>
+    <string name="tv_matched_as">Matched on %1$s as “%2$s”</string>
+    <string name="tv_wrong_title_hint">Search %1$s</string>
+    <string name="tv_wrong_title_none">Nothing on %1$s for “%2$s”</string>
+    <string name="tv_wrong_title_searching">Searching %1$s…</string>
+    <!-- TV mode interface: statuses -->
+    <string name="tv_list_current">Watching</string>
+    <string name="tv_list_planning">Planned</string>
+    <string name="tv_list_completed">Completed</string>
+    <string name="tv_list_dropped">Dropped</string>
+    <string name="tv_list_paused">Paused</string>
+    <string name="tv_list_repeating">Rewatching</string>
+    <string name="tv_airing_releasing">Airing</string>
+    <string name="tv_airing_finished">Finished</string>
+    <string name="tv_airing_not_yet">Not yet aired</string>
+    <string name="tv_airing_cancelled">Cancelled</string>
+    <string name="tv_airing_hiatus">On hiatus</string>
+    <!-- TV mode interface: list status -->
+    <string name="tv_list_title">Your list</string>
+    <string name="tv_list_progress">Episodes watched</string>
+    <!-- TV mode: home rows, genre browsing and discovery queue -->
+    <string name="tv_season_WINTER">Winter %1$d</string>
+    <string name="tv_season_SPRING">Spring %1$d</string>
+    <string name="tv_season_SUMMER">Summer %1$d</string>
+    <string name="tv_season_FALL">Fall %1$d</string>
+    <string name="tv_explore">Explore</string>
+    <string name="tv_discover_details">Details</string>
+    <string name="tv_discover_building">Building your queue…</string>
+    <string name="tv_genre_none">Nothing found in %1$s</string>
+    <string name="tv_resume_episode">Resume episode %1$s</string>
+    <!-- TV mode: language settings -->
+    <string name="tv_settings_language">Language</string>
+    <string name="tv_subtitle_language">Subtitle language</string>
+    <!-- TV mode: explore tiles in the home hero -->
+    <string name="tv_discover_hero">Twelve picks matched to what you\'ve watched, one at a time: add what looks good, skip or hide the rest.</string>
+    <string name="tv_genre_hero">The most popular %1$s anime, as far as you scroll.</string>
+    <!-- TV mode: AniList rate limit indicator -->
+    <string name="tv_rate_limit_resumes">Loading resumes in %1$s</string>
 </resources>

@@ -5,6 +5,10 @@ import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -14,6 +18,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ColorScheme
 import androidx.tv.material3.LocalContentColor
@@ -29,7 +34,7 @@ import com.google.android.material.color.MaterialColors
  * OLED variant and all, carries over) and Poppins, sized for a screen across the room.
  */
 @Composable
-fun TvTheme(content: @Composable () -> Unit) {
+fun TvTheme(rateLimit: Boolean = true, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val colors = remember(context) { themeColors(context) }
     MaterialTheme(colorScheme = colors, typography = TvTypography) {
@@ -37,8 +42,38 @@ fun TvTheme(content: @Composable () -> Unit) {
         CompositionLocalProvider(
             LocalContentColor provides colors.onBackground,
             LocalDensity provides tvDensity(),
-            content = content,
-        )
+        ) {
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().tvInputTracking()) {
+                content()
+                // Over every TV screen but the player, as the phone's pill keeps off the player too.
+                if (rateLimit) TvRateLimitIndicator(Modifier.align(Alignment.BottomEnd).padding(28.dp))
+            }
+        }
+    }
+}
+
+/**
+ * A dialog drawn at TV mode's scale. A dialog is a window of its own, and its content got the
+ * system's density back — every dialog came out smaller than the screen it opened over.
+ */
+@Composable
+fun TvDialog(onDismissRequest: () -> Unit, fullWidth: Boolean = false, content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismissRequest,
+        // The platform's width cap is in its own dp, which no longer match the dialog's.
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        CompositionLocalProvider(LocalDensity provides density) {
+            if (fullWidth) androidx.compose.foundation.layout.Box(Modifier.tvInputTracking()) { content() }
+            else androidx.compose.foundation.layout.Box(
+                Modifier.fillMaxSize().tvInputTracking().pointerClick(hoverFocus = false, onClick = onDismissRequest),
+                contentAlignment = Alignment.Center,
+            ) {
+                // A click on the dialog itself, not a button, mustn't fall through and close it.
+                androidx.compose.foundation.layout.Box(Modifier.pointerClick(hoverFocus = false) {}) { content() }
+            }
+        }
     }
 }
 

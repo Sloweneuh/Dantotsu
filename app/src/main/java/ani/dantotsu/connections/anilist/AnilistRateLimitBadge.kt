@@ -37,9 +37,11 @@ import kotlinx.coroutines.launch
  * over a badge this small is just the spinner every other screen uses while it loads.
  *
  * Attached from [ani.dantotsu.initActivity] alongside the download pill, which is what keeps it off
- * the reader and the player — neither calls it.
+ * the reader and the player — neither calls it. TV mode's screens get theirs from [ani.dantotsu.tv.TvTheme].
  */
 fun attachAnilistRateLimitBadge(activity: Activity) {
+    // TV mode draws its own, at its scale (TvRateLimitIndicator, from TvTheme).
+    if (activity is ani.dantotsu.tv.TvScreen) return
     val owner = activity as? ComponentActivity ?: return
     activity.window.decorView.post {
         val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return@post

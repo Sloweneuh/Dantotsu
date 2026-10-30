@@ -688,14 +688,33 @@
         <!-- The TV ("Big picture") interface. -->
         <activity
             android:name=".tv.TvHomeActivity"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvSearchActivity"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:windowSoftInputMode="adjustNothing"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvBrowseActivity"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvDiscoverActivity"
+            android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
             android:exported="false" />
         <activity
             android:name=".tv.TvSettingsActivity"
+            android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
             android:exported="false" />
         <activity
             android:name=".tv.TvMediaActivity"
+            android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
             android:exported="false" />
         <activity

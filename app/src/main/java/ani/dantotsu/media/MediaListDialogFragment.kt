@@ -403,86 +403,10 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                             || media?.userStatus == null
                                         if (anilistChanged) {
                                             anilistChangedLocal = true
-                                            // Same treatment the reader/player gives a first-ever
-                                            // entry: land it on 1 so the feed reads as a range
-                                            // rather than an entry that opens partway in. It
-                                            // applies to whatever status is being set, so an entry
-                                            // taken straight to completed here gets it too.
-                                            Anilist.mutation.primeActivity(
-                                                media!!.id,
-                                                isNewEntry = media?.userStatus == null,
-                                                progress = progress,
-                                                status = status,
-                                                startedAt = startD,
+                                            anilistOk = ListEntrySave.save(
+                                                media!!, progress, volume, score, rewatch, notes,
+                                                status, startD, endD, initialScore,
                                             )
-                                            anilistOk = Anilist.mutation.editList(
-                                                media!!.id,
-                                                progress,
-                                                volume,
-                                                score,
-                                                rewatch,
-                                                notes,
-                                                status,
-                                                media?.isListPrivate ?: false,
-                                                startD,
-                                                endD,
-                                                media?.inCustomListsOf?.mapNotNull { if (it.value) it.key else null }
-                                            )
-                                            // AniList has taken the edit; MAL and MangaBaka are
-                                            // best-effort mirrors whose results are discarded
-                                            // either way. Run them together on a scope that
-                                            // outlives this sheet, so saving doesn't sit through
-                                            // their round trips (MangaBaka alone costs an id
-                                            // lookup, a PATCH, and a POST when the entry is new).
-                                            val id = media!!.id
-                                            val idMAL = media!!.idMAL
-                                            val isAnime = media!!.anime != null
-                                            val isManga = media!!.manga != null
-                                            val isPrivate = media?.isListPrivate ?: false
-                                            CoroutineScope(Dispatchers.IO).launch {
-                                                launch {
-                                                    MAL.query.editList(
-                                                        idMAL,
-                                                        isAnime,
-                                                        progress,
-                                                        score,
-                                                        status,
-                                                        rewatch,
-                                                        volume,
-                                                        startD,
-                                                        endD
-                                                    )
-                                                }
-                                                if (isManga) launch {
-                                                    MangaBakaSync.syncFromAnilist(
-                                                        anilistId = id,
-                                                        malId = idMAL,
-                                                        status = status,
-                                                        progressChapter = progress,
-                                                        progressVolume = volume,
-                                                        score = score,
-                                                        rereads = rewatch,
-                                                        isPrivate = isPrivate,
-                                                        startDate = startD,
-                                                        finishDate = endD,
-                                                    )
-                                                }
-                                                launch {
-                                                    ani.dantotsu.connections.sync.ListSyncMirror.pushFromAnilist(
-                                                        isAnime = isAnime,
-                                                        anilistId = id,
-                                                        malId = idMAL,
-                                                        status = status,
-                                                        progress = progress,
-                                                        score = score,
-                                                        // A score emptied in this edit clears Comick's rating; one left
-                                                        // empty doesn't, so a rating set on Comick survives other edits.
-                                                        comickScore = if (score != initialScore) score ?: 0 else score,
-                                                        startDate = startD,
-                                                        finishDate = endD,
-                                                    )
-                                                }
-                                            }
                                                 media?.userVolume = volume
                                         }
                                     }

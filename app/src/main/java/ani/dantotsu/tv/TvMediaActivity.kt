@@ -39,7 +39,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.lifecycleScope
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
@@ -55,15 +54,18 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.media.MediaNameAdapter
+import ani.dantotsu.media.deleteFromList
 import ani.dantotsu.media.anime.Episode
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.HAnimeSources
+import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.themes.ThemeManager
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * A title on the TV: its banner and details, one button to start or continue, the source the
@@ -78,6 +80,10 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
     /** The source episodes are being shown from, as an index into [ani.dantotsu.parsers.WatchSources]. */
     private val sourceIndex = mutableIntStateOf(0)
     private var episodesRequested = false
+
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // TV mode is dark whatever the system says: a bright screen glares across a dark room.
@@ -115,13 +121,87 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                     episodes = episodes?.values?.sortedBy { it.number.toFloatOrNull() ?: Float.MAX_VALUE },
                     onPlay = { play(media, it) },
                     onSource = { changeSource(media, it) },
+                    matchedName = matchedName.value,
+                    searchSource = ::searchSource,
+                    onPickMatch = { pickMatch(media, it) },
+                    listVersion = listVersion.intValue,
+                    onSaveList = { status, progress -> saveList(media, status, progress) },
+                    onRemoveFromList = { removeFromList(media) },
                 )
             }
         }
     }
 
+    /** The source entry the episodes come from, as the source names it — what "Wrong title?" fixes. */
+    private val matchedName = mutableStateOf<String?>(null)
+
     private fun loadEpisodes(media: Media) {
-        lifecycleScope.launch(Dispatchers.IO) { model.loadEpisodes(media, sourceIndex.intValue) }
+        lifecycleScope.launch(Dispatchers.IO) {
+            model.loadEpisodes(media, sourceIndex.intValue)
+            refreshMatchedName(media)
+        }
+    }
+
+    private suspend fun refreshMatchedName(media: Media) {
+        matchedName.value = runCatching {
+            model.watchSources?.get(sourceIndex.intValue)?.loadSavedShowResponse(media.id)?.name
+        }.getOrNull()
+    }
+
+    private suspend fun searchSource(query: String): List<ShowResponse> = withContext(Dispatchers.IO) {
+        model.watchSources?.get(sourceIndex.intValue)?.search(query).orEmpty()
+    }
+
+    /** Bumped when the user's list entry changes here, so what shows it is drawn again. */
+    private val listVersion = mutableIntStateOf(0)
+
+    /**
+     * Saves the entry from the TV's list editor — through the same path as the phone's sheet, so
+     * AniList and the trackers mirroring it all get it. Score, notes and dates are kept as they were.
+     */
+    private fun saveList(media: Media, status: String, progress: Int) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val score = media.userScore.takeIf { it > 0 }
+            val started = if (status == "CURRENT" && media.userStartedAt.isEmpty())
+                ani.dantotsu.connections.anilist.api.FuzzyDate().getToday() else media.userStartedAt
+            val ok = runCatching {
+                ani.dantotsu.media.ListEntrySave.save(
+                    media, progress, media.userVolume, score, media.userRepeat, media.notes,
+                    status, started, media.userCompletedAt, score,
+                )
+            }.getOrDefault(false)
+            if (ok) {
+                media.userStatus = status
+                media.userProgress = progress
+                media.userStartedAt = started
+                ani.dantotsu.Refresh.all()
+            }
+            listVersion.intValue++
+            ani.dantotsu.snackString(getString(if (ok) R.string.list_updated else R.string.list_update_failed))
+        }
+    }
+
+    private fun removeFromList(media: Media) {
+        media.deleteFromList(lifecycleScope, onSuccess = {
+            media.userStatus = null
+            media.userProgress = null
+            media.userListId = null
+            ani.dantotsu.Refresh.all()
+            listVersion.intValue++
+            ani.dantotsu.snackString(getString(R.string.deleted_from_list))
+        }, onError = {
+            ani.dantotsu.snackString(getString(R.string.list_update_failed))
+        }, onNotFound = {
+            ani.dantotsu.snackString(getString(R.string.list_update_failed))
+        })
+    }
+
+    /** The user's pick from "Wrong title?": remembered for this media, and its episodes loaded. */
+    private fun pickMatch(media: Media, response: ShowResponse) {
+        matchedName.value = response.name
+        lifecycleScope.launch(Dispatchers.IO) {
+            model.overrideEpisodes(sourceIndex.intValue, response, media.id)
+        }
     }
 
     private fun changeSource(media: Media, index: Int) {
@@ -148,8 +228,16 @@ private fun TvMedia(
     episodes: List<Episode>?,
     onPlay: (Episode) -> Unit,
     onSource: (Int) -> Unit,
+    matchedName: String?,
+    searchSource: suspend (String) -> List<ShowResponse>,
+    onPickMatch: (ShowResponse) -> Unit,
+    listVersion: Int,
+    onSaveList: (String, Int) -> Unit,
+    onRemoveFromList: () -> Unit,
 ) {
+    var editingList by remember { mutableStateOf(false) }
     var pickingSource by remember { mutableStateOf(false) }
+    var fixingTitle by remember { mutableStateOf(false) }
     val sourceName = sourceNames.getOrNull(sourceIndex)
     val watched = media.userProgress ?: 0
     // The next one to watch: the first past the user's progress, else the first there is.
@@ -166,12 +254,7 @@ private fun TvMedia(
         ) {
             item {
                 Column(Modifier.width(560.dp)) {
-                    Text(
-                        media.userPreferredName,
-                        style = MaterialTheme.typography.displaySmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    FittedTitle(media.userPreferredName)
                     Text(
                         metaLine(media),
                         style = MaterialTheme.typography.titleSmall,
@@ -194,22 +277,44 @@ private fun TvMedia(
                     )
                 }
             }
-            item {
+            item { Column {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (next != null) Button(
                         onClick = { onPlay(next) },
-                        modifier = Modifier.focusRequester(playButton),
+                        modifier = Modifier.focusRequester(playButton).pointerClick { onPlay(next) },
                     ) {
                         Text(
                             if (watched > 0) stringResource(R.string.tv_continue_episode, next.number)
                             else stringResource(R.string.tv_watch_episode, next.number)
                         )
                     }
-                    if (sourceNames.isNotEmpty()) OutlinedButton(onClick = { pickingSource = true }) {
+                    // Where the title sits on the list, and the way to change it. Read through
+                    // listVersion so a save here redraws it.
+                    val listLabel = listVersion.let { listStatusLabel(media) } ?: stringResource(R.string.add_list)
+                    OutlinedButton(
+                        onClick = { editingList = true },
+                        modifier = Modifier.pointerClick { editingList = true },
+                    ) { Text(listLabel) }
+                    if (sourceNames.isNotEmpty()) OutlinedButton(
+                        onClick = { pickingSource = true },
+                        modifier = Modifier.pointerClick { pickingSource = true },
+                    ) {
                         Text(stringResource(R.string.tv_source, sourceName.orEmpty()))
                     }
+                    if (sourceNames.isNotEmpty()) OutlinedButton(
+                        onClick = { fixingTitle = true },
+                        modifier = Modifier.pointerClick { fixingTitle = true },
+                    ) {
+                        Text(stringResource(R.string.tv_wrong_title))
+                    }
                 }
-            }
+                if (matchedName != null && sourceName != null) Text(
+                    stringResource(R.string.tv_matched_as, sourceName, matchedName),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+            } }
             item {
                 when {
                     sourceNames.isEmpty() -> Status(stringResource(R.string.tv_no_extensions))
@@ -249,6 +354,21 @@ private fun TvMedia(
         }
     }
 
+    if (editingList) TvListEditor(
+        media = media,
+        onSave = { status, progress -> editingList = false; onSaveList(status, progress) },
+        onRemove = { editingList = false; onRemoveFromList() },
+        onDismiss = { editingList = false },
+    )
+
+    if (fixingTitle) WrongTitleDialog(
+        initialQuery = media.mainName(),
+        sourceName = sourceName.orEmpty(),
+        search = searchSource,
+        onPick = { fixingTitle = false; onPickMatch(it) },
+        onDismiss = { fixingTitle = false },
+    )
+
     if (pickingSource) SourcePicker(
         names = sourceNames,
         selected = sourceIndex,
@@ -269,7 +389,7 @@ private fun EpisodeCard(episode: Episode, fallbackImage: String?, watched: Boole
     Column(Modifier.width(200.dp)) {
         Card(
             onClick = onClick,
-            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).pointerClick(onClick = onClick),
             shape = CardDefaults.shape(CARD_SHAPE),
             scale = CardDefaults.scale(focusedScale = FOCUSED_SCALE),
             border = CardDefaults.border(
@@ -300,7 +420,7 @@ private fun EpisodeCard(episode: Episode, fallbackImage: String?, watched: Boole
 @Composable
 private fun SourcePicker(names: List<String>, selected: Int, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
     val current = remember { FocusRequester() }
-    Dialog(onDismissRequest = onDismiss) {
+    TvDialog(onDismissRequest = onDismiss) {
         Surface(shape = CARD_SHAPE, modifier = Modifier.width(420.dp)) {
             Column(Modifier.padding(24.dp)) {
                 Text(
@@ -314,7 +434,8 @@ private fun SourcePicker(names: List<String>, selected: Int, onPick: (Int) -> Un
                             selected = index == selected,
                             onClick = { onPick(index) },
                             headlineContent = { Text(name) },
-                            modifier = if (index == selected) Modifier.focusRequester(current) else Modifier,
+                            modifier = (if (index == selected) Modifier.focusRequester(current) else Modifier)
+                                .pointerClick { onPick(index) },
                         )
                     }
                 }

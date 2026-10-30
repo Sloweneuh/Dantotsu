@@ -1210,6 +1210,11 @@ class ExoplayerView :
             "${media.id}_current_ep",
             media.anime!!.selectedEpisode!!,
         )
+        // TV mode's Continue Watching shows the episode being watched, not the series cover; the
+        // thumbnail is only known here, with the episode list loaded.
+        episodes[media.anime!!.selectedEpisode!!]?.thumb?.url?.let {
+            PrefManager.setCustomVal("${media.id}_current_thumb", it)
+        }
 
         @Suppress("UNCHECKED_CAST")
         val list =
@@ -2541,6 +2546,9 @@ class ExoplayerView :
                 val end = exoPlayer.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
                 exoPlayer.seekTo((exoPlayer.currentPosition + deltaMs).coerceIn(0, end))
             }
+            override fun seekTo(positionMs: Long) {
+                if (isInitialized) exoPlayer.seekTo(positionMs.coerceAtLeast(0))
+            }
             override fun previous() { exoPrev.performClick() }
             override fun next() { exoNext.performClick() }
             override fun audio() { exoAudioTrack.performClick() }
@@ -2550,7 +2558,7 @@ class ExoplayerView :
         tvOverlay = controller
         binding.root.addView(
             androidx.compose.ui.platform.ComposeView(this).apply {
-                setContent { ani.dantotsu.tv.TvTheme { ani.dantotsu.tv.TvPlayerOverlay(controller) } }
+                setContent { ani.dantotsu.tv.TvTheme(rateLimit = false) { ani.dantotsu.tv.TvPlayerOverlay(controller) } }
             },
             android.widget.FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
@@ -2578,6 +2586,37 @@ class ExoplayerView :
                 kotlinx.coroutines.delay(500)
             }
         }
+    }
+
+    /**
+     * A mouse in TV mode: moving it, or clicking the picture, brings the controls up — with them
+     * hidden there is nothing else for a pointer to reach. Once up, clicks go to their buttons.
+     */
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        val overlay = tvOverlay
+        // The skip button and the next-episode card sit over the picture on their own: theirs.
+        if (overlay != null && !overlay.visible && !isOver(ev, R.id.exo_skip_timestamp) &&
+            !isOver(ev, R.id.nextCountdownCard)
+        ) {
+            if (ev.actionMasked == android.view.MotionEvent.ACTION_UP) overlay.show()
+            return true
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun isOver(ev: android.view.MotionEvent, id: Int): Boolean {
+        val view = findViewById<View>(id)?.takeIf { it.isShown } ?: return false
+        val at = IntArray(2).also { view.getLocationOnScreen(it) }
+        return ev.rawX >= at[0] && ev.rawX < at[0] + view.width && ev.rawY >= at[1] && ev.rawY < at[1] + view.height
+    }
+
+    override fun dispatchGenericMotionEvent(ev: android.view.MotionEvent): Boolean {
+        tvOverlay?.let { overlay ->
+            if (ev.actionMasked == android.view.MotionEvent.ACTION_HOVER_MOVE) {
+                if (overlay.visible) overlay.poke() else overlay.show()
+            }
+        }
+        return super.dispatchGenericMotionEvent(ev)
     }
 
     /** The D-pad over shown controls: focus moves between their buttons, and they stay up for it. */
@@ -2635,6 +2674,8 @@ class ExoplayerView :
                 }
             KeyEvent.KEYCODE_BUTTON_B ->
                 if (controls) true.also { if (up) hideControls() } else null
+            // A keyboard's Escape is its back key.
+            KeyEvent.KEYCODE_ESCAPE -> true.also { if (up) onBackPressedDispatcher.onBackPressed() }
             KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> press(exoPrev)
             KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_MEDIA_NEXT -> press(exoNext)
             KeyEvent.KEYCODE_BUTTON_X -> press(exoAudioTrack)
