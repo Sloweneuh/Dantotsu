@@ -85,6 +85,14 @@ object CloudWipe {
             }
         }
 
+        // TVs keep their settings in an area of their own, which the legacy layout never had.
+        SyncIdentity.node("settings", area = CloudSync.TV_AREA)?.let { node ->
+            if (!node.removeValue().awaitOk()) {
+                Logger.log("CloudWipe: could not delete the TVs' settings")
+                ok = false
+            }
+        }
+
         // Clear bookkeeping regardless: leaving a baseline that points at data which no longer
         // exists would make the next sync believe it was already up to date.
         resetLocalBaselines()

@@ -3476,7 +3476,7 @@
     <string name="tv_source">Source · %1$s</string>
     <string name="tv_pick_source">Choisir une source</string>
     <string name="tv_no_extensions">Aucune extension d’anime installée. Ajoutez-en une depuis l’interface téléphone.</string>
-    <string name="tv_signed_out">Connectez-vous à AniList depuis l’interface téléphone pour voir vos listes ici.</string>
+    <string name="tv_signed_out">Utilisez « Se connecter » pour connecter cette TV depuis votre téléphone : vos listes s’afficheront ici.</string>
     <!-- TV mode interface: title details -->
     <string name="tv_progress_of">Ép. %1$d / %2$d</string>
     <string name="tv_progress">Ép. %1$d</string>
@@ -3542,4 +3542,38 @@
     <string name="tv_genre_hero">Les animes %1$s les plus populaires, aussi loin que vous défilez.</string>
     <!-- TV mode: AniList rate limit indicator -->
     <string name="tv_rate_limit_resumes">Reprise du chargement dans %1$s</string>
+    <!-- TV mode: signing in with a phone -->
+    <string name="tv_sign_in">Se connecter</string>
+    <string name="tv_sign_in_title">Se connecter avec son téléphone</string>
+    <string name="tv_sign_in_step_scan">Sur un téléphone connecté à Dantotsu, scannez ce code avec l\'appareil photo ou le scanner de transfert de Dantotsu.</string>
+    <string name="tv_sign_in_step_confirm">Confirmez sur le téléphone. Cette TV se connecte au même compte AniList.</string>
+    <string name="tv_sign_in_waiting">En attente du téléphone…</string>
+    <string name="tv_sign_in_done">Connecté en tant que %1$s</string>
+    <string name="tv_sign_in_done_unnamed">Connecté</string>
+    <string name="tvlogin_title">Connecter une TV</string>
+    <string name="tvlogin_body">Connecter %1$s à AniList en tant que %2$s ? Votre session lui est envoyée chiffrée, et seule cette TV peut la lire.</string>
+    <string name="tvlogin_body_sync">La synchronisation cloud est liée sur ce téléphone : la TV la rejoint aussi, avec les mêmes paramètres et extensions.</string>
+    <string name="tvlogin_confirm">Connecter</string>
+    <string name="tvlogin_sent">%1$s va se connecter dans un instant</string>
+    <string name="tvlogin_failed">Impossible de joindre %1$s. Réessayez</string>
+    <string name="tvlogin_invalid">Ce code de connexion n\'est plus valide</string>
+    <string name="tvlogin_need_login">Connectez-vous d\'abord à AniList sur ce téléphone</string>
+    <!-- TV mode: settings page -->
+    <string name="tv_skip_segments">Afficher les segments d\'intro, de récap et de fin</string>
+    <string name="tv_resize_fit">Ajuster</string>
+    <string name="tv_resize_zoom">Zoom</string>
+    <string name="tv_resize_stretch">Étirer</string>
+    <string name="tv_seconds">%1$d s</string>
+    <string name="tv_settings_progress">Progression</string>
+    <string name="tv_watched_at">Un épisode compte comme vu à</string>
+    <string name="tv_ask_update_progress">Demander avant de mettre à jour la progression</string>
+    <string name="tv_focus_pause">Mettre en pause en quittant Dantotsu</string>
+    <string name="tv_subtitles_on">Afficher les sous-titres</string>
+    <string name="tv_settings_appearance">Apparence</string>
+    <string name="tv_color_white">Blanc</string>
+    <string name="tv_color_black">Noir</string>
+    <string name="tv_color_yellow">Jaune</string>
+    <string name="tv_color_cyan">Cyan</string>
+    <string name="tv_color_light_gray">Gris clair</string>
+    <string name="tv_color_dark_gray">Gris foncé</string>
 </resources>

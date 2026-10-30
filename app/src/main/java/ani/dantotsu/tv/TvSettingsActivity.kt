@@ -36,6 +36,7 @@ import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.themes.ThemeManager
+import kotlin.math.roundToInt
 import ani.dantotsu.media.anime.PlayerSources
 import ani.dantotsu.util.LanguageHelper
 import androidx.compose.foundation.layout.heightIn
@@ -48,12 +49,10 @@ import androidx.compose.foundation.layout.heightIn
 class TvSettingsActivity : AppCompatActivity(), TvScreen {
 
     override fun attachBaseContext(newBase: android.content.Context?) {
-        super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
+        super.attachBaseContext(TvMode.attach(this, newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // TV mode is dark whatever the system says: a bright screen glares across a dark room.
-        delegate.localNightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
         ThemeManager(this).applyTheme()
         super.onCreate(savedInstanceState)
         initActivity(this)
@@ -69,7 +68,8 @@ private fun TvSettings(onExit: (() -> Unit)?) {
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.TopCenter) {
-        LazyColumn(
+        // A focused row comes to rest well clear of the edge, with rows above and below it to see.
+        FocusRestingAt(SETTINGS_FOCUS_REST) { LazyColumn(
             modifier = Modifier.width(680.dp),
             contentPadding = PaddingValues(vertical = 36.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -85,10 +85,18 @@ private fun TvSettings(onExit: (() -> Unit)?) {
             item { Header(R.string.tv_settings_account) }
             item {
                 val name = Anilist.username
-                Info(
-                    if (Anilist.token != null && !name.isNullOrBlank()) stringResource(R.string.tv_signed_in_as, name)
-                    else stringResource(R.string.tv_not_signed_in)
-                )
+                if (Anilist.token != null && !name.isNullOrBlank()) Info(stringResource(R.string.tv_signed_in_as, name))
+                else {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val signIn = { context.startActivity(android.content.Intent(context, TvSignInActivity::class.java)) }
+                    ListItem(
+                        selected = false,
+                        onClick = signIn,
+                        headlineContent = { Text(stringResource(R.string.tv_sign_in)) },
+                        supportingContent = { Text(stringResource(R.string.tv_not_signed_in)) },
+                        modifier = Modifier.pointerClick(onClick = signIn),
+                    )
+                }
             }
 
             item { Header(R.string.tv_settings_playback) }
@@ -98,10 +106,52 @@ private fun TvSettings(onExit: (() -> Unit)?) {
             item { Toggle(R.string.auto_skip_recap, PrefName.AutoSkipRecap) }
             item { Toggle(R.string.auto_skip_fillers, PrefName.AutoSkipFiller) }
             item { Toggle(R.string.prefer_dub, PrefName.SettingsPreferDub) }
+            item { Toggle(R.string.skip_outro_to_next, PrefName.SkipOutroToNext) }
+            item { Toggle(R.string.tv_skip_segments, PrefName.TimeStampsEnabled) }
+            item { SpeedChoice() }
+            item {
+                IntChoice(
+                    R.string.default_resize_mode, PrefName.Resize, listOf(0, 1, 2),
+                    listOf(stringResource(R.string.tv_resize_fit), stringResource(R.string.tv_resize_zoom), stringResource(R.string.tv_resize_stretch)),
+                )
+            }
+            item {
+                val seconds = listOf(5, 10, 15, 20, 30, 45) // within the phone slider's 1-50
+                IntChoice(R.string.seek_time, PrefName.SeekTime, seconds, seconds.map { stringResource(R.string.tv_seconds, it) })
+            }
 
-            item { Header(R.string.tv_settings_language) }
-            item { AppLanguageChoice() }
+            // When an episode counts as watched, and how one is picked up again.
+            item { Header(R.string.tv_settings_progress) }
+            item { WatchedAtChoice() }
+            item { Toggle(R.string.tv_ask_update_progress, PrefName.AskIndividualPlayer) }
+            item { Toggle(R.string.always_continue, PrefName.AlwaysContinue) }
+            item { Toggle(R.string.tv_focus_pause, PrefName.FocusPause) }
+
+            item { Header(R.string.subtitles) }
+            item { Toggle(R.string.tv_subtitles_on, PrefName.Subtitles) }
             item { SubtitleLanguageChoice() }
+            item {
+                val sizes = listOf(14, 16, 18, 20, 24, 28, 32, 40, 48)
+                IntChoice(R.string.sub_size, PrefName.FontSize, sizes, sizes.map { it.toString() })
+            }
+            item { IntChoice(R.string.sub_font, PrefName.Font, SUBTITLE_FONTS.indices.toList(), SUBTITLE_FONTS) }
+            item { ColorChoice(R.string.sub_text_color, PrefName.PrimaryColor) }
+            item {
+                IntChoice(
+                    R.string.sub_outline_style, PrefName.Outline, listOf(0, 1, 2, 3),
+                    listOf(
+                        stringResource(R.string.sub_outline_outline), stringResource(R.string.sub_outline_shine),
+                        stringResource(R.string.sub_outline_shadow), stringResource(R.string.sub_outline_none),
+                    ),
+                )
+            }
+            item { ColorChoice(R.string.sub_outline_color, PrefName.SecondaryColor) }
+            item { ColorChoice(R.string.sub_background_color, PrefName.SubBackground) }
+
+            item { Header(R.string.tv_settings_appearance) }
+            item { AppLanguageChoice() }
+            item { ThemeChoice() }
+            item { Toggle(R.string.use_oled_theme, PrefName.UseOLED, onChanged = ::restartTvMode) }
 
             item { Header(R.string.tv_settings_sources) }
             // Downloads are a source too (OfflineAnimeParser), but not one to list here.
@@ -124,8 +174,10 @@ private fun TvSettings(onExit: (() -> Unit)?) {
                 }
             }
         }
-    }
+    } }
 }
+
+private val SETTINGS_FOCUS_REST = 140.dp
 
 @Composable
 private fun Header(title: Int) {
@@ -150,11 +202,14 @@ private fun Info(text: String, dim: Boolean = false) {
 
 /** A setting that's on or off: the whole row flips it. */
 @Composable
-private fun Toggle(title: Int, pref: PrefName, modifier: Modifier = Modifier) {
+private fun Toggle(title: Int, pref: PrefName, modifier: Modifier = Modifier, onChanged: ((android.content.Context) -> Unit)? = null) {
     var on by remember { mutableStateOf(PrefManager.getVal<Boolean>(pref)) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     val flip = {
         on = !on
         PrefManager.setVal(pref, on)
+        onChanged?.invoke(context)
+        Unit
     }
     ListItem(
         selected = false,
@@ -237,10 +292,12 @@ private fun ChoiceRow(title: String, options: List<String>, selected: Int, onPic
         onClick = { picking = true },
         headlineContent = { Text(title) },
         trailingContent = {
+            // The row's own content colour, which flips with focus: the accent colour vanished on a
+            // focused row's light background.
             Text(
                 options.getOrNull(selected).orEmpty(),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color = androidx.tv.material3.LocalContentColor.current.copy(alpha = 0.75f),
             )
         },
         modifier = Modifier.pointerClick { picking = true },
@@ -275,5 +332,98 @@ private fun ChoiceRow(title: String, options: List<String>, selected: Int, onPic
                 }
             }
         }
+    }
+}
+
+/** The subtitle fonts, in the order the player's [PrefName.Font] index counts them (as the phone lists them). */
+private val SUBTITLE_FONTS = listOf(
+    "Poppins Semi Bold", "Poppins Bold", "Poppins", "Poppins Thin", "Century Gothic", "Levenim MT Bold", "Blocky",
+)
+
+/** The player's speeds, as [PrefName.DefaultSpeed] indexes them (the phone's lists, cursed ones included). */
+private val SPEEDS = listOf(0.25f, 0.33f, 0.5f, 0.66f, 0.75f, 1f, 1.15f, 1.25f, 1.33f, 1.5f, 1.66f, 1.75f, 2f)
+private val CURSED_SPEEDS = listOf(1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f, 4f, 5f, 10f, 25f, 50f)
+
+/**
+ * Colours a remote can pick between, in place of the phone's colour wheel: what subtitles are
+ * usually set to, and transparent for "nothing behind the text".
+ */
+private val SUBTITLE_COLORS = listOf(
+    android.graphics.Color.WHITE to R.string.tv_color_white,
+    android.graphics.Color.BLACK to R.string.tv_color_black,
+    android.graphics.Color.YELLOW to R.string.tv_color_yellow,
+    android.graphics.Color.CYAN to R.string.tv_color_cyan,
+    android.graphics.Color.LTGRAY to R.string.tv_color_light_gray,
+    android.graphics.Color.DKGRAY to R.string.tv_color_dark_gray,
+    android.graphics.Color.TRANSPARENT to R.string.sub_color_transparent,
+)
+
+/** Theme and OLED apply as each screen starts: TV mode opens afresh on them. */
+private fun restartTvMode(context: android.content.Context) {
+    context.startActivity(
+        android.content.Intent(context, TvHomeActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+    )
+}
+
+/**
+ * An Int setting picked from [values], named by [labels]. A value set elsewhere that isn't among
+ * them (a slider on the phone) is offered too, as itself, rather than shown as something it isn't.
+ */
+@Composable
+private fun IntChoice(title: Int, pref: PrefName, values: List<Int>, labels: List<String>) {
+    var value by remember { mutableIntStateOf(PrefManager.getVal<Int>(pref)) }
+    val shownValues = if (value in values) values else values + value
+    val shownLabels = if (value in values) labels else labels + value.toString()
+    ChoiceRow(stringResource(title), shownLabels, shownValues.indexOf(value)) { i ->
+        value = shownValues[i]
+        PrefManager.setVal(pref, value)
+    }
+}
+
+@Composable
+private fun SpeedChoice() {
+    val speeds = if (PrefManager.getVal<Boolean>(PrefName.CursedSpeeds)) CURSED_SPEEDS else SPEEDS
+    IntChoice(R.string.default_speed, PrefName.DefaultSpeed, speeds.indices.toList(), speeds.map { "${it}x" })
+}
+
+/** How much of an episode has to be watched for it to count (the phone's slider, in steps of ten). */
+@Composable
+private fun WatchedAtChoice() {
+    var percent by remember { mutableIntStateOf((PrefManager.getVal<Float>(PrefName.WatchPercentage) * 100).roundToInt()) }
+    val steps = (50..100 step 10).toList().let { if (percent in it) it else (it + percent).sorted() }
+    ChoiceRow(stringResource(R.string.tv_watched_at), steps.map { "$it%" }, steps.indexOf(percent)) { i ->
+        percent = steps[i]
+        PrefManager.setVal(PrefName.WatchPercentage, percent / 100f)
+    }
+}
+
+@Composable
+private fun ColorChoice(title: Int, pref: PrefName) {
+    var color by remember { mutableIntStateOf(PrefManager.getVal<Int>(pref)) }
+    val known = SUBTITLE_COLORS.map { it.first }
+    val colors = if (color in known) known else known + color
+    val labels = SUBTITLE_COLORS.map { stringResource(it.second) } +
+        if (color in known) emptyList() else listOf(String.format("#%06X", color and 0xFFFFFF))
+    ChoiceRow(stringResource(title), labels, colors.indexOf(color)) { i ->
+        color = colors[i]
+        PrefManager.setVal(pref, color)
+    }
+}
+
+/** The app's colour theme, which TV mode's colours come from. */
+@Composable
+private fun ThemeChoice() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val themes = ani.dantotsu.themes.ThemeManager.Companion.Theme.entries
+    val current = ani.dantotsu.themes.ThemeManager.Companion.Theme.fromString(PrefManager.getVal(PrefName.Theme))
+    ChoiceRow(
+        stringResource(R.string.theme),
+        themes.map { it.theme.lowercase().replaceFirstChar { c -> c.titlecase() } },
+        themes.indexOf(current),
+    ) { i ->
+        if (themes[i] == current) return@ChoiceRow
+        PrefManager.setVal(PrefName.Theme, themes[i].theme)
+        restartTvMode(context)
     }
 }

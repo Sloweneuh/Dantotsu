@@ -34,6 +34,18 @@ object CloudSync {
 
     private const val SETTINGS = "settings"
 
+    /**
+     * The area TVs keep their settings in, apart from the phones' (see [SyncIdentity.node]): a TV
+     * starts from the phone's at its first sync ([bootstrapTv]) and from then on syncs only with
+     * other TVs — a phone's layout, reader and gesture settings have no business on a TV, nor the
+     * TV's on a phone. Watch progress, extensions and their settings stay shared. Decided by the
+     * device being a TV, not by TV mode being switched on: a tablet or desktop window in TV mode is
+     * still a phone's settings.
+     */
+    internal const val TV_AREA = "tv"
+
+    private fun onTv(): Boolean = ani.dantotsu.App.context?.let { ani.dantotsu.tv.TvMode.isTvDevice(it) } == true
+
     // Locations holding genuine, shareable user preferences. Protected (secrets) and
     // AnimeDownloads are deliberately omitted. Irrelevant is included but allowlisted key-by-key
     // (see [SYNCABLE_IRRELEVANT_KEYS]) — it's the app's junk drawer, not a settings location.
@@ -221,7 +233,7 @@ object CloudSync {
     private fun userId(): String? =
         PrefManager.getVal<String>(PrefName.AnilistUserId).takeIf { it.isNotBlank() }
 
-    private fun settingsNode() = SyncIdentity.node(SETTINGS)
+    private fun settingsNode() = SyncIdentity.node(SETTINGS, area = if (onTv()) TV_AREA else null)
 
     private fun packLocal(): String =
         PrefManager.exportSyncablePrefs(SYNC_LOCATIONS, ::isSyncable)
@@ -313,8 +325,11 @@ object CloudSync {
      * payload rather than stored beside it — "Pixel 8" next to a timestamp is still a fact about
      * someone, and the node is only as private as its least private field.
      */
-    private suspend fun fetchRemote(uid: String): Result<Remote?> = runCatching {
-        val snap = settingsNode()?.getSnapshot() ?: return@runCatching null
+    private suspend fun fetchRemote(
+        uid: String,
+        node: com.google.firebase.database.DatabaseReference? = settingsNode(),
+    ): Result<Remote?> = runCatching {
+        val snap = node?.getSnapshot() ?: return@runCatching null
         if (!snap.schemaIsReadable("CloudSync")) return@runCatching null
         val sealed = snap.child("payload").getValue(String::class.java)
         val ts = snap.child("ts").getValue(Long::class.java)
@@ -431,6 +446,25 @@ object CloudSync {
         } else {
             Logger.log("CloudSync: failed to apply remote settings")
         }
+        return applied
+    }
+
+    /**
+     * A TV's first sync: it takes the settings it starts from rather than asking — the other TVs'
+     * when there are any, so they stay alike, otherwise the phone's — and, being the first TV, seeds
+     * the TVs' copy with them. Nothing a TV had before its first sync is worth keeping: it was just
+     * signed in, and a remote isn't a place to type settings in.
+     * @return whether settings were applied.
+     */
+    private suspend fun bootstrapTv(uid: String, tvRemote: Remote?): Boolean {
+        val source = tvRemote ?: fetchRemote(uid, SyncIdentity.node(SETTINGS)).getOrNull()
+        val applied = source != null && doApply(source.payload, source.ts)
+        if (source != null && !applied) return false
+        if (tvRemote == null) {
+            // Seeded with what this TV now holds: the phone's settings, or (no phone copy either) its own.
+            if (doPush(uid, packLocal())) Logger.log("CloudSync: seeded the TVs' settings")
+        }
+        Logger.log("CloudSync: TV took its settings from ${if (tvRemote != null) "the other TVs" else if (source != null) "the phone" else "nowhere (none in the cloud)"}")
         return applied
     }
 
@@ -589,6 +623,9 @@ object CloudSync {
         rebaselineForFilterChange()
         runCatching {
             userId() ?: return PushResult.NothingToDo
+            // A TV that hasn't taken its settings yet has none worth keeping: its defaults would
+            // seed the TVs' copy before [bootstrapTv] could take the phone's.
+            if (onTv() && neverSynced()) return PushResult.NothingToDo
             val local = packLocal()
             if (local.hashCode() == lastHash()) return PushResult.NothingToDo // nothing changed
             // One operation rather than read-then-write: the condition is evaluated by the server
@@ -630,10 +667,15 @@ object CloudSync {
         rebaselineForFilterChange()
                 runCatching {
                     val uid = userId() ?: return@runCatching
-                    val remote = fetchRemote(uid).getOrElse {
+                    val fetched = fetchRemote(uid).getOrElse {
                         Logger.log("CloudSync: pull skipped, remote unreadable: ${it.message}")
                         return@runCatching
-                    } ?: return@runCatching
+                    }
+                    if (onTv() && neverSynced()) {
+                        if (bootstrapTv(uid, fetched)) SyncReloadNotice.raise()
+                        return@runCatching
+                    }
+                    val remote = fetched ?: return@runCatching
                     if (remote.ts <= lastTs()) return@runCatching // remote not newer
                     if (neverSynced()) {
                         // No baseline: this device cannot tell its own settings from an install's

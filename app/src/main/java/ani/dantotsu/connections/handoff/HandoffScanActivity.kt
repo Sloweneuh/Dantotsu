@@ -113,6 +113,14 @@ class HandoffScanActivity : AppCompatActivity() {
             return
         }
         val uri = Uri.parse(text)
+        if (TvLogin.isLoginLink(uri)) {
+            handled = true
+            runOnUiThread {
+                startActivity(android.content.Intent(this, TvLoginLinkActivity::class.java).setData(uri))
+                finish()
+            }
+            return
+        }
         val payload = HandoffPayload.fromDeepLink(uri) ?: return
         handled = true
         val code = uri.getQueryParameter(HandoffPayload.QUERY_CODE)

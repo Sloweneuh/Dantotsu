@@ -85,12 +85,10 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
     private val resumeTick = mutableIntStateOf(0)
 
     override fun attachBaseContext(newBase: android.content.Context?) {
-        super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
+        super.attachBaseContext(TvMode.attach(this, newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // TV mode is dark whatever the system says: a bright screen glares across a dark room.
-        delegate.localNightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
         ThemeManager(this).applyTheme()
         super.onCreate(savedInstanceState)
         initActivity(this)
@@ -106,6 +104,7 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
                     onGenre = { startActivity(Intent(this, TvBrowseActivity::class.java).putExtra(TvBrowseActivity.EXTRA_GENRE, it)) },
                     onDiscover = if (Anilist.token != null) ({ startActivity(Intent(this, TvDiscoverActivity::class.java)) }) else null,
                     onSearch = ::openSearch,
+                    onSignIn = if (Anilist.token == null) ({ startActivity(Intent(this, TvSignInActivity::class.java)) }) else null,
                     onSettings = { startActivity(Intent(this, TvSettingsActivity::class.java)) },
                     onExit = if (TvMode.canExit(this)) ({ TvMode.exit(this) }) else null,
                 )
@@ -114,7 +113,11 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
         lifecycleScope.launch(Dispatchers.IO) {
             TrackerSessions.await()
             home.initHomePageCached()
-            home.initHomePage()
+            // The account as AniList has it (name, adult setting) and, once it's known, what cloud
+            // sync holds for it: the phone's home does this on launch, and TV mode never did, so a
+            // TV only picked up synced settings after coming back to it from another app.
+            ani.dantotsu.connections.anilist.getUserId(this@TvHomeActivity) {}
+            home.initHomePage(TV_HOME_LAYOUT)
         }
         // A list change anywhere (the media page's list editor, the player marking an episode
         // watched) calls Refresh.all(): the rows are loaded again, so a title moves to where it now is.
@@ -123,7 +126,7 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
         refresh.observe(this) { changed ->
             if (!changed) return@observe
             refresh.value = false
-            lifecycleScope.launch(Dispatchers.IO) { home.initHomePage() }
+            lifecycleScope.launch(Dispatchers.IO) { home.initHomePage(TV_HOME_LAYOUT) }
         }
         // The season and chart rows come from TvRowCache while they're a few hours old at most;
         // the account (and with it the adult setting the cache is kept by) is known first.
@@ -251,6 +254,7 @@ private fun TvHome(
     onGenre: (String) -> Unit,
     onDiscover: (() -> Unit)?,
     onSearch: () -> Unit,
+    onSignIn: (() -> Unit)?,
     onSettings: () -> Unit,
     onExit: (() -> Unit)?,
 ) {
@@ -313,7 +317,22 @@ private fun TvHome(
     val shown = focused?.let { f -> titleRows.firstNotNullOfOrNull { row -> row.items.firstOrNull { it.id == f.id } } ?: f }
         ?: titleRows.firstOrNull()?.items?.firstOrNull()
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    // The screen fades in once the user's own rows are in (or there's no account to load them for)
+    // — or after a few seconds, with whatever has come — over the wordmark the launch window showed:
+    // drawn as each row arrived, the screen filled in piece by piece, rows pushing each other down.
+    var ready by remember { mutableStateOf(false) }
+    val ownRowsIn = Anilist.token == null || continuing != null || planned != null
+    LaunchedEffect(ownRowsIn, titleRows.isNotEmpty()) { if (ownRowsIn && titleRows.isNotEmpty()) ready = true }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(READY_TIMEOUT_MS)
+        ready = true
+    }
+    val contentAlpha by androidx.compose.animation.core.animateFloatAsState(
+        if (ready) 1f else 0f, androidx.compose.animation.core.tween(FADE_IN_MS), label = "homeFadeIn",
+    )
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    if (contentAlpha < 1f) TvLaunchLogo(Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - contentAlpha })
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = contentAlpha }.background(MaterialTheme.colorScheme.background)) {
         Backdrop(
             imageUrl = focusedTile?.let { it.image } ?: shown?.banner ?: shown?.cover,
             modifier = Modifier.fillMaxWidth().fillMaxHeight(0.66f),
@@ -324,6 +343,12 @@ private fun TvHome(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Spacer(Modifier.weight(1f))
+                if (onSignIn != null) {
+                    Button(onClick = onSignIn, modifier = Modifier.pointerClick(onClick = onSignIn)) {
+                        Text(stringResource(R.string.tv_sign_in))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                }
                 Button(onClick = onSearch, colors = ButtonDefaults.colors(), modifier = Modifier.pointerClick(onClick = onSearch)) {
                     Text(stringResource(R.string.search))
                 }
@@ -468,6 +493,28 @@ private fun TvHome(
             } }
         }
     }
+    }
+}
+
+/**
+ * The rows TV mode asks the home request for, whatever the phone's home layout has switched on (it
+ * comes over with cloud sync, and once left the TV with none of its own rows): Continue Watching,
+ * Planned anime and the recommendations — no manga, which TV mode doesn't show.
+ * Indices as [ani.dantotsu.connections.anilist.AnilistQueries.initHomePage] reads them.
+ */
+private val TV_HOME_LAYOUT = listOf(true, false, true, false, false, false, false, true, false)
+
+private const val READY_TIMEOUT_MS = 4_000L
+private const val FADE_IN_MS = 450
+
+/** The wordmark, where and as large as the launch window (tv_launch_window) draws it. */
+@Composable
+private fun TvLaunchLogo(modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Image(
+        androidx.compose.ui.res.painterResource(R.drawable.ic_dantotsu_logo),
+        contentDescription = null,
+        modifier = modifier.width(300.dp).height(83.dp),
+    )
 }
 
 private val ROW_TITLE_GAP = 12.dp

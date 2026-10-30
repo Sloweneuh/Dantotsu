@@ -190,10 +190,14 @@ object SyncIdentity {
     /**
      * The database node for [child] (`settings`, `progress`, …), or null when this device can't
      * address one: not linked, or not signed in.
+     *
+     * [area] names a separate set of nodes for the same account — TVs keep their own settings
+     * there. A path of its own rather than a new child name, because the database rules accept only
+     * the children that already exist; derived the same way, it looks like any other account's.
      */
-    fun node(child: String): DatabaseReference? = runCatching {
+    fun node(child: String, area: String? = null): DatabaseReference? = runCatching {
         val keys = keys() ?: return null
-        val scope = pathScope() ?: return null
+        val scope = pathScope()?.let { if (area != null) "$it|$area" else it } ?: return null
         FirebaseDatabase.getInstance().reference
             .child(ROOT)
             .child(SyncCrypto.pathId(keys.path, scope))

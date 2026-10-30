@@ -453,6 +453,25 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".connections.handoff.TvLoginLinkActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter android:label="@string/tvlogin_title">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="dantotsuhandoff" android:host="tvlogin" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".tv.TvSignInActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:screenOrientation="sensorLandscape"
+            android:exported="false" />
+        <activity
             android:name=".connections.handoff.HandoffScanActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
@@ -688,35 +707,53 @@
         <!-- The TV ("Big picture") interface. -->
         <activity
             android:name=".tv.TvHomeActivity"
+            android:theme="@style/Theme.Dantotsu.Tv.Launch"
             android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
             android:exported="false" />
         <activity
             android:name=".tv.TvSearchActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
             android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
             android:windowSoftInputMode="adjustNothing"
             android:exported="false" />
         <activity
             android:name=".tv.TvBrowseActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
             android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
             android:exported="false" />
         <activity
             android:name=".tv.TvDiscoverActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
             android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
             android:exported="false" />
         <activity
             android:name=".tv.TvSettingsActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
             android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
             android:exported="false" />
         <activity
             android:name=".tv.TvMediaActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
             android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
             android:exported="false" />
+        <!-- The TV home screen's way in: black from the first frame, then TV mode (or the phone UI). -->
+        <activity
+            android:name=".tv.TvLaunchActivity"
+            android:exported="true"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Dantotsu.Tv.Launch">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".MainActivity"
             android:alwaysRetainTaskState="true"
@@ -725,10 +762,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

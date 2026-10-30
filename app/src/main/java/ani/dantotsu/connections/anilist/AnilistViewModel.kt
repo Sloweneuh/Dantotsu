@@ -268,9 +268,9 @@ class AnilistHomeViewModel : ViewModel() {
         }
     }
 
-    suspend fun initHomePage() {
+    suspend fun initHomePage(layout: List<Boolean>? = null) {
         try {
-            val res = Anilist.query.initHomePage()
+            val res = Anilist.query.initHomePage(layout)
             homeDataError.postValue(false)
             homeNetworkPublished = true
             publishHomePage(res)

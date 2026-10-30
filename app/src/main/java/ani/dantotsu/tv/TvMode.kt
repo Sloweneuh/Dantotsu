@@ -27,6 +27,19 @@ object TvMode {
     const val OFF = 0
     const val ON = 1
 
+    /**
+     * What a TV screen does in attachBaseContext: dark (a bright screen glares across a dark room)
+     * and in the app's language. Dark has to be set here, before AppCompat sets the screen up: it
+     * otherwise fixes the screen to the app's own dark mode setting — the phone's, once cloud sync
+     * brings it — and on starting finds that it no longer matches the screen's dark, so it rebuilds
+     * the screen; the rebuilt one began the same way, and the TV home rebuilt itself every half
+     * second, its loads with it.
+     */
+    fun attach(activity: androidx.appcompat.app.AppCompatActivity, base: Context?): Context? {
+        activity.delegate.localNightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+        return base?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) }
+    }
+
     fun isTvDevice(context: Context): Boolean =
         (context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager)?.currentModeType ==
             Configuration.UI_MODE_TYPE_TELEVISION

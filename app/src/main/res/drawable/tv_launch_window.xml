@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TV mode's launch window: the wordmark on black, the same size and place as TV home draws it
+     while its rows load (TvLaunchLogo), so the two hand over without a jump. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@android:color/black" />
+    <item
+        android:width="300dp"
+        android:height="83dp"
+        android:drawable="@drawable/ic_dantotsu_logo"
+        android:gravity="center" />
+</layer-list>

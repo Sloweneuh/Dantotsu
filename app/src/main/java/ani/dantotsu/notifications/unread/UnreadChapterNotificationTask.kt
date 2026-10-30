@@ -40,6 +40,10 @@ import java.io.Serializable
 class UnreadChapterNotificationTask : Task {
 
     override suspend fun execute(context: Context): Boolean {
+        if (ani.dantotsu.tv.TvMode.isOn(context)) {
+            Logger.log("UnreadChapterNotificationTask: skipped in TV mode (anime only)")
+            return true
+        }
         if (currentlyPerforming) {
             Logger.log("UnreadChapterNotificationTask: already running")
             return false

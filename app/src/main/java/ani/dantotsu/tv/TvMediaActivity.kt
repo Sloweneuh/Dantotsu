@@ -82,12 +82,10 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
     private var episodesRequested = false
 
     override fun attachBaseContext(newBase: android.content.Context?) {
-        super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
+        super.attachBaseContext(TvMode.attach(this, newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // TV mode is dark whatever the system says: a bright screen glares across a dark room.
-        delegate.localNightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
         ThemeManager(this).applyTheme()
         super.onCreate(savedInstanceState)
         initActivity(this)

@@ -108,7 +108,9 @@ class TvPlayerController(private val actions: Actions) {
 }
 
 private const val HIDE_AFTER_MS = 5_000L
-private const val SEEK_STEP_MS = 10_000L
+/** The player's seek step (the same one the D-pad uses with the controls hidden), in milliseconds. */
+private val seekStepMs: Long
+    get() = ani.dantotsu.settings.saving.PrefManager.getVal<Int>(ani.dantotsu.settings.saving.PrefName.SeekTime) * 1000L
 
 /**
  * The player's controls for a TV: the title over a gradient at the top; at the bottom a timeline the
@@ -172,7 +174,7 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                         controller.act { previous() }
                     }
                     ControlButton(R.drawable.ic_round_replay_10_24, R.string.tv_rewind_10) {
-                        controller.act { seekBy(-SEEK_STEP_MS) }
+                        controller.act { seekBy(-seekStepMs) }
                     }
                     ControlButton(
                         if (controller.playing) R.drawable.ic_round_pause_24 else R.drawable.ic_round_play_arrow_24,
@@ -181,7 +183,7 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                         modifier = Modifier.focusRequester(playButton),
                     ) { controller.act { playPause() } }
                     ControlButton(R.drawable.ic_round_forward_10_24, R.string.tv_forward_10) {
-                        controller.act { seekBy(SEEK_STEP_MS) }
+                        controller.act { seekBy(seekStepMs) }
                     }
                     ControlButton(R.drawable.ic_round_skip_next_24, R.string.tv_next_episode, controller.hasNext) {
                         controller.act { next() }
@@ -225,8 +227,8 @@ private fun Timeline(controller: TvPlayerController) {
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {
-                    Key.DirectionRight -> true.also { controller.act { seekBy(SEEK_STEP_MS) } }
-                    Key.DirectionLeft -> true.also { controller.act { seekBy(-SEEK_STEP_MS) } }
+                    Key.DirectionRight -> true.also { controller.act { seekBy(seekStepMs) } }
+                    Key.DirectionLeft -> true.also { controller.act { seekBy(-seekStepMs) } }
                     else -> false
                 }
             }

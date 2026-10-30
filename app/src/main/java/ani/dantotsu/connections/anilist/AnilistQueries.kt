@@ -745,9 +745,13 @@ class AnilistQueries {
         return """ MediaListCollection(userId: ${Anilist.userid}, type: $type, status: $status , sort: UPDATED_TIME ) { lists { entries { progress private score(format:POINT_100) status updatedAt media { id idMal type isAdult status(version: 2) chapters episodes nextAiringEpisode {episode} meanScore isFavourite format bannerImage coverImage{large} title { english romaji userPreferred } description } } } } """
     }
 
-    suspend fun initHomePage(): Map<String, ArrayList<Media>> {
+    /**
+     * [layout] stands in for the user's home layout, for a home with rows of its own to fill (TV
+     * mode's): its answer isn't stored as the phone home's, which builds its rows from its layout.
+     */
+    suspend fun initHomePage(layout: List<Boolean>? = null): Map<String, ArrayList<Media>> {
         val toShow: List<Boolean> =
-            PrefManager.getVal(PrefName.HomeLayout) // list of booleans for what to show
+            layout ?: PrefManager.getVal(PrefName.HomeLayout) // list of booleans for what to show
 
         val viewsCount = ani.dantotsu.currContext()?.resources?.getStringArray(ani.dantotsu.R.array.home_layouts)?.size ?: 9
         val savedOrder = PrefManager.getVal<List<Int>>(PrefName.HomeLayoutOrder)
@@ -797,7 +801,7 @@ class AnilistQueries {
         val response = executeQuery<Query.HomePageMedia>(
             query, show = false, cache = 0,
             onRawResponse = { body ->
-                Anilist.userid?.let { MediaListCache.write(MediaListCache.homeKey(it), body) }
+                if (layout == null) Anilist.userid?.let { MediaListCache.write(MediaListCache.homeKey(it), body) }
             }
         )
         // executeQuery reports a failure as null. Built into rows, that read as every list being

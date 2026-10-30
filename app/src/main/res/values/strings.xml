@@ -3600,7 +3600,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_source">Source · %1$s</string>
     <string name="tv_pick_source">Choose a source</string>
     <string name="tv_no_extensions">No anime extensions installed. Add one from the phone interface.</string>
-    <string name="tv_signed_out">Sign in to AniList from the phone interface to see your lists here.</string>
+    <string name="tv_signed_out">Use Sign in to connect this TV from your phone, and your lists show up here.</string>
     <!-- TV mode interface: title details -->
     <string name="tv_progress_of">Ep %1$d / %2$d</string>
     <string name="tv_progress">Ep %1$d</string>
@@ -3666,4 +3666,38 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_genre_hero">The most popular %1$s anime, as far as you scroll.</string>
     <!-- TV mode: AniList rate limit indicator -->
     <string name="tv_rate_limit_resumes">Loading resumes in %1$s</string>
+    <!-- TV mode: signing in with a phone -->
+    <string name="tv_sign_in">Sign in</string>
+    <string name="tv_sign_in_title">Sign in with your phone</string>
+    <string name="tv_sign_in_step_scan">On a phone signed in to Dantotsu, scan this code with the camera, or with Dantotsu\'s handoff scanner.</string>
+    <string name="tv_sign_in_step_confirm">Confirm on the phone. This TV signs in to the same AniList account.</string>
+    <string name="tv_sign_in_waiting">Waiting for your phone…</string>
+    <string name="tv_sign_in_done">Signed in as %1$s</string>
+    <string name="tv_sign_in_done_unnamed">Signed in</string>
+    <string name="tvlogin_title">Sign in a TV</string>
+    <string name="tvlogin_body">Sign %1$s in to AniList as %2$s? Your session is sent to it encrypted, and only that TV can read it.</string>
+    <string name="tvlogin_body_sync">Cloud sync is linked on this phone, so the TV joins it too: same settings and extensions.</string>
+    <string name="tvlogin_confirm">Sign in</string>
+    <string name="tvlogin_sent">%1$s will sign in in a moment</string>
+    <string name="tvlogin_failed">Couldn\'t reach %1$s. Try again</string>
+    <string name="tvlogin_invalid">This sign-in code isn\'t valid anymore</string>
+    <string name="tvlogin_need_login">Sign in to AniList on this phone first</string>
+    <!-- TV mode: settings page -->
+    <string name="tv_skip_segments">Show intro, recap and ending segments</string>
+    <string name="tv_resize_fit">Fit</string>
+    <string name="tv_resize_zoom">Zoom</string>
+    <string name="tv_resize_stretch">Stretch</string>
+    <string name="tv_seconds">%1$d s</string>
+    <string name="tv_settings_progress">Progress</string>
+    <string name="tv_watched_at">An episode counts as watched at</string>
+    <string name="tv_ask_update_progress">Ask before updating progress</string>
+    <string name="tv_focus_pause">Pause when Dantotsu is left</string>
+    <string name="tv_subtitles_on">Show subtitles</string>
+    <string name="tv_settings_appearance">Appearance</string>
+    <string name="tv_color_white">White</string>
+    <string name="tv_color_black">Black</string>
+    <string name="tv_color_yellow">Yellow</string>
+    <string name="tv_color_cyan">Cyan</string>
+    <string name="tv_color_light_gray">Light grey</string>
+    <string name="tv_color_dark_gray">Dark grey</string>
 </resources>
