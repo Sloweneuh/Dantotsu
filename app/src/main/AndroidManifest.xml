@@ -101,7 +101,7 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:banner="@mipmap/ic_banner_foreground"
+        android:banner="@drawable/tv_banner"
         android:enableOnBackInvokedCallback="true"
         android:icon="${icon_placeholder}"
         android:label="@string/app_name"
@@ -685,6 +685,19 @@
             the aggressive OEM ROMs do it after a couple of minutes in the background. MainActivity
             is the task root, so declaring it here keeps the stack for every screen the app opens.
         -->
+        <!-- The TV ("Big picture") interface. -->
+        <activity
+            android:name=".tv.TvHomeActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvSettingsActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvMediaActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:alwaysRetainTaskState="true"
@@ -695,7 +708,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.Main" />
+                <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
             <intent-filter>

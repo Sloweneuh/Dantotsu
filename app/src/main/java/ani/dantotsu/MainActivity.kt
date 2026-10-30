@@ -113,6 +113,16 @@ class MainActivity : AppCompatActivity() {
 
         super.onCreate(savedInstanceState)
 
+        // Opened from the launcher with the TV interface on: that's where the app lives here. A link
+        // or shortcut still opens the screen it names.
+        if (savedInstanceState == null && intent.action == Intent.ACTION_MAIN &&
+            intent.categories.orEmpty().any { it == Intent.CATEGORY_LAUNCHER || it == Intent.CATEGORY_LEANBACK_LAUNCHER } &&
+            ani.dantotsu.tv.TvMode.isOn(this)
+        ) {
+            startActivity(Intent(this, ani.dantotsu.tv.TvHomeActivity::class.java))
+            finish()
+            return
+        }
 
         //get FRAGMENT_CLASS_NAME from intent
         val fragment = intent.getStringExtra("FRAGMENT_CLASS_NAME")
@@ -665,6 +675,36 @@ class MainActivity : AppCompatActivity() {
         binding.root.requestApplyInsets()
         // New releases of what's being read or watched, if switched on; at most hourly.
         ani.dantotsu.download.AutoDownloads.runIfDue(this)
+        inputManager.registerInputDeviceListener(controllerListener, null)
+        if (ani.dantotsu.tv.TvMode.hasController()) offerTvMode()
+    }
+
+    override fun onPause() {
+        inputManager.unregisterInputDeviceListener(controllerListener)
+        super.onPause()
+    }
+
+    private val inputManager get() = getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager
+
+    /** A controller showing up is the moment the TV interface is worth offering. */
+    private val controllerListener = object : android.hardware.input.InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(deviceId: Int) {
+            val device = android.view.InputDevice.getDevice(deviceId) ?: return
+            if (with(ani.dantotsu.tv.TvMode) { device.isController() }) offerTvMode()
+        }
+        override fun onInputDeviceRemoved(deviceId: Int) = Unit
+        override fun onInputDeviceChanged(deviceId: Int) = Unit
+    }
+
+    /** Once per launch, and never when the user has turned the TV interface off themselves. */
+    private fun offerTvMode() {
+        if (tvModeOffered || ani.dantotsu.tv.TvMode.isOn(this)) return
+        // Off is a choice the user made (leaving TV mode, or the setting): don't argue with it.
+        if (PrefManager.getVal<Int>(PrefName.BigPictureMode) == ani.dantotsu.tv.TvMode.OFF) return
+        tvModeOffered = true
+        com.google.android.material.snackbar.Snackbar.make(
+            binding.root, R.string.tv_controller_offer, com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+        ).setAction(R.string.tv_switch) { ani.dantotsu.tv.TvMode.enter(this) }.show()
     }
 
     //ViewPager
@@ -704,6 +744,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        /** Whether this launch already offered the TV interface for a connected controller. */
+        private var tvModeOffered = false
+
         /** Canonical tab index, in the saved instance state. See [onSaveInstanceState]. */
         private const val STATE_SELECTED_TAB = "mainSelectedTab"
     }

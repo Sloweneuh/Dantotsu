@@ -140,6 +140,8 @@ enum class PrefName(val data: Pref) {
     SyncExtensionSettingsEnabled(Pref(Location.General, Boolean::class, false)),
     // Connection toggles (allow disabling external info/tabs)
     ComickEnabled(Pref(Location.General, Boolean::class, true)),
+    /** TV mode: -1 automatic (on for Android TV), 0 off, 1 on. Per device. */
+    BigPictureMode(Pref(Location.General, Int::class, -1)),
     ComickNotificationsEnabled(Pref(Location.General, Boolean::class, true)),
     ComickNotificationInterval(Pref(Location.General, Long::class, 0L)),
     ComickListSyncEnabled(Pref(Location.General, Boolean::class, true)),

@@ -476,6 +476,12 @@ class ExoplayerView :
         hideSystemBarsExtendView()
 
         onBackPressedDispatcher.addCallback(this) {
+            // On the TV, back first puts the controls away, as a remote's back does everywhere else.
+            // (Back arrives here, not through dispatchKeyEvent: the app opts into predictive back.)
+            if (ani.dantotsu.tv.TvMode.isOn(this@ExoplayerView) && controlsShown) {
+                hideControls()
+                return@addCallback
+            }
             finishAndRemoveTask()
         }
 
@@ -759,6 +765,8 @@ class ExoplayerView :
                 snackString(getString(R.string.first_episode))
             }
         }
+
+        if (ani.dantotsu.tv.TvMode.isOn(this)) setUpTvOverlay()
 
         model.getEpisode().observe(this) { ep ->
             hideSystemBars()
@@ -2495,14 +2503,159 @@ class ExoplayerView :
             KEYCODE_B to { exoPrev.performClick() },
         )
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
-        if (keyMap.containsKey(event.keyCode)) {
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        remoteKey(event)?.let { return it }
+        return if (keyMap.containsKey(event.keyCode)) {
             (event.action == ACTION_UP).also {
                 if (isInitialized && it) keyMap[event.keyCode]?.invoke()
             }
         } else {
             super.dispatchKeyEvent(event)
         }
+    }
+
+    /** TV mode's own controls, drawn over the video in place of the phone ones; null elsewhere. */
+    private var tvOverlay: ani.dantotsu.tv.TvPlayerController? = null
+
+    private val controlsShown get() = tvOverlay?.visible ?: playerView.isControllerFullyVisible
+
+    private fun showControls() {
+        tvOverlay?.show() ?: playerView.showController()
+    }
+
+    private fun hideControls() {
+        tvOverlay?.hide() ?: playerView.hideController()
+    }
+
+    /**
+     * TV mode: the phone controls (some fifteen small icons) give way to [ani.dantotsu.tv.TvPlayerOverlay].
+     * Its buttons do what the phone ones do — the same views are clicked — so the player's logic stays
+     * the one it has; only what's drawn, and how a remote moves through it, is new.
+     */
+    private fun setUpTvOverlay() {
+        playerView.useController = false
+        val controller = ani.dantotsu.tv.TvPlayerController(object : ani.dantotsu.tv.TvPlayerController.Actions {
+            override fun playPause() { exoPlay.performClick() }
+            override fun seekBy(deltaMs: Long) {
+                if (!isInitialized) return
+                val end = exoPlayer.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+                exoPlayer.seekTo((exoPlayer.currentPosition + deltaMs).coerceIn(0, end))
+            }
+            override fun previous() { exoPrev.performClick() }
+            override fun next() { exoNext.performClick() }
+            override fun audio() { exoAudioTrack.performClick() }
+            override fun subtitles() { exoSubtitle.performClick() }
+            override fun server() { exoSource.performClick() }
+        })
+        tvOverlay = controller
+        binding.root.addView(
+            androidx.compose.ui.platform.ComposeView(this).apply {
+                setContent { ani.dantotsu.tv.TvTheme { ani.dantotsu.tv.TvPlayerOverlay(controller) } }
+            },
+            android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+        // What the overlay shows, from the player, twice a second.
+        lifecycleScope.launch {
+            while (true) {
+                if (isInitialized) {
+                    controller.playing = exoPlayer.isPlaying
+                    controller.position = exoPlayer.currentPosition
+                    controller.duration = exoPlayer.duration.takeIf { it > 0 } ?: 0L
+                    controller.buffered = exoPlayer.bufferedPercentage / 100f
+                    controller.title = media.userPreferredName
+                    // "Episode 1 · Steel Ball Run": a title that restates the number loses it.
+                    controller.episodeLine = getString(R.string.tv_episode_n, episode.number) +
+                        (episode.title?.let { ani.dantotsu.media.MediaNameAdapter.removeEpisodeNumberCompletely(it).trim() }
+                            ?.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "")
+                    controller.hasPrevious = currentEpisodeIndex > 0
+                    controller.hasNext = this@ExoplayerView::episodeArr.isInitialized &&
+                        currentEpisodeIndex < episodeArr.size - 1
+                    controller.hasAudio = exoAudioTrack.isVisible
+                    controller.hasSubtitles = exoSubtitle.isVisible
+                }
+                kotlinx.coroutines.delay(500)
+            }
+        }
+    }
+
+    /** The D-pad over shown controls: focus moves between their buttons, and they stay up for it. */
+    private fun moveFocus(event: KeyEvent): Boolean {
+        showControls()
+        return super.dispatchKeyEvent(event)
+    }
+
+    /** Set when a held right press skipped the intro or outro, so letting go doesn't also seek. */
+    private var skippedOnHold = false
+
+    /**
+     * A remote or controller (the TV interface's, or one paired with a phone). With the controls
+     * hidden, left/right seek, up/down bring the controls up, select pauses, and holding right skips
+     * the intro or outro; with them shown, the D-pad moves between their buttons and back hides them.
+     * The shoulder buttons step episodes, X and Y open the audio and subtitle tracks, and the media
+     * keys do what they say. Null when the key isn't one of these, for the keyboard map to handle.
+     */
+    private fun remoteKey(event: KeyEvent): Boolean? {
+        if (!isInitialized || locked) return null
+        val down = event.action == KeyEvent.ACTION_DOWN
+        val up = event.action == ACTION_UP
+        val controls = controlsShown
+        tvOverlay?.poke()
+        fun press(view: View?) = true.also { if (up && view?.isVisible == true && view.isEnabled) view.performClick() }
+        return when (event.keyCode) {
+            KEYCODE_DPAD_RIGHT -> when {
+                controls -> moveFocus(event)
+                down && event.repeatCount == 1 -> true.also {
+                    val skip = playerView.findViewById<View>(R.id.exo_skip_timestamp)
+                    if (skip?.isVisible == true) {
+                        skippedOnHold = true
+                        skip.performClick()
+                    }
+                }
+                up && skippedOnHold -> true.also { skippedOnHold = false }
+                else -> null
+            }
+            KEYCODE_DPAD_LEFT -> if (controls) moveFocus(event) else null
+            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> if (controls) {
+                moveFocus(event)
+            } else true.also {
+                if (up) {
+                    showControls()
+                    if (tvOverlay == null) exoPlay.requestFocus()
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_BUTTON_A ->
+                if (controls) null else true.also {
+                    if (up) {
+                        exoPlay.performClick()
+                        showControls()
+                        if (tvOverlay == null) exoPlay.requestFocus()
+                    }
+                }
+            KeyEvent.KEYCODE_BUTTON_B ->
+                if (controls) true.also { if (up) hideControls() } else null
+            KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> press(exoPrev)
+            KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_MEDIA_NEXT -> press(exoNext)
+            KeyEvent.KEYCODE_BUTTON_X -> press(exoAudioTrack)
+            KeyEvent.KEYCODE_BUTTON_Y -> press(exoSubtitle)
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE ->
+                true.also {
+                    if (up) {
+                        val playing = exoPlayer.isPlaying
+                        val wanted = when (event.keyCode) {
+                            KeyEvent.KEYCODE_MEDIA_PLAY -> !playing
+                            KeyEvent.KEYCODE_MEDIA_PAUSE -> playing
+                            else -> true
+                        }
+                        if (wanted) exoPlay.performClick()
+                    }
+                }
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> true.also { if (up) keyMap[KEYCODE_DPAD_RIGHT]?.invoke() }
+            KeyEvent.KEYCODE_MEDIA_REWIND -> true.also { if (up) keyMap[KEYCODE_DPAD_LEFT]?.invoke() }
+            else -> null
+        }
+    }
 
     /** Title and artwork, for the cast device's screen and the playback notification. */
     private fun MediaItem.withEpisodeMetadata(): MediaItem {

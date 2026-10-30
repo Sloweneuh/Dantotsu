@@ -46,6 +46,8 @@ object CloudSync {
     // Keys that live inside the synced locations but are device-specific and must not propagate.
     private val DEVICE_LOCAL_KEYS = setOf(
         PrefName.FirebaseToken,
+        // A TV and a phone on one account each want their own interface.
+        PrefName.BigPictureMode,
         PrefName.LastFirebaseBackgroundCheck,
         PrefName.LastUnreadChapterCheck,
         PrefName.LastSubscriptionCheck,
@@ -160,7 +162,7 @@ object CloudSync {
      * On a bump, re-baseline the hash instead: the settings didn't change, only which of them we
      * share. See [rebaselineForFilterChange].
      */
-    private const val FILTER_VERSION = 4 // 4: Kitsu, Simkl and Comick account names
+    private const val FILTER_VERSION = 5 // 4: Kitsu, Simkl and Comick account names; 5: BigPictureMode kept local
 
     private val scope = CoroutineScope(Dispatchers.IO)
 

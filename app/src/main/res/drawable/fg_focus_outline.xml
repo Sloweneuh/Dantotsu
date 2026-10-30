@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A clear outline while focused (a remote, a controller, a keyboard), nothing otherwise: the
+     faint default focus tint can't be seen across a room. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <stroke android:width="3dp" android:color="?attr/colorPrimary" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>

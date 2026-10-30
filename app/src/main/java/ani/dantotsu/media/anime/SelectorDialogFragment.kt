@@ -192,6 +192,19 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                         )
                     val adapter = ExtractorAdapter(onEpisodeDownloadHandler)
                     binding.selectorRecyclerView.adapter = adapter
+                    // A remote has nothing to press until a row has focus, and the streams arrive
+                    // one server at a time: take the first that can, as soon as one can.
+                    if (ani.dantotsu.tv.TvMode.isOn(requireContext())) {
+                        val list = binding.selectorRecyclerView
+                        list.viewTreeObserver.addOnGlobalLayoutListener(object :
+                            android.view.ViewTreeObserver.OnGlobalLayoutListener {
+                            override fun onGlobalLayout() {
+                                if (list.hasFocus() || list.requestFocus(View.FOCUS_DOWN)) {
+                                    list.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                                }
+                            }
+                        })
+                    }
                     if (!ep.allStreams) {
                         scope.launch(Dispatchers.IO) {
                             model.loadEpisodeVideos(ep, media!!.selected!!.sourceIndex)

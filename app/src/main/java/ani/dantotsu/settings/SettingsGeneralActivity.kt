@@ -92,6 +92,36 @@ class SettingsGeneralActivity : AppCompatActivity() {
                                 }
                             },
                         ),
+                        // The TV interface. Automatic turns it on for Android TV devices only.
+                        Settings(
+                            type = 5,
+                            name = getString(R.string.tv_big_picture),
+                            desc = getString(R.string.tv_big_picture_desc),
+                            icon = R.drawable.ic_round_tv_24,
+                            anchorKey = "big_picture_mode",
+                            choice = ChoiceConfig(
+                                options = listOf(
+                                    ChoiceOption(R.drawable.ic_round_brightness_auto_24, getString(R.string.tv_big_picture_automatic)),
+                                    ChoiceOption(R.drawable.ic_round_check_24, getString(R.string.tv_big_picture_on)),
+                                    ChoiceOption(R.drawable.ic_round_close_24, getString(R.string.tv_big_picture_off)),
+                                ),
+                                selected = when (PrefManager.getVal<Int>(PrefName.BigPictureMode)) {
+                                    ani.dantotsu.tv.TvMode.ON -> 1
+                                    ani.dantotsu.tv.TvMode.OFF -> 2
+                                    else -> 0
+                                },
+                                onSelect = { index ->
+                                    val mode = when (index) {
+                                        1 -> ani.dantotsu.tv.TvMode.ON
+                                        2 -> ani.dantotsu.tv.TvMode.OFF
+                                        else -> ani.dantotsu.tv.TvMode.AUTOMATIC
+                                    }
+                                    PrefManager.setVal(PrefName.BigPictureMode, mode)
+                                    // "On" means now, not on the next launch.
+                                    if (mode == ani.dantotsu.tv.TvMode.ON) ani.dantotsu.tv.TvMode.enter(this@SettingsGeneralActivity)
+                                },
+                            ),
+                        ),
                         Settings(
                             type = 1,
                             name = getString(R.string.app_lock),

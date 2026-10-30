@@ -318,6 +318,14 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         ) { host ->
             host.openUserList(anime = false)
         },
+        // The TV interface. Leaving it is a button inside it, so this only ever goes one way.
+        QuickTile.Action(
+            "big_picture", R.string.tv_big_picture, R.drawable.ic_round_tv_24,
+            QuickTileCategory.MODES,
+        ) { host ->
+            host.dismiss()
+            ani.dantotsu.tv.TvMode.enter(host.activity)
+        },
         // Not a network tile: the list is on the device. Opening a row's page still needs one.
         QuickTile.Action(
             "history", R.string.history, R.drawable.ic_round_history_24,

@@ -151,6 +151,8 @@ object TopBanner {
     /** Shows [specs], most pressing first, as one stack — replacing whatever stack was up. */
     fun show(activity: Activity, specs: List<Spec>) {
         if (specs.isEmpty()) return
+        // Touch cards a remote can't reach: the notices wait for the phone interface instead.
+        if (activity is ani.dantotsu.tv.TvScreen) return
         val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
         val wanted = specs.map { it.id }
         // Re-showing the stack already on *this* screen would restart its entrance for nothing.

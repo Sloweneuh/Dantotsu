@@ -3581,4 +3581,46 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="download_settings_general">General</string>
     <string name="auto_download_header">Automatic downloads</string>
     <string name="download_settings_delete">Delete downloads</string>
+    <!-- TV mode interface -->
+    <string name="tv_big_picture">TV mode</string>
+    <string name="tv_big_picture_desc">The TV interface, for remotes and controllers</string>
+    <string name="tv_big_picture_automatic">Automatic (on Android TV)</string>
+    <string name="tv_big_picture_on">On</string>
+    <string name="tv_big_picture_off">Off</string>
+    <string name="tv_exit">Exit TV mode</string>
+    <string name="tv_controller_offer">Controller connected — switch to TV mode?</string>
+    <string name="tv_switch">Switch</string>
+    <string name="tv_trending">Trending now</string>
+    <string name="tv_episodes">Episodes</string>
+    <string name="tv_watch_episode">Watch episode %1$s</string>
+    <string name="tv_continue_episode">Continue · Episode %1$s</string>
+    <string name="tv_episode_n">Episode %1$s</string>
+    <string name="tv_finding_episodes">Finding episodes on %1$s…</string>
+    <string name="tv_no_episodes">No episodes found on %1$s</string>
+    <string name="tv_source">Source · %1$s</string>
+    <string name="tv_pick_source">Choose a source</string>
+    <string name="tv_no_extensions">No anime extensions installed. Add one from the phone interface.</string>
+    <string name="tv_signed_out">Sign in to AniList from the phone interface to see your lists here.</string>
+    <!-- TV mode interface: title details -->
+    <string name="tv_progress_of">Ep %1$d / %2$d</string>
+    <string name="tv_progress">Ep %1$d</string>
+    <plurals name="tv_episode_count">
+        <item quantity="one">%1$d episode</item>
+        <item quantity="other">%1$d episodes</item>
+    </plurals>
+    <!-- TV mode interface: settings -->
+    <string name="tv_settings_account">Account</string>
+    <string name="tv_signed_in_as">Signed in to AniList as %1$s</string>
+    <string name="tv_not_signed_in">Not signed in to AniList</string>
+    <string name="tv_settings_playback">Playback</string>
+    <string name="tv_settings_sources">Sources</string>
+    <string name="tv_sources_hint">Extensions are installed and updated from the phone interface for now.</string>
+    <string name="tv_settings_interface">Interface</string>
+    <!-- TV mode interface: player -->
+    <string name="tv_previous_episode">Previous episode</string>
+    <string name="tv_next_episode">Next episode</string>
+    <string name="tv_rewind_10">Back 10 s</string>
+    <string name="tv_forward_10">Forward 10 s</string>
+    <string name="tv_play">Play</string>
+    <string name="tv_server">Server</string>
 </resources>

@@ -3,6 +3,7 @@ plugins {
     id 'kotlin-android'
     id 'kotlinx-serialization'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
     id 'com.google.devtools.ksp'
 
     id 'io.sentry.android.gradle' version '6.0.0'
@@ -20,7 +21,7 @@ android {
         // Android 8.0 (API 26)
         minSdk = 26
         targetSdk = 36
-        versionName "5.8.0"
+        versionName "6.0.0"
         def (major, minor, patch) = versionName.split("\\.").collect { it.toInteger() }
         versionCode = major * 1_000_000 + minor * 1_000 + patch
         signingConfig signingConfigs.debug
@@ -107,6 +108,8 @@ android {
     buildFeatures {
         viewBinding true
         buildConfig true
+        // TV mode only; the rest of the app stays Views.
+        compose true
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -146,6 +149,15 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.17.0'
     implementation 'androidx.fragment:fragment-ktx:1.8.6'
     implementation 'androidx.activity:activity-ktx:1.10.1'
+
+//  TV mode: Compose for TV, the only Compose in the app.
+    implementation platform('androidx.compose:compose-bom:2025.08.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.runtime:runtime-livedata'
+    implementation 'androidx.activity:activity-compose:1.10.1'
+    implementation 'androidx.tv:tv-material:1.0.0'
+    implementation 'com.github.bumptech.glide:compose:1.0.0-beta01'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'androidx.multidex:multidex:2.0.1'
