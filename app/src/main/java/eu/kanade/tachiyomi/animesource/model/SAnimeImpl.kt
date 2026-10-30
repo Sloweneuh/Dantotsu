@@ -20,6 +20,12 @@ class SAnimeImpl : SAnime {
 
     override var thumbnail_url: String? = null
 
+    override var background_url: String? = null
+
+    override var fetch_type: FetchType = FetchType.Episodes
+
+    override var season_number: Double = -1.0
+
     override var initialized: Boolean = false
 
     override var update_strategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE

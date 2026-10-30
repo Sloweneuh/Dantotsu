@@ -31,6 +31,13 @@ interface SEpisode : Serializable {
         preview_url = other.preview_url
     }
 
+    /** The episode number under the name the manga API uses, for extensions that share code with it. */
+    var chapter_number: Float
+        get() = episode_number
+        set(value) {
+            episode_number = value
+        }
+
     companion object {
         fun create(): SEpisode {
             return SEpisodeImpl()

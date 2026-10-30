@@ -50,6 +50,27 @@ interface AnimeSource {
     }
 
     /**
+     * The seasons of an anime whose [SAnime.fetch_type] is [eu.kanade.tachiyomi.animesource.model.FetchType.Seasons],
+     * each an [SAnime] with episodes (or seasons) of its own.
+     *
+     * @since extensions-lib 16
+     */
+    suspend fun getSeasonList(anime: SAnime): List<SAnime> =
+        throw UnsupportedOperationException("This source doesn't list seasons")
+
+    /**
+     * Related anime the source shows for [anime], pushed in groups as they're found. Not something
+     * Dantotsu asks for (AniList has the relations); here so sources built against it load.
+     *
+     * @since komikku/extensions-lib 1.6
+     */
+    suspend fun getRelatedAnimeList(
+        anime: SAnime,
+        exceptionHandler: (Throwable) -> Unit,
+        pushResults: suspend (relatedAnime: Pair<String, List<SAnime>>, completed: Boolean) -> Unit,
+    ): Unit = throw UnsupportedOperationException()
+
+    /**
      * Get the list of hoster for an episode. The first hoster in the list should
      * be the preferred hoster.
      *

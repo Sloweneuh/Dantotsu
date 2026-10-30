@@ -1,5 +1,7 @@
 package ani.dantotsu.parsers
 
+import eu.kanade.tachiyomi.animesource.AnimeSource
+import eu.kanade.tachiyomi.animesource.model.FetchType
 import android.content.Context
 import ani.dantotsu.FileUrl
 import ani.dantotsu.currContext
@@ -45,6 +47,10 @@ import java.io.UnsupportedEncodingException
 import java.net.MalformedURLException
 import java.net.URL
 import java.net.URLDecoder
+
+/** How many season-listing series one search expands, and how deep their seasons go. */
+private const val MAX_EXPANDED_SERIES = 4
+private const val MAX_SEASON_DEPTH = 2
 
 class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
     val extension: AnimeExtension.Installed
@@ -161,7 +167,13 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
         } as? AnimeHttpSource ?: (extension.sources[sourceLanguage] as? AnimeCatalogueSource
             ?: return emptyList())
         try {
-            val res = source.getEpisodeList(sAnime)
+            // A series that lists seasons has no episodes of its own. Search hands out its seasons
+            // one by one (see expandSeasons), so this only meets a series picked some other way —
+            // a match saved before seasons existed: take its first season rather than nothing.
+            val episodeSource = if (sAnime.fetch_type == FetchType.Seasons) {
+                leafSeasons(source, sAnime).firstOrNull()?.second ?: return emptyList()
+            } else sAnime
+            val res = source.getEpisodeList(episodeSource)
             if (res.isEmpty()) return emptyList()
 
             val sortedEpisodes = if (res[0].episode_number == -1f) {
@@ -308,7 +320,7 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
         return try {
             val res = source.getSearchAnime(1, query, source.getFilterList())
             Logger.log("query: $query")
-            convertAnimesPageToShowResponse(res)
+            expandSeasons(source, convertAnimesPageToShowResponse(res))
         } catch (e: CloudflareBypassException) {
             Logger.log("Exception in search: $e")
             Logger.log(e)
@@ -323,6 +335,63 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
         }
     }
 
+
+    /**
+     * Extensions-lib 16 lets a series list seasons — each an [SAnime] with its own episodes —
+     * instead of episodes. An AniList entry is normally one season, so search hands out the
+     * seasons as results of their own ("Frieren – Season 2"): the matcher, which already reads
+     * season numbers out of titles, then pairs each entry with its season, and "Wrong title?"
+     * offers them like any other result. Only the first few such series are expanded, since each
+     * costs a request.
+     */
+    private suspend fun expandSeasons(source: AnimeSource, results: List<ShowResponse>): List<ShowResponse> {
+        var expanded = 0
+        return results.flatMap { result ->
+            val series = result.sAnime
+            if (series == null || series.fetch_type != FetchType.Seasons || expanded >= MAX_EXPANDED_SERIES) {
+                return@flatMap listOf(result)
+            }
+            expanded++
+            val seasons = try {
+                leafSeasons(source, series)
+            } catch (e: Throwable) {
+                Logger.log("Seasons of ${series.title} failed: $e")
+                emptyList()
+            }
+            seasons.ifEmpty { return@flatMap listOf(result) }.map { (name, season) ->
+                ShowResponse(
+                    name = name,
+                    link = season.url,
+                    // The series' cover, headers and all, for a season without one of its own.
+                    coverUrl = season.thumbnail_url?.let { FileUrl(it) } ?: result.coverUrl,
+                    sAnime = season,
+                )
+            }
+        }
+    }
+
+    /**
+     * The seasons under [anime], named for matching — "Show – Season 2", the show's name only added
+     * when the season's doesn't already carry it — and descended into when a season lists seasons
+     * of its own (bounded, in case a source loops).
+     */
+    private suspend fun leafSeasons(
+        source: AnimeSource,
+        anime: SAnime,
+        name: String = anime.title,
+        depth: Int = 0,
+    ): List<Pair<String, SAnime>> {
+        if (anime.fetch_type != FetchType.Seasons || depth > MAX_SEASON_DEPTH) return listOf(name to anime)
+        return source.getSeasonList(anime).flatMap { season ->
+            val label = when {
+                season.title.contains(name, ignoreCase = true) -> season.title
+                season.title.isNotBlank() -> "$name – ${season.title}"
+                season.season_number >= 0 -> "$name – Season ${season.season_number.toInt()}"
+                else -> name
+            }
+            leafSeasons(source, season, label, depth + 1)
+        }
+    }
 
     private fun convertAnimesPageToShowResponse(animesPage: AnimesPage): List<ShowResponse> {
         return animesPage.animes.map { sAnime ->

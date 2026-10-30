@@ -312,6 +312,44 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
     protected abstract fun episodeVideoParse(response: Response): SEpisode
 
     /**
+     * The seasons of an anime that lists them ([SAnime.fetch_type] Seasons). Normally it's not
+     * needed to override this method.
+     *
+     * @since extensions-lib 16
+     */
+    override suspend fun getSeasonList(anime: SAnime): List<SAnime> {
+        return client.newCall(seasonListRequest(anime)).awaitSuccess().let(::seasonListParse)
+    }
+
+    /**
+     * Returns the request for the season list. Override only if it's needed to override the url,
+     * send different headers or request method like POST.
+     *
+     * @since extensions-lib 16
+     */
+    protected open fun seasonListRequest(anime: SAnime): Request {
+        return GET(baseUrl + anime.url, headers)
+    }
+
+    /**
+     * Parses the season list from the site. Abstract in the extension API itself; open here so
+     * sources built before seasons existed still load.
+     *
+     * @since extensions-lib 16
+     */
+    protected open fun seasonListParse(response: Response): List<SAnime> =
+        throw UnsupportedOperationException("This source doesn't list seasons")
+
+    /** Related anime from the source's own page for [anime]. @since komikku/extensions-lib 1.6 */
+    open suspend fun fetchRelatedAnimeList(anime: SAnime): List<SAnime> =
+        client.newCall(relatedAnimeListRequest(anime)).awaitSuccess().let(::relatedAnimeListParse)
+
+    protected open fun relatedAnimeListRequest(anime: SAnime): Request = animeDetailsRequest(anime)
+
+    protected open fun relatedAnimeListParse(response: Response): List<SAnime> =
+        popularAnimeParse(response).animes
+
+    /**
      * Get the list of hosters for an episode (extensions-lib v16+ API).
      * Backed by [hosterListRequest] + [hosterListParse]; extensions on the new API
      * implement [hosterListParse] instead of [videoListParse].
