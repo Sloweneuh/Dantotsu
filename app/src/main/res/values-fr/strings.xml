@@ -3635,4 +3635,13 @@
     <!-- TV mode: player prompts and server sheet -->
     <string name="tv_back_cancels">Retour pour annuler</string>
     <string name="tv_make_default_desc">Utiliser ce serveur pour les épisodes suivants aussi</string>
+    <!-- TV mode: media page info -->
+    <string name="tv_info_details">Détails</string>
+    <string name="tv_info_titles">Titres</string>
+    <string name="tv_info_status">Statut</string>
+    <string name="tv_info_duration">Durée d\'un épisode</string>
+    <string name="tv_minutes">%1$d min</string>
+    <string name="tv_info_next">Prochain épisode</string>
+    <string name="tv_info_next_in">Épisode %1$s dans %2$s</string>
+    <string name="tv_info_english">Anglais</string>
 </resources>

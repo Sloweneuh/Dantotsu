@@ -34,6 +34,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
@@ -417,30 +420,42 @@ private fun TvHome(
             // The rows away from focus step back, smaller and dimmed: still there to see, the focused
             // one plainly the one in use.
             var focusedRow by remember { mutableIntStateOf(0) }
+            // One row on (or back), scrolled to where the remote rests it, then focus into it: on the card it
+            // was left on, or its first. The wheel, a swipe and the D-pad all step this way.
+            fun stepRowTo(target: Int) {
+                focusedRow = target
+                userMoved = true
+                scope.launch {
+                    listState.animateScrollToItem(target, -peekPx)
+                    runCatching { rowFocus[rows[target].title]?.requestFocus() }
+                }
+            }
             // No fade at the top until there's a row up there to fade: it would dim the first one's title.
             val topFade by androidx.compose.animation.core.animateDpAsState(
                 if (listState.canScrollBackward) EDGE_FADE else 0.dp, label = "topFade",
             )
             FocusRestingAt(rowLead + ROW_PEEK) { LazyColumn(
                 state = listState,
-                modifier = Modifier.fadingEdges(vertical = EDGE_FADE, top = topFade).stepsFocus(onNoFocus = placeFocus, onMoved = { direction ->
+                // Up and down between rows go through the same step as the wheel: scrolled to, then
+                // focused. Left to the focus search, down stopped at the last row on screen — with
+                // the list's own scrolling off (so the wheel steps), it lays out no rows beyond it.
+                modifier = Modifier.onPreviewKeyEvent { event ->
+                    if (event.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        androidx.compose.ui.input.key.Key.DirectionDown ->
+                            if (focusedRow < rows.lastIndex) true.also { stepRowTo(focusedRow + 1) } else false
+                        androidx.compose.ui.input.key.Key.DirectionUp ->
+                            if (focusedRow > 0) true.also { stepRowTo(focusedRow - 1) } else false
+                        else -> false
+                    }
+                }.fadingEdges(vertical = EDGE_FADE, top = topFade).stepsFocus(onNoFocus = placeFocus, onMoved = { direction ->
                     // The wheel's step brings the new row to where the remote's would rest it, the
                     // end of the row above peeking out; the focus move alone left the list where it was.
                     if (direction == androidx.compose.ui.focus.FocusDirection.Down || direction == androidx.compose.ui.focus.FocusDirection.Up) {
                         val target = focusedRow
                         scope.launch { listState.animateScrollToItem(target, -peekPx) }
                     }
-                }, stepRow = { down ->
-                    // One row on, scrolled to where the remote rests it, then focus into it: on the
-                    // card it was left on, or its first.
-                    val target = (focusedRow + if (down) 1 else -1).coerceIn(0, rows.lastIndex)
-                    focusedRow = target
-                    userMoved = true
-                    scope.launch {
-                        listState.animateScrollToItem(target, -peekPx)
-                        runCatching { rowFocus[rows[target].title]?.requestFocus() }
-                    }
-                }),
+                }, stepRow = { down -> stepRowTo((focusedRow + if (down) 1 else -1).coerceIn(0, rows.lastIndex)) }),
                 userScrollEnabled = false,
                 contentPadding = PaddingValues(bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(28.dp),

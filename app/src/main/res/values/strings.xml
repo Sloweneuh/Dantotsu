@@ -3757,4 +3757,13 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <!-- TV mode: player prompts and server sheet -->
     <string name="tv_back_cancels">Back to cancel</string>
     <string name="tv_make_default_desc">Use this server for the next episodes too</string>
+    <!-- TV mode: media page info -->
+    <string name="tv_info_details">Details</string>
+    <string name="tv_info_titles">Titles</string>
+    <string name="tv_info_status">Status</string>
+    <string name="tv_info_duration">Episode length</string>
+    <string name="tv_minutes">%1$d min</string>
+    <string name="tv_info_next">Next episode</string>
+    <string name="tv_info_next_in">Episode %1$s in %2$s</string>
+    <string name="tv_info_english">English</string>
 </resources>

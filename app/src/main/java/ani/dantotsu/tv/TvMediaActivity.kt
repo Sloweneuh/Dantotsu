@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -122,6 +123,9 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                     sourceIcon = ::sourceIcon,
                     isDownloads = ::isDownloads,
                     onAddExtensions = { startActivity(android.content.Intent(this, TvExtensionsActivity::class.java)) },
+                    onOpenMedia = { related ->
+                        startActivity(android.content.Intent(this, TvMediaActivity::class.java).putExtra("media", related as java.io.Serializable))
+                    },
                     onSourceSettings = sourceSettingsId(sourceIndex.intValue)?.let { id ->
                         {
                             startActivity(
@@ -270,6 +274,7 @@ private fun TvMedia(
     isDownloads: (Int) -> Boolean,
     onAddExtensions: () -> Unit,
     onSourceSettings: (() -> Unit)?,
+    onOpenMedia: (Media) -> Unit,
     episodes: List<Episode>?,
     onPlay: (Episode) -> Unit,
     onSource: (Int) -> Unit,
@@ -292,8 +297,34 @@ private fun TvMedia(
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Backdrop(media.banner ?: media.cover, Modifier.fillMaxSize())
-        FocusRestingAt(60.dp) {
+        // The title and what's under it can't take focus, so focus coming back up into the top section
+        // (the buttons beneath them) takes the page all the way to its top: resting the buttons at the
+        // usual line left the title above them cut off.
+        val pageState = rememberLazyListState()
+        val restPx = with(androidx.compose.ui.platform.LocalDensity.current) { 60.dp.toPx() }
+        val pageSpec = remember(restPx) {
+            @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+            object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+                override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+                    // In the top sections (the title, then the buttons, items 0 and 1): to the very top.
+                    // Item offsets count from the content's start, after the top padding; [offset]
+                    // from the list's own edge.
+                    val shift = -pageState.layoutInfo.viewportStartOffset
+                    val within = pageState.layoutInfo.visibleItemsInfo.firstOrNull {
+                        it.index <= 1 && offset >= it.offset + shift && offset + size <= it.offset + shift + it.size
+                    }
+                    if (within == null) return offset - restPx
+                    val first = pageState.layoutInfo.visibleItemsInfo.first()
+                    // From the first item showing, back past what's scrolled of it — and, if that's
+                    // the buttons, past the title above them too (more than enough; the list stops at its top).
+                    return -(pageState.firstVisibleItemScrollOffset + if (first.index > 0) containerSize else 0f)
+                }
+            }
+        }
+        @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides pageSpec) {
         LazyColumn(
+            state = pageState,
             contentPadding = PaddingValues(start = 48.dp, top = 36.dp, bottom = 36.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
@@ -406,6 +437,7 @@ private fun TvMedia(
                     }
                 }
             }
+            tvMediaInfo(media, onOpenMedia)
         }
         }
     }
