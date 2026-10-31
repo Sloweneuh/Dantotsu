@@ -239,14 +239,19 @@ object ExtensionSync {
      * Note: this must NOT push before reading. The node is last-write-wins, so publishing first
      * would overwrite the other device's set and the diff would always come back empty.
      */
-    suspend fun computeDiff(): Diff? {
-        if (!enabled()) return null
+    /**
+     * @param readOnly compares with the cloud's list without this device taking part in extension
+     *   sync — TV mode's list shows what the user's other devices have even with its switch off — and
+     *   so never publishes this device's own list either.
+     */
+    suspend fun computeDiff(readOnly: Boolean = false): Diff? {
+        if (if (readOnly) !SyncIdentity.isLinked() else !enabled()) return null
         val uid = userId() ?: return null
         val result = fetchRemote(uid)
         if (result.isFailure) return null
         // Nothing in the cloud yet: publish ours so others can reconcile; nothing to offer here.
         val remote = result.getOrNull()?.payload
-            ?: return if (push()) Diff(emptyList(), emptyList()) else null
+            ?: return if (readOnly) Diff(emptyList(), emptyList()) else if (push()) Diff(emptyList(), emptyList()) else null
 
         val toInstall = mutableListOf<ExtItem>()
         val toRemove = mutableListOf<ExtItem>()

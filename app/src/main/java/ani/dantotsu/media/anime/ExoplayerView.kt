@@ -264,6 +264,29 @@ class ExoplayerView :
     private var orientationListener: OrientationEventListener? = null
 
     private var hasExtSubtitles = false
+
+    /** Where TV mode's skip prompt jumps to: the end of the segment playing, in seconds. */
+    private var tvSkipTo: Double? = null
+
+    private fun tvSkip() {
+        tvSkipTo?.let { exoPlayer.seekTo((it * 1000).toLong()) }
+    }
+
+    /** The audio and embedded subtitle tracks as last reported, for TV mode's choice lists. */
+    private var tvAudioTracks: List<Tracks.Group> = emptyList()
+    private var tvSubTracks: List<Tracks.Group> = emptyList()
+
+    /**
+     * TV mode is dark, the player's sheets included: they followed the app's dark mode setting (the
+     * phone's, under cloud sync), light on a dark screen. Set before AppCompat sets the screen up,
+     * as TV mode's own screens do (see [ani.dantotsu.tv.TvMode.attach]).
+     */
+    override fun attachBaseContext(newBase: Context?) {
+        if (newBase != null && ani.dantotsu.tv.TvMode.isOn(newBase)) {
+            delegate.localNightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+        }
+        super.attachBaseContext(newBase)
+    }
     private var audioLanguages = mutableListOf<Pair<String, String>>()
 
     companion object {
@@ -480,6 +503,11 @@ class ExoplayerView :
             // (Back arrives here, not through dispatchKeyEvent: the app opts into predictive back.)
             if (ani.dantotsu.tv.TvMode.isOn(this@ExoplayerView) && controlsShown) {
                 hideControls()
+                return@addCallback
+            }
+            // TV mode's up-next card: back turns the offer down, as its hint says.
+            if (tvOverlay?.upNext != null) {
+                nextCountdown.cancelNow()
                 return@addCallback
             }
             finishAndRemoveTask()
@@ -2070,6 +2098,8 @@ class ExoplayerView :
                 }
             }
         }
+        tvAudioTracks = audioTracks
+        tvSubTracks = subTracks
         exoAudioTrack.isVisible = audioTracks.size > 1
         exoAudioTrack.setOnClickListener {
             TrackGroupDialogFragment(this, audioTracks, TRACK_TYPE_AUDIO, audioLanguages)
@@ -2537,6 +2567,85 @@ class ExoplayerView :
      * Its buttons do what the phone ones do — the same views are clicked — so the player's logic stays
      * the one it has; only what's drawn, and how a remote moves through it, is new.
      */
+    /** A track's name for TV mode's lists: the extension's own, else its language in words. */
+    private fun tvTrackName(group: Tracks.Group, position: Int, overrides: List<Pair<String, String>>?, total: Int): String {
+        overrides?.getOrNull(position - (total - overrides.size))?.let { (name, lang) -> return "$name ($lang)" }
+        val format = group.getTrackFormat(0)
+        val language = format.language?.lowercase()
+        return when (language) {
+            null -> format.label ?: getString(R.string.unknown_track, "Track $position")
+            "none" -> getString(R.string.disabled_track)
+            else -> {
+                val name = java.util.Locale.forLanguageTag(language).getDisplayName(java.util.Locale.getDefault())
+                    .takeIf { it.isNotBlank() && !it.equals(language, ignoreCase = true) }
+                    ?.replaceFirstChar { it.titlecase() } ?: language
+                format.label?.takeIf { it.isNotBlank() && !it.equals(name, ignoreCase = true) }?.let { "$name · $it" } ?: name
+            }
+        }
+    }
+
+    private fun tvChooseAudio() {
+        val tracks = tvAudioTracks
+        if (tracks.size < 2) return
+        tvOverlay?.choose(
+            ani.dantotsu.tv.TvPlayerController.Choice(
+                getString(R.string.audio_tracks),
+                tracks.mapIndexed { i, group ->
+                    ani.dantotsu.tv.TvPlayerController.Option(
+                        tvTrackName(group, i, audioLanguages, tracks.size), group.isSelected,
+                    ) { onSetTrackGroupOverride(group, TRACK_TYPE_AUDIO) }
+                },
+            )
+        )
+    }
+
+    /**
+     * The subtitles to pick from: the extension's own files when it sent any (as the phone's
+     * subtitle sheet picks them), otherwise the stream's embedded tracks (as its track sheet does).
+     */
+    private fun tvChooseSubtitles() {
+        if (hasExtSubtitles) {
+            val ep = media.anime?.episodes?.get(media.anime?.selectedEpisode) ?: return
+            val subtitles = ep.extractors?.find { it.server.name == ep.selectedExtractor }?.subtitles ?: return
+            fun pick(index: Int?) {
+                PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", exoPlayer.currentPosition)
+                model.saveSelected(media.id, media.selected!!)
+                ep.selectedSubtitle = index
+                model.setEpisode(ep, "Subtitle")
+                PrefManager.setCustomVal("subLang_${media.id}", index?.let { subtitles[it].language } ?: "None")
+            }
+            // -1 is "chosen for you": the language saved for this title, as the player picks it.
+            val savedLang = PrefManager.getNullableCustomVal("subLang_${media.id}", null, String::class.java)
+            val current = when (val selected = ep.selectedSubtitle) {
+                null -> null
+                -1 -> subtitles.indexOfFirst { it.language == savedLang }.takeIf { it >= 0 }
+                else -> selected
+            }
+            val options = listOf(
+                ani.dantotsu.tv.TvPlayerController.Option(getString(R.string.none), current == null) { pick(null) }
+            ) + subtitles.mapIndexed { i, sub ->
+                val name = java.util.Locale.forLanguageTag(sub.language).getDisplayName(java.util.Locale.getDefault())
+                    .takeIf { it.isNotBlank() && !it.equals(sub.language, ignoreCase = true) }
+                    ?.replaceFirstChar { it.titlecase() } ?: sub.language
+                ani.dantotsu.tv.TvPlayerController.Option(name, current == i) { pick(i) }
+            }
+            tvOverlay?.choose(ani.dantotsu.tv.TvPlayerController.Choice(getString(R.string.subtitles), options))
+            return
+        }
+        val tracks = tvSubTracks
+        if (tracks.size < 2) return
+        tvOverlay?.choose(
+            ani.dantotsu.tv.TvPlayerController.Choice(
+                getString(R.string.subtitles),
+                tracks.mapIndexed { i, group ->
+                    ani.dantotsu.tv.TvPlayerController.Option(tvTrackName(group, i, null, tracks.size), group.isSelected) {
+                        onSetTrackGroupOverride(group, TRACK_TYPE_TEXT)
+                    }
+                },
+            )
+        )
+    }
+
     private fun setUpTvOverlay() {
         playerView.useController = false
         val controller = ani.dantotsu.tv.TvPlayerController(object : ani.dantotsu.tv.TvPlayerController.Actions {
@@ -2551,8 +2660,11 @@ class ExoplayerView :
             }
             override fun previous() { exoPrev.performClick() }
             override fun next() { exoNext.performClick() }
-            override fun audio() { exoAudioTrack.performClick() }
-            override fun subtitles() { exoSubtitle.performClick() }
+            override fun audio() = tvChooseAudio()
+            override fun subtitles() = tvChooseSubtitles()
+            override fun skip() { tvSkip() }
+            override fun playNext() { nextCountdown.playNow() }
+            override fun cancelNext() { nextCountdown.cancelNow() }
             override fun server() { exoSource.performClick() }
         })
         tvOverlay = controller
@@ -2564,9 +2676,33 @@ class ExoplayerView :
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
+        // The skip button and the up-next card keep doing their work, out of sight: the overlay
+        // draws them for a remote (below), from what they show.
+        nextCountdown.suppressed = true
+        binding.nextCountdownCard.isVisible = false
+        val skipButton = playerView.findViewById<View>(R.id.exo_skip_timestamp)
         // What the overlay shows, from the player, twice a second.
         lifecycleScope.launch {
             while (true) {
+                skipButton?.alpha = 0f
+                // The segment playing now, if any: with the controls up, its skip stays for as long
+                // as it lasts; with them hidden, only while the phone's button would show (it hides
+                // itself after a few seconds, so as not to sit over the picture).
+                val stamp = if (isInitialized && PrefManager.getVal<Boolean>(PrefName.ShowTimeStampButton)) {
+                    val at = exoPlayer.currentPosition / 1000
+                    model.timeStamps.value?.find { at > it.interval.startTime && at < it.interval.endTime - 1 }
+                } else null
+                tvSkipTo = stamp?.interval?.endTime
+                // "Skip Opening", as the phone's button reads.
+                controller.skipLabel = stamp?.skipType?.getType()
+                    ?.takeIf { controller.visible || skipButton?.isVisible == true }
+                    ?.let { "${getString(R.string.skip)} $it" }
+                controller.upNext = if (nextCountdown.isShowing) {
+                    ani.dantotsu.tv.TvPlayerController.UpNext(
+                        nextCountdown.label.toString(), nextCountdown.countdownLabel?.toString(),
+                        nextCountdown.thumbUrl,
+                    )
+                } else null
                 if (isInitialized) {
                     controller.playing = exoPlayer.isPlaying
                     controller.position = exoPlayer.currentPosition
@@ -2666,7 +2802,12 @@ class ExoplayerView :
             }
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_BUTTON_A ->
                 if (controls) null else true.also {
-                    if (up) {
+                    val overlay = tvOverlay
+                    if (up && overlay?.upNext != null) {
+                        nextCountdown.playNow()
+                    } else if (up && overlay?.skipLabel != null) {
+                        tvSkip()
+                    } else if (up) {
                         exoPlay.performClick()
                         showControls()
                         if (tvOverlay == null) exoPlay.requestFocus()

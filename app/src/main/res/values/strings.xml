@@ -3599,7 +3599,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_no_episodes">No episodes found on %1$s</string>
     <string name="tv_source">Source · %1$s</string>
     <string name="tv_pick_source">Choose a source</string>
-    <string name="tv_no_extensions">No anime extensions installed. Add one from the phone interface.</string>
+    <string name="tv_no_extensions">No anime extensions installed yet</string>
     <string name="tv_signed_out">Use Sign in to connect this TV from your phone, and your lists show up here.</string>
     <!-- TV mode interface: title details -->
     <string name="tv_progress_of">Ep %1$d / %2$d</string>
@@ -3700,4 +3700,61 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_color_cyan">Cyan</string>
     <string name="tv_color_light_gray">Light grey</string>
     <string name="tv_color_dark_gray">Dark grey</string>
+    <!-- TV mode: extension list -->
+    <string name="tv_extensions">Extensions</string>
+    <string name="tv_ext_manage">Manage extensions</string>
+    <string name="tv_ext_search">Search extensions</string>
+    <string name="tv_ext_add_repo">Add a repository</string>
+    <string name="tv_ext_repo_hint">Repository URL</string>
+    <string name="tv_ext_add">Add</string>
+    <string name="tv_ext_repo_added">Repository added. Its extensions are loading</string>
+    <string name="tv_ext_repo_invalid">Enter the repository\'s full URL, starting with https://</string>
+    <string name="tv_ext_no_repos">No extension repositories yet. Add one to see the extensions it offers.</string>
+    <string name="tv_ext_updates">Updates</string>
+    <string name="tv_ext_from_devices">On your other devices</string>
+    <string name="tv_ext_install_all">Install all (%1$d)</string>
+    <string name="tv_ext_installed">Installed</string>
+    <string name="tv_ext_available">Available</string>
+    <string name="tv_ext_install">Install</string>
+    <string name="tv_ext_update">Update</string>
+    <string name="tv_ext_uninstall">Uninstall</string>
+    <string name="tv_ext_pending">Waiting…</string>
+    <string name="tv_ext_downloading">Downloading…</string>
+    <string name="tv_ext_installing">Installing…</string>
+    <string name="tv_ext_confirm">Confirm on screen</string>
+    <string name="tv_ext_failed">Failed</string>
+    <string name="tv_ext_failed_named">Couldn\'t install %1$s</string>
+    <string name="tv_ext_loading">Loading extensions…</string>
+    <string name="tv_ext_none">No extensions match</string>
+    <plurals name="tv_ext_installed_count">
+        <item quantity="one">%1$d installed</item>
+        <item quantity="other">%1$d installed</item>
+    </plurals>
+    <!-- TV mode: settings categories, about, updates -->
+    <string name="tv_settings_about">About</string>
+    <string name="tv_version">Dantotsu %1$s</string>
+    <string name="tv_update_on_launch">Check for updates when the app opens</string>
+    <string name="tv_ext_show_nsfw">Show 18+ extensions</string>
+    <string name="tv_update_available">Update to %1$s</string>
+    <!-- TV mode: extension settings -->
+    <string name="tv_ext_settings">Settings</string>
+    <string name="tv_ext_settings_for">Settings · %1$s</string>
+    <string name="tv_ext_no_settings">This extension has no settings</string>
+    <string name="tv_ext_done">Done</string>
+    <!-- TV mode: media page source settings -->
+    <string name="tv_source_settings">%1$s settings</string>
+    <!-- TV mode: source picker -->
+    <string name="tv_add_extensions">Add more extensions</string>
+    <plurals name="tv_extension_updates">
+        <item quantity="one">%1$d extension update</item>
+        <item quantity="other">%1$d extension updates</item>
+    </plurals>
+    <!-- TV mode: repositories -->
+    <string name="tv_ext_repos">Repositories</string>
+    <string name="tv_ext_remove_repo">Remove</string>
+    <string name="tv_ext_remove_repo_title">Remove this repository?</string>
+    <string name="tv_ext_installed_label">Installed</string>
+    <!-- TV mode: player prompts and server sheet -->
+    <string name="tv_back_cancels">Back to cancel</string>
+    <string name="tv_make_default_desc">Use this server for the next episodes too</string>
 </resources>

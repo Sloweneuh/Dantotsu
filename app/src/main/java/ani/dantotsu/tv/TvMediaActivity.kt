@@ -23,6 +23,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -114,8 +117,19 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                 LaunchedEffect(episodes, media) { media.anime?.episodes = episodes }
                 TvMedia(
                     media = media,
-                    sourceNames = model.watchSources?.names.orEmpty(),
+                    sourceNames = sourcesVersion.intValue.let { model.watchSources?.names.orEmpty() },
                     sourceIndex = sourceIndex.intValue,
+                    sourceIcon = ::sourceIcon,
+                    isDownloads = ::isDownloads,
+                    onAddExtensions = { startActivity(android.content.Intent(this, TvExtensionsActivity::class.java)) },
+                    onSourceSettings = sourceSettingsId(sourceIndex.intValue)?.let { id ->
+                        {
+                            startActivity(
+                                android.content.Intent(this, TvExtensionSettingsActivity::class.java)
+                                    .putExtra(TvExtensionSettingsActivity.EXTRA_SOURCE, id)
+                            )
+                        }
+                    },
                     episodes = episodes?.values?.sortedBy { it.number.toFloatOrNull() ?: Float.MAX_VALUE },
                     onPlay = { play(media, it) },
                     onSource = { changeSource(media, it) },
@@ -194,6 +208,35 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
         })
     }
 
+    private fun isDownloads(index: Int) =
+        runCatching { model.watchSources?.get(index) }.getOrNull() is ani.dantotsu.parsers.OfflineAnimeParser
+
+    /** Bumped on coming back to the page: extensions added from the picker's last row show up in it. */
+    private val sourcesVersion = androidx.compose.runtime.mutableIntStateOf(0)
+
+    override fun onRestart() {
+        super.onRestart()
+        sourcesVersion.intValue++
+    }
+
+    private fun extensionOf(index: Int) =
+        (runCatching { model.watchSources?.get(index) }.getOrNull() as? ani.dantotsu.parsers.DynamicAnimeParser)?.extension
+
+    /** A source's extension icon, for its button and its row in the picker. */
+    private fun sourceIcon(index: Int): androidx.compose.ui.graphics.ImageBitmap? =
+        runCatching { extensionOf(index)?.icon?.toBitmap(64, 64)?.asImageBitmap() }.getOrNull()
+
+    /**
+     * The source whose settings the media page's settings button opens: the one in use (an
+     * extension carries one a language), or else its first with settings; none when it has none.
+     */
+    private fun sourceSettingsId(index: Int): Long? {
+        val parser = runCatching { model.watchSources?.get(index) }.getOrNull() as? ani.dantotsu.parsers.DynamicAnimeParser ?: return null
+        val sources = parser.extension.sources
+        val active = sources.getOrNull(parser.sourceLanguage) as? eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
+        return (active ?: sources.filterIsInstance<eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource>().firstOrNull())?.id
+    }
+
     /** The user's pick from "Wrong title?": remembered for this media, and its episodes loaded. */
     private fun pickMatch(media: Media, response: ShowResponse) {
         matchedName.value = response.name
@@ -223,6 +266,10 @@ private fun TvMedia(
     media: Media,
     sourceNames: List<String>,
     sourceIndex: Int,
+    sourceIcon: (Int) -> androidx.compose.ui.graphics.ImageBitmap?,
+    isDownloads: (Int) -> Boolean,
+    onAddExtensions: () -> Unit,
+    onSourceSettings: (() -> Unit)?,
     episodes: List<Episode>?,
     onPlay: (Episode) -> Unit,
     onSource: (Int) -> Unit,
@@ -293,11 +340,22 @@ private fun TvMedia(
                         onClick = { editingList = true },
                         modifier = Modifier.pointerClick { editingList = true },
                     ) { Text(listLabel) }
+                    // The source in use, by its icon and name, and its settings beside it.
                     if (sourceNames.isNotEmpty()) OutlinedButton(
                         onClick = { pickingSource = true },
                         modifier = Modifier.pointerClick { pickingSource = true },
                     ) {
+                        SourceIcon(sourceIndex, sourceNames, sourceIcon, isDownloads, Modifier.padding(end = 8.dp).size(20.dp))
                         Text(stringResource(R.string.tv_source, sourceName.orEmpty()))
+                    }
+                    if (onSourceSettings != null) androidx.tv.material3.OutlinedIconButton(
+                        onClick = onSourceSettings,
+                        modifier = Modifier.pointerClick(onClick = onSourceSettings),
+                    ) {
+                        androidx.tv.material3.Icon(
+                            androidx.compose.ui.res.painterResource(R.drawable.ic_round_settings_24),
+                            contentDescription = stringResource(R.string.tv_source_settings, sourceName.orEmpty()),
+                        )
                     }
                     if (sourceNames.isNotEmpty()) OutlinedButton(
                         onClick = { fixingTitle = true },
@@ -369,6 +427,9 @@ private fun TvMedia(
 
     if (pickingSource) SourcePicker(
         names = sourceNames,
+        icon = sourceIcon,
+        isDownloads = isDownloads,
+        onAddExtensions = { pickingSource = false; onAddExtensions() },
         selected = sourceIndex,
         onPick = { pickingSource = false; onSource(it) },
         onDismiss = { pickingSource = false },
@@ -416,7 +477,15 @@ private fun EpisodeCard(episode: Episode, fallbackImage: String?, watched: Boole
 
 /** The installed sources, one focusable row each, the current one first in focus. */
 @Composable
-private fun SourcePicker(names: List<String>, selected: Int, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+private fun SourcePicker(
+    names: List<String>,
+    icon: (Int) -> androidx.compose.ui.graphics.ImageBitmap?,
+    isDownloads: (Int) -> Boolean,
+    onAddExtensions: () -> Unit,
+    selected: Int,
+    onPick: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val current = remember { FocusRequester() }
     TvDialog(onDismissRequest = onDismiss) {
         Surface(shape = CARD_SHAPE, modifier = Modifier.width(420.dp)) {
@@ -432,8 +501,24 @@ private fun SourcePicker(names: List<String>, selected: Int, onPick: (Int) -> Un
                             selected = index == selected,
                             onClick = { onPick(index) },
                             headlineContent = { Text(name) },
+                            leadingContent = { SourceIcon(index, names, icon, isDownloads, Modifier.size(28.dp)) },
                             modifier = (if (index == selected) Modifier.focusRequester(current) else Modifier)
                                 .pointerClick { onPick(index) },
+                        )
+                    }
+                    item {
+                        ListItem(
+                            selected = false,
+                            onClick = onAddExtensions,
+                            headlineContent = { Text(stringResource(R.string.tv_add_extensions)) },
+                            leadingContent = {
+                                androidx.tv.material3.Icon(
+                                    androidx.compose.ui.res.painterResource(R.drawable.ic_round_add_24),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                )
+                            },
+                            modifier = Modifier.pointerClick(onClick = onAddExtensions),
                         )
                     }
                 }
@@ -441,4 +526,25 @@ private fun SourcePicker(names: List<String>, selected: Int, onPick: (Int) -> Un
         }
     }
     LaunchedEffect(Unit) { runCatching { current.requestFocus() } }
+}
+
+/** A source's icon: its extension's, or the download icon for the downloaded episodes. */
+@Composable
+private fun SourceIcon(
+    index: Int,
+    names: List<String>,
+    icon: (Int) -> androidx.compose.ui.graphics.ImageBitmap?,
+    isDownloads: (Int) -> Boolean,
+    modifier: Modifier,
+) {
+    val bitmap = remember(index, names) { icon(index) }
+    val downloads = remember(index, names) { isDownloads(index) }
+    when {
+        bitmap != null -> androidx.compose.foundation.Image(bitmap, contentDescription = null, modifier = modifier)
+        downloads -> androidx.tv.material3.Icon(
+            androidx.compose.ui.res.painterResource(R.drawable.ic_download_24),
+            contentDescription = null,
+            modifier = modifier,
+        )
+    }
 }

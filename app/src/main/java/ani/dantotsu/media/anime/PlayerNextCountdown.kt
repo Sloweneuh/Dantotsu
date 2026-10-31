@@ -45,6 +45,18 @@ class PlayerNextCountdown(
     /** Up, as far as the player is concerned — on screen, or held back while in [inPip]. */
     val isShowing get() = active
 
+    /**
+     * TV mode draws its own (see [ani.dantotsu.tv.TvPlayerOverlay]): the card keeps counting and
+     * deciding as ever, out of sight, and [label]/[countdownLabel]/[playNow]/[cancelNow] stand in.
+     */
+    var suppressed = false
+    val label: CharSequence get() = nextText.text
+    var thumbUrl: String? = null
+        private set
+    val countdownLabel: CharSequence? get() = if (isCounting) countdownText.text else null
+    fun playNow() = fire()
+    fun cancelNow() = cancel.performClick()
+
     private var active = false
 
     /** Fading out after [hide]; it counts as gone already, and [start] cuts the fade short. */
@@ -61,7 +73,7 @@ class PlayerNextCountdown(
             if (!active || hiding) return
             card.animate().cancel()
             card.alpha = 1f
-            card.isVisible = !value
+            card.isVisible = !value && !suppressed
             // Re-measured for the window it is back in: a centred card grows to fit it.
             if (!value) place(isCentered)
         }
@@ -120,6 +132,7 @@ class PlayerNextCountdown(
         onPlay = play
         onCancel = cancelled
         nextText.text = nextLabel
+        thumbUrl = nextThumb?.url?.takeIf { it.isNotBlank() }
         val hasThumb = !nextThumb?.url.isNullOrBlank()
         thumb.isVisible = hasThumb
         scrim.isVisible = hasThumb
@@ -155,7 +168,7 @@ class PlayerNextCountdown(
                     .setDuration(350).setInterpolator(FastOutSlowInInterpolator()).start()
             }
         }
-        card.isVisible = !inPip
+        card.isVisible = !inPip && !suppressed
         if (appearing && animationsEnabled && !inPip) {
             // Fades in; in the corner it also grows in a little. A centred one grows on its own,
             // from place(), and that scale animation runs alongside this fade.

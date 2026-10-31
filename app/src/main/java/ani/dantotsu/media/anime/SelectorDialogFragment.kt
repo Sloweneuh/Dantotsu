@@ -10,6 +10,8 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -96,6 +98,21 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
     private var isDownloadMenu: Boolean? = null
     private var episodes: ArrayList<String>? = null
 
+    /**
+     * TV mode's list of servers: the same streams the phone list shows, as they arrive, drawn as rows
+     * a remote can move through (see [TvServerList]). The phone list's rows are small and, arriving
+     * after the sheet had tried to focus its list, left a remote nothing to press. Downloads keep the
+     * phone list — TV mode doesn't download yet.
+     */
+    private val tvRows = androidx.compose.runtime.mutableStateListOf<Pair<VideoExtractor, Int>>()
+    private var tvLoading by androidx.compose.runtime.mutableStateOf(true)
+    /** The server being picked on its own (the remembered default), with the way to stop it. */
+    private var tvAuto by androidx.compose.runtime.mutableStateOf<String?>(null)
+    private var tvCancelAuto: (() -> Unit)? = null
+    private var tvMakeDefault by androidx.compose.runtime.mutableStateOf(false)
+    private val tvList: Boolean
+        get() = isDownloadMenu != true && context?.let { ani.dantotsu.tv.TvMode.isOn(it) } == true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
@@ -118,7 +135,10 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
         window?.statusBarColor = Color.TRANSPARENT
         window?.navigationBarColor =
             requireContext().getThemeColor(com.google.android.material.R.attr.colorSurface)
-        return binding.root
+        // TV mode: the panel is the sheet's only content. The phone layout is still inflated, for
+        // the code above to drive as it always has, but never attached: shown, it surfaced again
+        // whenever that code made one of its parts visible.
+        return if (tvList) tvSheetView() else binding.root
     }
 
     interface EpisodeDownloadListener {
@@ -178,7 +198,9 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                     }
                     binding.selectorRecyclerView.adapter = null
                     binding.selectorProgressBar.visibility = View.VISIBLE
+                    tvLoading = true
                     makeDefault = PrefManager.getVal(PrefName.MakeDefault)
+                    tvMakeDefault = makeDefault
                     binding.selectorMakeDefault.isChecked = makeDefault
                     binding.selectorMakeDefault.setOnClickListener {
                         makeDefault = binding.selectorMakeDefault.isChecked
@@ -192,25 +214,14 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                         )
                     val adapter = ExtractorAdapter(onEpisodeDownloadHandler)
                     binding.selectorRecyclerView.adapter = adapter
-                    // A remote has nothing to press until a row has focus, and the streams arrive
-                    // one server at a time: take the first that can, as soon as one can.
-                    if (ani.dantotsu.tv.TvMode.isOn(requireContext())) {
-                        val list = binding.selectorRecyclerView
-                        list.viewTreeObserver.addOnGlobalLayoutListener(object :
-                            android.view.ViewTreeObserver.OnGlobalLayoutListener {
-                            override fun onGlobalLayout() {
-                                if (list.hasFocus() || list.requestFocus(View.FOCUS_DOWN)) {
-                                    list.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                                }
-                            }
-                        })
-                    }
+
                     if (!ep.allStreams) {
                         scope.launch(Dispatchers.IO) {
                             model.loadEpisodeVideos(ep, media!!.selected!!.sourceIndex)
                             withContext(Dispatchers.Main) {
                                 adapter.addAll(ep.extractors)
                                 binding.selectorProgressBar.visibility = View.GONE
+                                tvLoading = false
                                 if (adapter.itemCount == 0) {
                                     fail(R.string.stream_selection_empty)
                                 }
@@ -229,6 +240,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                             adapter.performClick(0)
                         }
                         binding.selectorProgressBar.visibility = View.GONE
+                        tvLoading = false
                     }
                 }
                 suspend fun loadEpisodeSingleServer(episodeName: String, selectedServerName: String): Boolean{
@@ -424,13 +436,16 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                                 binding.selectorListContainer.visibility = View.GONE
                                 binding.selectorAutoListContainer.visibility = View.VISIBLE
                                 binding.selectorAutoText.text = selected
-                                binding.selectorCancel.setOnClickListener {
+                                val cancelAuto: () -> Unit = {
                                     media!!.selected!!.server = null
                                     model.saveSelected(media!!.id, media!!.selected!!)
                                     tryWith {
                                         dismiss()
                                     }
                                 }
+                                binding.selectorCancel.setOnClickListener { cancelAuto() }
+                                tvCancelAuto = cancelAuto
+                                tvAuto = selected
 
                                 fun load() {
                                     val size =
@@ -676,6 +691,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
             if (videoExtractor.videos.isNotEmpty()) {
                 links.add(videoExtractor)
                 notifyItemInserted(links.size - 1)
+                if (tvList) tvRows.addAll(videoExtractor.videos.indices.map { videoExtractor to it })
             }
         }
 
@@ -684,6 +700,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
             val start = links.size
             links.addAll(nonNull)
             notifyItemRangeInserted(start, nonNull.size)
+            if (tvList) nonNull.forEach { e -> tvRows.addAll(e.videos.indices.map { e to it }) }
         }
 
         fun performClick(position: Int) {
@@ -700,6 +717,72 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
 
         private inner class StreamViewHolder(val binding: ItemStreamBinding) :
             RecyclerView.ViewHolder(binding.root)
+    }
+
+    /** "1080p • Dub": a stream's quality and whether it's subbed or dubbed, as its row shows it. */
+    private fun videoDetails(extractor: VideoExtractor, video: Video): String {
+        val serverLabel = extractor.server.name.lowercase(Locale.ROOT)
+        val subDub = when {
+            Regex("\\bsoft[ -]?(sub|subbed)\\b").containsMatchIn(serverLabel) -> "Soft Sub"
+            Regex("\\bhard[ -]?(sub|subbed)\\b").containsMatchIn(serverLabel) -> "Hard Sub"
+            Regex("\\b(dub|dubbed)\\b").containsMatchIn(serverLabel) -> "Dub"
+            Regex("\\b(sub|subbed)\\b").containsMatchIn(serverLabel) -> "Sub"
+            else -> media?.selected?.sourceIndex?.let { sourceIndex ->
+                model.watchSources?.get(sourceIndex)?.let { parser ->
+                    if (parser.isDubAvailableSeparately()) {
+                        if (parser.selectDub) "Dub" else "Sub"
+                    } else null
+                }
+            }
+        }
+        // Some extensions put a server number where the height goes (Re:ANIME's 1 and 2, read as
+        // "1p"): anything under the smallest real resolution isn't one, and says nothing.
+        val resolution = video.quality?.takeIf { it >= 144 }?.let { "${it}p" }
+        return listOf(resolution, subDub).filterNotNull().distinct().joinToString(" • ")
+    }
+
+    /** What picking a stream does, from a phone row or a TV one: play it, remembered if asked to. */
+    private fun pickVideo(extractor: VideoExtractor, position: Int) {
+        tryWith(true) {
+            media!!.anime!!.episodes!![media!!.anime!!.selectedEpisode!!]?.selectedExtractor =
+                extractor.server.name
+            media!!.anime!!.episodes!![media!!.anime!!.selectedEpisode!!]?.selectedVideo = position
+            if (makeDefault) {
+                media!!.selected!!.server = extractor.server.name
+                media!!.selected!!.video = position
+                model.saveSelected(media!!.id, media!!.selected!!)
+            }
+            startExoplayer(media!!)
+        }
+    }
+
+    /**
+     * TV mode's sheet (see [onCreateView]): the servers as [tvRows] arrive, a spinner until they have,
+     * the default switch, or the remembered server being picked on its own ([ani.dantotsu.tv.TvServerSheet]).
+     */
+    private fun tvSheetView(): View = androidx.compose.ui.platform.ComposeView(requireContext()).apply {
+        // As tall as what it holds: handed over without a size, the sheet gave it the whole screen.
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        tvRows.clear()
+        setContent {
+            ani.dantotsu.tv.TvTheme(rateLimit = false, fill = false) {
+                ani.dantotsu.tv.TvServerSheet(
+                    rows = tvRows,
+                    loading = tvLoading,
+                    autoServer = tvAuto,
+                    onCancelAuto = { tvCancelAuto?.invoke() },
+                    makeDefault = tvMakeDefault,
+                    onMakeDefault = {
+                        makeDefault = it
+                        tvMakeDefault = it
+                        PrefManager.setVal(PrefName.MakeDefault, it)
+                    },
+                    name = { it.first.server.name },
+                    details = { (extractor, i) -> videoDetails(extractor, extractor.videos[i]) },
+                    onPick = { (extractor, i) -> pickVideo(extractor, i) },
+                )
+            }
+        }
     }
 
     private inner class VideoAdapter(private val extractor: VideoExtractor,private val onEpisodeDownloadHandler: EpisodeDownloadHandler?) :
@@ -898,25 +981,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
             }
             val serverName = extractor.server.name
             binding.urlQuality.text = serverName
-            val serverLabel = serverName.lowercase(Locale.ROOT)
-            val subDub = when {
-                Regex("\\bsoft[ -]?(sub|subbed)\\b").containsMatchIn(serverLabel) -> "Soft Sub"
-                Regex("\\bhard[ -]?(sub|subbed)\\b").containsMatchIn(serverLabel) -> "Hard Sub"
-                Regex("\\b(dub|dubbed)\\b").containsMatchIn(serverLabel) -> "Dub"
-                Regex("\\b(sub|subbed)\\b").containsMatchIn(serverLabel) -> "Sub"
-                else -> media?.selected?.sourceIndex?.let { sourceIndex ->
-                    model.watchSources?.get(sourceIndex)?.let { parser ->
-                        if (parser.isDubAvailableSeparately()) {
-                            if (parser.selectDub) "Dub" else "Sub"
-                        } else null
-                    }
-                }
-            }
-            val resolution = video.quality?.let { "${it}p" }
-            val details = listOf(resolution, subDub)
-                .filterNotNull()
-                .distinct()
-                .joinToString(" • ")
+            val details = videoDetails(extractor, video)
             binding.urlNote.text = details
             binding.urlNote.visibility = if (details.isEmpty()) View.GONE else View.VISIBLE
         }
@@ -931,19 +996,8 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                         binding.urlDownload.performClick()
                         return@setSafeOnClickListener
                     }
-                    tryWith(true) {
-                        media!!.anime!!.episodes!![media!!.anime!!.selectedEpisode!!]?.selectedExtractor =
-                            extractor.server.name
-                        media!!.anime!!.episodes!![media!!.anime!!.selectedEpisode!!]?.selectedVideo =
-                            bindingAdapterPosition
-                        if (makeDefault) {
-                            media!!.selected!!.server = extractor.server.name
-                            media!!.selected!!.video = bindingAdapterPosition
-                            model.saveSelected(media!!.id, media!!.selected!!)
-                        }
-                        Log.d("AnimeDownloader", "Should start the player")
-                        startExoplayer(media!!)
-                    }
+                    Log.d("AnimeDownloader", "Should start the player")
+                    pickVideo(extractor, bindingAdapterPosition)
                 }
                 itemView.setOnLongClickListener {
                     val video = extractor.videos[bindingAdapterPosition]
@@ -960,6 +1014,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
     }
 
     companion object {
+
         fun newInstance(
             server: String? = null,
             la: Boolean = true,

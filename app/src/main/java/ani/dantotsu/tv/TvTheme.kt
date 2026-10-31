@@ -32,9 +32,11 @@ import com.google.android.material.color.MaterialColors
 /**
  * Dantotsu's own look on the TV: the colours the app's theme resolves to (so the user's chosen theme,
  * OLED variant and all, carries over) and Poppins, sized for a screen across the room.
+ *
+ * [fill]: the whole screen, as TV screens are; off for TV content inside something else (a sheet).
  */
 @Composable
-fun TvTheme(rateLimit: Boolean = true, content: @Composable () -> Unit) {
+fun TvTheme(rateLimit: Boolean = true, fill: Boolean = true, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val colors = remember(context) { themeColors(context) }
     MaterialTheme(colorScheme = colors, typography = TvTypography) {
@@ -43,7 +45,7 @@ fun TvTheme(rateLimit: Boolean = true, content: @Composable () -> Unit) {
             LocalContentColor provides colors.onBackground,
             LocalDensity provides tvDensity(),
         ) {
-            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().tvInputTracking()) {
+            androidx.compose.foundation.layout.Box((if (fill) Modifier.fillMaxSize() else Modifier).tvInputTracking()) {
                 content()
                 // Over every TV screen but the player, as the phone's pill keeps off the player too.
                 if (rateLimit) TvRateLimitIndicator(Modifier.align(Alignment.BottomEnd).padding(28.dp))

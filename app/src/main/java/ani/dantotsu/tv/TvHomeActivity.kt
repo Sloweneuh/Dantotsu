@@ -22,6 +22,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import uy.kohesive.injekt.api.get
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -83,6 +86,7 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
     private val seasons = androidx.compose.runtime.mutableStateListOf<List<Media>?>(null, null, null)
     private val genres = androidx.compose.runtime.mutableStateListOf<Pair<String, String?>>()
     private val resumeTick = mutableIntStateOf(0)
+    private var update by androidx.compose.runtime.mutableStateOf<ani.dantotsu.others.AppUpdater.Update?>(null)
 
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(TvMode.attach(this, newBase))
@@ -104,6 +108,9 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
                     onGenre = { startActivity(Intent(this, TvBrowseActivity::class.java).putExtra(TvBrowseActivity.EXTRA_GENRE, it)) },
                     onDiscover = if (Anilist.token != null) ({ startActivity(Intent(this, TvDiscoverActivity::class.java)) }) else null,
                     onSearch = ::openSearch,
+                    update = update,
+                    onExtensionUpdates = { startActivity(Intent(this, TvExtensionsActivity::class.java)) },
+                    onUpdate = { found -> startActivity(ani.dantotsu.others.AppUpdater.openIntent(this, found)) },
                     onSignIn = if (Anilist.token == null) ({ startActivity(Intent(this, TvSignInActivity::class.java)) }) else null,
                     onSettings = { startActivity(Intent(this, TvSettingsActivity::class.java)) },
                     onExit = if (TvMode.canExit(this)) ({ TvMode.exit(this) }) else null,
@@ -134,6 +141,12 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
             TrackerSessions.await()
             loadSeasonsAndCharts()
             loadGenres()
+        }
+        // The app's own update check, when it's switched on: the phone announces an update with a
+        // notice banner, which TV mode doesn't show, so here it's a button in the header instead.
+        if (PrefManager.getVal<Boolean>(PrefName.CheckUpdate)) lifecycleScope.launch(Dispatchers.IO) {
+            val found = runCatching { ani.dantotsu.others.AppUpdater.findUpdate(this@TvHomeActivity) }.getOrNull()
+            withContext(Dispatchers.Main) { update = found }
         }
     }
 
@@ -254,6 +267,9 @@ private fun TvHome(
     onGenre: (String) -> Unit,
     onDiscover: (() -> Unit)?,
     onSearch: () -> Unit,
+    update: ani.dantotsu.others.AppUpdater.Update?,
+    onUpdate: (ani.dantotsu.others.AppUpdater.Update) -> Unit,
+    onExtensionUpdates: () -> Unit,
     onSignIn: (() -> Unit)?,
     onSettings: () -> Unit,
     onExit: (() -> Unit)?,
@@ -343,6 +359,26 @@ private fun TvHome(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Spacer(Modifier.weight(1f))
+                // Extension updates, as the phone's notice banner announces them (TV mode shows no banners):
+                // the installed list knows which have one once the repositories have been read at startup.
+                val extensions = remember {
+                    uy.kohesive.injekt.Injekt.get<eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager>()
+                }
+                val installedExtensions by extensions.installedExtensionsFlow.collectAsState()
+                val extensionUpdates = installedExtensions.count { it.hasUpdate }
+                if (extensionUpdates > 0) {
+                    Button(onClick = onExtensionUpdates, modifier = Modifier.pointerClick(onClick = onExtensionUpdates)) {
+                        Text(pluralStringResource(R.plurals.tv_extension_updates, extensionUpdates, extensionUpdates))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                }
+                if (update != null) {
+                    val open = { onUpdate(update) }
+                    Button(onClick = open, modifier = Modifier.pointerClick(onClick = open)) {
+                        Text(stringResource(R.string.tv_update_available, update.version))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                }
                 if (onSignIn != null) {
                     Button(onClick = onSignIn, modifier = Modifier.pointerClick(onClick = onSignIn)) {
                         Text(stringResource(R.string.tv_sign_in))

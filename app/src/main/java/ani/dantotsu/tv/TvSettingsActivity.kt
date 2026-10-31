@@ -6,6 +6,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -62,119 +70,231 @@ class TvSettingsActivity : AppCompatActivity(), TvScreen {
     }
 }
 
+/**
+ * The settings, a category at a time: the categories down the left, the focused one's settings on
+ * the right — Android TV's own settings work the same way. One long list ran to some forty rows.
+ */
+private enum class Category(val title: Int) {
+    ACCOUNT(R.string.tv_settings_account),
+    PLAYBACK(R.string.tv_settings_playback),
+    PROGRESS(R.string.tv_settings_progress),
+    SUBTITLES(R.string.subtitles),
+    APPEARANCE(R.string.tv_settings_appearance),
+    EXTENSIONS(R.string.tv_extensions),
+    INTERFACE(R.string.tv_settings_interface),
+    ABOUT(R.string.tv_settings_about),
+}
+
 @Composable
 private fun TvSettings(onExit: (() -> Unit)?) {
-    val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+    // On a TV, TV mode is the only interface there is: nothing to choose, nothing to leave for.
+    val categories = Category.entries.filter { it != Category.INTERFACE || onExit != null }
+    var current by remember { mutableStateOf(Category.PLAYBACK) }
+    // One requester a category: left from its settings goes back to it, not to whichever category
+    // happens to sit level with the row being left.
+    val categoryFocus = remember { Category.entries.associateWith { FocusRequester() } }
+    // Right into a category's settings starts at its first row (then back where it was left), not on
+    // whichever row happens to sit level with the category.
+    val contentStart = remember { FocusRequester() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val start = Modifier.focusRequester(contentStart)
+    LaunchedEffect(Unit) { runCatching { categoryFocus.getValue(Category.PLAYBACK).requestFocus() } }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.TopCenter) {
-        // A focused row comes to rest well clear of the edge, with rows above and below it to see.
-        FocusRestingAt(SETTINGS_FOCUS_REST) { LazyColumn(
-            modifier = Modifier.width(680.dp),
-            contentPadding = PaddingValues(vertical = 36.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            item {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Row(Modifier.fillMaxSize().padding(start = 48.dp, end = 48.dp, top = 36.dp)) {
+            Column(Modifier.width(260.dp)) {
                 Text(
                     stringResource(R.string.settings),
                     style = MaterialTheme.typography.displaySmall,
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    modifier = Modifier.padding(start = 12.dp, bottom = 20.dp),
                 )
-            }
-
-            item { Header(R.string.tv_settings_account) }
-            item {
-                val name = Anilist.username
-                if (Anilist.token != null && !name.isNullOrBlank()) Info(stringResource(R.string.tv_signed_in_as, name))
-                else {
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    val signIn = { context.startActivity(android.content.Intent(context, TvSignInActivity::class.java)) }
-                    ListItem(
-                        selected = false,
-                        onClick = signIn,
-                        headlineContent = { Text(stringResource(R.string.tv_sign_in)) },
-                        supportingContent = { Text(stringResource(R.string.tv_not_signed_in)) },
-                        modifier = Modifier.pointerClick(onClick = signIn),
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    categories.forEach { category ->
+                        val pick = {
+                            current = category
+                            // Into its settings, once they're drawn.
+                            scope.launch {
+                                androidx.compose.runtime.withFrameNanos { }
+                                runCatching { contentStart.requestFocus() }
+                            }
+                            Unit
+                        }
+                        ListItem(
+                            selected = category == current,
+                            onClick = pick,
+                            headlineContent = { Text(stringResource(category.title)) },
+                            modifier = Modifier
+                                .focusRequester(categoryFocus.getValue(category))
+                                .onFocusChanged { if (it.isFocused) current = category }
+                                .pointerClick(onClick = pick),
+                        )
+                    }
                 }
             }
-
-            item { Header(R.string.tv_settings_playback) }
-            item { Toggle(R.string.auto_play_next_episode, PrefName.AutoPlay, Modifier.focusRequester(first)) }
-            item { Toggle(R.string.next_episode_countdown, PrefName.NextEpisodeCountdown) }
-            item { Toggle(R.string.auto_skip_op_ed, PrefName.AutoSkipOPED) }
-            item { Toggle(R.string.auto_skip_recap, PrefName.AutoSkipRecap) }
-            item { Toggle(R.string.auto_skip_fillers, PrefName.AutoSkipFiller) }
-            item { Toggle(R.string.prefer_dub, PrefName.SettingsPreferDub) }
-            item { Toggle(R.string.skip_outro_to_next, PrefName.SkipOutroToNext) }
-            item { Toggle(R.string.tv_skip_segments, PrefName.TimeStampsEnabled) }
-            item { SpeedChoice() }
-            item {
-                IntChoice(
-                    R.string.default_resize_mode, PrefName.Resize, listOf(0, 1, 2),
-                    listOf(stringResource(R.string.tv_resize_fit), stringResource(R.string.tv_resize_zoom), stringResource(R.string.tv_resize_stretch)),
-                )
-            }
-            item {
-                val seconds = listOf(5, 10, 15, 20, 30, 45) // within the phone slider's 1-50
-                IntChoice(R.string.seek_time, PrefName.SeekTime, seconds, seconds.map { stringResource(R.string.tv_seconds, it) })
-            }
-
-            // When an episode counts as watched, and how one is picked up again.
-            item { Header(R.string.tv_settings_progress) }
-            item { WatchedAtChoice() }
-            item { Toggle(R.string.tv_ask_update_progress, PrefName.AskIndividualPlayer) }
-            item { Toggle(R.string.always_continue, PrefName.AlwaysContinue) }
-            item { Toggle(R.string.tv_focus_pause, PrefName.FocusPause) }
-
-            item { Header(R.string.subtitles) }
-            item { Toggle(R.string.tv_subtitles_on, PrefName.Subtitles) }
-            item { SubtitleLanguageChoice() }
-            item {
-                val sizes = listOf(14, 16, 18, 20, 24, 28, 32, 40, 48)
-                IntChoice(R.string.sub_size, PrefName.FontSize, sizes, sizes.map { it.toString() })
-            }
-            item { IntChoice(R.string.sub_font, PrefName.Font, SUBTITLE_FONTS.indices.toList(), SUBTITLE_FONTS) }
-            item { ColorChoice(R.string.sub_text_color, PrefName.PrimaryColor) }
-            item {
-                IntChoice(
-                    R.string.sub_outline_style, PrefName.Outline, listOf(0, 1, 2, 3),
-                    listOf(
-                        stringResource(R.string.sub_outline_outline), stringResource(R.string.sub_outline_shine),
-                        stringResource(R.string.sub_outline_shadow), stringResource(R.string.sub_outline_none),
-                    ),
-                )
-            }
-            item { ColorChoice(R.string.sub_outline_color, PrefName.SecondaryColor) }
-            item { ColorChoice(R.string.sub_background_color, PrefName.SubBackground) }
-
-            item { Header(R.string.tv_settings_appearance) }
-            item { AppLanguageChoice() }
-            item { ThemeChoice() }
-            item { Toggle(R.string.use_oled_theme, PrefName.UseOLED, onChanged = ::restartTvMode) }
-
-            item { Header(R.string.tv_settings_sources) }
-            // Downloads are a source too (OfflineAnimeParser), but not one to list here.
-            val sources = AnimeSources.names.filterNot { it == "Offline" || it == "Downloaded" }
-            if (sources.isEmpty()) item { Info(stringResource(R.string.tv_no_extensions)) }
-            sources.forEach { name -> item { Info(name) } }
-            item { Info(stringResource(R.string.tv_sources_hint), dim = true) }
-
-            // On a TV, TV mode is the only interface there is: nothing to choose, nothing to leave for.
-            if (onExit != null) {
-                item { Header(R.string.tv_settings_interface) }
-                item { TvModeChoice() }
-                item {
-                    ListItem(
-                        selected = false,
-                        onClick = onExit,
-                        headlineContent = { Text(stringResource(R.string.tv_exit)) },
-                        modifier = Modifier.pointerClick(onClick = onExit),
-                    )
+            Spacer(Modifier.width(40.dp))
+            // A focused row comes to rest well clear of the edge, with rows above and below it to see.
+            FocusRestingAt(SETTINGS_FOCUS_REST) {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusProperties {
+                            @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+                            exit = { direction ->
+                                if (direction == androidx.compose.ui.focus.FocusDirection.Left) categoryFocus.getValue(current)
+                                else FocusRequester.Default
+                            }
+                        }
+                        .focusRestorer(contentStart),
+                    contentPadding = PaddingValues(top = 72.dp, bottom = 48.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    when (current) {
+                        Category.ACCOUNT -> accountSettings(start)
+                        Category.PLAYBACK -> playbackSettings(start)
+                        Category.PROGRESS -> progressSettings(start)
+                        Category.SUBTITLES -> subtitleSettings(start)
+                        Category.APPEARANCE -> appearanceSettings(start)
+                        Category.EXTENSIONS -> extensionSettings(start)
+                        Category.INTERFACE -> if (onExit != null) interfaceSettings(start, onExit)
+                        Category.ABOUT -> aboutSettings(start)
+                    }
                 }
             }
         }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.accountSettings(start: Modifier) {
+    item { androidx.compose.foundation.layout.Box(start) {
+        val name = Anilist.username
+        if (Anilist.token != null && !name.isNullOrBlank()) Info(stringResource(R.string.tv_signed_in_as, name))
+        else {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val signIn = { context.startActivity(android.content.Intent(context, TvSignInActivity::class.java)) }
+            ListItem(
+                selected = false,
+                onClick = signIn,
+                headlineContent = { Text(stringResource(R.string.tv_sign_in)) },
+                supportingContent = { Text(stringResource(R.string.tv_not_signed_in)) },
+                modifier = Modifier.pointerClick(onClick = signIn),
+            )
+        }
     } }
+    item { AppLanguageChoice() }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.playbackSettings(start: Modifier) {
+    item { Toggle(R.string.auto_play_next_episode, PrefName.AutoPlay, start) }
+    item { Toggle(R.string.next_episode_countdown, PrefName.NextEpisodeCountdown) }
+    item { Toggle(R.string.auto_skip_op_ed, PrefName.AutoSkipOPED) }
+    item { Toggle(R.string.auto_skip_recap, PrefName.AutoSkipRecap) }
+    item { Toggle(R.string.auto_skip_fillers, PrefName.AutoSkipFiller) }
+    item { Toggle(R.string.prefer_dub, PrefName.SettingsPreferDub) }
+    item { Toggle(R.string.skip_outro_to_next, PrefName.SkipOutroToNext) }
+    item { Toggle(R.string.tv_skip_segments, PrefName.TimeStampsEnabled) }
+    item { SpeedChoice() }
+    item {
+        IntChoice(
+            R.string.default_resize_mode, PrefName.Resize, listOf(0, 1, 2),
+            listOf(stringResource(R.string.tv_resize_fit), stringResource(R.string.tv_resize_zoom), stringResource(R.string.tv_resize_stretch)),
+        )
+    }
+    item {
+        val seconds = listOf(5, 10, 15, 20, 30, 45) // within the phone slider's 1-50
+        IntChoice(R.string.seek_time, PrefName.SeekTime, seconds, seconds.map { stringResource(R.string.tv_seconds, it) })
+    }
+}
+
+/** When an episode counts as watched, and how one is picked up again. */
+private fun androidx.compose.foundation.lazy.LazyListScope.progressSettings(start: Modifier) {
+    item { androidx.compose.foundation.layout.Box(start) { WatchedAtChoice() } }
+    item { Toggle(R.string.tv_ask_update_progress, PrefName.AskIndividualPlayer) }
+    item { Toggle(R.string.always_continue, PrefName.AlwaysContinue) }
+    item { Toggle(R.string.tv_focus_pause, PrefName.FocusPause) }
+    // Watch without anything reaching the list: no progress, no status, no start date.
+    item { Toggle(R.string.incognito_mode, PrefName.Incognito) }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.subtitleSettings(start: Modifier) {
+    item { Toggle(R.string.tv_subtitles_on, PrefName.Subtitles, start) }
+    item { SubtitleLanguageChoice() }
+    item {
+        val sizes = listOf(14, 16, 18, 20, 24, 28, 32, 40, 48)
+        IntChoice(R.string.sub_size, PrefName.FontSize, sizes, sizes.map { it.toString() })
+    }
+    item { IntChoice(R.string.sub_font, PrefName.Font, SUBTITLE_FONTS.indices.toList(), SUBTITLE_FONTS) }
+    item { ColorChoice(R.string.sub_text_color, PrefName.PrimaryColor) }
+    item {
+        IntChoice(
+            R.string.sub_outline_style, PrefName.Outline, listOf(0, 1, 2, 3),
+            listOf(
+                stringResource(R.string.sub_outline_outline), stringResource(R.string.sub_outline_shine),
+                stringResource(R.string.sub_outline_shadow), stringResource(R.string.sub_outline_none),
+            ),
+        )
+    }
+    item { ColorChoice(R.string.sub_outline_color, PrefName.SecondaryColor) }
+    item { ColorChoice(R.string.sub_background_color, PrefName.SubBackground) }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.appearanceSettings(start: Modifier) {
+    item { androidx.compose.foundation.layout.Box(start) { ThemeChoice() } }
+    item { Toggle(R.string.use_oled_theme, PrefName.UseOLED, onChanged = ::restartTvMode) }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.extensionSettings(start: Modifier) {
+    item { androidx.compose.foundation.layout.Box(start) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        // Downloads are a source too (OfflineAnimeParser), but not one to count here.
+        val count = AnimeSources.names.count { it != "Offline" && it != "Downloaded" }
+        val open = { context.startActivity(android.content.Intent(context, TvExtensionsActivity::class.java)) }
+        ListItem(
+            selected = false,
+            onClick = open,
+            headlineContent = { Text(stringResource(R.string.tv_ext_manage)) },
+            supportingContent = {
+                Text(
+                    if (count == 0) stringResource(R.string.tv_no_extensions)
+                    else androidx.compose.ui.res.pluralStringResource(R.plurals.tv_ext_installed_count, count, count)
+                )
+            },
+            modifier = Modifier.pointerClick(onClick = open),
+        )
+    } }
+    item { Toggle(R.string.tv_ext_show_nsfw, PrefName.NSFWExtension) }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.interfaceSettings(start: Modifier, onExit: () -> Unit) {
+    item { androidx.compose.foundation.layout.Box(start) { TvModeChoice() } }
+    item {
+        ListItem(
+            selected = false,
+            onClick = onExit,
+            headlineContent = { Text(stringResource(R.string.tv_exit)) },
+            modifier = Modifier.pointerClick(onClick = onExit),
+        )
+    }
+}
+
+/** The version, and the app's updater: checked by hand here, or at every launch. */
+private fun androidx.compose.foundation.lazy.LazyListScope.aboutSettings(start: Modifier) {
+    item { Info(stringResource(R.string.tv_version, ani.dantotsu.BuildConfig.VERSION_NAME)) }
+    item { androidx.compose.foundation.layout.Box(start) {
+        val activity = androidx.compose.ui.platform.LocalContext.current as androidx.fragment.app.FragmentActivity
+        val check = {
+            activity.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                ani.dantotsu.others.AppUpdater.check(activity, post = true)
+            }
+            Unit
+        }
+        ListItem(
+            selected = false,
+            onClick = check,
+            headlineContent = { Text(stringResource(R.string.check_app_updates)) },
+            modifier = Modifier.pointerClick(onClick = check),
+        )
+    } }
+    item { Toggle(R.string.tv_update_on_launch, PrefName.CheckUpdate) }
 }
 
 private val SETTINGS_FOCUS_REST = 140.dp

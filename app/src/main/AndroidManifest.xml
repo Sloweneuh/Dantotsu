@@ -466,6 +466,20 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".tv.TvExtensionsActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="adjustNothing|stateAlwaysHidden"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvExtensionSettingsActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="adjustNothing"
+            android:exported="false" />
+        <activity
             android:name=".tv.TvSignInActivity"
             android:theme="@style/Theme.Dantotsu.Tv"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"

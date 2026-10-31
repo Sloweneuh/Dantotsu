@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -52,6 +54,7 @@ import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import ani.dantotsu.R
+import androidx.compose.animation.graphics.res.animatedVectorResource
 import kotlinx.coroutines.delay
 
 /**
@@ -69,7 +72,17 @@ class TvPlayerController(private val actions: Actions) {
         fun audio()
         fun subtitles()
         fun server()
+        fun skip()
+        fun playNext()
+        fun cancelNext()
     }
+
+    /** "Skip opening" while there's a segment to skip; null otherwise. */
+    var skipLabel by mutableStateOf<String?>(null)
+
+    /** The next episode on offer: its name, and the countdown when one is running. */
+    class UpNext(val label: String, val countdown: String?, val thumb: String? = null)
+    var upNext by mutableStateOf<UpNext?>(null)
 
     var visible by mutableStateOf(true)
         private set
@@ -105,6 +118,17 @@ class TvPlayerController(private val actions: Actions) {
         poke()
         actions.block()
     }
+
+    /** A list to pick one of — an audio track, a subtitle — drawn over the player for a remote. */
+    class Choice(val title: String, val options: List<Option>)
+    class Option(val label: String, val selected: Boolean, val pick: () -> Unit)
+
+    var choice by mutableStateOf<Choice?>(null)
+
+    fun choose(choice: Choice) {
+        this.choice = choice
+        poke()
+    }
 }
 
 private const val HIDE_AFTER_MS = 5_000L
@@ -128,8 +152,27 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
             controller.hide()
         }
     }
+    val promptFocus = remember { FocusRequester() }
+    val prompting = controller.upNext != null || controller.skipLabel != null
     LaunchedEffect(controller.visible) {
-        if (controller.visible) runCatching { playButton.requestFocus() }
+        if (controller.visible) runCatching { (if (prompting) promptFocus else playButton).requestFocus() }
+    }
+
+    controller.choice?.let { choice -> ChoiceDialog(choice) { controller.choice = null } }
+
+    // Skip and up next stay up whether or not the controls are, above them when they are: OK
+    // presses them while the controls are hidden (see ExoplayerView.remoteKey), a mouse clicks them.
+    val raise by androidx.compose.animation.core.animateDpAsState(
+        // Clear of the timeline and its times, with room to grow when focused.
+        if (controller.visible) 200.dp else 40.dp, label = "promptLift",
+    )
+    Box(Modifier.fillMaxSize().padding(end = 48.dp, bottom = raise), contentAlignment = Alignment.BottomEnd) {
+        val next = controller.upNext
+        val skip = controller.skipLabel
+        when {
+            next != null -> UpNextCard(next, controller, promptFocus)
+            skip != null -> SkipPill(skip, promptFocus) { controller.act { skip() } }
+        }
     }
 
     AnimatedVisibility(visible = controller.visible, enter = fadeIn(), exit = fadeOut()) {
@@ -176,10 +219,20 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                     ControlButton(R.drawable.ic_round_replay_10_24, R.string.tv_rewind_10) {
                         controller.act { seekBy(-seekStepMs) }
                     }
+                    // The phone player's animated icon: one morphing into the other, at one size
+                    // (the separate play and pause icons were drawn at different sizes).
+                    @OptIn(androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi::class)
+                    val playPause = androidx.compose.animation.graphics.vector.AnimatedImageVector
+                        .animatedVectorResource(R.drawable.anim_play_to_pause)
+                    @OptIn(androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi::class)
+                    val playPausePainter = androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter(
+                        playPause, atEnd = controller.playing,
+                    )
                     ControlButton(
-                        if (controller.playing) R.drawable.ic_round_pause_24 else R.drawable.ic_round_play_arrow_24,
+                        R.drawable.ic_round_play_arrow_24,
                         if (controller.playing) R.string.pause else R.string.tv_play,
                         large = true,
+                        painter = playPausePainter,
                         modifier = Modifier.focusRequester(playButton),
                     ) { controller.act { playPause() } }
                     ControlButton(R.drawable.ic_round_forward_10_24, R.string.tv_forward_10) {
@@ -269,6 +322,7 @@ private fun ControlButton(
     label: Int,
     enabled: Boolean = true,
     large: Boolean = false,
+    painter: androidx.compose.ui.graphics.painter.Painter? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -292,7 +346,11 @@ private fun ControlButton(
                 focusedContentColor = MaterialTheme.colorScheme.onPrimary,
             ),
         ) {
-            Icon(painterResource(icon), contentDescription = stringResource(label))
+            Icon(
+                painter ?: painterResource(icon),
+                contentDescription = stringResource(label),
+                modifier = Modifier.size(if (painter != null) 34.dp else 24.dp),
+            )
         }
         Text(
             if (focused) stringResource(label) else "",
@@ -311,4 +369,135 @@ private fun formatTime(ms: Long): String {
     val m = (total % 3600) / 60
     val s = total % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+}
+
+/**
+ * The player's audio and subtitle choices for a remote, in place of the phone's bottom sheets: the
+ * current one focused, a press picks it. The sheets were the phone's, small and in its light theme.
+ */
+@Composable
+private fun ChoiceDialog(choice: TvPlayerController.Choice, onDismiss: () -> Unit) {
+    val current = remember { FocusRequester() }
+    LaunchedEffect(choice) {
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { current.requestFocus() }
+    }
+    TvDialog(onDismissRequest = onDismiss) {
+        androidx.tv.material3.Surface(shape = CARD_SHAPE, modifier = Modifier.width(460.dp)) {
+            Column(Modifier.padding(24.dp)) {
+                Text(
+                    choice.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                )
+                val focusAt = choice.options.indexOfFirst { it.selected }.coerceAtLeast(0)
+                FocusRestingAt(48.dp) {
+                    androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                        items(choice.options.size) { i ->
+                            val option = choice.options[i]
+                            val pick = {
+                                onDismiss()
+                                option.pick()
+                            }
+                            androidx.tv.material3.ListItem(
+                                selected = option.selected,
+                                onClick = pick,
+                                headlineContent = { Text(option.label) },
+                                trailingContent = { androidx.tv.material3.RadioButton(selected = option.selected, onClick = null) },
+                                modifier = (if (i == focusAt) Modifier.focusRequester(current) else Modifier).pointerClick(onClick = pick),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A button over the picture, focused the way the overlay's own controls are: the accent colour and
+ * the same growth. Unfocused, a dark fill rather than theirs — these float over the picture itself,
+ * where the controls sit on a gradient.
+ */
+@Composable
+private fun PromptButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: Int? = null) {
+    androidx.tv.material3.Button(
+        onClick = onClick,
+        modifier = modifier.pointerClick(onClick = onClick),
+        scale = androidx.tv.material3.ButtonDefaults.scale(focusedScale = 1.12f),
+        colors = androidx.tv.material3.ButtonDefaults.colors(
+            containerColor = Color.Black.copy(alpha = 0.6f),
+            contentColor = Color.White,
+            focusedContainerColor = MaterialTheme.colorScheme.primary,
+            focusedContentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    ) {
+        Text(text, style = MaterialTheme.typography.titleSmall)
+        if (icon != null) Icon(
+            painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.padding(start = 8.dp).size(20.dp),
+        )
+    }
+}
+
+/** "Skip Opening ⏩", as the phone's reads: OK presses it with the controls hidden; with them up, it has the focus first. */
+@Composable
+private fun SkipPill(label: String, focus: FocusRequester, onSkip: () -> Unit) {
+    PromptButton(label, onSkip, Modifier.focusRequester(focus), icon = R.drawable.ic_round_fast_forward_24)
+}
+
+/**
+ * The next episode over its thumbnail, its countdown, and its two buttons: Play now (OK) and
+ * Cancel (back, with the controls hidden; a button of its own with them up).
+ */
+@OptIn(com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi::class)
+@Composable
+private fun UpNextCard(next: TvPlayerController.UpNext, controller: TvPlayerController, focus: FocusRequester) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        Modifier
+            .width(380.dp)
+            .clip(shape)
+            .background(Color.Black, shape)
+            .border(1.dp, Color.White.copy(alpha = 0.15f), shape)
+    ) {
+        if (next.thumb != null) {
+            com.bumptech.glide.integration.compose.GlideImage(
+                model = next.thumb,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+            // Darker towards the text, so it reads over any picture.
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Black.copy(alpha = 0.85f)))
+                )
+            )
+        }
+        Column(Modifier.padding(20.dp)) {
+            Text(
+                next.countdown ?: stringResource(R.string.up_next),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                next.label,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                PromptButton(stringResource(R.string.play_now), { controller.act { playNext() } }, Modifier.focusRequester(focus))
+                Spacer(Modifier.width(12.dp))
+                PromptButton(
+                    stringResource(if (controller.visible) R.string.cancel else R.string.tv_back_cancels),
+                    { controller.act { cancelNext() } },
+                )
+            }
+        }
+    }
 }

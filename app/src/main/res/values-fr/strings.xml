@@ -3475,7 +3475,7 @@
     <string name="tv_no_episodes">Aucun épisode trouvé sur %1$s</string>
     <string name="tv_source">Source · %1$s</string>
     <string name="tv_pick_source">Choisir une source</string>
-    <string name="tv_no_extensions">Aucune extension d’anime installée. Ajoutez-en une depuis l’interface téléphone.</string>
+    <string name="tv_no_extensions">Aucune extension d’anime installée pour l’instant</string>
     <string name="tv_signed_out">Utilisez « Se connecter » pour connecter cette TV depuis votre téléphone : vos listes s’afficheront ici.</string>
     <!-- TV mode interface: title details -->
     <string name="tv_progress_of">Ép. %1$d / %2$d</string>
@@ -3576,4 +3576,63 @@
     <string name="tv_color_cyan">Cyan</string>
     <string name="tv_color_light_gray">Gris clair</string>
     <string name="tv_color_dark_gray">Gris foncé</string>
+    <!-- TV mode: extension list -->
+    <string name="tv_extensions">Extensions</string>
+    <string name="tv_ext_manage">Gérer les extensions</string>
+    <string name="tv_ext_search">Rechercher une extension</string>
+    <string name="tv_ext_add_repo">Ajouter un dépôt</string>
+    <string name="tv_ext_repo_hint">URL du dépôt</string>
+    <string name="tv_ext_add">Ajouter</string>
+    <string name="tv_ext_repo_added">Dépôt ajouté. Ses extensions se chargent</string>
+    <string name="tv_ext_repo_invalid">Saisissez l\'URL complète du dépôt, commençant par https://</string>
+    <string name="tv_ext_no_repos">Aucun dépôt d\'extensions pour l\'instant. Ajoutez-en un pour voir les extensions qu\'il propose.</string>
+    <string name="tv_ext_updates">Mises à jour</string>
+    <string name="tv_ext_from_devices">Sur vos autres appareils</string>
+    <string name="tv_ext_install_all">Tout installer (%1$d)</string>
+    <string name="tv_ext_installed">Installées</string>
+    <string name="tv_ext_available">Disponibles</string>
+    <string name="tv_ext_install">Installer</string>
+    <string name="tv_ext_update">Mettre à jour</string>
+    <string name="tv_ext_uninstall">Désinstaller</string>
+    <string name="tv_ext_pending">En attente…</string>
+    <string name="tv_ext_downloading">Téléchargement…</string>
+    <string name="tv_ext_installing">Installation…</string>
+    <string name="tv_ext_confirm">Confirmez à l\'écran</string>
+    <string name="tv_ext_failed">Échec</string>
+    <string name="tv_ext_failed_named">Impossible d\'installer %1$s</string>
+    <string name="tv_ext_loading">Chargement des extensions…</string>
+    <string name="tv_ext_none">Aucune extension ne correspond</string>
+    <plurals name="tv_ext_installed_count">
+        <item quantity="one">%1$d installée</item>
+        <item quantity="many">%1$d installées</item>
+        <item quantity="other">%1$d installées</item>
+    </plurals>
+    <!-- TV mode: settings categories, about, updates -->
+    <string name="tv_settings_about">À propos</string>
+    <string name="tv_version">Dantotsu %1$s</string>
+    <string name="tv_update_on_launch">Rechercher des mises à jour à l\'ouverture</string>
+    <string name="tv_ext_show_nsfw">Afficher les extensions 18+</string>
+    <string name="tv_update_available">Mettre à jour (%1$s)</string>
+    <!-- TV mode: extension settings -->
+    <string name="tv_ext_settings">Paramètres</string>
+    <string name="tv_ext_settings_for">Paramètres · %1$s</string>
+    <string name="tv_ext_no_settings">Cette extension n\'a pas de paramètres</string>
+    <string name="tv_ext_done">Terminé</string>
+    <!-- TV mode: media page source settings -->
+    <string name="tv_source_settings">Paramètres de %1$s</string>
+    <!-- TV mode: source picker -->
+    <string name="tv_add_extensions">Ajouter des extensions</string>
+    <plurals name="tv_extension_updates">
+        <item quantity="one">%1$d mise à jour d\'extension</item>
+        <item quantity="many">%1$d mises à jour d\'extensions</item>
+        <item quantity="other">%1$d mises à jour d\'extensions</item>
+    </plurals>
+    <!-- TV mode: repositories -->
+    <string name="tv_ext_repos">Dépôts</string>
+    <string name="tv_ext_remove_repo">Retirer</string>
+    <string name="tv_ext_remove_repo_title">Retirer ce dépôt ?</string>
+    <string name="tv_ext_installed_label">Installée</string>
+    <!-- TV mode: player prompts and server sheet -->
+    <string name="tv_back_cancels">Retour pour annuler</string>
+    <string name="tv_make_default_desc">Utiliser ce serveur pour les épisodes suivants aussi</string>
 </resources>
