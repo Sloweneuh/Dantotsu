@@ -130,10 +130,12 @@ class UnreadChapterNotificationTask : Task {
                             anilistKnownLatest = mangaList.associate { media ->
                                 media.id to (reconciled[media.id]?.lastChapter ?: media.userProgress ?: 0)
                             }
+                            // No knownLatest: that device's scan can be older than this one's last,
+                            // and a count it hadn't seen yet is no retraction. Taking one back is
+                            // left to the device's own scans.
                             handleUnreadResult(
                                 context, reconciled, mangaList,
                                 answeredIds = mangaList.mapTo(HashSet()) { it.id },
-                                knownLatest = anilistKnownLatest,
                             )
                             return@anilistCheck
                         }
@@ -430,27 +432,43 @@ class UnreadChapterNotificationTask : Task {
             val latest = id.toIntOrNull()?.let { knownLatest[it] } ?: return@filter false
             chapter > latest
         }.toSet()
-        // Forgotten, so the chapter announces itself again if it comes back.
+        // Forgotten, so the chapter announces itself again if it comes back — but remembered as
+        // taken back, so it comes back without sound: a mirror flipping its count back and forth
+        // otherwise rang for the same chapter every time it returned.
+        val retractedSetKey = if (isAnime) RETRACTED_EPISODES else RETRACTED_CHAPTERS
+        val wasRetracted = getNotifiedSet(context, retractedSetKey).apply {
+            pruneNotified(this, mediaList.associate { it.id.toString() to (it.userProgress ?: 0) })
+            addAll(retractedKeys)
+        }
         notified.removeAll(retractedKeys)
         own.removeAll(retractedKeys)
+        // The furthest chapter already announced for each title: a count below it (a stale answer,
+        // another device's older scan) is no news.
+        val furthestAnnounced = HashMap<String, Int>()
+        notified.forEach { key ->
+            val (id, chapter) = ReleaseRetraction.parseKey(key) ?: return@forEach
+            if (chapter > (furthestAnnounced[id] ?: Int.MIN_VALUE)) furthestAnnounced[id] = chapter
+        }
         val newNotifications = mutableListOf<Pair<Media, UnreadChapterInfo>>()
+        val returned = mutableListOf<Pair<Media, UnreadChapterInfo>>()
 
         filteredUnreadInfo.forEach { (mediaId, info) ->
             val key = "$mediaId:${info.lastChapter}"
-            if (!notified.contains(key)) {
-                val media = mediaList.find { it.id == mediaId }
-                if (media != null) {
-                    newNotifications.add(media to info)
-                    notified.add(key)
-                }
-            }
+            if (info.lastChapter <= (furthestAnnounced[mediaId.toString()] ?: Int.MIN_VALUE)) return@forEach
+            val media = mediaList.find { it.id == mediaId } ?: return@forEach
+            if (wasRetracted.remove(key)) returned.add(media to info) else newNotifications.add(media to info)
+            notified.add(key)
         }
 
-        newNotifications.forEach { (media, info) -> own += "${media.id}:${info.lastChapter}" }
+        (newNotifications + returned).forEach { (media, info) -> own += "${media.id}:${info.lastChapter}" }
         saveNotifiedSet(context, notifiedKey, notified)
         saveNotifiedSet(context, ownKey, own)
+        saveNotifiedSet(context, retractedSetKey, wasRetracted)
 
-        Logger.log("UnreadChapterNotificationTask: ${newNotifications.size} new ${if (isAnime) "episodes" else "chapters"} to notify")
+        Logger.log(
+            "UnreadChapterNotificationTask: ${newNotifications.size} new ${if (isAnime) "episodes" else "chapters"} " +
+                "to notify, ${returned.size} back after being taken back"
+        )
 
         if (retractedKeys.isNotEmpty()) {
             Logger.log("UnreadChapterNotificationTask: taking back $retractedKeys")
@@ -464,7 +482,7 @@ class UnreadChapterNotificationTask : Task {
             )
             // Still behind at a chapter already announced: shown again at that chapter, silently.
             // One behind at a chapter not yet announced is in [newNotifications], which replaces it.
-            val newIds = newNotifications.mapTo(HashSet()) { it.first.id }
+            val newIds = (newNotifications + returned).mapTo(HashSet()) { it.first.id }
             val reposts = onScreen.filter { it !in newIds }.mapNotNull { id ->
                 val info = filteredUnreadInfo[id] ?: return@mapNotNull null
                 if ("$id:${info.lastChapter}" !in notified) return@mapNotNull null
@@ -489,6 +507,14 @@ class UnreadChapterNotificationTask : Task {
             withContext(Dispatchers.Main) {
                 sendNotifications(context, newNotifications, icons, isAnime)
                 storeNotifications(newNotifications, isAnime)
+            }
+        }
+
+        if (returned.isNotEmpty()) {
+            val icons = returned.associate { (media, _) -> media.id to NotificationImageLoader.loadBitmap(media.cover) }
+            withContext(Dispatchers.Main) {
+                if (hasNotificationPermission(context)) sendNotifications(context, returned, icons, isAnime, silent = true)
+                storeNotifications(returned, isAnime)
             }
         }
     }
@@ -796,6 +822,10 @@ class UnreadChapterNotificationTask : Task {
         /** The part of the "already announced" sets this check announced itself; see [handleUnreadResult]. */
         private const val OWN_NOTIFIED_CHAPTERS = "notified_unread_chapters_own"
         private const val OWN_NOTIFIED_EPISODES = "notified_unread_episodes_own"
+
+        /** Announcements taken back ([ReleaseRetraction]), until they come back or are read. */
+        private const val RETRACTED_CHAPTERS = "retracted_unread_chapters"
+        private const val RETRACTED_EPISODES = "retracted_unread_episodes"
         private const val TEST_IMAGE_URL =
             "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx21-YCDoj1EkAxFn.jpg"
     }

@@ -373,7 +373,7 @@
             android:layout_margin="16dp"
             android:translationZ="7dp"
             android:visibility="gone"
-            app:cardBackgroundColor="@color/nav_bg"
+            app:cardBackgroundColor="?android:colorBackground"
             app:cardCornerRadius="16dp">
 
             <androidx.constraintlayout.utils.widget.ImageFilterView
@@ -382,7 +382,7 @@
                 android:layout_height="24dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_incognito_24"
-                app:tint="@color/incognito"
+                app:tint="?attr/colorPrimary"
                 tools:ignore="ContentDescription" />
         </androidx.cardview.widget.CardView>
 

@@ -240,20 +240,24 @@ class ComickUnreadNotificationTask : Task {
             val oldId = keys.firstNotNullOfOrNull { announcedIds[it] } ?: return@mapNotNull null
             if (oldId == item.notifId) null else item to oldId
         }
+        // Announced here, so the AniList/MangaUpdates check mustn't announce it again once its own
+        // count reaches it. Their keys are "<id>:<chapter>" too.
+        val anilistNotified = prefs.getStringSet(ANILIST_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
+        val muNotified = prefs.getStringSet(MU_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
         // Any entry of the series having announced the chapter counts, so which of two followed
-        // entries wins the de-dup in [currentUnread] can change without a repeat.
+        // entries wins the de-dup in [currentUnread] can change without a repeat. So does the
+        // AniList or MangaUpdates check having announced it: a run where that check had no answer
+        // for the title (MALSync rate-limited, say) left it to this one, which announced it again.
         val newItems = unread.filter { item ->
             val keys = item.seriesHids.map { "$it:${item.latestChapter}" }
-            keys.none { it in notified }.also { notified += keys }
+            val elsewhere = item.anilistId?.let { "$it:${item.latestChapter}" in anilistNotified } == true ||
+                item.muSeriesIds.any { "$it:${item.latestChapter}" in muNotified }
+            (keys.none { it in notified } && !elsewhere).also { notified += keys }
         }
         (newItems + moved.map { it.first }).forEach { item ->
             item.seriesHids.forEach { announcedIds["$it:${item.latestChapter}"] = item.notifId }
         }
         announcedIds.keys.retainAll(notified)
-        // Announced here, so the AniList/MangaUpdates check mustn't announce it again once its own
-        // count reaches it. Their keys are "<id>:<chapter>" too.
-        val anilistNotified = prefs.getStringSet(ANILIST_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
-        val muNotified = prefs.getStringSet(MU_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
         // What this check marked announced for the other two, released where their own count is
         // short of it too — so a chapter that comes back there isn't left unannounced. Where it isn't
         // short, that check still lists the chapter, and its key stands.
