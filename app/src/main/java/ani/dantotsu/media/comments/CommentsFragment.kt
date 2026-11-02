@@ -365,7 +365,7 @@ class CommentsFragment : Fragment() {
 
         activity.binding.commentSend.setOnClickListener {
             if (CommentsAPI.isBanned) {
-                snackString("You are banned from commenting :(")
+                snackString(R.string.banned_from_commenting)
                 return@setOnClickListener
             }
 

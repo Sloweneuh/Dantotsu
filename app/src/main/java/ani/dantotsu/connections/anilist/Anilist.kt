@@ -348,7 +348,7 @@ object Anilist {
             if (e is java.util.concurrent.CancellationException || e.message?.contains("Job was cancelled") == true) {
                 Logger.log("Anilist Query cancelled (normal): ${e.message}")
             } else {
-                if (show) snackString("Error fetching Anilist data: ${e.message}")
+                if (show) snackString(ani.dantotsu.getAppString(R.string.anilist_fetch_error, e.message ?: ""))
                 Logger.log("Anilist Query Error: ${e.message}")
             }
             null
@@ -436,9 +436,9 @@ object Anilist {
             } ?: "Forbidden (error ${json.code})"
 
             if (message.contains("Invalid token")) {
-                if (!show) snackString("Anilist token expired, please login again")
+                if (!show) snackString(R.string.anilist_token_expired)
             } else {
-                if (!show) snackString("Error fetching Anilist data: $message")
+                if (!show) snackString(ani.dantotsu.getAppString(R.string.anilist_fetch_error, message))
             }
 
             throw Exception(message)

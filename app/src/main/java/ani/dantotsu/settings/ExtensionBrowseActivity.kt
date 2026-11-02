@@ -1123,7 +1123,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             }
             startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
         } catch (e: Exception) {
-            snackString("Failed to open link: ${e.message}")
+            snackString(ani.dantotsu.getAppString(R.string.failed_open_link, e.message))
         }
     }
 }

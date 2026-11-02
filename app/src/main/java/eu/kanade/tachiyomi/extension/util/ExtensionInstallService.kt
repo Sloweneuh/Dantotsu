@@ -31,7 +31,7 @@ class ExtensionInstallService : Service() {
             setAutoCancel(false)
             setOngoing(true)
             setShowWhen(false)
-            setContentTitle("Installing manga extension...")
+            setContentTitle(getString(ani.dantotsu.R.string.installing_extension))
             setProgress(100, 100, true)
         }.build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

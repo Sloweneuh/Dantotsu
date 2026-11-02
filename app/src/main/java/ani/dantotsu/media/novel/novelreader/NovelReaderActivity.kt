@@ -968,7 +968,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
                     if (lastBackPressedTime + doublePressInterval > System.currentTimeMillis()) {
                         finish()
                     } else {
-                        snackString("Press back again to exit")
+                        snackString(R.string.back_to_exit)
                         lastBackPressedTime = System.currentTimeMillis()
                     }
                 }

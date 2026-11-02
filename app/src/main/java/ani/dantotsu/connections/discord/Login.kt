@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.discord
 
+import ani.dantotsu.R
 import android.annotation.SuppressLint
 import android.app.Application.getProcessName
 import android.content.Intent
@@ -58,7 +59,7 @@ class Login : AppCompatActivity() {
         binding.discordWebview.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }
-        binding.discordWebviewTitle.text = "Discord Login"
+        binding.discordWebviewTitle.text = getString(R.string.discord_login_title)
 
         val webView = binding.discordWebview
 

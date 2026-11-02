@@ -95,7 +95,7 @@ class MangaDownloaderService : Service() {
         super.onCreate()
         notificationManager = NotificationManagerCompat.from(this)
         builder = NotificationCompat.Builder(this, CHANNEL_DOWNLOADER_PROGRESS).apply {
-            setContentTitle("Manga Download Progress")
+            setContentTitle(ani.dantotsu.getAppString(R.string.manga_download_progress))
             setSmallIcon(R.drawable.ic_download_24)
             priority = NotificationCompat.PRIORITY_DEFAULT
             setOnlyAlertOnce(true)
@@ -128,7 +128,7 @@ class MangaDownloaderService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        snackString("Download started")
+        snackString(R.string.download_started)
         val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         serviceScope.launch {
             mutex.withLock {
@@ -223,7 +223,7 @@ class MangaDownloaderService : Service() {
                 }
 
                 val deferredMap = mutableMapOf<Int, Deferred<Bitmap?>>()
-                builder.setContentText("Downloading ${task.title} - ${task.chapter}")
+                builder.setContentText(ani.dantotsu.getAppString(R.string.downloading_item, "${task.title} - ${task.chapter}"))
                 if (notifi) {
                     withContext(Dispatchers.Main) {
                         notificationManager.notify(NOTIFICATION_ID, builder.build())
@@ -267,7 +267,7 @@ class MangaDownloaderService : Service() {
                                 image.source
                             )
                             if (bitmap == null) {
-                                snackString("${task.chapter} - Retrying to download page ${index.ofLength(3)}, attempt ${retryCount + 1}.")
+                                snackString(ani.dantotsu.getAppString(R.string.download_page_retry, task.chapter, index.ofLength(3), retryCount + 1))
                             }
                             retryCount++
                         }
@@ -307,7 +307,7 @@ class MangaDownloaderService : Service() {
                 // each source image becomes its own PDF page sized to that image.
                 if (task.asPdf) {
                     withContext(Dispatchers.Main) {
-                        builder.setContentText("${task.title} - ${task.chapter} Creating PDF")
+                        builder.setContentText(ani.dantotsu.getAppString(R.string.creating_pdf_item, "${task.title} - ${task.chapter}"))
                         if (notifi) {
                             notificationManager.notify(NOTIFICATION_ID, builder.build())
                         }
@@ -320,7 +320,7 @@ class MangaDownloaderService : Service() {
                 }
 
                 withContext(Dispatchers.Main) {
-                    builder.setContentText("${task.title} - ${task.chapter} Download complete")
+                    builder.setContentText(ani.dantotsu.getAppString(R.string.download_complete_item, "${task.title} - ${task.chapter}"))
                         .setDownloadProgress(this@MangaDownloaderService, 0, 0, false)
                     if (notifi) {
                         notificationManager.notify(NOTIFICATION_ID, builder.build())
@@ -346,7 +346,7 @@ class MangaDownloaderService : Service() {
             throw e
         } catch (e: Exception) {
             Logger.log("Exception while downloading file: ${e.message}")
-            snackString("Exception while downloading file: ${e.message}")
+            snackString(ani.dantotsu.getAppString(R.string.download_file_error, e.message))
             Injekt.get<CrashlyticsInterface>().logException(e)
             broadcastDownloadFailed(task.uniqueName)
             DownloadTracker.remove(itemId)
@@ -390,7 +390,7 @@ class MangaDownloaderService : Service() {
             return file.length()
         } catch (e: Exception) {
             println("Exception while saving image: ${e.message}")
-            snackString("Exception while saving image: ${e.message}")
+            snackString(ani.dantotsu.getAppString(R.string.download_save_image_error, e.message))
             Injekt.get<CrashlyticsInterface>().logException(e)
             return 0
         }
@@ -487,7 +487,7 @@ class MangaDownloaderService : Service() {
             return true
         } catch (e: Exception) {
             Logger.log("Exception while creating PDF: ${e.message}")
-            snackString("Exception while creating PDF: ${e.message}")
+            snackString(ani.dantotsu.getAppString(R.string.download_pdf_error, e.message))
             Injekt.get<CrashlyticsInterface>().logException(e)
             // Drop the half-written PDF so the JPEG pages remain the source of truth.
             pdfFile?.forceDelete(this)

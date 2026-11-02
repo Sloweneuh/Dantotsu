@@ -461,7 +461,7 @@ class Stories @JvmOverloads constructor(
                     binding.activityLike.setColorFilter(if (story.isLiked == true) likeColor else notLikeColor)
 
                 } else {
-                    snackString("Failed to like activity")
+                    snackString(R.string.failed_like_activity)
                 }
             }
         }

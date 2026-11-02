@@ -919,7 +919,7 @@ class ComickMediaActivity : AppCompatActivity() {
         val categories = comic.mu_comics?.mu_comic_categories
         if (!categories.isNullOrEmpty()) {
             val bind = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(this), parent, false)
-            bind.itemTitle.text = "Tags"
+            bind.itemTitle.setText(R.string.tags)
             categories.sortedByDescending { it.positive_vote ?: 0 }.forEach { category ->
                 val title = category.mu_categories?.title ?: return@forEach
                 val slug = category.mu_categories?.slug

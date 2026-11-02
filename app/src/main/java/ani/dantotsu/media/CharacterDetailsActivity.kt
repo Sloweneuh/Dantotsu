@@ -136,7 +136,7 @@ class CharacterDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChang
                         if (character.isFav) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_border_24
                     )
                 } else {
-                    snackString("Failed to toggle favorite")
+                    snackString(R.string.failed_toggle_favourite)
                 }
             }
         }

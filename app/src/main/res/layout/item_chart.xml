@@ -29,7 +29,7 @@
             android:layout_height="32dp"
             android:layout_gravity="end"
             android:background="?android:colorBackground"
-            android:contentDescription="Open"
+            android:contentDescription="@string/open_label"
             android:src="@drawable/ic_open_24"
             app:tint="?attr/colorPrimary"
             tools:ignore="HardcodedText" />

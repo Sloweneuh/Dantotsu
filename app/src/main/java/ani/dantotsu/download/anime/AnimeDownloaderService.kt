@@ -96,7 +96,7 @@ class AnimeDownloaderService : Service() {
         notificationManager = NotificationManagerCompat.from(this)
         builder =
             NotificationCompat.Builder(this, Notifications.CHANNEL_DOWNLOADER_PROGRESS).apply {
-                setContentTitle("Anime Download Progress")
+                setContentTitle(ani.dantotsu.getAppString(R.string.anime_download_progress))
                 setSmallIcon(R.drawable.ic_download_24)
                 priority = NotificationCompat.PRIORITY_DEFAULT
                 setOnlyAlertOnce(true)
@@ -129,7 +129,7 @@ class AnimeDownloaderService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        snackString("Download started")
+        snackString(R.string.download_started)
         val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         serviceScope.launch {
             mutex.withLock {
@@ -221,7 +221,7 @@ class AnimeDownloaderService : Service() {
                     true
                 }
 
-                builder.setContentText("Downloading ${getTaskName(task.title, task.episode)}")
+                builder.setContentText(ani.dantotsu.getAppString(R.string.downloading_item, getTaskName(task.title, task.episode)))
                 if (notifi) {
                     withContext(Dispatchers.Main) {
                         notificationManager.notify(NOTIFICATION_ID, builder.build())
@@ -318,7 +318,7 @@ class AnimeDownloaderService : Service() {
                                 notificationManager.notify(NOTIFICATION_ID, builder.build())
                             }
                         }
-                        toast("${getTaskName(task.title, task.episode)} Download failed")
+                        toast(ani.dantotsu.getAppString(R.string.download_failed_item, getTaskName(task.title, task.episode)))
                         Logger.log("Download failed: ${ffExtension.getStackTrace(ffTask)}")
                         cleanupFailedDownload(outputDir, outputFile)
                         Injekt.get<CrashlyticsInterface>().logException(
@@ -384,7 +384,7 @@ class AnimeDownloaderService : Service() {
                                 notificationManager.notify(NOTIFICATION_ID, builder.build())
                             }
                         }
-                        snackString("${getTaskName(task.title, task.episode)} Download failed")
+                        snackString(ani.dantotsu.getAppString(R.string.download_failed_item, getTaskName(task.title, task.episode)))
                         cleanupFailedDownload(outputDir, outputFile)
                         Injekt.get<CrashlyticsInterface>().logException(
                             Exception(
@@ -435,7 +435,7 @@ class AnimeDownloaderService : Service() {
             } catch (e: Exception) {
                 if (e.message?.contains("Coroutine was cancelled") == false) {  //wut
                     Logger.log("Exception while downloading file: ${e.message}")
-                    snackString("Exception while downloading file: ${e.message}")
+                    snackString(ani.dantotsu.getAppString(R.string.download_file_error, e.message))
                     e.printStackTrace()
                     Injekt.get<CrashlyticsInterface>().logException(e)
                 }

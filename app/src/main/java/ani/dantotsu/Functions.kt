@@ -955,6 +955,11 @@ fun getAppString(res: Int): String {
     return currContext()?.getString(res) ?: ""
 }
 
+/** [getAppString] with its format arguments, for a message built from a value (an error, a title). */
+fun getAppString(res: Int, vararg args: Any?): String {
+    return currContext()?.getString(res, *args) ?: ""
+}
+
 fun toast(string: String?, duration: Int = Toast.LENGTH_SHORT) {
     if (string != null) {
         Logger.log(string)
@@ -1202,8 +1207,8 @@ fun incognitoNotification(context: Context) {
         )
         val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_INCOGNITO_MODE)
             .setSmallIcon(R.drawable.ic_incognito_24)
-            .setContentTitle("Incognito Mode")
-            .setContentText("Disable Incognito Mode")
+            .setContentTitle(context.getString(R.string.incognito_mode))
+            .setContentText(context.getString(R.string.disable_incognito))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

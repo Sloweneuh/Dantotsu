@@ -370,7 +370,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                                         Injekt.get<CrashlyticsInterface>()
                                             .logException(e)
                                         Logger.log(e)
-                                        toast("Error starting video: ${e.message}")
+                                        toast(ani.dantotsu.getAppString(R.string.error_starting_video, e.message))
                                         // The url is still the magnet link; downloading it would fail.
                                         return@launch
                                     }
@@ -508,9 +508,9 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                                                                              selectedAudioTracks ->
                             binding.selectorListContainer.visibility = View.GONE
                             binding.selectorAutoListContainer.visibility = View.VISIBLE
-                            binding.selectorTitle.text = "Starting Download"
+                            binding.selectorTitle.text = getString(R.string.starting_download)
                             binding.selectorAutoText.text =
-                                "Starting download using server:\n$selectedServerName"
+                                getString(R.string.starting_download_server, selectedServerName)
                             binding.selectorCancel.visibility = View.GONE
                             tvStarting = selectedServerName
 
@@ -620,7 +620,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                             } catch (e: Exception) {
                                 Injekt.get<CrashlyticsInterface>().logException(e)
                                 Logger.log(e)
-                                toast("Error starting video: ${e.message}")
+                                toast(ani.dantotsu.getAppString(R.string.error_starting_video, e.message))
                                 dismiss()
                             }
                         }

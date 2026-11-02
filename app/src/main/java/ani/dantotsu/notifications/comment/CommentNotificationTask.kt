@@ -69,7 +69,7 @@ class CommentNotificationTask : Task {
                     }
                     val notification = when (type) {
                         CommentNotificationWorker.NotificationType.COMMENT_WARNING -> {
-                            val title = "You received a warning"
+                            val title = ani.dantotsu.getAppString(R.string.comment_warning_title)
                             val message = it.content ?: "Be more thoughtful with your comments"
 
                             val commentStore = CommentStore(
@@ -95,7 +95,7 @@ class CommentNotificationTask : Task {
                         }
 
                         CommentNotificationWorker.NotificationType.COMMENT_REPLY -> {
-                            val title = "New Comment Reply"
+                            val title = ani.dantotsu.getAppString(R.string.comment_reply_title)
                             val mediaName = names[it.mediaId]?.title ?: "Unknown"
                             val message = "${it.username} replied to your comment in $mediaName"
 

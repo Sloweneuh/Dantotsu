@@ -159,7 +159,7 @@ class MangaReadAdapter(
                 setPosButton(R.string.ok) {
                     clearCustomValsForMedia("${media.id}", "_Chapter")
                     clearCustomValsForMedia("${media.id}", "_Vol")
-                    snackString("Deleted the progress of Chapters for ${media.nameRomaji}")
+                    snackString(ani.dantotsu.getAppString(R.string.deleted_chapter_progress, media.nameRomaji))
                 }
                 setNegButton(R.string.no)
                 show()
@@ -411,7 +411,7 @@ class MangaReadAdapter(
                             clearCustomValsForMedia("${media.id}", "_Chapter")
                             clearCustomValsForMedia("${media.id}", "_Vol")
 
-                            snackString("Deleted the progress of Chapters for ${media.nameRomaji}")
+                            snackString(ani.dantotsu.getAppString(R.string.deleted_chapter_progress, media.nameRomaji))
                         }
                         setNegButton(R.string.no)
                         show()
@@ -471,7 +471,7 @@ class MangaReadAdapter(
 
                     fragment.requireContext().customAlertDialog().apply {
                         setCustomView(dialogView.root)
-                        setPosButton("OK") {
+                        setPosButton(R.string.ok) {
                             hiddenScanlators.clear()
                             for (i in 0 until checkboxContainer.childCount) {
                                 val checkBox = checkboxContainer.getChildAt(i) as CheckBox
@@ -482,7 +482,7 @@ class MangaReadAdapter(
                             fragment.onScanlatorChange(hiddenScanlators)
                             scanlatorSelectionListener?.onScanlatorsSelected()
                         }
-                        setNegButton("Cancel")
+                        setNegButton(R.string.cancel)
                     }.show()
 
                     tickAllButton.setImageResource(getToggleImageResource(checkboxContainer))
@@ -499,11 +499,11 @@ class MangaReadAdapter(
                 fragment.requireContext().customAlertDialog().apply {
                     setTitle(fragment.requireContext().getString(R.string.options))
                     setCustomView(root)
-                    setPosButton("OK") {
+                    setPosButton(R.string.ok) {
                         if (run) fragment.onIconPressed(style, reversed)
                         if (refresh) fragment.loadChapters(source, true)
                     }
-                    setNegButton("Cancel") {
+                    setNegButton(R.string.cancel) {
                         if (refresh) fragment.loadChapters(source, true)
                     }
                     show()
@@ -868,7 +868,7 @@ class MangaReadAdapter(
                                     val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
                                     fragment.startActivity(intent)
                                 } catch (e: Exception) {
-                                    snackString("Failed to open link: ${e.message}")
+                                    snackString(ani.dantotsu.getAppString(R.string.failed_open_link, e.message))
                                 }
                             }
                         }

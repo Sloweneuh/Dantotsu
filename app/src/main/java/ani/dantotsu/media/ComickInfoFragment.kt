@@ -1538,7 +1538,7 @@ class ComickInfoFragment : Fragment() {
                                 parent,
                                 false
                         )
-                bind.itemTitle.text = "Tags"
+                bind.itemTitle.setText(R.string.tags)
 
                 sortedCategories.forEach { category ->
                     val categoryInfo = category.mu_categories ?: return@forEach

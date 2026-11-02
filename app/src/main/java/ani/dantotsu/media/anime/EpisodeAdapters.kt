@@ -422,8 +422,8 @@ class EpisodeAdapter(
                     if (downloadedEpisodes.contains(episodeNumber)) {
                         //fragment.fixDownload(episodeNumber)
                         fragment.requireContext().customAlertDialog().apply {
-                            setTitle("Multi Episode Deleter")
-                            setMessage("Enter the number of episodes to delete")
+                            setTitle(R.string.multi_episode_deleter)
+                            setMessage(R.string.multi_episode_delete_count)
                             val input = NumberPicker(currContext())
                             input.minValue = 1
                             input.maxValue = itemCount - bindingAdapterPosition
@@ -431,8 +431,8 @@ class EpisodeAdapter(
                             setCustomView(input)
                             setPosButton(R.string.ok) {
                                 binding.root.context.customAlertDialog().apply {
-                                    setTitle("Delete Episodes")
-                                    setMessage("Are you sure you want to delete Episodes $episodeNumber -> ${arr[bindingAdapterPosition + input.value - 1].number}?")
+                                    setTitle(R.string.delete_episodes)
+                                    setMessage(R.string.delete_episodes_confirm, episodeNumber, arr[bindingAdapterPosition + input.value - 1].number)
                                     setPosButton(R.string.yes) {
                                         fragment.multiDelete(episodeNumber, input.value)
                                     }
@@ -445,8 +445,8 @@ class EpisodeAdapter(
                     }
                     else {
                         fragment.requireContext().customAlertDialog().apply {
-                            setTitle("Multi Episode Downloader")
-                            setMessage("Enter the number of episodes to download")
+                            setTitle(R.string.multi_episode_downloader)
+                            setMessage(R.string.multi_episode_download_count)
                             val input = NumberPicker(currContext())
                             input.minValue = 1
                             input.maxValue = itemCount - bindingAdapterPosition

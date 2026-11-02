@@ -1,5 +1,6 @@
 package ani.dantotsu.download
 
+import ani.dantotsu.R
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
@@ -105,12 +106,12 @@ class DownloadsManager(private val context: Context) {
         if (directory?.exists() == true) {
             val deleted = directory.deleteRecursively(context, false)
             if (deleted) {
-                snackString("Successfully deleted")
+                snackString(R.string.successfully_deleted)
             } else {
-                snackString("Failed to delete directory")
+                snackString(R.string.failed_delete_directory)
             }
         } else {
-            snackString("Directory does not exist")
+            snackString(R.string.directory_not_found)
             cleanDownloads()
         }
         when (type) {
@@ -208,7 +209,7 @@ class DownloadsManager(private val context: Context) {
                 PrefManager.setVal(PrefName.DownloadsDirNested, newNested)
                 finished(true, "Successfully moved downloads")
             } catch (e: Exception) {
-                snackString("Error: ${e.message}")
+                snackString(ani.dantotsu.getAppString(R.string.error_msg, e.message))
                 Logger.log("Failed to move downloads: ${e.message}")
                 Logger.log(e)
                 Logger.log("oldUri: $oldUri, newUri: $newUri")
@@ -279,12 +280,12 @@ class DownloadsManager(private val context: Context) {
         if (directory?.exists() == true) {
             val deleted = directory.deleteRecursively(context, false)
             if (deleted) {
-                if (toast) snackString("Successfully deleted")
+                if (toast) snackString(R.string.successfully_deleted)
             } else {
-                snackString("Failed to delete directory")
+                snackString(R.string.failed_delete_directory)
             }
         } else {
-            snackString("Directory does not exist")
+            snackString(R.string.directory_not_found)
         }
     }
 
@@ -293,12 +294,12 @@ class DownloadsManager(private val context: Context) {
         if (directory?.exists() == true) {
             val deleted = directory.deleteRecursively(context, false)
             if (deleted) {
-                snackString("Successfully deleted")
+                snackString(R.string.successfully_deleted)
             } else {
-                snackString("Failed to delete directory")
+                snackString(R.string.failed_delete_directory)
             }
         } else {
-            snackString("Directory does not exist")
+            snackString(R.string.directory_not_found)
         }
 
         downloadsList.removeAll { it.type == type }

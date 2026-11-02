@@ -2214,7 +2214,7 @@ class ExoplayerView :
             PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
             PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED,
                 -> {
-                toast("Source Exception : ${error.message}")
+                toast(ani.dantotsu.getAppString(R.string.source_exception, error.message))
                 isPlayerPlaying = true
                 sourceClick()
             }
@@ -2243,7 +2243,7 @@ class ExoplayerView :
             }
 
             else -> {
-                toast("Player Error ${error.errorCode} (${error.errorCodeName}) : ${error.message}")
+                toast(ani.dantotsu.getAppString(R.string.player_error, error.errorCode, error.errorCodeName, error.message))
                 Injekt.get<CrashlyticsInterface>().logException(error)
             }
         }

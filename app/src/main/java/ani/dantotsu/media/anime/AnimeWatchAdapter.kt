@@ -400,7 +400,7 @@ class AnimeWatchAdapter(
                 resetProgress.setOnClickListener {
                     fragment.requireContext().customAlertDialog().apply {
                         setTitle(" Delete Progress for all episodes of ${media.nameRomaji}")
-                        setMessage("This will delete all the locally stored progress for all episodes")
+                        setMessage(R.string.delete_episode_progress_msg)
                         setPosButton(R.string.ok) {
                             val prefix = "${media.id}_"
                             val regex = Regex("^${prefix}\\d+$")
@@ -412,7 +412,7 @@ class AnimeWatchAdapter(
                                 PrefManager.removeCustomVal(key)
                             }
 
-                            snackString("Deleted the progress of episodes for ${media.nameRomaji}")
+                            snackString(ani.dantotsu.getAppString(R.string.deleted_episode_progress, media.nameRomaji))
                         }
                         setNegButton(R.string.no)
                         show()
@@ -429,11 +429,11 @@ class AnimeWatchAdapter(
                 fragment.requireContext().customAlertDialog().apply {
                     setTitle(fragment.getString(R.string.options))
                     setCustomView(root)
-                    setPosButton("OK") {
+                    setPosButton(R.string.ok) {
                         if (run) fragment.onIconPressed(style, reversed)
                         if (refresh) fragment.loadEpisodes(source, true)
                     }
-                    setNegButton("Cancel") {
+                    setNegButton(R.string.cancel) {
                         if (refresh) fragment.loadEpisodes(source, true)
                     }
                     show()
@@ -709,7 +709,7 @@ class AnimeWatchAdapter(
                                     val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
                                     fragment.startActivity(intent)
                                 } catch (e: Exception) {
-                                    snackString("Failed to open link: ${e.message}")
+                                    snackString(ani.dantotsu.getAppString(R.string.failed_open_link, e.message))
                                 }
                             }
                         }

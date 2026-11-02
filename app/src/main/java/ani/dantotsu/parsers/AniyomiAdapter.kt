@@ -1,5 +1,6 @@
 package ani.dantotsu.parsers
 
+import ani.dantotsu.R
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.FetchType
 import android.content.Context
@@ -325,7 +326,7 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
             Logger.log("Exception in search: $e")
             Logger.log(e)
             withContext(Dispatchers.Main) {
-                snackString("Failed to bypass Cloudflare")
+                snackString(R.string.failed_bypass_cloudflare)
             }
             emptyList()
         } catch (e: Throwable) {
@@ -557,7 +558,7 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
                 throw e
             } catch (e: Throwable) {
                 Logger.log("loadImages Exception: $e")
-                snackString("Failed to load images: $e")
+                snackString(ani.dantotsu.getAppString(R.string.failed_load_images, e.toString()))
                 emptyList()
             }
         }
@@ -593,7 +594,7 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
                 throw e
             } catch (e: Throwable) {
                 Logger.log("loadImages Exception: $e")
-                snackString("Failed to load images: $e")
+                snackString(ani.dantotsu.getAppString(R.string.failed_load_images, e.toString()))
                 emptyList()
             }
         }
@@ -615,7 +616,7 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
         } catch (e: CloudflareBypassException) {
             Logger.log("Exception in search: $e")
             withContext(Dispatchers.Main) {
-                snackString("Failed to bypass Cloudflare")
+                snackString(R.string.failed_bypass_cloudflare)
             }
             emptyList()
         } catch (e: Throwable) {

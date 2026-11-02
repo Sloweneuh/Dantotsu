@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
 fun updateProgress(media: Media, number: String, sourceVolume: Int? = null) {
     val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
     if (incognito) {
-        toast("Sneaky sneaky :3")
+        toast(R.string.sneaky_sneaky)
         return
     }
     CoroutineScope(Dispatchers.IO).launch { updateProgressSuspending(media, number, sourceVolume) }
@@ -45,7 +45,7 @@ fun updateProgress(media: Media, number: String, sourceVolume: Int? = null) {
 suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume: Int? = null) {
     val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
     if (incognito) {
-        toast("Sneaky sneaky :3")
+        toast(R.string.sneaky_sneaky)
         return
     }
     // The source named a volume for this chapter — trust it over whatever's on record, and it

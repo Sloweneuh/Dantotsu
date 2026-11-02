@@ -193,7 +193,7 @@ class UnreadChaptersAdapter(
                 if (isReleasingStatus(media.status)) View.VISIBLE else View.GONE
 
             // Show 'Novel' label when this stack item is a novel (only relevant for MAL stacks)
-            itemCompactNovel.text = "Novel"
+            itemCompactNovel.setText(R.string.novel)
             itemCompactNovelContainer.visibility =
                 if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
                     View.VISIBLE
@@ -317,7 +317,7 @@ class UnreadChaptersAdapter(
 
             // Show 'Novel' badge when this stack item is a novel (only relevant for MAL stacks)
             if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
-                itemCompactRelation.text = "Novel"
+                itemCompactRelation.setText(R.string.novel)
                 itemCompactTypeImage.setImageDrawable(
                     androidx.appcompat.content.res.AppCompatResources.getDrawable(
                         root.context,

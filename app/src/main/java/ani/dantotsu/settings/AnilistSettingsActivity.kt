@@ -315,9 +315,9 @@ class AnilistSettingsActivity : AppCompatActivity() {
                 } else {
                     Anilist.mangaCustomLists = Anilist.mangaCustomLists?.filter { it != name }
                 }
-                toast("Custom list deleted")
+                toast(R.string.custom_list_deleted)
             } else {
-                toast("Failed to delete custom list")
+                toast(R.string.failed_delete_custom_list)
             }
         }
     }
@@ -337,9 +337,9 @@ class AnilistSettingsActivity : AppCompatActivity() {
             if (success) {
                 Anilist.animeCustomLists = animeCustomLists
                 Anilist.mangaCustomLists = mangaCustomLists
-                toast("Custom lists saved")
+                toast(R.string.custom_lists_saved)
             } else {
-                toast("Failed to save custom lists")
+                toast(R.string.failed_save_custom_lists)
             }
         }
     }

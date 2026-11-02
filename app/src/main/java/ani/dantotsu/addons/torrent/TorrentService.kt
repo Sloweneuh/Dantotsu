@@ -91,8 +91,8 @@ class TorrentServerService : Service() {
             )
         val builder = context.notificationBuilder(CHANNEL_TORRENT_SERVER) {
             setSmallIcon(R.drawable.notification_icon)
-            setContentText("Torrent Server")
-            setContentTitle("Server is running…")
+            setContentText(ani.dantotsu.getAppString(R.string.torrent_server))
+            setContentTitle(ani.dantotsu.getAppString(R.string.torrent_server_running))
             setAutoCancel(false)
             setOngoing(true)
             setUsesChronometer(true)

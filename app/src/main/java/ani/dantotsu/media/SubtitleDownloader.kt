@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.R
 import android.content.Context
 import androidx.core.net.toFile
 import androidx.core.net.toUri
@@ -81,7 +82,7 @@ class SubtitleDownloader {
                 val response = client.newCall(request).execute()
 
                 if (!response.isSuccessful) {
-                    snackString("Failed to download subtitle")
+                    snackString(R.string.failed_download_subtitle)
                     return
                 }
 
@@ -92,7 +93,7 @@ class SubtitleDownloader {
                     }
                 }
             } catch (e: Exception) {
-                snackString("Failed to download subtitle")
+                snackString(R.string.failed_download_subtitle)
                 e.printStackTrace()
                 return
             }

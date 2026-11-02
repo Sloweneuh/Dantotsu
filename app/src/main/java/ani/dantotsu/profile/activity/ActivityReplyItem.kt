@@ -73,7 +73,7 @@ class ActivityReplyItem(
                         binding.activityLike.setColorFilter(if (reply.isLiked) likeColor else notLikeColor)
 
                     } else {
-                        snackString("Failed to like activity")
+                        snackString(R.string.failed_like_activity)
                     }
                 }
             }
@@ -106,10 +106,10 @@ class ActivityReplyItem(
                 val res = Anilist.mutation.deleteActivityReply(reply.id)
                 withContext(Dispatchers.Main) {
                     if (res) {
-                        snackString("Deleted")
+                        snackString(R.string.deleted)
                         parentAdapter.remove(this@ActivityReplyItem)
                     } else {
-                        snackString("Failed to delete")
+                        snackString(R.string.failed_delete)
                     }
                 }
             }

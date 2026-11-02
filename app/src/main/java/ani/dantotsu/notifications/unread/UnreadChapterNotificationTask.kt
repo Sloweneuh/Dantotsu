@@ -156,7 +156,7 @@ class UnreadChapterNotificationTask : Task {
                                     Notifications.ID_UNREAD_CHAPTER_CHECK_PROGRESS,
                                     progressNotification
                                         .setProgress(mangaList.size, 0, false)
-                                        .setContentText("Processing ${mangaList.size} manga...")
+                                        .setContentText(ani.dantotsu.getAppString(R.string.processing_manga, mangaList.size))
                                         .build()
                                 )
                             } catch (e: Exception) {
@@ -724,7 +724,7 @@ class UnreadChapterNotificationTask : Task {
         return NotificationCompat.Builder(context, Notifications.CHANNEL_UNREAD_CHAPTER_CHECK_PROGRESS)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setSmallIcon(R.drawable.notification_icon)
-            .setContentTitle("Checking Unread Chapters")
+            .setContentTitle(ani.dantotsu.getAppString(R.string.checking_unread_chapters))
             .setProgress(size, 0, false)
             .setOngoing(true)
             .setAutoCancel(false)

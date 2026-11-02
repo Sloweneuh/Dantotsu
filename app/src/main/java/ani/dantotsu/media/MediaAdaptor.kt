@@ -181,7 +181,7 @@ class MediaAdaptor(
                         }
                     } else if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
                         // Only show Novel label when adapter was created for a MAL stack
-                        b.itemCompactRelation.text = "Novel"
+                        b.itemCompactRelation.setText(R.string.novel)
                         b.itemCompactTypeImage.setImageDrawable(
                             AppCompatResources.getDrawable(
                                 activity,
@@ -297,7 +297,7 @@ class MediaAdaptor(
                             }
                         } else if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
                             // Only show Novel label when adapter was created for a MAL stack
-                            b.itemCompactRelation.text = "Novel"
+                            b.itemCompactRelation.setText(R.string.novel)
                             b.itemCompactTypeImage.setImageDrawable(
                                 AppCompatResources.getDrawable(
                                     activity,

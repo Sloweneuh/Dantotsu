@@ -168,7 +168,7 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
                     Anilist.query.getUserProfile(username)
             val user = respond?.data?.user
             if (user == null) {
-                toast("User not found")
+                toast(R.string.user_not_found)
                 finish()
                 return@launch
             }

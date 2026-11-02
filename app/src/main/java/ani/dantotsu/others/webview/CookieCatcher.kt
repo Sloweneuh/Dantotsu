@@ -105,7 +105,7 @@ class CookieCatcher : AppCompatActivity() {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webView.url ?: url)))
             } catch (e: Exception) {
-                snackString("Failed to open link: ${e.message}")
+                snackString(ani.dantotsu.getAppString(R.string.failed_open_link, e.message))
             }
         }
     }

@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.mangabaka
 
+import ani.dantotsu.R
 import android.annotation.SuppressLint
 import android.app.Application
 import android.net.Uri
@@ -65,7 +66,7 @@ class MangaBakaOAuthActivity : AppCompatActivity() {
         binding.discordWebview.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }
-        binding.discordWebviewTitle.text = "MangaBaka Login"
+        binding.discordWebviewTitle.text = getString(R.string.mangabaka_login_title)
 
         val webView = binding.discordWebview
 
@@ -116,11 +117,11 @@ class MangaBakaOAuthActivity : AppCompatActivity() {
         val code = redirect.getQueryParameter("code")
         Logger.log("MangaBaka OAuth redirect: $redirect")
         if (code == null) {
-            snackString("MangaBaka login failed" + (error?.let { ": $it" } ?: ""))
+            snackString(getString(R.string.mangabaka_oauth_failed) + (error?.let { ": $it" } ?: ""))
             finish()
             return
         }
-        snackString("Logging in to MangaBaka…")
+        snackString(R.string.mangabaka_logging_in)
         lifecycleScope.launch(Dispatchers.IO) {
             val ok = MangaBaka.handleAuthCode(code)
             withContext(Dispatchers.Main) {

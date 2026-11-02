@@ -1,5 +1,6 @@
 package ani.dantotsu.media.anime
 
+import ani.dantotsu.R
 import android.content.Context
 import androidx.core.net.toUri
 import androidx.media3.common.C
@@ -281,11 +282,11 @@ object PlayerSources {
                         .setMimeType(downloadedMimeType)
                         .build()
                 } else {
-                    snackString("File not found")
+                    snackString(R.string.file_not_found)
                     null
                 }
             } else {
-                snackString("Directory not found")
+                snackString(R.string.directory_not_found)
                 null
             }
         }

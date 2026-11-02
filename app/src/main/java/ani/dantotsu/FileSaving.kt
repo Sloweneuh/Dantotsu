@@ -89,7 +89,7 @@ fun savePrefs(serialized: String, path: String, title: String, context: Context)
         toast(String.format(context.getString(R.string.saved_to_path, file.absolutePath)))
         file
     } catch (e: Exception) {
-        snackString("Failed to save settings: ${e.localizedMessage}")
+        snackString(getAppString(R.string.failed_save_settings, e.localizedMessage))
         null
     }
 }
@@ -115,7 +115,7 @@ fun savePrefs(
         toast(String.format(context.getString(R.string.saved_to_path, file.absolutePath)))
         file
     } catch (e: Exception) {
-        snackString("Failed to save settings: ${e.localizedMessage}")
+        snackString(getAppString(R.string.failed_save_settings, e.localizedMessage))
         null
     }
 }
@@ -146,7 +146,7 @@ fun saveImage(image: Bitmap, path: String, imageFileName: String): File? {
         toast(String.format(currContext()!!.getString(R.string.saved_to_path, path)))
         imageFile
     } catch (e: Exception) {
-        snackString("Failed to save image: ${e.localizedMessage}")
+        snackString(getAppString(R.string.failed_save_image, e.localizedMessage))
         null
     }
 }

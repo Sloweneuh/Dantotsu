@@ -1,5 +1,6 @@
 package ani.dantotsu.parsers.novel
 
+import ani.dantotsu.R
 import android.content.Context
 import android.graphics.drawable.Drawable
 import ani.dantotsu.media.MediaType
@@ -81,7 +82,7 @@ class NovelExtensionManager(
             api.findNovelExtensions()
         } catch (e: Exception) {
             Logger.log("Error finding extensions: ${e.message}")
-            withUIContext { snackString("Failed to get Novel extensions list") }
+            withUIContext { snackString(R.string.failed_novel_extensions) }
             RepoFetchResult(emptyList(), allReposResolved = false)
         }
         val extensions = result.extensions

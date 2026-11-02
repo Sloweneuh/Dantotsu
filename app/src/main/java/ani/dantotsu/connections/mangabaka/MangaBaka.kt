@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.mangabaka
 
+import ani.dantotsu.R
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -60,7 +61,7 @@ object MangaBaka {
 
     fun loginIntent(context: Context) {
         if (!isConfigured()) {
-            snackString("MangaBaka login isn't configured in this build")
+            snackString(R.string.mangabaka_login_unconfigured)
             return
         }
         val verifier = randomUrlSafe(64)

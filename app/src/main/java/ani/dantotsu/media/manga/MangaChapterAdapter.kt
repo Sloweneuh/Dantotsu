@@ -464,8 +464,8 @@ class MangaChapterAdapter(
                     val chaptersAvailable = chapterCountFrom(pos)
                     if (activeDownloads.contains(chapterNumber) || isDownloaded(chapterNumber)) {
                         fragment.requireContext().customAlertDialog().apply {
-                            setTitle("Multi Chapter Deleter")
-                            setMessage("Enter the number of chapters to delete")
+                            setTitle(R.string.multi_chapter_deleter)
+                            setMessage(R.string.multi_chapter_delete_count)
                             val input = NumberPicker(currContext())
                             input.minValue = 1
                             input.maxValue = chaptersAvailable
@@ -473,8 +473,8 @@ class MangaChapterAdapter(
                             setCustomView(input)
                             setPosButton(R.string.ok) {
                                 binding.root.context.customAlertDialog().apply {
-                                    setTitle("Delete Chapters")
-                                    setMessage("Are you sure you want to delete the next ${input.value} chapters?")
+                                    setTitle(R.string.delete_chapters)
+                                    setMessage(R.string.delete_chapters_confirm, input.value)
                                     setPosButton(R.string.yes) {
                                         deleteNChaptersFrom(pos, input.value)
                                     }
@@ -486,17 +486,17 @@ class MangaChapterAdapter(
                         }
                     } else {
                         it.context.customAlertDialog().apply {
-                            setTitle("Multi Chapter Downloader")
-                            setMessage("Enter the number of chapters to download")
+                            setTitle(R.string.multi_chapter_downloader)
+                            setMessage(R.string.multi_chapter_download_count)
                             val input = NumberPicker(currContext())
                             input.minValue = 1
                             input.maxValue = chaptersAvailable
                             input.value = 1
                             setCustomView(input)
-                            setPosButton("OK") {
+                            setPosButton(R.string.ok) {
                                 downloadNChaptersFrom(pos, input.value)
                             }
-                            setNegButton("Cancel")
+                            setNegButton(R.string.cancel)
                             show()
                         }
                     }

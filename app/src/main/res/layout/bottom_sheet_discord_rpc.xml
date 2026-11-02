@@ -45,7 +45,7 @@
                 android:layout_height="wrap_content"
                 android:alpha="0.6"
                 android:fontFamily="@font/poppins_bold"
-                android:text="Current activity"
+                android:text="@string/discord_current_activity"
                 android:textColor="?attr/colorOnBackground"
                 android:textSize="13sp" />
 

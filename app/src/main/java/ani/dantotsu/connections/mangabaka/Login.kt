@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.mangabaka
 
+import ani.dantotsu.R
 import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
@@ -24,15 +25,15 @@ class Login : AppCompatActivity() {
         val code = data?.getQueryParameter("code")
         when {
             error != null -> {
-                toast("MangaBaka: $error — ${data.getQueryParameter("error_description") ?: ""}")
+                toast(ani.dantotsu.getAppString(R.string.mangabaka_login_error, error, data.getQueryParameter("error_description") ?: ""))
                 startMainActivity(this)
             }
             code == null -> {
-                toast("MangaBaka login: no code in redirect ($data)")
+                toast(ani.dantotsu.getAppString(R.string.mangabaka_login_no_code, data.toString()))
                 startMainActivity(this)
             }
             else -> {
-                snackString("Logging in to MangaBaka…")
+                snackString(R.string.mangabaka_logging_in)
                 lifecycleScope.launch(Dispatchers.IO) {
                     val ok = MangaBaka.handleAuthCode(code)
                     snackString(if (ok) "Successfully logged into MangaBaka" else "MangaBaka login failed")

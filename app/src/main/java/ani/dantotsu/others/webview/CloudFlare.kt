@@ -8,7 +8,7 @@ import ani.dantotsu.FileUrl
 class CloudFlare(override val location: FileUrl) : WebViewBottomDialog() {
     val cfTag = "cf_clearance"
 
-    override var title = "Cloudflare Bypass"
+    override var title = ani.dantotsu.getAppString(ani.dantotsu.R.string.cloudflare_bypass)
     override val webViewClient = object : WebViewClient() {
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             val cookie = cookies?.getCookie(url.toString())

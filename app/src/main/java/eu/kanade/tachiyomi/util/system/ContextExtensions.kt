@@ -44,7 +44,7 @@ fun Context.copyToClipboard(label: String, content: String) {
         // Android 13 and higher shows a visual confirmation of copied contents
         // https://developer.android.com/about/versions/13/features/copy-paste
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
-            toast("Copied to clipboard: " + content.truncateCenter(50))
+            toast(getString(ani.dantotsu.R.string.copied_to_clipboard_value, content.truncateCenter(50)))
         }
     } catch (e: Throwable) {
         Logger.log(e)

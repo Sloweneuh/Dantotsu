@@ -80,7 +80,7 @@ object SimklMediaRenderer {
         if (full.runtime != null && full.runtime!! > 0) {
             info.mediaInfoDurationContainer.visibility = View.VISIBLE
             (info.mediaInfoDurationContainer.getChildAt(0) as? TextView)?.setText(R.string.ep_duration)
-            info.mediaInfoDuration.text = "${full.runtime} min"
+            info.mediaInfoDuration.text = ani.dantotsu.getAppString(R.string.tv_minutes, full.runtime)
         } else {
             info.mediaInfoDurationContainer.visibility = View.GONE
         }

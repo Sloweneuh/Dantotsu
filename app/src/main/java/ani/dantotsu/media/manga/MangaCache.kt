@@ -1,5 +1,6 @@
 package ani.dantotsu.media.manga
 
+import ani.dantotsu.R
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.graphics.Bitmap
@@ -71,7 +72,7 @@ data class ImageData(
                 throw e
             } catch (e: Exception) {
                 Logger.log("An error occurred: ${e.message}")
-                snackString("An error occurred: ${e.message}")
+                snackString(ani.dantotsu.getAppString(R.string.error_occurred, e.message))
                 return@withContext null
             }
         }

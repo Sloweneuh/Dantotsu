@@ -34,7 +34,7 @@ fun openLinkInBrowser(link: String?) {
             }
             currContext()!!.startActivity(sendIntent)
         } catch (e: ActivityNotFoundException) {
-            snackString("No browser found")
+            snackString(R.string.no_browser_found)
         } catch (e: Exception) {
             Logger.log(e)
         }

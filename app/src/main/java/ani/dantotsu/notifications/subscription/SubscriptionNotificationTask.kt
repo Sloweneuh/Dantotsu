@@ -88,7 +88,7 @@ class SubscriptionNotificationTask : Task {
                                 ID_SUBSCRIPTION_CHECK_PROGRESS,
                                 progressNotification
                                     .setProgress(subscriptions.size, progress, false)
-                                    .setContentText("$media on $parser")
+                                    .setContentText(ani.dantotsu.getAppString(R.string.media_on_source, media, parser))
                                     .build()
                             )
                     }

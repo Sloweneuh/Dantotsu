@@ -264,7 +264,7 @@ class MALInfoFragment : Fragment() {
         media.synonyms.forEach { if (!titles.contains(it)) titles.add(it) }
 
         val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
-            setTitleText("Search on MyAnimeList")
+            setTitleText(getString(R.string.search_on_myanimelist))
 
             // Add each title as a clickable TextView
             titles.forEach { title ->

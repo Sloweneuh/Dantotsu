@@ -54,20 +54,20 @@ class LoginFragment : Fragment() {
                                     val decryptedJson = try {
                                         PreferenceKeystore.decryptBackup(password, jsonString)
                                     } catch (e: Exception) {
-                                        toast("Incorrect password")
+                                        toast(R.string.incorrect_password)
                                         return@passwordAlertDialog
                                     }
                                     try {
                                         if (BackupArchive.restore(requireContext(), decryptedJson))
                                             restartApp()
                                         else
-                                            toast("Error importing settings")
+                                            toast(R.string.error_importing_settings)
                                     } catch (e: Exception) {
                                         Logger.log(e)
-                                        toast("Error importing settings")
+                                        toast(R.string.error_importing_settings)
                                     }
                                 } else {
-                                    toast("Password cannot be empty")
+                                    toast(R.string.password_cannot_be_empty)
                                 }
                             }
                         } else if (name.endsWith(".ani")) {
@@ -75,11 +75,11 @@ class LoginFragment : Fragment() {
                             if (BackupArchive.restore(requireContext(), decryptedJson))
                                 restartApp()
                         } else {
-                            toast("Invalid file type")
+                            toast(R.string.invalid_file_type)
                         }
                     } catch (e: Exception) {
                         Logger.log(e)
-                        toast("Error importing settings")
+                        toast(R.string.error_importing_settings)
                     }
                 }
             }
@@ -94,7 +94,7 @@ class LoginFragment : Fragment() {
 
         // Inflate the dialog layout
         val dialogView = DialogUserAgentBinding.inflate(layoutInflater).apply {
-            userAgentTextBox.hint = "Password"
+            userAgentTextBox.hint = getString(R.string.password)
             subtitle.visibility = View.VISIBLE
             subtitle.text = getString(R.string.enter_password_to_decrypt_file)
         }
@@ -108,7 +108,7 @@ class LoginFragment : Fragment() {
                     editText.text?.toString()?.trim()?.toCharArray(password)
                     callback(password)
                 } else {
-                    toast("Password cannot be empty")
+                    toast(R.string.password_cannot_be_empty)
                 }
             }
             setNegButton(R.string.cancel) {

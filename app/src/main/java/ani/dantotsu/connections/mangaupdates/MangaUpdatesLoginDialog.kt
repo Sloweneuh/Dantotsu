@@ -67,12 +67,12 @@ class MangaUpdatesLoginDialog : DialogFragment() {
 
                         if (success) {
                             Logger.log("MangaUpdates: Login successful")
-                            snackString("Successfully logged into MangaUpdates")
+                            snackString(R.string.mu_login_success)
                             onLoginSuccess?.invoke()
                             dismiss()
                         } else {
                             Logger.log("MangaUpdates: Login failed")
-                            snackString("Login failed. Check your credentials.")
+                            snackString(R.string.mu_login_failed)
                             positiveButton.isEnabled = true
                             passwordInput?.error = "Invalid credentials"
                         }

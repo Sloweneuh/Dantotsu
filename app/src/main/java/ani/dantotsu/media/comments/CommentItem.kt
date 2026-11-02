@@ -531,10 +531,10 @@ class CommentItem(
         commentsFragment.activity.customAlertDialog().apply {
             setTitle(title)
             setMessage(message)
-            setPosButton("Yes") {
+            setPosButton(R.string.yes) {
                 callback()
             }
-            setNegButton("No") {}
+            setNegButton(R.string.no) {}
         }.show()
     }
 

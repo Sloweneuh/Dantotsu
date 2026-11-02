@@ -594,7 +594,7 @@ class MainActivity : AppCompatActivity() {
                 AddRepositoryBottomSheet.addRepoWarning(this) {
                     newRepos.add(url)
                     PrefManager.setVal(prefName, newRepos)
-                    toast("$name Extension Repo added")
+                    toast(getString(R.string.extension_repo_added, name))
                 }
                 return
             }
@@ -611,7 +611,7 @@ class MainActivity : AppCompatActivity() {
                         val decryptedJson = try {
                             PreferenceKeystore.decryptBackup(password, jsonString)
                         } catch (e: Exception) {
-                            toast("Incorrect password")
+                            toast(R.string.incorrect_password)
                             return@passwordAlertDialog
                         }
                         if (BackupArchive.restore(this, decryptedJson)) {
@@ -620,7 +620,7 @@ class MainActivity : AppCompatActivity() {
                             startActivity(newIntent)
                         }
                     } else {
-                        toast("Password cannot be empty")
+                        toast(R.string.password_cannot_be_empty)
                     }
                 }
             } else if (name.endsWith(".ani")) {
@@ -631,11 +631,11 @@ class MainActivity : AppCompatActivity() {
                     startActivity(newIntent)
                 }
             } else {
-                toast("Invalid file type")
+                toast(R.string.invalid_file_type)
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            toast("Error importing settings")
+            toast(R.string.error_importing_settings)
         }
     }
 
@@ -644,7 +644,7 @@ class MainActivity : AppCompatActivity() {
 
         // Inflate the dialog layout
         val dialogView = DialogUserAgentBinding.inflate(layoutInflater).apply {
-            userAgentTextBox.hint = "Password"
+            userAgentTextBox.hint = getString(R.string.password)
             subtitle.visibility = View.VISIBLE
             subtitle.text = getString(R.string.enter_password_to_decrypt_file)
         }

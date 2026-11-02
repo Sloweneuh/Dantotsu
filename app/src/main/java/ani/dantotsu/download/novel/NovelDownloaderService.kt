@@ -85,7 +85,7 @@ class NovelDownloaderService : Service() {
         notificationManager = NotificationManagerCompat.from(this)
         builder =
             NotificationCompat.Builder(this, Notifications.CHANNEL_DOWNLOADER_PROGRESS).apply {
-                setContentTitle("Novel Download Progress")
+                setContentTitle(ani.dantotsu.getAppString(R.string.novel_download_progress))
                 setSmallIcon(R.drawable.ic_download_24)
                 priority = NotificationCompat.PRIORITY_DEFAULT
                 setOnlyAlertOnce(true)
@@ -118,7 +118,7 @@ class NovelDownloaderService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        snackString("Download started")
+        snackString(R.string.download_started)
         val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         serviceScope.launch {
             mutex.withLock {
@@ -332,7 +332,7 @@ class NovelDownloaderService : Service() {
             broadcastDownloadFinished(task.originalLink)
             DownloadTracker.remove(itemId)
             withContext(Dispatchers.Main) {
-                builder.setContentText("Saved ${task.title} - ${task.chapter}")
+                builder.setContentText(ani.dantotsu.getAppString(R.string.saved_item, "${task.title} - ${task.chapter}"))
                     .setDownloadProgress(this@NovelDownloaderService, 0, 0, false)
                 notifyIfAllowed()
             }
@@ -341,7 +341,7 @@ class NovelDownloaderService : Service() {
             throw e
         } catch (e: Exception) {
             Logger.log("LNReader run download failed: ${e.message}")
-            snackString("Novel download failed: ${e.message}")
+            snackString(ani.dantotsu.getAppString(R.string.novel_download_failed, e.message))
             broadcastDownloadFailed(task.originalLink)
             DownloadTracker.remove(itemId)
         }
@@ -379,7 +379,7 @@ class NovelDownloaderService : Service() {
                 DownloadTracker.markDownloading(itemId)
 
                 if (notifi) {
-                    builder.setContentText("Downloading ${task.title} - ${task.chapter}")
+                    builder.setContentText(ani.dantotsu.getAppString(R.string.downloading_item, "${task.title} - ${task.chapter}"))
                     notificationManager.notify(NOTIFICATION_ID, builder.build())
                 }
 
@@ -388,13 +388,13 @@ class NovelDownloaderService : Service() {
                         Logger.log("Already downloaded")
                         broadcastDownloadFinished(task.originalLink)
                         DownloadTracker.remove(itemId)
-                        snackString("Already downloaded")
+                        snackString(R.string.already_downloaded)
                         return@withContext
                     }
                     Logger.log("Download link is not an .epub file")
                     broadcastDownloadFailed(task.originalLink)
                     DownloadTracker.remove(itemId)
-                    snackString("Download link is not an .epub file")
+                    snackString(R.string.download_not_epub)
                     return@withContext
                 }
 
@@ -510,7 +510,7 @@ class NovelDownloaderService : Service() {
                 }
 
                 // Update notification for download completion
-                builder.setContentText("${task.title} - ${task.chapter} Download complete")
+                builder.setContentText(ani.dantotsu.getAppString(R.string.download_complete_item, "${task.title} - ${task.chapter}"))
                     .setDownloadProgress(this@NovelDownloaderService, 0, 0, false)
                 if (notifi) {
                     notificationManager.notify(NOTIFICATION_ID, builder.build())
@@ -533,7 +533,7 @@ class NovelDownloaderService : Service() {
             throw e
         } catch (e: Exception) {
             Logger.log("Exception while downloading .epub: ${e.message}")
-            snackString("Exception while downloading .epub: ${e.message}")
+            snackString(ani.dantotsu.getAppString(R.string.download_epub_error, e.message))
             Injekt.get<CrashlyticsInterface>().logException(e)
             broadcastDownloadFailed(task.originalLink)
             DownloadTracker.remove(itemId)

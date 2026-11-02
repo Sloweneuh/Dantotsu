@@ -100,7 +100,7 @@ abstract class BaseParser {
         // the spelling its own site uses — but each one is a round trip, so they are tried best-first
         // and stopped as soon as a candidate is good enough to not be improved on.
         for (query in SourceMatcher.queries(mediaObj).take(SourceMatcher.MAX_QUERIES)) {
-            setUserText("Searching : $query")
+            setUserText(ani.dantotsu.getAppString(R.string.searching_query, query))
             Logger.log("[$name] searching : $query")
             val results = try {
                 search(query)

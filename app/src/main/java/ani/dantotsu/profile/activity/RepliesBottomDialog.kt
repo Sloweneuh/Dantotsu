@@ -1,5 +1,6 @@
 package ani.dantotsu.profile.activity
 
+import ani.dantotsu.R
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -78,7 +79,7 @@ class RepliesBottomDialog : BottomSheetDialogFragment() {
                     }
                 )
             } else {
-                snackString("Failed to load replies")
+                snackString(R.string.failed_load_replies)
             }
         }
     }
