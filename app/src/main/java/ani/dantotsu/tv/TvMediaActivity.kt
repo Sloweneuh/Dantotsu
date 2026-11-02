@@ -102,6 +102,7 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
         // Details arrive from AniList; the episode search starts once, on the full entry.
         model.getMedia().observe(this) { media ->
             if (media == null) return@observe
+            favourite.value = media.isFav
             // Opened from the downloads screen: on the downloaded episodes, the first time round.
             media.selected = model.loadSelected(media, !episodesRequested && intent.getBooleanExtra(EXTRA_DOWNLOADS, false))
             sourceIndex.intValue = media.selected!!.sourceIndex
@@ -172,6 +173,8 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                     malSync = malSync.value,
                     loadMalSyncLanguages = { malSyncLanguages(media) },
                     onMalSyncLanguage = { pickMalSyncLanguage(media, it) },
+                    favourite = favourite.value,
+                    onFavourite = if (ani.dantotsu.connections.anilist.Anilist.userid != null) ({ toggleFavourite(media) }) else null,
                 )
                 setup.value?.let { kind ->
                     DownloadSetupDialog(
@@ -198,6 +201,34 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
     companion object {
         /** Open on the title's downloaded episodes rather than its usual source. */
         const val EXTRA_DOWNLOADS = "downloads"
+    }
+
+    /** Whether the title is one of the user's favourites on AniList, as the heart shows it. */
+    private val favourite = mutableStateOf(false)
+
+    /**
+     * Favourites or unfavourites the title on AniList, as the phone's heart does. The heart turns
+     * at once and back if AniList refuses, rather than waiting on the round trip.
+     */
+    private fun toggleFavourite(media: Media) {
+        val wanted = !favourite.value
+        favourite.value = wanted
+        media.isFav = wanted
+        lifecycleScope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                ani.dantotsu.connections.anilist.Anilist.mutation.toggleFav(
+                    ani.dantotsu.connections.anilist.AnilistMutations.FavType.ANIME, media.id,
+                )
+            }.getOrDefault(false)
+            if (ok) {
+                ani.dantotsu.Refresh.all()
+                ani.dantotsu.snackString(getString(if (wanted) R.string.tv_favourite_added else R.string.tv_favourite_removed))
+            } else {
+                favourite.value = !wanted
+                media.isFav = !wanted
+                ani.dantotsu.snackString(getString(R.string.list_update_failed))
+            }
+        }
     }
 
     /** MALSync's newest episode in the title's release language, once it's answered. */
@@ -473,6 +504,8 @@ private fun TvMedia(
     malSync: TvMalSync?,
     loadMalSyncLanguages: suspend () -> List<ani.dantotsu.connections.malsync.LanguageOption>,
     onMalSyncLanguage: (ani.dantotsu.connections.malsync.LanguageOption) -> Unit,
+    favourite: Boolean,
+    onFavourite: (() -> Unit)?,
 ) {
     var editingList by remember { mutableStateOf(false) }
     var pickingSource by remember { mutableStateOf(false) }
@@ -564,6 +597,18 @@ private fun TvMedia(
                         onClick = { editingList = true },
                         modifier = Modifier.pointerClick { editingList = true },
                     ) { Text(listLabel) }
+                    if (onFavourite != null) androidx.tv.material3.OutlinedIconButton(
+                        onClick = onFavourite,
+                        modifier = Modifier.pointerClick(onClick = onFavourite),
+                    ) {
+                        androidx.tv.material3.Icon(
+                            androidx.compose.ui.res.painterResource(
+                                if (favourite) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_border_24
+                            ),
+                            // Filled while it's a favourite, an outline otherwise, in the button's own colours.
+                            contentDescription = stringResource(if (favourite) R.string.tv_favourite_remove else R.string.tv_favourite_add),
+                        )
+                    }
                     // The release language MALSync follows for this title, and the way to pick another.
                     if (malSync != null) OutlinedButton(
                         onClick = { pickingReleaseLanguage = true },

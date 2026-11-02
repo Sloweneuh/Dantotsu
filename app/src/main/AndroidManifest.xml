@@ -755,6 +755,12 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
             android:exported="false" />
         <activity
+            android:name=".tv.TvProfileActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:exported="false" />
+        <activity
             android:name=".tv.TvDownloadsActivity"
             android:theme="@style/Theme.Dantotsu.Tv"
             android:screenOrientation="sensorLandscape"

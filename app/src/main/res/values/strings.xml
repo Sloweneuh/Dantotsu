@@ -3822,4 +3822,20 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <!-- TV mode: streaming links -->
     <string name="tv_link_on_phone">Open %1$s on your phone</string>
     <string name="tv_link_on_phone_desc">No app on this TV opens this link. Scan the code with your phone\'s camera to open it there.</string>
+    <!-- TV mode: profile and anime list -->
+    <string name="tv_profile">Profile</string>
+    <string name="tv_anime_list">Anime list</string>
+    <string name="tv_list_all">All</string>
+    <string name="tv_list_empty">Nothing on your anime list yet.</string>
+    <string name="tv_stat_anime">Anime</string>
+    <string name="tv_sort_default">AniList\'s order</string>
+    <string name="tv_sort_updated">Last updated</string>
+    <string name="tv_sort_title">Title</string>
+    <string name="tv_sort_score">Score</string>
+    <string name="tv_sort_release">Release date</string>
+    <!-- TV mode: favourites -->
+    <string name="tv_favourite_add">Add to favourites</string>
+    <string name="tv_favourite_remove">Remove from favourites</string>
+    <string name="tv_favourite_added">Added to your favourites</string>
+    <string name="tv_favourite_removed">Removed from your favourites</string>
 </resources>

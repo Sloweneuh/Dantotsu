@@ -3700,4 +3700,20 @@
     <!-- TV mode: streaming links -->
     <string name="tv_link_on_phone">Ouvrir %1$s sur votre téléphone</string>
     <string name="tv_link_on_phone_desc">Aucune application de ce téléviseur n\'ouvre ce lien. Scannez le code avec l\'appareil photo de votre téléphone pour l\'y ouvrir.</string>
+    <!-- TV mode: profile and anime list -->
+    <string name="tv_profile">Profil</string>
+    <string name="tv_anime_list">Liste d\'anime</string>
+    <string name="tv_list_all">Tous</string>
+    <string name="tv_list_empty">Rien dans votre liste d\'anime pour l\'instant.</string>
+    <string name="tv_stat_anime">Anime</string>
+    <string name="tv_sort_default">Ordre d\'AniList</string>
+    <string name="tv_sort_updated">Dernière mise à jour</string>
+    <string name="tv_sort_title">Titre</string>
+    <string name="tv_sort_score">Note</string>
+    <string name="tv_sort_release">Date de sortie</string>
+    <!-- TV mode: favourites -->
+    <string name="tv_favourite_add">Ajouter aux favoris</string>
+    <string name="tv_favourite_remove">Retirer des favoris</string>
+    <string name="tv_favourite_added">Ajouté à vos favoris</string>
+    <string name="tv_favourite_removed">Retiré de vos favoris</string>
 </resources>

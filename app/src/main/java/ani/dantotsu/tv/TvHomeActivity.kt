@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -117,6 +118,7 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
                     onSignIn = if (Anilist.token == null) ({ startActivity(Intent(this, TvSignInActivity::class.java)) }) else null,
                     onSettings = { startActivity(Intent(this, TvSettingsActivity::class.java)) },
                     onExit = if (TvMode.canExit(this)) ({ TvMode.exit(this) }) else null,
+                    onProfile = if (Anilist.token != null) ({ startActivity(Intent(this, TvProfileActivity::class.java)) }) else null,
                 )
             }
         }
@@ -261,6 +263,31 @@ private sealed interface HomeRow {
     class Explore(override val title: String, val discover: Boolean, val genres: List<Pair<String, String?>>) : HomeRow
 }
 
+/** The user's avatar, round, outlined and grown when focused like the covers. */
+@OptIn(com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi::class)
+@Composable
+private fun ProfileButton(onClick: () -> Unit) {
+    val shape = androidx.compose.foundation.shape.CircleShape
+    androidx.tv.material3.Card(
+        onClick = onClick,
+        modifier = Modifier.size(44.dp).pointerClick(onClick = onClick),
+        shape = androidx.tv.material3.CardDefaults.shape(shape),
+        scale = androidx.tv.material3.CardDefaults.scale(focusedScale = 1.15f),
+        border = androidx.tv.material3.CardDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                androidx.compose.foundation.BorderStroke(FOCUS_OUTLINE, MaterialTheme.colorScheme.primary), shape = shape,
+            ),
+        ),
+    ) {
+        com.bumptech.glide.integration.compose.GlideImage(
+            model = Anilist.avatar,
+            contentDescription = stringResource(R.string.tv_profile),
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
 @Composable
 private fun TvHome(
     home: AnilistHomeViewModel,
@@ -278,6 +305,7 @@ private fun TvHome(
     onSignIn: (() -> Unit)?,
     onSettings: () -> Unit,
     onExit: (() -> Unit)?,
+    onProfile: (() -> Unit)?,
 ) {
     val continuing by home.getAnimeContinue().observeAsState()
     val planned by home.getAnimePlanned().observeAsState()
@@ -403,6 +431,11 @@ private fun TvHome(
                     Button(onClick = onExit, colors = ButtonDefaults.colors(), modifier = Modifier.pointerClick(onClick = onExit)) {
                         Text(stringResource(R.string.tv_exit))
                     }
+                }
+                // The signed-in user's avatar, last as the phone's sits: their profile and anime list.
+                if (onProfile != null) {
+                    Spacer(Modifier.width(12.dp))
+                    ProfileButton(onProfile)
                 }
             }
             val heroModifier = Modifier.padding(start = 48.dp, top = 4.dp, bottom = 20.dp).height(170.dp)
