@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -91,6 +93,7 @@ class TvSettingsActivity : AppCompatActivity(), TvScreen {
  */
 private enum class Category(val title: Int) {
     ACCOUNT(R.string.tv_settings_account),
+    ANILIST(R.string.tv_settings_anilist),
     PLAYBACK(R.string.tv_settings_playback),
     PROGRESS(R.string.tv_settings_progress),
     SUBTITLES(R.string.subtitles),
@@ -104,7 +107,10 @@ private enum class Category(val title: Int) {
 @Composable
 private fun TvSettings(onExit: (() -> Unit)?) {
     // On a TV, TV mode is the only interface there is: nothing to choose, nothing to leave for.
-    val categories = Category.entries.filter { it != Category.INTERFACE || onExit != null }
+    // AniList's own settings are the account's, so only with one signed in.
+    val categories = Category.entries.filter {
+        (it != Category.INTERFACE || onExit != null) && (it != Category.ANILIST || Anilist.token != null)
+    }
     var current by remember { mutableStateOf(Category.PLAYBACK) }
     // One requester a category: left from its settings goes back to it, not to whichever category
     // happens to sit level with the row being left.
@@ -166,6 +172,7 @@ private fun TvSettings(onExit: (() -> Unit)?) {
                 ) {
                     when (current) {
                         Category.ACCOUNT -> accountSettings(start)
+                        Category.ANILIST -> anilistSettings(start)
                         Category.PLAYBACK -> playbackSettings(start)
                         Category.PROGRESS -> progressSettings(start)
                         Category.SUBTITLES -> subtitleSettings(start)
@@ -184,7 +191,7 @@ private fun TvSettings(onExit: (() -> Unit)?) {
 private fun androidx.compose.foundation.lazy.LazyListScope.accountSettings(start: Modifier) {
     item { androidx.compose.foundation.layout.Box(start) {
         val name = Anilist.username
-        if (Anilist.token != null && !name.isNullOrBlank()) Info(stringResource(R.string.tv_signed_in_as, name))
+        if (Anilist.token != null && !name.isNullOrBlank()) SignedIn(name)
         else {
             val context = androidx.compose.ui.platform.LocalContext.current
             val signIn = { context.startActivity(android.content.Intent(context, TvSignInActivity::class.java)) }
@@ -274,6 +281,268 @@ private fun HandoffReceive() {
             runCatching { field.requestFocus() }
         }
     }
+}
+
+/**
+ * The AniList account's own settings, as the phone's AniList page has them: each saved to AniList as
+ * it's picked. Title language and 18+ content change what every row shows, so TV mode opens afresh
+ * on them; the rest take effect without.
+ */
+private fun androidx.compose.foundation.lazy.LazyListScope.anilistSettings(start: Modifier) {
+    val m = { Anilist.mutation }
+    item { androidx.compose.foundation.layout.Box(start) {
+        AnilistChoice(
+            R.string.selected_title_language, Anilist.titleLang, listOf("ENGLISH", "ROMAJI", "NATIVE"),
+            Anilist.titleLanguage ?: "ENGLISH", restart = true,
+        ) { m().updateSettings(titleLanguage = it); Anilist.titleLanguage = it }
+    } }
+    item {
+        AnilistChoice(
+            R.string.selected_staff_language, Anilist.staffNameLang, listOf("ROMAJI_WESTERN", "ROMAJI", "NATIVE"),
+            Anilist.staffNameLanguage ?: "ROMAJI_WESTERN",
+        ) { m().updateSettings(staffNameLanguage = it); Anilist.staffNameLanguage = it }
+    }
+    item {
+        AnilistChoice(
+            R.string.selected_score_format, Anilist.scoreFormats,
+            listOf("POINT_100", "POINT_10_DECIMAL", "POINT_10", "POINT_5", "POINT_3"),
+            Anilist.scoreFormat ?: "POINT_100",
+        ) { m().updateSettings(scoreFormat = it); Anilist.scoreFormat = it }
+    }
+    item {
+        AnilistChoice(
+            R.string.selected_row_order, Anilist.rowOrderMap.keys.toList(), Anilist.rowOrderMap.values.toList(),
+            Anilist.rowOrder ?: "score",
+        ) { m().updateSettings(rowOrder = it); Anilist.rowOrder = it }
+    }
+    item {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        AnilistChoice(
+            R.string.selected_time_zone, Anilist.timeZone, Anilist.timeZone.map { Anilist.getApiTimezone(it) },
+            Anilist.timezone ?: "",
+            fallback = Anilist.timezone?.let { Anilist.getDisplayTimezone(it, context) } ?: stringResource(R.string.selected_no_time_zone),
+        ) { m().updateSettings(timezone = it); Anilist.timezone = it }
+    }
+    item {
+        AnilistChoice(
+            R.string.selected_merge_time, Anilist.activityMergeTimeMap.keys.toList(), Anilist.activityMergeTimeMap.values.toList(),
+            Anilist.activityMergeTime ?: 0,
+        ) { m().updateSettings(activityMergeTime = it); Anilist.activityMergeTime = it }
+    }
+    item {
+        AnilistToggle(R.string.airing_notifications, Anilist.airingNotifications) {
+            m().updateSettings(airingNotifications = it); Anilist.airingNotifications = it
+        }
+    }
+    item {
+        AnilistToggle(R.string.display_adult_content, Anilist.adult, restart = true) {
+            m().updateSettings(displayAdultContent = it); Anilist.adult = it
+        }
+    }
+    item {
+        AnilistToggle(R.string.restrict_messages, Anilist.restrictMessagesToFollowing) {
+            m().updateSettings(restrictMessagesToFollowing = it); Anilist.restrictMessagesToFollowing = it
+        }
+    }
+    item { Header(R.string.custom_anime_list) }
+    item { CustomAnimeLists() }
+}
+
+/**
+ * One AniList value of several: [labels] as the phone names them, [values] as AniList stores them.
+ * Saved on the pick, and shown as picked only once that's done. [fallback] shows for a value that
+ * isn't among them.
+ */
+@Composable
+private fun <T> AnilistChoice(
+    title: Int,
+    labels: List<String>,
+    values: List<T>,
+    current: T,
+    restart: Boolean = false,
+    fallback: String? = null,
+    save: suspend (T) -> Unit,
+) {
+    val activity = androidx.compose.ui.platform.LocalContext.current as androidx.fragment.app.FragmentActivity
+    var value by remember { mutableStateOf(current) }
+    val index = values.indexOf(value)
+    val options = if (index >= 0) labels else labels + (fallback ?: value.toString())
+    ChoiceRow(stringResource(title), options, if (index >= 0) index else labels.size) { i ->
+        val picked = values.getOrNull(i) ?: return@ChoiceRow
+        if (picked == value) return@ChoiceRow
+        activity.lifecycleScope.launch {
+            val ok = runCatching { save(picked) }.isSuccess
+            if (ok) {
+                value = picked
+                ani.dantotsu.snackString(activity.getString(R.string.tv_anilist_saved))
+                if (restart) restartTvMode(activity)
+            } else ani.dantotsu.snackString(activity.getString(R.string.list_update_failed))
+        }
+    }
+}
+
+/** An AniList setting that's on or off, saved as it's flipped. */
+@Composable
+private fun AnilistToggle(title: Int, initial: Boolean?, restart: Boolean = false, save: suspend (Boolean) -> Unit) {
+    val activity = androidx.compose.ui.platform.LocalContext.current as androidx.fragment.app.FragmentActivity
+    var on by remember { mutableStateOf(initial == true) }
+    val flip = {
+        val wanted = !on
+        activity.lifecycleScope.launch {
+            val ok = runCatching { save(wanted) }.isSuccess
+            if (ok) {
+                on = wanted
+                if (restart) restartTvMode(activity)
+            } else ani.dantotsu.snackString(activity.getString(R.string.list_update_failed))
+        }
+        Unit
+    }
+    ListItem(
+        selected = false,
+        onClick = flip,
+        headlineContent = { Text(stringResource(title)) },
+        trailingContent = { Switch(checked = on, onCheckedChange = null) },
+        modifier = Modifier.pointerClick(onClick = flip),
+    )
+}
+
+/**
+ * The user's own anime lists: each with a press to delete it (asked first, as titles on it lose it),
+ * and one to add another, named on the TV's keyboard.
+ */
+@Composable
+private fun CustomAnimeLists() {
+    val activity = androidx.compose.ui.platform.LocalContext.current as androidx.fragment.app.FragmentActivity
+    var lists by remember { mutableStateOf(Anilist.animeCustomLists.orEmpty()) }
+    var deleting by remember { mutableStateOf<String?>(null) }
+    var adding by remember { mutableStateOf(false) }
+    androidx.compose.foundation.layout.Column {
+        lists.forEach { name ->
+            ListItem(
+                selected = false,
+                onClick = { deleting = name },
+                headlineContent = { Text(name) },
+                trailingContent = {
+                    androidx.tv.material3.Icon(
+                        androidx.compose.ui.res.painterResource(R.drawable.ic_round_delete_24),
+                        contentDescription = stringResource(R.string.delete_custom_list),
+                    )
+                },
+                modifier = Modifier.pointerClick { deleting = name },
+            )
+        }
+        ListItem(
+            selected = false,
+            onClick = { adding = true },
+            headlineContent = { Text(stringResource(R.string.tv_anilist_add_list)) },
+            leadingContent = {
+                androidx.tv.material3.Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_round_add_24), contentDescription = null)
+            },
+            modifier = Modifier.pointerClick { adding = true },
+        )
+    }
+    deleting?.let { name ->
+        TvConfirm(
+            title = stringResource(R.string.delete_custom_list),
+            message = stringResource(R.string.delete_custom_list_confirm, name),
+            confirm = stringResource(R.string.delete),
+            onConfirm = {
+                deleting = null
+                activity.lifecycleScope.launch {
+                    if (runCatching { Anilist.mutation.deleteCustomList(name, "ANIME") }.getOrDefault(false)) {
+                        lists = lists - name
+                        Anilist.animeCustomLists = lists
+                        ani.dantotsu.snackString(activity.getString(R.string.tv_anilist_saved))
+                    } else ani.dantotsu.snackString(activity.getString(R.string.list_update_failed))
+                }
+            },
+            onDismiss = { deleting = null },
+        )
+    }
+    if (adding) {
+        var name by remember { mutableStateOf("") }
+        val field = remember { FocusRequester() }
+        val add = {
+            adding = false
+            val trimmed = name.trim()
+            if (trimmed.isNotEmpty() && trimmed !in lists) activity.lifecycleScope.launch {
+                val wanted = lists + trimmed
+                if (runCatching { Anilist.mutation.updateCustomLists(wanted, Anilist.mangaCustomLists) }.getOrDefault(false)) {
+                    lists = wanted
+                    Anilist.animeCustomLists = wanted
+                    ani.dantotsu.snackString(activity.getString(R.string.tv_anilist_saved))
+                } else ani.dantotsu.snackString(activity.getString(R.string.list_update_failed))
+            }
+        }
+        TvDialog(onDismissRequest = { adding = false }) {
+            androidx.tv.material3.Surface(shape = CARD_SHAPE, modifier = Modifier.width(460.dp)) {
+                androidx.compose.foundation.layout.Column(Modifier.padding(24.dp)) {
+                    Text(stringResource(R.string.tv_anilist_add_list), style = MaterialTheme.typography.headlineSmall)
+                    TvSearchField(
+                        query = name,
+                        onQuery = { name = it },
+                        hint = stringResource(R.string.tv_anilist_list_name),
+                        onSubmit = add,
+                        compact = true,
+                        modifier = Modifier.padding(top = 14.dp).focusRequester(field),
+                    )
+                    androidx.compose.foundation.layout.Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        androidx.tv.material3.Button(onClick = add, modifier = Modifier.pointerClick(onClick = add)) {
+                            Text(stringResource(R.string.tv_anilist_add))
+                        }
+                        androidx.tv.material3.OutlinedButton(onClick = { adding = false }, modifier = Modifier.pointerClick { adding = false }) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                    }
+                }
+            }
+        }
+        LaunchedEffect(Unit) {
+            androidx.compose.runtime.withFrameNanos { }
+            runCatching { field.requestFocus() }
+        }
+    }
+}
+
+/**
+ * Who's signed in: their avatar and name, and a way to sign out — asked first, as the phone asks,
+ * since everything from the list to the profile goes with it. TV mode then opens afresh, signed out.
+ */
+@OptIn(com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi::class)
+@Composable
+private fun SignedIn(name: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var confirming by remember { mutableStateOf(false) }
+    Row(
+        Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        com.bumptech.glide.integration.compose.GlideImage(
+            model = Anilist.avatar,
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape),
+        )
+        Text(
+            stringResource(R.string.tv_signed_in_as, name),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f).padding(start = 18.dp),
+        )
+        androidx.tv.material3.OutlinedButton(onClick = { confirming = true }, modifier = Modifier.pointerClick { confirming = true }) {
+            Text(stringResource(R.string.logout))
+        }
+    }
+    if (confirming) TvConfirm(
+        title = stringResource(R.string.logout_confirm_title, "AniList"),
+        message = stringResource(R.string.logout_confirm_message, "AniList"),
+        confirm = stringResource(R.string.logout),
+        onConfirm = {
+            confirming = false
+            Anilist.removeSavedToken()
+            restartTvMode(context)
+        },
+        onDismiss = { confirming = false },
+    )
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.playbackSettings(start: Modifier) {

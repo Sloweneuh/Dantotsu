@@ -3878,4 +3878,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_handoff_code_hint">Scan it with your phone\'s camera, or enter the code under \"Receive via sharing code\". It expires in 10 minutes.</string>
     <string name="tv_handoff_dismiss">Dismiss</string>
     <string name="tv_handoff_chapter">Chapter %1$s</string>
+    <!-- TV mode: AniList settings -->
+    <string name="tv_settings_anilist">AniList</string>
+    <string name="tv_anilist_saved">Saved to AniList</string>
+    <string name="tv_anilist_add_list">Add a list</string>
+    <string name="tv_anilist_list_name">List name</string>
+    <string name="tv_anilist_add">Add</string>
 </resources>

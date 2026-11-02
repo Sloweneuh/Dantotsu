@@ -3756,4 +3756,10 @@
     <string name="tv_handoff_code_hint">Scannez-le avec l\'appareil photo de votre téléphone, ou saisissez le code dans « Recevoir via un code de partage ». Il expire au bout de 10 minutes.</string>
     <string name="tv_handoff_dismiss">Ignorer</string>
     <string name="tv_handoff_chapter">Chapitre %1$s</string>
+    <!-- TV mode: AniList settings -->
+    <string name="tv_settings_anilist">AniList</string>
+    <string name="tv_anilist_saved">Enregistré sur AniList</string>
+    <string name="tv_anilist_add_list">Ajouter une liste</string>
+    <string name="tv_anilist_list_name">Nom de la liste</string>
+    <string name="tv_anilist_add">Ajouter</string>
 </resources>
