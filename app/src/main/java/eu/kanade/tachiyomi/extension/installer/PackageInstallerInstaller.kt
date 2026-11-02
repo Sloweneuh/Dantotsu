@@ -1,5 +1,7 @@
 package eu.kanade.tachiyomi.extension.installer
 
+import android.app.Activity
+import android.app.Application
 import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -8,6 +10,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentSanitizer
 import ani.dantotsu.R
@@ -25,6 +30,10 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
 
     private val packageActionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            // A session let go of (see returnCheck) can still report, after the next one started.
+            val sessionId = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
+            if (sessionId != -1 && activeSession != null && sessionId != activeSession?.second) return
+            userAction = null
             when (intent.getIntExtra(
                 PackageInstaller.EXTRA_STATUS,
                 PackageInstaller.STATUS_FAILURE
@@ -61,6 +70,9 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
                         return
                     }
                     userAction.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    activeSession?.let { (_, sessionId) ->
+                        this@PackageInstallerInstaller.userAction = PendingUserAction(sessionId, userAction)
+                    }
                     service.startActivity(userAction)
                 }
 
@@ -85,12 +97,59 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
 
     private var activeSession: Pair<Entry, Int>? = null
 
+    /** The confirmation the system asked for and this put on screen, while its answer is outstanding. */
+    private class PendingUserAction(val sessionId: Int, val intent: Intent, var reprompted: Boolean = false)
+
+    private var userAction: PendingUserAction? = null
+
+    private val handler = Handler(Looper.getMainLooper())
+
+    /**
+     * Back in the app with the confirmation unanswered. Granting "install unknown apps" from the
+     * confirmation sends the user to Settings, and some installers (Android TV's, for one) close
+     * there without ever reporting on the session: nothing then moves the queue, and every later
+     * install waits behind it until the process dies. So the confirmation comes back once, now
+     * that it can go through, and if the user returns from that one without an answer too, the
+     * session is let go.
+     */
+    private val returnCheck = Runnable {
+        val pending = userAction ?: return@Runnable
+        if (pending.sessionId != activeSession?.second) return@Runnable
+        if (!pending.reprompted) {
+            pending.reprompted = true
+            runCatching { service.startActivity(pending.intent) }
+                .onFailure { Logger.log("Couldn't show the install confirmation again: $it") }
+            return@Runnable
+        }
+        Logger.log("Install confirmation for session ${pending.sessionId} never answered, abandoning it")
+        userAction = null
+        runCatching { packageInstaller.abandonSession(pending.sessionId) }
+        continueQueue(InstallStep.Idle)
+    }
+
+    private val returnWatcher = object : Application.ActivityLifecycleCallbacks {
+        override fun onActivityResumed(activity: Activity) {
+            if (userAction == null) return
+            // Long enough for the answer of a confirmation that did go through to arrive first.
+            handler.removeCallbacks(returnCheck)
+            handler.postDelayed(returnCheck, 2000)
+        }
+
+        override fun onActivityPaused(activity: Activity) = handler.removeCallbacks(returnCheck)
+        override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+        override fun onActivityStarted(activity: Activity) {}
+        override fun onActivityStopped(activity: Activity) {}
+        override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+        override fun onActivityDestroyed(activity: Activity) {}
+    }
+
     // Always ready
     override var ready = true
 
     override fun processEntry(entry: Entry) {
         super.processEntry(entry)
         activeSession = null
+        userAction = null
         try {
             val installParams =
                 PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
@@ -147,6 +206,8 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
 
     override fun onDestroy() {
         service.unregisterReceiver(packageActionReceiver)
+        service.application.unregisterActivityLifecycleCallbacks(returnWatcher)
+        handler.removeCallbacks(returnCheck)
         super.onDestroy()
     }
 
@@ -157,6 +218,7 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
             IntentFilter(INSTALL_ACTION),
             ContextCompat.RECEIVER_EXPORTED,
         )
+        service.application.registerActivityLifecycleCallbacks(returnWatcher)
     }
 }
 

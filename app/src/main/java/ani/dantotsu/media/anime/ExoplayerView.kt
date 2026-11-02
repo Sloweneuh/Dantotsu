@@ -1810,7 +1810,8 @@ class ExoplayerView :
     override fun onUserLeaveHint() {
         // A share sheet this player opened is not the user leaving; see suppressPipForChooser.
         if (SystemClock.elapsedRealtime() < suppressPipUntil) return super.onUserLeaveHint()
-        if (pipEnabled && PlayerHomeAction.current() == PlayerHomeAction.PIP) {
+        // A TV's Home goes to its launcher, not to a window over another app: it pauses there.
+        if (pipEnabled && PlayerHomeAction.current() == PlayerHomeAction.PIP && !ani.dantotsu.tv.TvMode.isOn(this)) {
             enterPipMode()
         } else {
             leftByHome = true
