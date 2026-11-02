@@ -48,6 +48,8 @@ import kotlin.math.roundToInt
 import ani.dantotsu.media.anime.PlayerSources
 import ani.dantotsu.util.LanguageHelper
 import androidx.compose.foundation.layout.heightIn
+import com.anggrayudi.storage.file.getAbsolutePath
+import uy.kohesive.injekt.api.get
 
 /**
  * TV mode's own settings: only what matters from the couch — the account, how episodes play, the
@@ -55,6 +57,19 @@ import androidx.compose.foundation.layout.heightIn
  * carries it here.
  */
 class TvSettingsActivity : AppCompatActivity(), TvScreen {
+
+    private val folderPicker = ani.dantotsu.util.LauncherWrapper(
+        this, androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+    )
+
+    /** The system's folder picker, for where downloads go; [onPicked] with whether one was taken. */
+    fun pickDownloadFolder(onPicked: (Boolean) -> Unit) {
+        folderPicker.registerForCallback(onPicked)
+        runCatching { folderPicker.launch() }.onFailure {
+            ani.dantotsu.snackString(getString(R.string.dir_error))
+            onPicked(false)
+        }
+    }
 
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(TvMode.attach(this, newBase))
@@ -81,6 +96,7 @@ private enum class Category(val title: Int) {
     SUBTITLES(R.string.subtitles),
     APPEARANCE(R.string.tv_settings_appearance),
     EXTENSIONS(R.string.tv_extensions),
+    DOWNLOADS(R.string.tv_downloads),
     INTERFACE(R.string.tv_settings_interface),
     ABOUT(R.string.tv_settings_about),
 }
@@ -155,6 +171,7 @@ private fun TvSettings(onExit: (() -> Unit)?) {
                         Category.SUBTITLES -> subtitleSettings(start)
                         Category.APPEARANCE -> appearanceSettings(start)
                         Category.EXTENSIONS -> extensionSettings(start)
+                        Category.DOWNLOADS -> downloadSettings(start)
                         Category.INTERFACE -> if (onExit != null) interfaceSettings(start, onExit)
                         Category.ABOUT -> aboutSettings(start)
                     }
@@ -262,6 +279,156 @@ private fun androidx.compose.foundation.lazy.LazyListScope.extensionSettings(sta
         )
     } }
     item { Toggle(R.string.tv_ext_show_nsfw, PrefName.NSFWExtension) }
+}
+
+/**
+ * The downloads themselves, then the phone's download settings that apply to a TV: where they're
+ * kept, metered networks, the download manager, new episodes downloaded on their own, and
+ * deleting them all. TV mode has no manga, so neither do these.
+ */
+private fun androidx.compose.foundation.lazy.LazyListScope.downloadSettings(start: Modifier) {
+    item { androidx.compose.foundation.layout.Box(start) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val count = remember { uy.kohesive.injekt.Injekt.get<ani.dantotsu.download.DownloadsManager>().animeDownloadedTypes.size }
+        val open = { context.startActivity(android.content.Intent(context, TvDownloadsActivity::class.java)) }
+        ListItem(
+            selected = false,
+            onClick = open,
+            headlineContent = { Text(stringResource(R.string.tv_downloads_manage)) },
+            supportingContent = { Text(androidx.compose.ui.res.pluralStringResource(R.plurals.tv_episode_count, count, count)) },
+            modifier = Modifier.pointerClick(onClick = open),
+        )
+    } }
+    item { DownloadLocationChoice() }
+    item { Toggle(R.string.allow_metered_downloads, PrefName.AllowMeteredDownloads) }
+    item {
+        IntChoice(R.string.download_manager_select, PrefName.DownloadManager, listOf(0, 1, 2), listOf(stringResource(R.string.tv_download_manager_builtin), "1DM", "ADM"))
+    }
+    item { AutoDownloadToggles() }
+    item { PurgeAnimeDownloads() }
+}
+
+/**
+ * Where downloads are kept: this device's own storage for the app, or a folder picked through the
+ * system where there's a picker. A change moves what's there already across.
+ */
+@Composable
+private fun DownloadLocationChoice() {
+    val activity = androidx.compose.ui.platform.LocalContext.current as TvSettingsActivity
+    fun label(): String {
+        val uri = android.net.Uri.parse(PrefManager.getVal<String>(PrefName.DownloadsDir))
+        return when {
+            uri == android.net.Uri.EMPTY || !ani.dantotsu.util.StoragePermissions.hasDirAccess(activity) ->
+                activity.getString(R.string.tv_download_location_none)
+            uri.scheme == "file" -> activity.getString(R.string.tv_download_app_storage)
+            else -> runCatching {
+                ani.dantotsu.download.DownloadsManager.getDownloadsRootDirectory(activity)?.getAbsolutePath(activity)
+            }.getOrNull()?.takeIf { it.isNotBlank() } ?: uri.lastPathSegment.orEmpty()
+        }
+    }
+    var shown by remember { mutableStateOf(label()) }
+    val canPick = remember { ani.dantotsu.util.StoragePermissions.canPickFolder(activity) }
+    var picking by remember { mutableStateOf(false) }
+    ListItem(
+        selected = false,
+        onClick = { picking = true },
+        headlineContent = { Text(stringResource(R.string.tv_download_where)) },
+        supportingContent = { Text(shown, maxLines = 2) },
+        modifier = Modifier.pointerClick { picking = true },
+    )
+    if (picking) {
+        // What was there before the change, to move from once the new place is set.
+        val before = remember { PrefManager.getVal<String>(PrefName.DownloadsDir) }
+        val moved = { ok: Boolean ->
+            val after = PrefManager.getVal<String>(PrefName.DownloadsDir)
+            if (ok && before.isNotEmpty() && after != before) {
+                ani.dantotsu.snackString(activity.getString(R.string.please_wait))
+                uy.kohesive.injekt.Injekt.get<ani.dantotsu.download.DownloadsManager>().moveDownloadsDir(
+                    activity, android.net.Uri.parse(before), android.net.Uri.parse(after),
+                ) { finished, message ->
+                    ani.dantotsu.snackString(if (finished) activity.getString(R.string.success) else message)
+                }
+            }
+            shown = label()
+        }
+        DownloadSetupDialog(
+            setup = DownloadSetup.STORAGE,
+            canPickFolder = canPick,
+            onAppStorage = { picking = false; moved(ani.dantotsu.util.StoragePermissions.useAppStorage(activity)) },
+            onPickFolder = { picking = false; activity.pickDownloadFolder { moved(it) } },
+            onInstallAddon = {},
+            onDismiss = { picking = false },
+        )
+    }
+}
+
+/**
+ * New episodes downloaded on their own, and whether the Planning list counts too (only with it on).
+ * The phone's switch for which kinds — episodes, chapters — has no place here: TV mode is anime
+ * only, so this one switch is both (the settings a TV took from a phone may have had episodes off).
+ */
+@Composable
+private fun AutoDownloadToggles() {
+    var on by remember {
+        mutableStateOf(PrefManager.getVal<Boolean>(PrefName.AutoDownloadEnabled) && PrefManager.getVal<Boolean>(PrefName.AutoDownloadAnime))
+    }
+    androidx.compose.foundation.layout.Column {
+        val flip = {
+            on = !on
+            PrefManager.setVal(PrefName.AutoDownloadEnabled, on)
+            PrefManager.setVal(PrefName.AutoDownloadAnime, on)
+        }
+        ListItem(
+            selected = false,
+            onClick = flip,
+            headlineContent = { Text(stringResource(R.string.auto_download)) },
+            supportingContent = { Text(stringResource(R.string.tv_auto_download_desc)) },
+            trailingContent = { Switch(checked = on, onCheckedChange = null) },
+            modifier = Modifier.pointerClick(onClick = flip),
+        )
+        SubToggle(R.string.auto_download_planning, R.string.auto_download_planning_desc, PrefName.AutoDownloadPlanning, on)
+    }
+}
+
+@Composable
+private fun SubToggle(title: Int, desc: Int, pref: PrefName, enabled: Boolean) {
+    var on by remember { mutableStateOf(PrefManager.getVal<Boolean>(pref)) }
+    val flip = {
+        on = !on
+        PrefManager.setVal(pref, on)
+    }
+    ListItem(
+        selected = false,
+        enabled = enabled,
+        onClick = flip,
+        headlineContent = { Text(stringResource(title)) },
+        supportingContent = { Text(stringResource(desc)) },
+        trailingContent = { Switch(checked = on, onCheckedChange = null, enabled = enabled) },
+        modifier = Modifier.padding(start = 24.dp).pointerClick { if (enabled) flip() },
+    )
+}
+
+/** Every anime download gone at once, asked about first. */
+@Composable
+private fun PurgeAnimeDownloads() {
+    var asking by remember { mutableStateOf(false) }
+    ListItem(
+        selected = false,
+        onClick = { asking = true },
+        headlineContent = { Text(stringResource(R.string.purge_anime_downloads)) },
+        supportingContent = { Text(stringResource(R.string.purge_anime_downloads_desc)) },
+        modifier = Modifier.pointerClick { asking = true },
+    )
+    if (asking) TvConfirm(
+        title = stringResource(R.string.purge_anime_downloads),
+        message = stringResource(R.string.purge_confirm, stringResource(R.string.anime)),
+        confirm = stringResource(R.string.delete),
+        onConfirm = {
+            asking = false
+            uy.kohesive.injekt.Injekt.get<ani.dantotsu.download.DownloadsManager>().purgeDownloads(ani.dantotsu.media.MediaType.ANIME)
+        },
+        onDismiss = { asking = false },
+    )
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.interfaceSettings(start: Modifier, onExit: () -> Unit) {

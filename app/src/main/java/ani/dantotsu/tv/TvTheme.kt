@@ -34,9 +34,10 @@ import com.google.android.material.color.MaterialColors
  * OLED variant and all, carries over) and Poppins, sized for a screen across the room.
  *
  * [fill]: the whole screen, as TV screens are; off for TV content inside something else (a sheet).
+ * [downloads]: the downloads pill, wherever the rate limit one goes but the downloads screen itself.
  */
 @Composable
-fun TvTheme(rateLimit: Boolean = true, fill: Boolean = true, content: @Composable () -> Unit) {
+fun TvTheme(rateLimit: Boolean = true, fill: Boolean = true, downloads: Boolean = rateLimit, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val colors = remember(context) { themeColors(context) }
     MaterialTheme(colorScheme = colors, typography = TvTypography) {
@@ -48,7 +49,15 @@ fun TvTheme(rateLimit: Boolean = true, fill: Boolean = true, content: @Composabl
             androidx.compose.foundation.layout.Box((if (fill) Modifier.fillMaxSize() else Modifier).tvInputTracking()) {
                 content()
                 // Over every TV screen but the player, as the phone's pill keeps off the player too.
-                if (rateLimit) TvRateLimitIndicator(Modifier.align(Alignment.BottomEnd).padding(28.dp))
+                // The two pills share the corner, one above the other when both are up.
+                if (rateLimit || downloads) androidx.compose.foundation.layout.Column(
+                    Modifier.align(Alignment.BottomEnd).padding(28.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+                ) {
+                    if (downloads) TvDownloadIndicator()
+                    if (rateLimit) TvRateLimitIndicator()
+                }
             }
         }
     }

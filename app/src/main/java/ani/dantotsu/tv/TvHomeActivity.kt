@@ -214,6 +214,8 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
     override fun onResume() {
         super.onResume()
         resumeTick.intValue++
+        // New episodes of what's being watched, if switched on, as the phone home does; at most hourly.
+        ani.dantotsu.download.AutoDownloads.runIfDue(this, animeOnly = true)
     }
 
     override fun onDestroy() {

@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,8 @@ import com.bumptech.glide.integration.compose.GlideImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 /**
  * A title on the TV: its banner and details, one button to start or continue, the source the
@@ -99,7 +102,8 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
         // Details arrive from AniList; the episode search starts once, on the full entry.
         model.getMedia().observe(this) { media ->
             if (media == null) return@observe
-            media.selected = model.loadSelected(media)
+            // Opened from the downloads screen: on the downloaded episodes, the first time round.
+            media.selected = model.loadSelected(media, !episodesRequested && intent.getBooleanExtra(EXTRA_DOWNLOADS, false))
             sourceIndex.intValue = media.selected!!.sourceIndex
             if (!episodesRequested) {
                 episodesRequested = true
@@ -116,6 +120,22 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                 val episodes = loaded?.get(sourceIndex.intValue)
                 // The player and its server picker look episodes up on the media itself.
                 LaunchedEffect(episodes, media) { media.anime?.episodes = episodes }
+                // This title's downloads under way, by episode; one leaving means it finished or
+                // stopped, so what's on disk is looked at again.
+                val tracked by ani.dantotsu.download.DownloadTracker.items.collectAsState()
+                val active = tracked.filter { it.type == ani.dantotsu.media.MediaType.ANIME && it.mediaId == media.id }
+                    .associateBy { it.label }
+                LaunchedEffect(active.keys) { downloadsVersion.intValue++ }
+                val version = downloadsVersion.intValue
+                val downloadState: (Episode) -> EpisodeDownload = { episode ->
+                    val item = active[episode.number]
+                    when {
+                        item?.state == ani.dantotsu.download.DownloadState.DOWNLOADING -> EpisodeDownload.Running(item.percent)
+                        item?.state == ani.dantotsu.download.DownloadState.QUEUED -> EpisodeDownload.Queued
+                        version >= 0 && isDownloaded(media, episode) -> EpisodeDownload.Done
+                        else -> EpisodeDownload.None
+                    }
+                }
                 TvMedia(
                     media = media,
                     sourceNames = sourcesVersion.intValue.let { model.watchSources?.names.orEmpty() },
@@ -136,6 +156,11 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                     },
                     episodes = episodes?.values?.sortedBy { it.number.toFloatOrNull() ?: Float.MAX_VALUE },
                     onPlay = { play(media, it) },
+                    downloadState = downloadState,
+                    onDownload = { download(media, listOf(it.number)) },
+                    onDownloadMany = { download(media, it) },
+                    onCancelDownload = { cancelDownload(media, it, active[it.number]) },
+                    onDeleteDownload = { deleteDownload(media, it) },
                     onSource = { changeSource(media, it) },
                     matchedName = matchedName.value,
                     searchSource = ::searchSource,
@@ -144,7 +169,110 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                     onSaveList = { status, progress -> saveList(media, status, progress) },
                     onRemoveFromList = { removeFromList(media) },
                 )
+                setup.value?.let { kind ->
+                    DownloadSetupDialog(
+                        setup = kind,
+                        canPickFolder = remember { ani.dantotsu.util.StoragePermissions.canPickFolder(this) },
+                        onAppStorage = {
+                            setup.value = null
+                            if (ani.dantotsu.util.StoragePermissions.useAppStorage(this)) afterSetup?.invoke()
+                            else ani.dantotsu.snackString(getString(R.string.dir_error))
+                        },
+                        onPickFolder = {
+                            setup.value = null
+                            folderPicker.registerForCallback { ok -> if (ok) afterSetup?.invoke() }
+                            runCatching { folderPicker.launch() }.onFailure { ani.dantotsu.snackString(getString(R.string.dir_error)) }
+                        },
+                        onInstallAddon = { setup.value = null; installDownloadAddon() },
+                        onDismiss = { setup.value = null },
+                    )
+                }
             }
+        }
+    }
+
+    companion object {
+        /** Open on the title's downloaded episodes rather than its usual source. */
+        const val EXTRA_DOWNLOADS = "downloads"
+    }
+
+    private val folderPicker = ani.dantotsu.util.LauncherWrapper(
+        this, androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+    )
+    private val downloads by lazy { Injekt.get<ani.dantotsu.download.DownloadsManager>() }
+
+    /** Bumped when an episode's download may have come or gone, so the cards look at the disk again. */
+    private val downloadsVersion = mutableIntStateOf(0)
+
+    /** What a first download is waiting on, asked in a dialog, and the download to go on with after. */
+    private val setup = mutableStateOf<DownloadSetup?>(null)
+    private var afterSetup: (() -> Unit)? = null
+
+    private fun isDownloaded(media: Media, episode: Episode) =
+        downloads.queryDownload(media.mainName(), episode.number, ani.dantotsu.media.MediaType.ANIME)
+
+    /**
+     * Downloads episodes through the same server sheet as playing one (several: the server picked
+     * for the first, used for the rest, as the phone does), once there's somewhere to
+     * keep it and the add-on to make it (an external download manager, if one is set, needs neither).
+     */
+    private fun download(media: Media, numbers: List<String>) {
+        if (numbers.isEmpty()) return
+        val external = ani.dantotsu.settings.saving.PrefManager.getVal<Int>(ani.dantotsu.settings.saving.PrefName.DownloadManager) != 0
+        if (!external) {
+            afterSetup = { download(media, numbers) }
+            if (!ani.dantotsu.util.StoragePermissions.hasDirAccess(this)) {
+                setup.value = DownloadSetup.STORAGE
+                return
+            }
+            if (!Injekt.get<ani.dantotsu.addons.download.DownloadAddonManager>().isAvailable()) {
+                setup.value = DownloadSetup.ADDON
+                return
+            }
+        }
+        afterSetup = null
+        media.selected?.let { model.saveSelected(media.id, it) }
+        model.onEpisodeClick(
+            media, numbers.first(), supportFragmentManager,
+            isDownload = true, episodes = ArrayList(numbers),
+        )
+    }
+
+    private fun installDownloadAddon() {
+        val manager = Injekt.get<ani.dantotsu.addons.download.DownloadAddonManager>()
+        ani.dantotsu.snackString(getString(R.string.tv_download_addon_installing))
+        lifecycleScope.launch(Dispatchers.IO) {
+            ani.dantotsu.addons.AddonDownloader.update(
+                activity = this@TvMediaActivity,
+                manager,
+                repo = ani.dantotsu.addons.download.DownloadAddonManager.REPO,
+                currentVersion = manager.getVersion() ?: "",
+            )
+        }
+    }
+
+    /** Stops an episode's download, queued or running, and drops what it had written, as the phone does. */
+    private fun cancelDownload(media: Media, episode: Episode, item: ani.dantotsu.download.DownloadItem?) {
+        if (item != null) ani.dantotsu.download.DownloadTracker.cancel(this, item)
+        else sendBroadcast(
+            android.content.Intent(ani.dantotsu.download.anime.AnimeDownloaderService.ACTION_CANCEL_DOWNLOAD).putExtra(
+                ani.dantotsu.download.anime.AnimeDownloaderService.EXTRA_TASK_NAME,
+                ani.dantotsu.download.anime.AnimeDownloaderService.AnimeDownloadTask.getTaskName(media.mainName(), episode.number),
+            )
+        )
+        downloads.removeDownload(
+            ani.dantotsu.download.DownloadedType(media.mainName(), episode.number, ani.dantotsu.media.MediaType.ANIME),
+            toast = false,
+        ) { downloadsVersion.intValue++ }
+    }
+
+    private fun deleteDownload(media: Media, episode: Episode) {
+        downloads.removeDownload(
+            ani.dantotsu.download.DownloadedType(media.mainName(), episode.number, ani.dantotsu.media.MediaType.ANIME),
+        ) {
+            val taskName = ani.dantotsu.download.anime.AnimeDownloaderService.AnimeDownloadTask.getTaskName(media.mainName(), episode.number)
+            ani.dantotsu.settings.saving.PrefManager.getAnimeDownloadPreferences().edit().remove(taskName).apply()
+            downloadsVersion.intValue++
         }
     }
 
@@ -277,6 +405,11 @@ private fun TvMedia(
     onOpenMedia: (Media) -> Unit,
     episodes: List<Episode>?,
     onPlay: (Episode) -> Unit,
+    downloadState: (Episode) -> EpisodeDownload,
+    onDownload: (Episode) -> Unit,
+    onDownloadMany: (List<String>) -> Unit,
+    onCancelDownload: (Episode) -> Unit,
+    onDeleteDownload: (Episode) -> Unit,
     onSource: (Int) -> Unit,
     matchedName: String?,
     searchSource: suspend (String) -> List<ShowResponse>,
@@ -288,6 +421,8 @@ private fun TvMedia(
     var editingList by remember { mutableStateOf(false) }
     var pickingSource by remember { mutableStateOf(false) }
     var fixingTitle by remember { mutableStateOf(false) }
+    var actionsFor by remember { mutableStateOf<Episode?>(null) }
+    var batchDownloading by remember { mutableStateOf(false) }
     val sourceName = sourceNames.getOrNull(sourceIndex)
     val watched = media.userProgress ?: 0
     // The next one to watch: the first past the user's progress, else the first there is.
@@ -394,6 +529,17 @@ private fun TvMedia(
                     ) {
                         Text(stringResource(R.string.tv_wrong_title))
                     }
+                    if (!episodes.isNullOrEmpty() && !isDownloads(sourceIndex)) OutlinedButton(
+                        onClick = { batchDownloading = true },
+                        modifier = Modifier.pointerClick { batchDownloading = true },
+                    ) {
+                        androidx.tv.material3.Icon(
+                            androidx.compose.ui.res.painterResource(R.drawable.ic_download_24),
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp).size(20.dp),
+                        )
+                        Text(stringResource(R.string.tv_download_episodes))
+                    }
                 }
                 if (matchedName != null && sourceName != null) Text(
                     stringResource(R.string.tv_matched_as, sourceName, matchedName),
@@ -408,11 +554,16 @@ private fun TvMedia(
                     episodes == null -> Status(stringResource(R.string.tv_finding_episodes, sourceName.orEmpty()))
                     episodes.isEmpty() -> Status(stringResource(R.string.tv_no_episodes, sourceName.orEmpty()))
                     else -> Column {
-                        Text(
-                            stringResource(R.string.tv_episodes),
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.padding(bottom = 12.dp),
-                        )
+                        Row(Modifier.padding(bottom = 12.dp, end = 48.dp), verticalAlignment = Alignment.Bottom) {
+                            Text(stringResource(R.string.tv_episodes), style = MaterialTheme.typography.titleLarge)
+                            // Holding OK is how a remote gets at the rest, and nothing on screen says so otherwise.
+                            if (!isDownloads(sourceIndex)) Text(
+                                stringResource(R.string.tv_episode_hold_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 16.dp, bottom = 3.dp),
+                            )
+                        }
                         val rowState = rememberLazyListState()
                         // Opens at the next episode rather than at episode 1 of a long series.
                         LaunchedEffect(episodes.size) {
@@ -430,7 +581,10 @@ private fun TvMedia(
                                     episode = episode,
                                     fallbackImage = media.banner ?: media.cover,
                                     watched = (episode.number.toFloatOrNull() ?: Float.MAX_VALUE) <= watched,
+                                    download = downloadState(episode),
                                     onClick = { onPlay(episode) },
+                                    // From the downloads themselves there's nothing to fetch, only to play.
+                                    onLongClick = if (isDownloads(sourceIndex)) null else ({ actionsFor = episode }),
                                 )
                             }
                         } }
@@ -457,6 +611,27 @@ private fun TvMedia(
         onDismiss = { fixingTitle = false },
     )
 
+    actionsFor?.let { episode ->
+        EpisodeActions(
+            episode = episode.number,
+            state = downloadState(episode),
+            onPlay = { actionsFor = null; onPlay(episode) },
+            onDownload = { actionsFor = null; onDownload(episode) },
+            onCancel = { actionsFor = null; onCancelDownload(episode) },
+            onDelete = { actionsFor = null; onDeleteDownload(episode) },
+            onDismiss = { actionsFor = null },
+        )
+    }
+
+    if (batchDownloading && episodes != null) BatchDownloadDialog(
+        episodes = episodes.map { it.number },
+        watched = watched,
+        // Already there or on its way: nothing to start again.
+        skip = { number -> episodes.firstOrNull { it.number == number }?.let { downloadState(it) != EpisodeDownload.None } == true },
+        onDownload = { batchDownloading = false; onDownloadMany(it) },
+        onDismiss = { batchDownloading = false },
+    )
+
     if (pickingSource) SourcePicker(
         names = sourceNames,
         icon = sourceIcon,
@@ -473,14 +648,25 @@ private fun Status(text: String) {
     Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
-/** An episode: its thumbnail (or the series' banner), number and title; dimmed once watched. */
+/**
+ * An episode: its thumbnail (or the series' banner), number and title; dimmed once watched, marked
+ * once downloaded or while downloading. Held, its actions ([onLongClick]).
+ */
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-private fun EpisodeCard(episode: Episode, fallbackImage: String?, watched: Boolean, onClick: () -> Unit) {
+private fun EpisodeCard(
+    episode: Episode,
+    fallbackImage: String?,
+    watched: Boolean,
+    download: EpisodeDownload,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+) {
     Column(Modifier.width(200.dp)) {
         Card(
             onClick = onClick,
-            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).pointerClick(onClick = onClick),
+            onLongClick = onLongClick,
+            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).pointerClick(onLongClick = onLongClick, onClick = onClick),
             shape = CardDefaults.shape(CARD_SHAPE),
             scale = CardDefaults.scale(focusedScale = FOCUSED_SCALE),
             border = CardDefaults.border(
@@ -493,6 +679,7 @@ private fun EpisodeCard(episode: Episode, fallbackImage: String?, watched: Boole
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().alpha(if (watched) 0.45f else 1f),
             )
+            Box(Modifier.fillMaxSize()) { EpisodeDownloadMarks(download) }
         }
         Text(
             stringResource(R.string.tv_episode_n, episode.number),
@@ -557,7 +744,11 @@ private fun SourcePicker(
             }
         }
     }
-    LaunchedEffect(Unit) { runCatching { current.requestFocus() } }
+    // A frame on: the dialog's window isn't there to take focus at first.
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { current.requestFocus() }
+    }
 }
 
 /** A source's icon: its extension's, or the download icon for the downloaded episodes. */

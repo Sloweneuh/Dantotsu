@@ -3480,6 +3480,18 @@
     <!-- TV mode interface: title details -->
     <string name="tv_progress_of">Ép. %1$d / %2$d</string>
     <string name="tv_progress">Ép. %1$d</string>
+    <plurals name="download_not_on_server">
+        <item quantity="one">L\'épisode %2$s n\'est pas sur %1$s : il n\'a pas été téléchargé</item>
+        <item quantity="other">Les épisodes %2$s ne sont pas sur %1$s : ils n\'ont pas été téléchargés</item>
+    </plurals>
+    <plurals name="tv_downloading_count">
+        <item quantity="one">Téléchargement de %1$d épisode</item>
+        <item quantity="other">Téléchargement de %1$d épisodes</item>
+    </plurals>
+    <plurals name="tv_download_n_episodes">
+        <item quantity="one">Télécharger %1$d épisode</item>
+        <item quantity="other">Télécharger %1$d épisodes</item>
+    </plurals>
     <plurals name="tv_episode_count">
         <item quantity="one">%1$d épisode</item>
         <item quantity="other">%1$d épisodes</item>
@@ -3644,4 +3656,39 @@
     <string name="tv_info_next">Prochain épisode</string>
     <string name="tv_info_next_in">Épisode %1$s dans %2$s</string>
     <string name="tv_info_english">Anglais</string>
+    <!-- TV mode: downloads -->
+    <string name="tv_download_episode">Télécharger l\'épisode %1$s</string>
+    <string name="tv_download_starting">Lancement du téléchargement depuis %1$s…</string>
+    <string name="tv_stop_download">Arrêter le téléchargement</string>
+    <string name="tv_delete_download">Supprimer le téléchargement</string>
+    <string name="tv_download_where">Où garder les téléchargements</string>
+    <string name="tv_download_where_desc">Sur cet appareil, les téléchargements ne demandent aucune autorisation mais sont supprimés avec l\'application. Un dossier de votre choix reste après sa désinstallation.</string>
+    <string name="tv_download_app_storage">Sur cet appareil</string>
+    <string name="tv_download_pick_folder">Choisir un dossier</string>
+    <string name="tv_download_addon_desc">Le téléchargement d\'épisodes nécessite le module de téléchargement de Dantotsu. L\'installer maintenant ? Une fois installé, choisissez à nouveau Télécharger.</string>
+    <string name="tv_download_install_addon">Installer le module</string>
+    <string name="tv_download_addon_installing">Installation du module de téléchargement…</string>
+    <string name="tv_downloaded">Téléchargé</string>
+    <string name="tv_download_queued">En attente de téléchargement</string>
+    <string name="tv_episode_hold_hint">Maintenez OK sur un épisode pour le télécharger</string>
+    <!-- TV mode: batch downloads -->
+    <string name="tv_download_episodes">Télécharger des épisodes</string>
+    <string name="tv_download_unwatched">Épisodes pas encore vus</string>
+    <string name="tv_download_all">Tous les épisodes</string>
+    <string name="tv_download_range">Une plage d\'épisodes</string>
+    <string name="tv_download_from">Du</string>
+    <string name="tv_download_to">Au</string>
+    <string name="tv_download_this_range">Télécharger cette plage</string>
+    <!-- TV mode: download management -->
+    <string name="tv_downloads">Téléchargements</string>
+    <string name="tv_downloads_manage">Gérer les téléchargements</string>
+    <string name="tv_downloading">En cours de téléchargement</string>
+    <string name="tv_downloads_empty">Rien de téléchargé pour l\'instant. Maintenez OK sur un épisode, ou utilisez Télécharger des épisodes sur la page d\'un titre.</string>
+    <string name="tv_download_failed">Échec</string>
+    <string name="tv_stop_download_confirm">Arrêter le téléchargement de l\'épisode %1$s ?</string>
+    <string name="tv_downloads_open">Ouvrir sur ses épisodes téléchargés</string>
+    <string name="tv_downloads_delete_all">Supprimer tous ses téléchargements</string>
+    <string name="tv_download_location_none">Pas encore choisi : demandé au premier téléchargement</string>
+    <string name="tv_download_manager_builtin">Intégré</string>
+    <string name="tv_auto_download_desc">À l\'ouverture du mode TV : jusqu\'à 5 nouveaux épisodes par titre en cours, depuis la dernière source utilisée pour celui-ci.</string>
 </resources>

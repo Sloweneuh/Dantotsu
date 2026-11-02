@@ -402,11 +402,15 @@ internal fun Modifier.tvInputTracking(): Modifier = composed {
  *
  * Pointing at one gives it focus, so it shows the focused look and there is only ever one — a hover
  * look of its own sat next to the remote's focus elsewhere, two items lit at once. [hoverFocus] is
- * off for what has nothing to focus (a dialog's backdrop).
+ * off for what has nothing to focus (a dialog's backdrop). [onLongClick] is a held press, as holding
+ * OK is on a remote.
  */
-fun Modifier.pointerClick(hoverFocus: Boolean = true, onClick: () -> Unit): Modifier = composed {
+fun Modifier.pointerClick(hoverFocus: Boolean = true, onLongClick: (() -> Unit)? = null, onClick: () -> Unit): Modifier = composed {
     val current by androidx.compose.runtime.rememberUpdatedState(onClick)
-    val tap = Modifier.pointerInput(Unit) { detectTapGestures { current() } }
+    val long by androidx.compose.runtime.rememberUpdatedState(onLongClick)
+    val tap = Modifier.pointerInput(onLongClick != null) {
+        detectTapGestures(onLongPress = if (onLongClick != null) { _ -> long?.invoke() } else null) { current() }
+    }
     if (!hoverFocus) return@composed tap
     val requester = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
     var focused by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }

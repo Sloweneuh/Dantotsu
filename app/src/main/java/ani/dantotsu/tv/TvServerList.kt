@@ -31,14 +31,25 @@ import ani.dantotsu.R
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.drawscope.rotate
 
+/** Downloading: a kind of track to take along ([title]), each of [options] ticked or not, then [onDone]. */
+class TvTrackChoice(val title: String, val options: List<String>, val onDone: (List<String>) -> Unit)
+
 /**
  * The server sheet for a remote: its title, then either the remembered server being picked on its
  * own (with Cancel), or a spinner until the first streams arrive and a row each as they do — the
  * first taking focus as soon as there is one — with the "make default" switch beneath. As tall as
  * what it holds: the phone sheet ran the full height of the screen, mostly empty while loading.
+ *
+ * Downloading ([downloading]), the same list without the switch, then the [tracks] to take along,
+ * then the server the download is [starting] on.
  */
 @Composable
 fun <T> TvServerSheet(
+    downloading: Boolean = false,
+    episode: String? = null,
+    episodeCount: Int = 1,
+    tracks: TvTrackChoice? = null,
+    starting: String? = null,
     rows: List<T>,
     loading: Boolean,
     autoServer: String?,
@@ -59,10 +70,32 @@ fun <T> TvServerSheet(
     }
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)) {
         Text(
-            stringResource(if (autoServer != null) R.string.auto_select_server else R.string.server_selector),
+            when {
+                downloading && episodeCount > 1 ->
+                    androidx.compose.ui.res.pluralStringResource(R.plurals.tv_download_n_episodes, episodeCount, episodeCount)
+                downloading && episode != null -> stringResource(R.string.tv_download_episode, episode)
+                autoServer != null -> stringResource(R.string.auto_select_server)
+                else -> stringResource(R.string.server_selector)
+            },
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(start = 12.dp, bottom = 12.dp),
         )
+        if (starting != null) {
+            Row(Modifier.padding(start = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Spinner()
+                Text(
+                    stringResource(R.string.tv_download_starting, starting),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(start = 16.dp),
+                )
+            }
+            return@Column
+        }
+        if (tracks != null) {
+            // Keyed on the choice, so the second kind starts with nothing ticked and the focus back on top.
+            androidx.compose.runtime.key(tracks) { TrackChecklist(tracks) }
+            return@Column
+        }
         if (autoServer != null) {
             Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Spinner()
@@ -95,6 +128,7 @@ fun <T> TvServerSheet(
                 }
             }
         }
+        if (downloading) return@Column
         val flip = { onMakeDefault(!makeDefault) }
         ListItem(
             selected = false,
@@ -104,6 +138,45 @@ fun <T> TvServerSheet(
             trailingContent = { Switch(checked = makeDefault, onCheckedChange = null) },
             modifier = Modifier.padding(top = 8.dp).pointerClick(onClick = flip),
         )
+    }
+}
+
+/** One kind of track, a switch row each, and Download (with those ticked) or Skip (with none). */
+@Composable
+private fun TrackChecklist(choice: TvTrackChoice) {
+    val picked = remember { androidx.compose.runtime.mutableStateListOf<String>() }
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { first.requestFocus() }
+    }
+    Text(
+        choice.title,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 12.dp, bottom = 8.dp),
+    )
+    FocusRestingAt(24.dp) {
+        LazyColumn(Modifier.heightIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            itemsIndexed(choice.options) { i, option ->
+                val flip = { if (option in picked) picked.remove(option) else picked.add(option); Unit }
+                ListItem(
+                    selected = false,
+                    onClick = flip,
+                    headlineContent = { Text(option) },
+                    trailingContent = { Switch(checked = option in picked, onCheckedChange = null) },
+                    modifier = (if (i == 0) Modifier.focusRequester(first) else Modifier).pointerClick(onClick = flip),
+                )
+            }
+        }
+    }
+    Row(Modifier.padding(start = 12.dp, top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        val download = { choice.onDone(picked.toList()) }
+        val skip = { choice.onDone(emptyList()) }
+        Button(onClick = download, modifier = Modifier.pointerClick(onClick = download)) { Text(stringResource(R.string.download)) }
+        androidx.tv.material3.OutlinedButton(onClick = skip, modifier = Modifier.pointerClick(onClick = skip)) {
+            Text(stringResource(R.string.skip))
+        }
     }
 }
 

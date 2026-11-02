@@ -94,6 +94,10 @@
              Build props are spoofed (community/Magisk builds), to hide Nearby/LAN there. -->
         <package android:name="com.microsoft.windows.userexperiencehost" />
         <package android:name="com.microsoft.windows.systemapp" />
+        <!-- TV mode offers the folder picker for downloads only where there is one. -->
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT_TREE" />
+        </intent>
     </queries>
 
     <application
@@ -746,6 +750,12 @@
             android:exported="false" />
         <activity
             android:name=".tv.TvSettingsActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvDownloadsActivity"
             android:theme="@style/Theme.Dantotsu.Tv"
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"

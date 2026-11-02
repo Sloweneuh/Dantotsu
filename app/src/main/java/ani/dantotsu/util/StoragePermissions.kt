@@ -43,15 +43,14 @@ class StoragePermissions {
             }
         }
 
-        fun hasDirAccess(context: Context, path: String): Boolean {
-            val uri = pathToUri(path)
-            return context.contentResolver.persistedUriPermissions.any {
-                it.uri == uri && it.isReadPermission && it.isWritePermission
-            }
-
-        }
+        fun hasDirAccess(context: Context, path: String): Boolean = hasDirAccess(context, pathToUri(path))
 
         fun hasDirAccess(context: Context, uri: Uri): Boolean {
+            // One of the app's own folders (see useAppStorage): no grant to hold, just a folder to write.
+            if (uri.scheme == "file") {
+                val dir = java.io.File(uri.path ?: return false)
+                return (dir.isDirectory || dir.mkdirs()) && dir.canWrite()
+            }
             return context.contentResolver.persistedUriPermissions.any {
                 it.uri == uri && it.isReadPermission && it.isWritePermission
             }
@@ -83,6 +82,24 @@ class StoragePermissions {
                 }
             }.show()
         }
+
+        /**
+         * Keeps downloads in the app's own storage on this device, rather than a folder picked
+         * through the system — which many TVs have no picker for. They need no permission there,
+         * but go with the app when it's uninstalled.
+         */
+        fun useAppStorage(context: Context): Boolean {
+            val dir = java.io.File(context.getExternalFilesDir(null) ?: context.filesDir, "Dantotsu")
+            if (!dir.isDirectory && !dir.mkdirs()) return false
+            PrefManager.setVal(PrefName.DownloadsDir, Uri.fromFile(dir).toString())
+            PrefManager.setVal(PrefName.DownloadsDirNested, false)
+            DownloadsManager.addNoMedia(context)
+            return true
+        }
+
+        /** Whether this device can show the system's folder picker at all; many TVs can't. */
+        fun canPickFolder(context: Context): Boolean =
+            Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).resolveActivity(context.packageManager) != null
 
         private fun pathToUri(path: String): Uri {
             return Uri.parse(path)

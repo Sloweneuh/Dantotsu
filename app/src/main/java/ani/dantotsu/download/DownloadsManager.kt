@@ -180,10 +180,8 @@ class DownloadsManager(private val context: Context) {
         }
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val oldRoot =
-                    DocumentFile.fromTreeUri(context, oldUri) ?: throw Exception("Old base is null")
-                val newRoot =
-                    DocumentFile.fromTreeUri(context, newUri) ?: throw Exception("New base is null")
+                val oldRoot = rootOf(context, oldUri) ?: throw Exception("Old base is null")
+                val newRoot = rootOf(context, newUri) ?: throw Exception("New base is null")
 
                 // Only the folders the app itself manages are moved, never the whole picked
                 // directory — the old or new root may be a shared folder (e.g. Downloads) with
@@ -414,12 +412,25 @@ class DownloadsManager(private val context: Context) {
         private fun getBaseDirectory(context: Context): DocumentFile? {
             val baseDirectory = Uri.parse(PrefManager.getVal<String>(PrefName.DownloadsDir))
             if (baseDirectory == Uri.EMPTY) return null
-            val root = DocumentFile.fromTreeUri(context, baseDirectory) ?: return null
+            val root = rootOf(context, baseDirectory) ?: return null
             return if (PrefManager.getVal<Boolean>(PrefName.DownloadsDirNested)) {
                 root.findOrCreateFolder(BASE_LOCATION, false)
             } else {
                 root
             }
+        }
+
+        /**
+         * The folder a downloads location names: a folder picked through the system's picker, or
+         * (a file: location) one of the app's own — what TV mode uses where there's no picker.
+         */
+        fun rootOf(context: Context, uri: Uri): DocumentFile? {
+            if (uri.scheme == "file") {
+                val dir = java.io.File(uri.path ?: return null)
+                if (!dir.isDirectory && !dir.mkdirs()) return null
+                return DocumentFile.fromFile(dir)
+            }
+            return DocumentFile.fromTreeUri(context, uri)
         }
 
         private val lock = Any()

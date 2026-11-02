@@ -3604,6 +3604,18 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <!-- TV mode interface: title details -->
     <string name="tv_progress_of">Ep %1$d / %2$d</string>
     <string name="tv_progress">Ep %1$d</string>
+    <plurals name="download_not_on_server">
+        <item quantity="one">Episode %2$s isn\'t on %1$s, so it wasn\'t downloaded</item>
+        <item quantity="other">Episodes %2$s aren\'t on %1$s, so they weren\'t downloaded</item>
+    </plurals>
+    <plurals name="tv_downloading_count">
+        <item quantity="one">Downloading %1$d episode</item>
+        <item quantity="other">Downloading %1$d episodes</item>
+    </plurals>
+    <plurals name="tv_download_n_episodes">
+        <item quantity="one">Download %1$d episode</item>
+        <item quantity="other">Download %1$d episodes</item>
+    </plurals>
     <plurals name="tv_episode_count">
         <item quantity="one">%1$d episode</item>
         <item quantity="other">%1$d episodes</item>
@@ -3766,4 +3778,39 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_info_next">Next episode</string>
     <string name="tv_info_next_in">Episode %1$s in %2$s</string>
     <string name="tv_info_english">English</string>
+    <!-- TV mode: downloads -->
+    <string name="tv_download_episode">Download episode %1$s</string>
+    <string name="tv_download_starting">Starting the download from %1$s…</string>
+    <string name="tv_stop_download">Stop downloading</string>
+    <string name="tv_delete_download">Delete the download</string>
+    <string name="tv_download_where">Where to keep downloads</string>
+    <string name="tv_download_where_desc">On this device, downloads need no permission but are deleted along with the app. A folder you choose stays when the app goes.</string>
+    <string name="tv_download_app_storage">On this device</string>
+    <string name="tv_download_pick_folder">Choose a folder</string>
+    <string name="tv_download_addon_desc">Downloading episodes needs Dantotsu\'s download add-on. Install it now? Once it\'s installed, choose Download again.</string>
+    <string name="tv_download_install_addon">Install the add-on</string>
+    <string name="tv_download_addon_installing">Installing the download add-on…</string>
+    <string name="tv_downloaded">Downloaded</string>
+    <string name="tv_download_queued">Waiting to download</string>
+    <string name="tv_episode_hold_hint">Hold OK on an episode to download it</string>
+    <!-- TV mode: batch downloads -->
+    <string name="tv_download_episodes">Download episodes</string>
+    <string name="tv_download_unwatched">Episodes not watched yet</string>
+    <string name="tv_download_all">All episodes</string>
+    <string name="tv_download_range">A range of episodes</string>
+    <string name="tv_download_from">From</string>
+    <string name="tv_download_to">To</string>
+    <string name="tv_download_this_range">Download this range</string>
+    <!-- TV mode: download management -->
+    <string name="tv_downloads">Downloads</string>
+    <string name="tv_downloads_manage">Manage downloads</string>
+    <string name="tv_downloading">Downloading</string>
+    <string name="tv_downloads_empty">Nothing downloaded yet. Hold OK on an episode, or use Download episodes on a title\'s page.</string>
+    <string name="tv_download_failed">Failed</string>
+    <string name="tv_stop_download_confirm">Stop downloading episode %1$s?</string>
+    <string name="tv_downloads_open">Open on its downloaded episodes</string>
+    <string name="tv_downloads_delete_all">Delete all its downloads</string>
+    <string name="tv_download_location_none">Not chosen yet: asked on the first download</string>
+    <string name="tv_download_manager_builtin">Built-in</string>
+    <string name="tv_auto_download_desc">When TV mode opens: up to 5 new episodes per title you\'re watching, from the source you last used for it.</string>
 </resources>

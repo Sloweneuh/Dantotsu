@@ -62,12 +62,12 @@ object AutoDownloads {
     /**
      * Runs if switched on, signed in, online — on Wi-Fi unless metered downloads are allowed —
      * with download storage chosen, and not run within [MIN_INTERVAL_MS]. Quiet unless it queues
-     * something.
+     * something. [animeOnly] for TV mode, which has no manga to read them in.
      */
-    fun runIfDue(activity: Activity) {
+    fun runIfDue(activity: Activity, animeOnly: Boolean = false) {
         if (!PrefManager.getVal<Boolean>(PrefName.AutoDownloadEnabled) || running) return
         val anime = PrefManager.getVal<Boolean>(PrefName.AutoDownloadAnime)
-        val manga = PrefManager.getVal<Boolean>(PrefName.AutoDownloadManga)
+        val manga = !animeOnly && PrefManager.getVal<Boolean>(PrefName.AutoDownloadManga)
         if (!anime && !manga) return
         // Read from storage as the background checks do: the session may not be restored yet.
         val userId = Anilist.userid

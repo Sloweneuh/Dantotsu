@@ -101,8 +101,8 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
     /**
      * TV mode's list of servers: the same streams the phone list shows, as they arrive, drawn as rows
      * a remote can move through (see [TvServerList]). The phone list's rows are small and, arriving
-     * after the sheet had tried to focus its list, left a remote nothing to press. Downloads keep the
-     * phone list — TV mode doesn't download yet.
+     * after the sheet had tried to focus its list, left a remote nothing to press. Downloading picks
+     * from the same list, then asks for subtitles and audio tracks in the sheet ([tvTracks]).
      */
     private val tvRows = androidx.compose.runtime.mutableStateListOf<Pair<VideoExtractor, Int>>()
     private var tvLoading by androidx.compose.runtime.mutableStateOf(true)
@@ -110,8 +110,12 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
     private var tvAuto by androidx.compose.runtime.mutableStateOf<String?>(null)
     private var tvCancelAuto: (() -> Unit)? = null
     private var tvMakeDefault by androidx.compose.runtime.mutableStateOf(false)
+    /** Downloading: the tracks to take along, asked one kind at a time, then the server it starts on. */
+    private var tvTracks by androidx.compose.runtime.mutableStateOf<ani.dantotsu.tv.TvTrackChoice?>(null)
+    private var tvStarting by androidx.compose.runtime.mutableStateOf<String?>(null)
+    private var tvDownloadHandler: EpisodeDownloadHandler? = null
     private val tvList: Boolean
-        get() = isDownloadMenu != true && context?.let { ani.dantotsu.tv.TvMode.isOn(it) } == true
+        get() = context?.let { ani.dantotsu.tv.TvMode.isOn(it) } == true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -199,6 +203,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                     binding.selectorRecyclerView.adapter = null
                     binding.selectorProgressBar.visibility = View.VISIBLE
                     tvLoading = true
+                    tvDownloadHandler = onEpisodeDownloadHandler
                     makeDefault = PrefManager.getVal(PrefName.MakeDefault)
                     tvMakeDefault = makeDefault
                     binding.selectorMakeDefault.isChecked = makeDefault
@@ -248,20 +253,20 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                     val ep = media?.anime?.episodes?.get(media?.anime?.selectedEpisode)!!
                     episode = ep
 
-                    var success = false
-                    scope.launch(Dispatchers.IO) {
-                        success = model.loadEpisodeSingleVideo(
+                    val success = withContext(Dispatchers.IO) {
+                        model.loadEpisodeSingleVideo(
                             ep,
                             media!!.selected!!,
                             selectedServerName = selectedServerName
                         )
-                    }.join()
+                    }
                     Log.d("AnimeDownloader", "Loading Episode Server State: $success")
                     return success
                 }
+                /** Whether the episode's download started: false when [selectedServerName] doesn't have it. */
                 fun startEpisodeDownload(episodeName: String, selectedServerName: String,
                                          selectedSubtitles: MutableList<String>,
-                                         selectedAudioTracks: MutableList<String>){
+                                         selectedAudioTracks: MutableList<String>): Boolean {
                     fun downloadUsingSingleServer(extractor: VideoExtractor): Boolean {
                         val episode =
                             media!!.anime!!.episodes!![media!!.anime!!.selectedEpisode!!]!!
@@ -271,7 +276,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                             episode.selectedVideo
                         if ((PrefManager.getVal(PrefName.DownloadManager) as Int) != 0) {
                             download(
-                                requireActivity(),
+                                currActivity() ?: requireActivity(),
                                 media!!.anime!!.episodes!![media!!.anime!!.selectedEpisode!!]!!,
                                 media!!.userPreferredName
                             )
@@ -401,15 +406,19 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
 
                     Log.d("AnimeDownloader", "Downloading Episode: ${ep.number}, server: $selectedServerName")
 
-                    if (ep.extractors?.find { it.server.name == selectedServerName } == null)
-                        fail(R.string.auto_select_server_error)
-                    else {
-                        media!!.anime?.episodes?.set(media!!.anime?.selectedEpisode!!, ep)
-                        val selectedExtractor =
-                            ep.extractors?.find { it.server.name == selectedServerName }
-                        if(!downloadUsingSingleServer(selectedExtractor!!))
-                            fail(R.string.auto_select_server_error)
+                    val selectedExtractor = ep.extractors?.find { it.server.name == selectedServerName }
+                        ?.takeIf { it.videos.isNotEmpty() } ?: return false
+                    media!!.anime?.episodes?.set(media!!.anime?.selectedEpisode!!, ep)
+                    // The rest of a batch in the quality picked for the first, where they have it:
+                    // each kept its own choice, often another quality than the one asked for.
+                    val first = episodes?.firstOrNull()
+                    if (first != null && episodeName != first) {
+                        val firstEp = media!!.anime?.episodes?.get(first)
+                        val wanted = firstEp?.extractors?.find { it.server.name == selectedServerName }
+                            ?.videos?.getOrNull(firstEp.selectedVideo)?.quality
+                        ep.selectedVideo = selectedExtractor.videos.indexOfFirst { it.quality == wanted }.coerceAtLeast(0)
                     }
+                    return downloadUsingSingleServer(selectedExtractor)
                 }
 
                 Log.d("AnimeDownloader", "Selected Server for watching: $selected")
@@ -503,25 +512,33 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                             binding.selectorAutoText.text =
                                 "Starting download using server:\n$selectedServerName"
                             binding.selectorCancel.visibility = View.GONE
+                            tvStarting = selectedServerName
 
-                            scope.launch(Dispatchers.IO) {
-                                val serverSelectionScope = CoroutineScope(Dispatchers.IO)
-                                val serverSelectionTasks = mutableListOf<Deferred<Unit>>()
-                                for (episodeName in episodes!!.drop(1)) {
-                                    serverSelectionTasks.add(serverSelectionScope.async {
-                                        if(!loadEpisodeSingleServer(episodeName, selectedServerName)){
-                                            Log.d("AnimeDownloader", "Error loading server $selectedServerName for episode $episodeName")
-                                            fail(R.string.auto_select_server_error)
-                                        }
-                                    })
-                                }
-                                serverSelectionTasks.awaitAll()
-
-                                for(episodeName in episodes!!){
-                                    startEpisodeDownload(episodeName, selectedServerName, selectedSubtitles, selectedAudioTracks)
-                                }
-                                tryWith{
-                                    dismiss()
+                            // On the activity's scope, not the sheet's: an episode the server doesn't
+                            // have used to close the sheet, which cancelled the batch with it — the
+                            // episodes it did have never started either. Those it lacks (the latest,
+                            // not dubbed yet, say) are left out now and named once at the end.
+                            val host = requireActivity()
+                            host.lifecycleScope.launch(Dispatchers.IO) {
+                                val missing = episodes!!.drop(1).map { episodeName ->
+                                    async { episodeName to loadEpisodeSingleServer(episodeName, selectedServerName) }
+                                }.awaitAll().filterNot { it.second }.map { it.first }.toMutableList()
+                                withContext(Dispatchers.Main) {
+                                    for (episodeName in episodes!!) {
+                                        if (episodeName in missing) continue
+                                        if (!startEpisodeDownload(episodeName, selectedServerName, selectedSubtitles, selectedAudioTracks))
+                                            missing += episodeName
+                                    }
+                                    if (missing.isNotEmpty()) {
+                                        Log.d("AnimeDownloader", "Not on $selectedServerName: $missing")
+                                        snackString(
+                                            host.resources.getQuantityString(
+                                                R.plurals.download_not_on_server, missing.size,
+                                                selectedServerName, missing.joinToString(", "),
+                                            )
+                                        )
+                                    }
+                                    tryWith { dismiss() }
                                 }
                             }
                         })
@@ -757,6 +774,49 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
     }
 
     /**
+     * Downloading from TV mode's list: the stream picked, then — through the sheet rather than the
+     * phone's dialogs — which subtitles and audio tracks to take along, if it has any, before
+     * [tvDownloadHandler] starts it as the phone's download button does.
+     */
+    private fun tvPickDownload(extractor: VideoExtractor, position: Int) {
+        val episode = media?.anime?.selectedEpisode?.let { media?.anime?.episodes?.get(it) } ?: return
+        episode.selectedExtractor = extractor.server.name
+        episode.selectedVideo = position
+        if ((PrefManager.getVal(PrefName.DownloadManager) as Int) != 0) {
+            download(requireActivity(), episode, media!!.userPreferredName)
+            dismiss()
+            return
+        }
+        // The media page offers to install it first; this is the fallback if it went meanwhile.
+        if (!Injekt.get<DownloadAddonManager>().isAvailable()) {
+            snackString(getString(R.string.download_addon_not_installed))
+            dismiss()
+            return
+        }
+        val url = extractor.videos.getOrNull(position)?.file?.url.orEmpty()
+        if ((url.startsWith("magnet:") || url.endsWith(".torrent")) && !Injekt.get<TorrentAddonManager>().isAvailable()) {
+            toast(R.string.torrent_addon_not_available)
+            return
+        }
+        val handler = tvDownloadHandler ?: return
+        val server = extractor.server.name
+        fun audio(subtitles: List<String>) {
+            val tracks = extractor.audioTracks.map { it.lang }.distinct()
+            if (tracks.isEmpty()) handler.onFinishingUserSelection(server, subtitles.toMutableList(), mutableListOf())
+            else tvTracks = ani.dantotsu.tv.TvTrackChoice(getString(R.string.download_audio_tracks), tracks) {
+                tvTracks = null
+                handler.onFinishingUserSelection(server, subtitles.toMutableList(), it.toMutableList())
+            }
+        }
+        val subtitles = extractor.subtitles.map { it.language }.distinct()
+        if (subtitles.isEmpty()) audio(emptyList())
+        else tvTracks = ani.dantotsu.tv.TvTrackChoice(getString(R.string.download_subtitle), subtitles) {
+            tvTracks = null
+            audio(it)
+        }
+    }
+
+    /**
      * TV mode's sheet (see [onCreateView]): the servers as [tvRows] arrive, a spinner until they have,
      * the default switch, or the remembered server being picked on its own ([ani.dantotsu.tv.TvServerSheet]).
      */
@@ -767,6 +827,11 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
         setContent {
             ani.dantotsu.tv.TvTheme(rateLimit = false, fill = false) {
                 ani.dantotsu.tv.TvServerSheet(
+                    downloading = isDownloadMenu == true,
+                    episode = episodes?.firstOrNull(),
+                    episodeCount = episodes?.size ?: 1,
+                    tracks = tvTracks,
+                    starting = tvStarting,
                     rows = tvRows,
                     loading = tvLoading,
                     autoServer = tvAuto,
@@ -779,7 +844,9 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                     },
                     name = { it.first.server.name },
                     details = { (extractor, i) -> videoDetails(extractor, extractor.videos[i]) },
-                    onPick = { (extractor, i) -> pickVideo(extractor, i) },
+                    onPick = { (extractor, i) ->
+                        if (isDownloadMenu == true) tvPickDownload(extractor, i) else pickVideo(extractor, i)
+                    },
                 )
             }
         }
