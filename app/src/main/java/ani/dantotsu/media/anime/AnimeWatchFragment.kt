@@ -972,6 +972,7 @@ class AnimeWatchFragment : Fragment() {
             onDelete = ::deleteSelectedDownloads,
             onSelectAll = { episodeAdapter.selectAll() },
             onClear = { episodeAdapter.clearSelection() },
+            onCast = ::castSelected,
         )
         binding.chapterSelectionRead.contentDescription = getString(R.string.mark_as_watched)
         binding.chapterSelectionRead.tooltipText = getString(R.string.mark_as_watched)
@@ -981,6 +982,17 @@ class AnimeWatchFragment : Fragment() {
                 canDelete = episodeAdapter.selection.keys.any { episodeAdapter.hasDownload(it) },
             )
         }
+    }
+
+    /**
+     * Plays the selected episode as a tap would, then has the player open the cast picker as soon
+     * as it's ready (or carry on casting where a session is already up).
+     */
+    private fun castSelected() {
+        val episode = episodeAdapter.selectedEpisodes().singleOrNull() ?: return
+        episodeAdapter.clearSelection()
+        PlayerCast.castOnOpen = true
+        onEpisodeClick(episode.number)
     }
 
     private fun markSelectedWatched() {

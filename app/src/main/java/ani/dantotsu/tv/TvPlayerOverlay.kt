@@ -75,7 +75,12 @@ class TvPlayerController(private val actions: Actions) {
         fun skip()
         fun playNext()
         fun cancelNext()
+        fun cast()
+        fun handoff()
     }
+
+    /** "Continue on another device" while its dialog is up, with where this has got to. */
+    var handoff by mutableStateOf<ani.dantotsu.connections.handoff.HandoffPayload?>(null)
 
     /** "Skip opening" while there's a segment to skip; null otherwise. */
     var skipLabel by mutableStateOf<String?>(null)
@@ -159,6 +164,7 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
     }
 
     controller.choice?.let { choice -> ChoiceDialog(choice) { controller.choice = null } }
+    controller.handoff?.let { payload -> TvHandoffSendDialog(payload) { controller.handoff = null } }
 
     // Skip and up next stay up whether or not the controls are, above them when they are: OK
     // presses them while the controls are hidden (see ExoplayerView.remoteKey), a mouse clicks them.
@@ -250,6 +256,12 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                     }
                     ControlButton(R.drawable.ic_round_dns_24, R.string.tv_server) {
                         controller.act { server() }
+                    }
+                    ControlButton(R.drawable.ic_round_cast_24, R.string.tv_cast) {
+                        controller.act { cast() }
+                    }
+                    ControlButton(R.drawable.ic_round_devices_24, R.string.continue_on_another_device) {
+                        controller.act { handoff() }
                     }
                 }
             }

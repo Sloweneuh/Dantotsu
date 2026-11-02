@@ -40,9 +40,15 @@ object TvMode {
         return base?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) }
     }
 
+    /**
+     * Asked of the app's context, not the one given: an activity's base context, as it's being
+     * attached, hands out a UiModeManager bound to the activity itself, which has no context of
+     * its own yet; on Android 17 reading the mode then looks up its display and crashed the player
+     * as it opened (it asks in attachBaseContext).
+     */
     fun isTvDevice(context: Context): Boolean =
-        (context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager)?.currentModeType ==
-            Configuration.UI_MODE_TYPE_TELEVISION
+        ((context.applicationContext ?: context).getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager)
+            ?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
 
     /**
      * Whether the app should open into TV mode on this device. Always, on a TV: the touch interface

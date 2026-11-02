@@ -45,7 +45,7 @@ class PlayerBottomBar(playerView: PlayerView) {
         item(R.id.exo_rotate, R.string.player_rotate, R.drawable.ic_round_screen_rotation_alt_24),
         item(R.id.exo_clip, R.string.clip, R.drawable.ic_round_movie_edit_24),
         item(R.id.exo_screenshot, R.string.screenshot, R.drawable.ic_round_screenshot_frame_2_24),
-        item(R.id.exo_handoff, R.string.continue_on_another_device, R.drawable.ic_round_cast_24),
+        item(R.id.exo_handoff, R.string.continue_on_another_device, R.drawable.ic_round_devices_24),
     )
 
     private var overflow: List<Item> = emptyList()

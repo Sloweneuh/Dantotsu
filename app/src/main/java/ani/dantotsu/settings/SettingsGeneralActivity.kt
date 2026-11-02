@@ -218,7 +218,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             type = 2,
                             name = getString(R.string.handoff_discovery_setting),
                             desc = getString(R.string.handoff_discovery_setting_desc),
-                            icon = R.drawable.ic_round_cast_24,
+                            icon = R.drawable.ic_round_devices_24,
                             isChecked = PrefManager.getVal(PrefName.HandoffDiscoveryEnabled),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.HandoffDiscoveryEnabled, isChecked)

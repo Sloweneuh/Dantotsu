@@ -849,8 +849,13 @@ class ExoplayerView :
             PrefManager.setCustomVal("${media.id}_fullscreenInt", isFullscreen)
         }
 
-        // Cast
-        if (PrefManager.getVal(PrefName.Cast)) {
+        // Cast. TV mode's overlay always has its button (it presses this one), whatever the
+        // phone's setting for showing it; so does an episode opened to be cast.
+        if (PlayerCast.castOnOpen) {
+            PlayerCast.castOnOpen = false
+            castWhenReady = true
+        }
+        if (PrefManager.getVal(PrefName.Cast) || ani.dantotsu.tv.TvMode.isOn(this) || castWhenReady) {
             playerView.findViewById<CustomCastButton>(R.id.exo_cast).also { button ->
                 button.visibility = View.VISIBLE
                 cast.setUpButton(button) { castExternally() }
@@ -869,33 +874,7 @@ class ExoplayerView :
         playerView.findViewById<ImageButton>(R.id.exo_handoff).apply {
             isVisible = media.id >= 0
             setOnClickListener {
-                val episode = media.anime?.selectedEpisode
-                PrefManager.setCustomVal("${media.id}_$episode", exoPlayer.currentPosition)
-                lifecycleScope.launch {
-                    // The matched extension entry rides along so the receiver loads the episode
-                    // list directly instead of re-searching the source by title.
-                    val sourceMedia = withContext(Dispatchers.IO) {
-                        runCatching {
-                            model.watchSources?.get(media.selected!!.sourceIndex)
-                                ?.loadSavedShowResponse(media.id)
-                        }.getOrNull()
-                    }
-                    HandoffBottomSheet.send(
-                        HandoffPayload(
-                            mediaId = media.id,
-                            isMAL = false,
-                            isAnime = true,
-                            mediaType = "ANIME",
-                            title = media.userPreferredName,
-                            cover = media.cover,
-                            sourceName = model.watchSources?.names?.getOrNull(media.selected!!.sourceIndex),
-                            number = episode,
-                            positionMs = exoPlayer.currentPosition,
-                            server = media.anime?.episodes?.get(episode)?.selectedExtractor,
-                            sourceMedia = HandoffPayload.encodeShowResponse(sourceMedia),
-                        )
-                    ).show(supportFragmentManager, "handoff")
-                }
+                withHandoffPayload { HandoffBottomSheet.send(it).show(supportFragmentManager, "handoff") }
             }
         }
 
@@ -2273,9 +2252,16 @@ class ExoplayerView :
     private var isBuffering = true
     private var sleepTimer: PlayerSleepTimer? = null
 
+    /** Opened to be cast: the cast picker comes up once the episode is ready to hand over. */
+    private var castWhenReady = false
+
     override fun onPlaybackStateChanged(playbackState: Int) {
         if (playbackState == ExoPlayer.STATE_READY) {
             exoPlayer.play()
+            if (castWhenReady) {
+                castWhenReady = false
+                if (!cast.isCasting) playerView.findViewById<View>(R.id.exo_cast)?.performClick()
+            }
             if (episodeLength == 0f) {
                 episodeLength = exoPlayer.duration.toFloat()
                 discordRPC()
@@ -2464,6 +2450,39 @@ class ExoplayerView :
     }
 
     /** Hands the episode to Web Video Caster, with the selected external subtitle. */
+    /**
+     * Where this is up to, for another device to carry on from: the episode and position, the
+     * server, and the matched extension entry (so the receiver loads the episode list directly
+     * instead of re-searching the source by title). The position is saved here first, too.
+     */
+    private fun withHandoffPayload(onReady: (HandoffPayload) -> Unit) {
+        val episode = media.anime?.selectedEpisode
+        PrefManager.setCustomVal("${media.id}_$episode", exoPlayer.currentPosition)
+        lifecycleScope.launch {
+            val sourceMedia = withContext(Dispatchers.IO) {
+                runCatching {
+                    model.watchSources?.get(media.selected!!.sourceIndex)
+                        ?.loadSavedShowResponse(media.id)
+                }.getOrNull()
+            }
+            onReady(
+                HandoffPayload(
+                    mediaId = media.id,
+                    isMAL = false,
+                    isAnime = true,
+                    mediaType = "ANIME",
+                    title = media.userPreferredName,
+                    cover = media.cover,
+                    sourceName = model.watchSources?.names?.getOrNull(media.selected!!.sourceIndex),
+                    number = episode,
+                    positionMs = exoPlayer.currentPosition,
+                    server = media.anime?.episodes?.get(episode)?.selectedExtractor,
+                    sourceMedia = HandoffPayload.encodeShowResponse(sourceMedia),
+                )
+            )
+        }
+    }
+
     private fun castExternally() {
         val video = video ?: return
         PlayerCast.openInWebVideoCaster(
@@ -2667,6 +2686,13 @@ class ExoplayerView :
             override fun playNext() { nextCountdown.playNow() }
             override fun cancelNext() { nextCountdown.cancelNow() }
             override fun server() { exoSource.performClick() }
+            // The phone controls' cast button, set up in TV mode too: Google Cast's device picker,
+            // or Web Video Caster with the internal caster off.
+            override fun cast() { playerView.findViewById<View>(R.id.exo_cast)?.performClick() }
+            override fun handoff() {
+                if (media.id < 0) return
+                withHandoffPayload { tvOverlay?.handoff = it }
+            }
         })
         tvOverlay = controller
         binding.root.addView(

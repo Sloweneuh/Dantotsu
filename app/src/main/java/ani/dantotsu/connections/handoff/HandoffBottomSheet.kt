@@ -164,11 +164,11 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
         if (isVirtual()) R.string.handoff_receive_hint_virtual
         else R.string.handoff_receive_hint
 
-    /** The receive hint with [ICON_TOKEN] rendered inline as the cast glyph, sized to the text. */
+    /** The receive hint with [ICON_TOKEN] rendered inline as the devices glyph, sized to the text. */
     private fun receiveHintWithIcon(): CharSequence {
         val text = getString(receiveHintRes())
         val idx = text.indexOf(ICON_TOKEN)
-        val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.ic_round_cast_24)?.mutate()
+        val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.ic_round_devices_24)?.mutate()
         if (idx < 0 || drawable == null) {
             return text.replace(ICON_TOKEN, getString(R.string.handoff_cast_icon))
         }

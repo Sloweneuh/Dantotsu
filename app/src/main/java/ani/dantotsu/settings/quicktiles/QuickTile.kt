@@ -361,7 +361,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         ) { it.open(DownloadActivity::class.java) },
 
         QuickTile.Action(
-            "handoff", R.string.receive_from_another_device, R.drawable.ic_round_cast_24,
+            "handoff", R.string.receive_from_another_device, R.drawable.ic_round_devices_24,
             QuickTileCategory.CONNECTIONS, needsNetwork = true,
         ) { host ->
             // Show on the activity's manager so the sheet survives this one being dismissed.

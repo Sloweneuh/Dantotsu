@@ -119,7 +119,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:drawableStart="@drawable/ic_round_cast_24"
+                android:drawableStart="@drawable/ic_round_devices_24"
                 android:drawablePadding="16dp"
                 android:fontFamily="@font/poppins_semi_bold"
                 android:minHeight="52dp"

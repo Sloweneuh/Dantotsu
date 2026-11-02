@@ -258,7 +258,7 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.comments_button, R.string.general, R.drawable.ic_round_comment_24, R.string.comments_button_desc, keywordsRes = R.string.search_kw_comments_button)
 
-        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.handoff_discovery_setting, R.string.general, R.drawable.ic_round_cast_24, R.string.handoff_discovery_setting_desc, keywordsRes = R.string.search_kw_handoff_discovery_setting)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.handoff_discovery_setting, R.string.general, R.drawable.ic_round_devices_24, R.string.handoff_discovery_setting_desc, keywordsRes = R.string.search_kw_handoff_discovery_setting)
 
         l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.capture_defaults, R.string.general, R.drawable.ic_round_screenshot_frame_24, R.string.capture_defaults_desc, keywordsRes = R.string.search_kw_capture_defaults)
 

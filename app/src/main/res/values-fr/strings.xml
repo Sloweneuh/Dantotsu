@@ -2482,7 +2482,7 @@
     <string name="handoff_searching">Recherche d\'appareils à proximité…</string>
     <string name="handoff_receive_hint">Sur l\'autre appareil, ouvrez le lecteur vidéo, le lecteur de manga ou la fiche du média et appuyez sur [icon], puis choisissez cet appareil, affichez un code QR ou partagez un code.</string>
     <string name="handoff_receive_hint_virtual">Sur l\'autre appareil, ouvrez le lecteur vidéo, le lecteur de manga ou la fiche du média et appuyez sur [icon], puis affichez un code QR ou partagez un code.</string>
-    <string name="handoff_cast_icon">l\'icône de diffusion</string>
+    <string name="handoff_cast_icon">l\'icône des appareils</string>
     <string name="handoff_no_devices">Aucun appareil à proximité pour l\'instant. Assurez-vous que l\'autre appareil a Dantotsu ouvert, avec le Bluetooth et le Wi-Fi activés.</string>
     <string name="handoff_sending">Envoi vers %1$s…</string>
     <string name="handoff_sent">Envoyé vers %1$s</string>
@@ -3750,4 +3750,10 @@
     <string name="tv_filter_tristate_hint">Appuyez une fois pour inclure, une deuxième pour exclure, une troisième pour effacer.</string>
     <string name="tv_filter_find_tag">Trouver un tag</string>
     <string name="tv_search_none_filtered">Aucun anime ne correspond à ces filtres</string>
+    <!-- TV mode: casting and handoff -->
+    <string name="tv_cast">Caster</string>
+    <string name="tv_handoff_show_code">Afficher un code</string>
+    <string name="tv_handoff_code_hint">Scannez-le avec l\'appareil photo de votre téléphone, ou saisissez le code dans « Recevoir via un code de partage ». Il expire au bout de 10 minutes.</string>
+    <string name="tv_handoff_dismiss">Ignorer</string>
+    <string name="tv_handoff_chapter">Chapitre %1$s</string>
 </resources>

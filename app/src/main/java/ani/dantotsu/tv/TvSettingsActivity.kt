@@ -198,6 +198,82 @@ private fun androidx.compose.foundation.lazy.LazyListScope.accountSettings(start
         }
     } }
     item { AppLanguageChoice() }
+    item { HandoffReceive() }
+}
+
+/**
+ * Receiving a handoff by its sharing code, for when the sending device can't find this one nearby
+ * (and a TV has no camera for the QR). Nearby ones need nothing: they're offered as they arrive.
+ */
+@Composable
+private fun HandoffReceive() {
+    val activity = androidx.compose.ui.platform.LocalContext.current as androidx.appcompat.app.AppCompatActivity
+    var entering by remember { mutableStateOf(false) }
+    val discoverable = remember { ani.dantotsu.connections.handoff.HandoffManager.localDiscoveryActive(activity) }
+    androidx.compose.foundation.layout.Column {
+        if (discoverable) Info(
+            stringResource(R.string.handoff_discoverable_as, "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}".trim()),
+            dim = true,
+        )
+        ListItem(
+            selected = false,
+            onClick = { entering = true },
+            headlineContent = { Text(stringResource(R.string.handoff_receive_via_code)) },
+            supportingContent = { Text(stringResource(R.string.handoff_enter_code_message)) },
+            modifier = Modifier.pointerClick { entering = true },
+        )
+    }
+    if (entering) {
+        var code by remember { mutableStateOf("") }
+        val field = remember { FocusRequester() }
+        val submit = {
+            entering = false
+            if (code.isNotBlank()) {
+                ani.dantotsu.snackString(activity.getString(R.string.handoff_fetching_code))
+                ani.dantotsu.connections.handoff.CloudHandoff.fetch(code) { payload ->
+                    if (payload == null) ani.dantotsu.snackString(activity.getString(R.string.handoff_code_not_found))
+                    else activity.lifecycleScope.launch { ani.dantotsu.connections.handoff.HandoffNavigator.navigate(activity, payload) }
+                }
+            }
+        }
+        TvDialog(onDismissRequest = { entering = false }) {
+            androidx.tv.material3.Surface(shape = CARD_SHAPE, modifier = Modifier.width(460.dp)) {
+                androidx.compose.foundation.layout.Column(Modifier.padding(24.dp)) {
+                    Text(stringResource(R.string.handoff_receive_via_code), style = MaterialTheme.typography.headlineSmall)
+                    Text(
+                        stringResource(R.string.handoff_enter_code_message),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+                    )
+                    TvSearchField(
+                        query = code,
+                        onQuery = { code = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(6) },
+                        hint = "ABC123",
+                        onSubmit = submit,
+                        compact = true,
+                        modifier = Modifier.focusRequester(field),
+                    )
+                    androidx.compose.foundation.layout.Row(
+                        Modifier.padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        androidx.tv.material3.Button(onClick = submit, modifier = Modifier.pointerClick(onClick = submit)) {
+                            Text(stringResource(R.string.ok))
+                        }
+                        androidx.tv.material3.OutlinedButton(onClick = { entering = false }, modifier = Modifier.pointerClick { entering = false }) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                    }
+                }
+            }
+        }
+        // Into the field, keyboard and all: typing is all there is to do here.
+        LaunchedEffect(Unit) {
+            androidx.compose.runtime.withFrameNanos { }
+            runCatching { field.requestFocus() }
+        }
+    }
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.playbackSettings(start: Modifier) {

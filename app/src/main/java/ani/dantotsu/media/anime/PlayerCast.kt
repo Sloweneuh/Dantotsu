@@ -180,6 +180,13 @@ class PlayerCast(
     }
 
     companion object {
+        /**
+         * Set when an episode is opened to be cast (the episode list's Cast): the player it opens
+         * takes it once, and brings up the cast picker when the episode is ready.
+         */
+        @Volatile
+        var castOnOpen = false
+
         /** Hands the stream to Web Video Caster, or to its store page when it isn't installed. */
         fun openInWebVideoCaster(
             activity: AppCompatActivity,

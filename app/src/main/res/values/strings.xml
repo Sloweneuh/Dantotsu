@@ -2678,7 +2678,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <!-- [icon] is replaced at runtime with the cast glyph; handoff_cast_icon is the spoken fallback. -->
     <string name="handoff_receive_hint">On the other device, open the player, reader or media page and tap [icon], then pick this device, show a QR code, or share a code.</string>
     <string name="handoff_receive_hint_virtual">On the other device, open the player, reader or media page and tap [icon], then show a QR code or share a code.</string>
-    <string name="handoff_cast_icon">the cast icon</string>
+    <string name="handoff_cast_icon">the devices icon</string>
     <string name="handoff_no_devices">No nearby devices yet. Make sure the other device has Dantotsu open, with Bluetooth and Wi-Fi enabled.</string>
     <string name="handoff_sending">Sending to %1$s…</string>
     <string name="handoff_sent">Sent to %1$s</string>
@@ -3872,4 +3872,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_filter_tristate_hint">Press once to include, again to exclude, a third time to clear.</string>
     <string name="tv_filter_find_tag">Find a tag</string>
     <string name="tv_search_none_filtered">No anime matches these filters</string>
+    <!-- TV mode: casting and handoff -->
+    <string name="tv_cast">Cast</string>
+    <string name="tv_handoff_show_code">Show a code</string>
+    <string name="tv_handoff_code_hint">Scan it with your phone\'s camera, or enter the code under \"Receive via sharing code\". It expires in 10 minutes.</string>
+    <string name="tv_handoff_dismiss">Dismiss</string>
+    <string name="tv_handoff_chapter">Chapter %1$s</string>
 </resources>

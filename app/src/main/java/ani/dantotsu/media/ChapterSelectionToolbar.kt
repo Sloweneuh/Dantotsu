@@ -40,6 +40,8 @@ class ChapterSelectionToolbar(
     onDelete: () -> Unit,
     onSelectAll: () -> Unit,
     private val onClear: () -> Unit,
+    /** Casting the one selected episode; null where there's nothing to cast (manga, novels). */
+    private val onCast: (() -> Unit)? = null,
 ) {
     private val toolbar = binding.chapterSelectionToolbar
     private val backClears = object : OnBackPressedCallback(false) {
@@ -58,13 +60,18 @@ class ChapterSelectionToolbar(
         binding.chapterSelectionDelete.setOnClickListener { onDelete() }
         binding.chapterSelectionAll.setOnClickListener { onSelectAll() }
         binding.chapterSelectionClose.setOnClickListener { onClear() }
+        binding.chapterSelectionCast.setOnClickListener { onCast?.invoke() }
     }
 
-    /** Call whenever the selection changes. [canDelete]: something selected has a download. */
+    /**
+     * Call whenever the selection changes. [canDelete]: something selected has a download. Cast
+     * shows for a single selection, where it's offered at all.
+     */
     fun update(count: Int, canDelete: Boolean) {
         isActive = count > 0
         binding.chapterSelectionCount.text = count.toString()
         binding.chapterSelectionDelete.isVisible = canDelete
+        binding.chapterSelectionCast.isVisible = onCast != null && count == 1
         backClears.isEnabled = isActive
         if (isActive) {
             binding.ScrollTop.visibility = View.GONE

@@ -97,6 +97,7 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
         super.onCreate(savedInstanceState)
         initActivity(this)
         val start: Media = intent.getSerialized("media") ?: return finish()
+        readHandoff()
         model.watchSources = if (start.isAdult) HAnimeSources else AnimeSources
 
         // Details arrive from AniList; the episode search starts once, on the full entry.
@@ -108,6 +109,7 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
             sourceIndex.intValue = media.selected!!.sourceIndex
             if (!episodesRequested) {
                 episodesRequested = true
+                applyHandoffSource(media)
                 loadEpisodes(media)
                 loadMalSync(media)
             }
@@ -121,7 +123,18 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                 val loaded by model.getEpisodes().observeAsState()
                 val episodes = loaded?.get(sourceIndex.intValue)
                 // The player and its server picker look episodes up on the media itself.
-                LaunchedEffect(episodes, media) { media.anime?.episodes = episodes }
+                LaunchedEffect(episodes, media) {
+                    media.anime?.episodes = episodes
+                    // A handoff's episode, straight into the player once the list has it.
+                    val number = handoffNumber
+                    val episode = number?.let { episodes?.get(it) }
+                    if (episode != null) {
+                        handoffNumber = null
+                        handoffServer?.let { media.selected?.server = it }
+                        handoffServer = null
+                        play(media, episode)
+                    }
+                }
                 // This title's downloads under way, by episode; one leaving means it finished or
                 // stopped, so what's on disk is looked at again.
                 val tracked by ani.dantotsu.download.DownloadTracker.items.collectAsState()
@@ -175,7 +188,9 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                     onMalSyncLanguage = { pickMalSyncLanguage(media, it) },
                     favourite = favourite.value,
                     onFavourite = if (ani.dantotsu.connections.anilist.Anilist.userid != null) ({ toggleFavourite(media) }) else null,
+                    onSendToDevice = { sendToDevice(media) },
                 )
+                sending.value?.let { payload -> TvHandoffSendDialog(payload) { sending.value = null } }
                 setup.value?.let { kind ->
                     DownloadSetupDialog(
                         setup = kind,
@@ -364,9 +379,65 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
     private val matchedName = mutableStateOf<String?>(null)
 
     private fun loadEpisodes(media: Media) {
+        // A handoff's matched entry loads its list straight away, without searching by title.
+        val seeded = handoffSourceMedia
+        handoffSourceMedia = null
         lifecycleScope.launch(Dispatchers.IO) {
-            model.loadEpisodes(media, sourceIndex.intValue)
+            if (seeded != null) model.overrideEpisodes(sourceIndex.intValue, seeded, media.id)
+            else model.loadEpisodes(media, sourceIndex.intValue)
             refreshMatchedName(media)
+        }
+    }
+
+    /** From a handoff: the sender's source, its matched entry, and the episode and server to start on. */
+    private var handoffSourceName: String? = null
+    private var handoffSourceMedia: ShowResponse? = null
+    private var handoffNumber: String? = null
+    private var handoffServer: String? = null
+
+    private fun readHandoff() {
+        if (!intent.getBooleanExtra(ani.dantotsu.connections.handoff.HandoffNavigator.EXTRA_IS_ANIME, false)) return
+        handoffSourceName = intent.getStringExtra(ani.dantotsu.connections.handoff.HandoffNavigator.EXTRA_SOURCE)
+        handoffSourceMedia = @Suppress("DEPRECATION")
+            (intent.getSerializableExtra(ani.dantotsu.connections.handoff.HandoffNavigator.EXTRA_SOURCE_MEDIA) as? ShowResponse)
+        if (intent.getBooleanExtra(ani.dantotsu.connections.handoff.HandoffNavigator.EXTRA_AUTO_START, false)) {
+            handoffNumber = intent.getStringExtra(ani.dantotsu.connections.handoff.HandoffNavigator.EXTRA_NUMBER)
+            handoffServer = intent.getStringExtra(ani.dantotsu.connections.handoff.HandoffNavigator.EXTRA_SERVER)
+            intent.removeExtra(ani.dantotsu.connections.handoff.HandoffNavigator.EXTRA_AUTO_START)
+        }
+    }
+
+    /**
+     * The source the sender watched on, if it's installed here, kept as this title's source as the
+     * phone keeps it; if it isn't, nothing starts on its own, and the user is told why.
+     */
+    private fun applyHandoffSource(media: Media) {
+        val name = handoffSourceName ?: return
+        handoffSourceName = null
+        val index = model.watchSources?.names?.indexOf(name) ?: -1
+        if (index >= 0) {
+            media.selected?.sourceIndex = index
+            sourceIndex.intValue = index
+            model.saveSelectedSourceName(media.id, name)
+            media.selected?.let { model.saveSelected(media.id, it) }
+        } else {
+            handoffNumber = null
+            handoffSourceMedia = null
+            ani.dantotsu.snackString(getString(R.string.handoff_source_missing, name))
+        }
+    }
+
+    /** "Continue on another device", from here: the title, with the source entry it's matched to. */
+    private val sending = mutableStateOf<ani.dantotsu.connections.handoff.HandoffPayload?>(null)
+
+    private fun sendToDevice(media: Media) {
+        lifecycleScope.launch {
+            val sourceMedia = withContext(Dispatchers.IO) {
+                runCatching { model.watchSources?.get(sourceIndex.intValue)?.loadSavedShowResponse(media.id) }.getOrNull()
+            }
+            sending.value = ani.dantotsu.connections.handoff.HandoffPayload.mediaOnly(
+                media, model.loadSelectedSourceName(media.id), sourceMedia,
+            )
         }
     }
 
@@ -506,6 +577,7 @@ private fun TvMedia(
     onMalSyncLanguage: (ani.dantotsu.connections.malsync.LanguageOption) -> Unit,
     favourite: Boolean,
     onFavourite: (() -> Unit)?,
+    onSendToDevice: () -> Unit,
 ) {
     var editingList by remember { mutableStateOf(false) }
     var pickingSource by remember { mutableStateOf(false) }
@@ -613,6 +685,16 @@ private fun TvMedia(
                             ),
                             // Filled while it's a favourite, an outline otherwise, in the button's own colours.
                             contentDescription = stringResource(if (favourite) R.string.tv_favourite_remove else R.string.tv_favourite_add),
+                        )
+                    }
+                    // Continue on another device: a phone, another TV.
+                    androidx.tv.material3.OutlinedIconButton(
+                        onClick = onSendToDevice,
+                        modifier = Modifier.pointerClick(onClick = onSendToDevice),
+                    ) {
+                        androidx.tv.material3.Icon(
+                            androidx.compose.ui.res.painterResource(R.drawable.ic_round_devices_24),
+                            contentDescription = stringResource(R.string.continue_on_another_device),
                         )
                     }
                     // The release language MALSync follows for this title, and the way to pick another.

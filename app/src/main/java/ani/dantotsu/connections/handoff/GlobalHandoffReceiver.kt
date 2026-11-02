@@ -87,7 +87,14 @@ object GlobalHandoffReceiver {
         // two devices; the offer declines itself if they're already linked or have said no.
         runCatching { ani.dantotsu.connections.sync.SyncLinkNotice.offer() }
         val activity = App.currentActivity()
-        if (activity != null && !activity.isFinishing) {
+        if (activity != null && !activity.isFinishing && ani.dantotsu.tv.TvMode.isOn(activity) &&
+            activity is androidx.activity.ComponentActivity
+        ) {
+            // TV mode: a prompt a remote can press, rather than a banner to swipe.
+            ani.dantotsu.tv.TvHandoffPrompt.show(activity, payload) {
+                scope.launch { HandoffNavigator.navigate(activity.applicationContext, payload) }
+            }
+        } else if (activity != null && !activity.isFinishing) {
             // Self-dismissing banner on the current screen (doesn't block the rest of the UI).
             HandoffIncomingBanner.show(activity, payload) {
                 scope.launch { HandoffNavigator.navigate(activity.applicationContext, payload) }
@@ -113,7 +120,7 @@ object GlobalHandoffReceiver {
         )
 
         val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_APP_GLOBAL)
-            .setSmallIcon(R.drawable.ic_round_cast_24)
+            .setSmallIcon(R.drawable.ic_round_devices_24)
             .setContentTitle(context.getString(R.string.handoff_incoming_title))
             .setContentText(context.getString(R.string.handoff_incoming_text, payload.title ?: ""))
             .setPriority(NotificationCompat.PRIORITY_HIGH)

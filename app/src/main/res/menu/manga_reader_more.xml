@@ -18,7 +18,7 @@
 
     <item
         android:id="@+id/action_handoff"
-        android:icon="@drawable/ic_round_cast_24"
+        android:icon="@drawable/ic_round_devices_24"
         android:iconTint="@color/bg_opp"
         android:title="@string/continue_on_another_device"
         app:showAsAction="never" />

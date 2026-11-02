@@ -62,8 +62,11 @@ object HandoffNavigator {
         }
         withContext(Dispatchers.Main) {
             snackString(context.getString(R.string.handoff_received, media.userPreferredName))
+            // TV mode's own page for anime, which picks the handoff up the same way; it has no manga.
+            val page = if (payload.isAnime && ani.dantotsu.tv.TvMode.isOn(context))
+                ani.dantotsu.tv.TvMediaActivity::class.java else MediaDetailsActivity::class.java
             context.startActivity(
-                Intent(context, MediaDetailsActivity::class.java)
+                Intent(context, page)
                     .putExtra("media", media as Serializable)
                     .applyHandoffExtras(payload)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

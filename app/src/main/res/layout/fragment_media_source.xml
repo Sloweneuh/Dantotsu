@@ -103,6 +103,17 @@
                 android:tooltipText="@string/download"
                 app:icon="@drawable/ic_download_24" />
 
+            <!-- Anime only, and for one episode at a time: casting plays one. -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/chapterSelectionCast"
+                style="@style/Widget.Material3.FloatingToolbar.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/player_cast"
+                android:tooltipText="@string/player_cast"
+                android:visibility="gone"
+                app:icon="@drawable/ic_round_cast_24" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/chapterSelectionDelete"
                 style="@style/Widget.Material3.FloatingToolbar.IconButton"
