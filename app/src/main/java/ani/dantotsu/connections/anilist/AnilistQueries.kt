@@ -505,12 +505,13 @@ class AnilistQueries {
                         val streamingLinks = arrayListOf<ArrayList<String?>>()
                         val otherLinks = arrayListOf<ArrayList<String?>>()
                         // put all external links in the media object (include all languages for Comick validation)
-                        // Structure: [site, url, language]
+                        // Structure: [site, url, language, type] (type, as ExternalLinkType names it, for
+                        // TV mode's streaming sites; entries saved before it have only the first three)
                         fetchedMedia.externalLinks?.forEach { i ->
                             if (i.isDisabled == false) {
                                 when (i.type) {
-                                    ExternalLinkType.STREAMING -> streamingLinks.add(arrayListOf(i.site, i.url, i.language))
-                                    else -> otherLinks.add(arrayListOf(i.site, i.url, i.language))
+                                    ExternalLinkType.STREAMING -> streamingLinks.add(arrayListOf(i.site, i.url, i.language, i.type?.name))
+                                    else -> otherLinks.add(arrayListOf(i.site, i.url, i.language, i.type?.name))
                                 }
                             }
                         }

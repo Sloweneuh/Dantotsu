@@ -3813,4 +3813,13 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_download_location_none">Not chosen yet: asked on the first download</string>
     <string name="tv_download_manager_builtin">Built-in</string>
     <string name="tv_auto_download_desc">When TV mode opens: up to 5 new episodes per title you\'re watching, from the source you last used for it.</string>
+    <!-- TV mode: MALSync -->
+    <string name="tv_info_available_on">Available on</string>
+    <string name="tv_malsync_up_to">up to episode %1$d</string>
+    <string name="tv_malsync_language">Release language</string>
+    <string name="tv_malsync_language_desc">Which release MALSync follows for this title\'s newest episode.</string>
+    <string name="tv_malsync_no_languages">MALSync has no releases for this title.</string>
+    <!-- TV mode: streaming links -->
+    <string name="tv_link_on_phone">Open %1$s on your phone</string>
+    <string name="tv_link_on_phone_desc">No app on this TV opens this link. Scan the code with your phone\'s camera to open it there.</string>
 </resources>

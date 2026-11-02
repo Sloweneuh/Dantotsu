@@ -108,6 +108,7 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
             if (!episodesRequested) {
                 episodesRequested = true
                 loadEpisodes(media)
+                loadMalSync(media)
             }
         }
         lifecycleScope.launch(Dispatchers.IO) { model.loadMedia(start) }
@@ -168,6 +169,9 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                     listVersion = listVersion.intValue,
                     onSaveList = { status, progress -> saveList(media, status, progress) },
                     onRemoveFromList = { removeFromList(media) },
+                    malSync = malSync.value,
+                    loadMalSyncLanguages = { malSyncLanguages(media) },
+                    onMalSyncLanguage = { pickMalSyncLanguage(media, it) },
                 )
                 setup.value?.let { kind ->
                     DownloadSetupDialog(
@@ -194,6 +198,55 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
     companion object {
         /** Open on the title's downloaded episodes rather than its usual source. */
         const val EXTRA_DOWNLOADS = "downloads"
+    }
+
+    /** MALSync's newest episode in the title's release language, once it's answered. */
+    private val malSync = mutableStateOf<TvMalSync?>(null)
+
+    private fun malSyncOn() = ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MalSyncInfoEnabled) &&
+        ani.dantotsu.settings.saving.PrefManager.getVal<String>(ani.dantotsu.settings.saving.PrefName.MalSyncCheckMode) != "manga"
+
+    /**
+     * The newest episode, asked of MALSync on the phone's media page's terms: switched on, online, a
+     * MAL id to ask with, and not finished by the user. A source the user chose to
+     * ignore for this title is left out, as there.
+     */
+    private fun loadMalSync(media: Media) {
+        if (!malSyncOn() || !ani.dantotsu.isOnline(this)) return
+        val malId = media.idMAL
+        if (malId != null && media.userStatus != "COMPLETED") lifecycleScope.launch(Dispatchers.IO) {
+            val language = ani.dantotsu.connections.malsync.MalSyncLanguageHelper.getPreferredLanguage(media.id)
+            val result = runCatching { ani.dantotsu.connections.malsync.MalSyncApi.getLastEpisode(media.id, malId, language) }.getOrNull()
+            val last = result?.lastEp ?: return@launch
+            val ignores = ani.dantotsu.connections.ReleaseSourceIgnores
+            ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, ignores.anilist(media.id), last.total, result.source,
+            )
+            if (ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, ignores.anilist(media.id))) return@launch
+            val total = media.anime?.totalEpisodes
+            // The phone's rule: only a number short of the whole, and not behind the user.
+            val shown = when {
+                last.total < (media.userProgress ?: 0) -> false
+                total != null -> last.total < total
+                else -> true
+            }
+            malSync.value = TvMalSync(last.total, ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(result.id), shown)
+        }
+    }
+
+    /** The release languages MALSync has for the title, dubs in English first as on the phone. */
+    private suspend fun malSyncLanguages(media: Media): List<ani.dantotsu.connections.malsync.LanguageOption> = withContext(Dispatchers.IO) {
+        val malId = media.idMAL ?: return@withContext emptyList()
+        runCatching {
+            ani.dantotsu.connections.malsync.LanguageMapper.mapLanguagesWithEpisodes(
+                ani.dantotsu.connections.malsync.MalSyncApi.getAvailableLanguagesWithEpisodes(malId)
+            ).sortedBy { when (it.id) { "en/dub" -> 0; "en/sub" -> 1; else -> 2 } }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun pickMalSyncLanguage(media: Media, option: ani.dantotsu.connections.malsync.LanguageOption) {
+        ani.dantotsu.connections.malsync.MalSyncLanguageHelper.setPreferredLanguage(media.id, option.id)
+        loadMalSync(media)
     }
 
     private val folderPicker = ani.dantotsu.util.LauncherWrapper(
@@ -417,12 +470,16 @@ private fun TvMedia(
     listVersion: Int,
     onSaveList: (String, Int) -> Unit,
     onRemoveFromList: () -> Unit,
+    malSync: TvMalSync?,
+    loadMalSyncLanguages: suspend () -> List<ani.dantotsu.connections.malsync.LanguageOption>,
+    onMalSyncLanguage: (ani.dantotsu.connections.malsync.LanguageOption) -> Unit,
 ) {
     var editingList by remember { mutableStateOf(false) }
     var pickingSource by remember { mutableStateOf(false) }
     var fixingTitle by remember { mutableStateOf(false) }
     var actionsFor by remember { mutableStateOf<Episode?>(null) }
     var batchDownloading by remember { mutableStateOf(false) }
+    var pickingReleaseLanguage by remember { mutableStateOf(false) }
     val sourceName = sourceNames.getOrNull(sourceIndex)
     val watched = media.userProgress ?: 0
     // The next one to watch: the first past the user's progress, else the first there is.
@@ -478,6 +535,7 @@ private fun TvMedia(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp),
                     )
+                    if (malSync?.shown == true) MalSyncReleaseLine(malSync, Modifier.padding(top = 8.dp))
                     Text(
                         plainDescription(media),
                         style = MaterialTheme.typography.bodyMedium,
@@ -506,6 +564,11 @@ private fun TvMedia(
                         onClick = { editingList = true },
                         modifier = Modifier.pointerClick { editingList = true },
                     ) { Text(listLabel) }
+                    // The release language MALSync follows for this title, and the way to pick another.
+                    if (malSync != null) OutlinedButton(
+                        onClick = { pickingReleaseLanguage = true },
+                        modifier = Modifier.pointerClick { pickingReleaseLanguage = true },
+                    ) { MalSyncLanguageLabel(malSync.language) }
                     // The source in use, by its icon and name, and its settings beside it.
                     if (sourceNames.isNotEmpty()) OutlinedButton(
                         onClick = { pickingSource = true },
@@ -622,6 +685,13 @@ private fun TvMedia(
             onDismiss = { actionsFor = null },
         )
     }
+
+    if (pickingReleaseLanguage && malSync != null) MalSyncLanguageDialog(
+        current = malSync.language.id,
+        load = loadMalSyncLanguages,
+        onPick = { pickingReleaseLanguage = false; onMalSyncLanguage(it) },
+        onDismiss = { pickingReleaseLanguage = false },
+    )
 
     if (batchDownloading && episodes != null) BatchDownloadDialog(
         episodes = episodes.map { it.number },

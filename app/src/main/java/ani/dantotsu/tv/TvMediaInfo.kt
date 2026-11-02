@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,6 +85,17 @@ fun LazyListScope.tvMediaInfo(media: Media, onOpen: (Media) -> Unit) {
             }
         }
     }
+    // Where AniList says it streams: its streaming links only, not the official site or socials.
+    // One a site, the first of each (English ones come first).
+    val streaming = media.externalLinks
+        .filter { it.getOrNull(3) == "STREAMING" }
+        .mapNotNull { link ->
+            val name = link.getOrNull(0)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val url = link.getOrNull(1)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            name to url
+        }
+        .distinctBy { it.first }
+    if (streaming.isNotEmpty()) item(key = "available") { AvailableOn(streaming) }
     item(key = "titles") {
         InfoBlock(R.string.tv_info_titles) {
             Fact(stringResource(R.string.name_romaji), media.nameRomaji, Modifier.padding(vertical = 5.dp))
@@ -214,6 +226,35 @@ private fun Chips(values: List<String>) {
             )
         }
     }
+}
+
+/**
+ * The streaming platforms, a button each: into the platform's own app when one here takes the
+ * link, else its code for the phone to open it ([LinkQrDialog]).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AvailableOn(links: List<Pair<String, String>>) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var onPhone by remember { androidx.compose.runtime.mutableStateOf<Pair<String, String>?>(null) }
+    Column(Modifier.padding(end = 48.dp, top = 8.dp).fillMaxWidth().padding(16.dp)) {
+        Text(stringResource(R.string.tv_info_available_on), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 10.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            links.forEach { link ->
+                val open = { if (!openInApp(context, link.second)) onPhone = link }
+                androidx.tv.material3.Button(
+                    onClick = open,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                    colors = androidx.tv.material3.ButtonDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                    modifier = Modifier.pointerClick(onClick = open),
+                ) { Text(link.first, style = MaterialTheme.typography.labelLarge) }
+            }
+        }
+    }
+    onPhone?.let { (name, url) -> LinkQrDialog(name, url) { onPhone = null } }
 }
 
 /**

@@ -3691,4 +3691,13 @@
     <string name="tv_download_location_none">Pas encore choisi : demandé au premier téléchargement</string>
     <string name="tv_download_manager_builtin">Intégré</string>
     <string name="tv_auto_download_desc">À l\'ouverture du mode TV : jusqu\'à 5 nouveaux épisodes par titre en cours, depuis la dernière source utilisée pour celui-ci.</string>
+    <!-- TV mode: MALSync -->
+    <string name="tv_info_available_on">Disponible sur</string>
+    <string name="tv_malsync_up_to">jusqu\'à l\'épisode %1$d</string>
+    <string name="tv_malsync_language">Langue de sortie</string>
+    <string name="tv_malsync_language_desc">La sortie que MALSync suit pour le dernier épisode de ce titre.</string>
+    <string name="tv_malsync_no_languages">MALSync n\'a aucune sortie pour ce titre.</string>
+    <!-- TV mode: streaming links -->
+    <string name="tv_link_on_phone">Ouvrir %1$s sur votre téléphone</string>
+    <string name="tv_link_on_phone_desc">Aucune application de ce téléviseur n\'ouvre ce lien. Scannez le code avec l\'appareil photo de votre téléphone pour l\'y ouvrir.</string>
 </resources>
