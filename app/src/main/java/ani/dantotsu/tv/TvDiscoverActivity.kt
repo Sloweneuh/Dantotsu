@@ -199,6 +199,7 @@ class TvDiscoverActivity : AppCompatActivity(), TvScreen {
         ) {
             GlideImage(
                 model = tvCover(media?.cover ?: item.cover),
+                requestBuilderTransform = coverFallback(media?.cover ?: item.cover),
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.width(220.dp).aspectRatio(2f / 3f).clip(CARD_SHAPE),

@@ -64,6 +64,14 @@ internal val CARD_SHAPE = RoundedCornerShape(12.dp)
 fun tvCover(url: String?): String? =
     url?.replace("/cover/medium/", "/cover/large/")?.replace("/cover/small/", "/cover/large/")
 
+/**
+ * The cover as stored, should [tvCover]'s not be there: AniList has no larger copy of some (those
+ * it only ever had at 230 px), and asked for one answers 404, which left the card blank.
+ */
+@OptIn(ExperimentalGlideComposeApi::class)
+fun coverFallback(original: String?): com.bumptech.glide.integration.compose.RequestBuilderTransform<android.graphics.drawable.Drawable> =
+    { request -> request.error(request.clone().load(original)) }
+
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun Backdrop(imageUrl: String?, modifier: Modifier = Modifier) {
@@ -73,6 +81,7 @@ fun Backdrop(imageUrl: String?, modifier: Modifier = Modifier) {
         Crossfade(targetState = tvCover(imageUrl), animationSpec = tween(450), label = "backdrop") { url ->
             if (url != null) GlideImage(
                 model = url,
+                requestBuilderTransform = coverFallback(imageUrl),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -118,6 +127,7 @@ fun PosterCard(
         ) {
             GlideImage(
                 model = tvCover(media.cover),
+                requestBuilderTransform = coverFallback(media.cover),
                 contentDescription = media.userPreferredName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

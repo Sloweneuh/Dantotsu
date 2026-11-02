@@ -711,6 +711,7 @@ private fun ContinueCard(media: Media, resumeTick: Int, onClick: () -> Unit, onF
             Box(Modifier.fillMaxSize()) {
                 GlideImage(
                     model = left?.thumb ?: media.banner ?: tvCover(media.cover),
+                    requestBuilderTransform = coverFallback(left?.thumb ?: media.banner ?: media.cover),
                     contentDescription = media.userPreferredName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),

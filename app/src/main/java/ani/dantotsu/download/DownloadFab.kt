@@ -34,6 +34,8 @@ fun Context.downloadActivityIntent(): PendingIntent =
 
 fun attachDownloadFab(activity: Activity) {
     if (activity is DownloadActivity) return
+    // TV mode draws its own, at its scale (TvDownloadIndicator, from TvTheme), and none over its player.
+    if (activity is ani.dantotsu.tv.TvScreen || ani.dantotsu.tv.TvMode.isOn(activity)) return
     val owner = activity as? ComponentActivity ?: return
     activity.window.decorView.post {
         val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return@post
