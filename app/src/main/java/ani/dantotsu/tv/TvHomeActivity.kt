@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -35,11 +36,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -263,28 +266,74 @@ private sealed interface HomeRow {
     class Explore(override val title: String, val discover: Boolean, val genres: List<Pair<String, String?>>) : HomeRow
 }
 
-/** The user's avatar, round, outlined and grown when focused like the covers. */
+/**
+ * A top-bar button: its icon alone, its name sliding out beside it while it has the focus (or the
+ * pointer). Six named buttons ran across the top of the screen; this way only the one in use is.
+ */
+@Composable
+private fun TopButton(icon: Int, label: String, onClick: () -> Unit) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    Button(
+        onClick = onClick,
+        interactionSource = interaction,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        modifier = Modifier.pointerClick(onClick = onClick),
+    ) {
+        androidx.tv.material3.Icon(
+            androidx.compose.ui.res.painterResource(icon),
+            contentDescription = label,
+            modifier = Modifier.size(22.dp),
+        )
+        androidx.compose.animation.AnimatedVisibility(
+            visible = focused,
+            enter = androidx.compose.animation.expandHorizontally() + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.shrinkHorizontally() + androidx.compose.animation.fadeOut(),
+        ) {
+            Text(label, maxLines = 1, modifier = Modifier.padding(start = 8.dp, end = 4.dp))
+        }
+    }
+}
+
+/**
+ * The user's avatar, round; focused (or pointed at), their name slides out beside it, as the other
+ * top-bar buttons' do, in a pill outlined like the covers.
+ */
 @OptIn(com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi::class)
 @Composable
 private fun ProfileButton(onClick: () -> Unit) {
-    val shape = androidx.compose.foundation.shape.CircleShape
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(50)
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val name = Anilist.username.orEmpty()
     androidx.tv.material3.Card(
         onClick = onClick,
-        modifier = Modifier.size(44.dp).pointerClick(onClick = onClick),
+        interactionSource = interaction,
+        modifier = Modifier.height(44.dp).pointerClick(onClick = onClick),
         shape = androidx.tv.material3.CardDefaults.shape(shape),
-        scale = androidx.tv.material3.CardDefaults.scale(focusedScale = 1.15f),
+        // Less than the covers' growth: wide with the name out, more would reach the button beside it.
+        scale = androidx.tv.material3.CardDefaults.scale(focusedScale = 1.05f),
         border = androidx.tv.material3.CardDefaults.border(
             focusedBorder = androidx.tv.material3.Border(
                 androidx.compose.foundation.BorderStroke(FOCUS_OUTLINE, MaterialTheme.colorScheme.primary), shape = shape,
             ),
         ),
     ) {
-        com.bumptech.glide.integration.compose.GlideImage(
-            model = Anilist.avatar,
-            contentDescription = stringResource(R.string.tv_profile),
-            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
+        Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
+            com.bumptech.glide.integration.compose.GlideImage(
+                model = Anilist.avatar,
+                contentDescription = stringResource(R.string.tv_profile),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape),
+            )
+            androidx.compose.animation.AnimatedVisibility(
+                visible = focused && name.isNotBlank(),
+                enter = androidx.compose.animation.expandHorizontally() + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.shrinkHorizontally() + androidx.compose.animation.fadeOut(),
+            ) {
+                Text(name, maxLines = 1, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 10.dp, end = 16.dp))
+            }
+        }
     }
 }
 
@@ -400,37 +449,28 @@ private fun TvHome(
                 val installedExtensions by extensions.installedExtensionsFlow.collectAsState()
                 val extensionUpdates = installedExtensions.count { it.hasUpdate }
                 if (extensionUpdates > 0) {
-                    Button(onClick = onExtensionUpdates, modifier = Modifier.pointerClick(onClick = onExtensionUpdates)) {
-                        Text(pluralStringResource(R.plurals.tv_extension_updates, extensionUpdates, extensionUpdates))
-                    }
+                    TopButton(
+                        R.drawable.ic_round_extension_sync_24,
+                        pluralStringResource(R.plurals.tv_extension_updates, extensionUpdates, extensionUpdates),
+                        onExtensionUpdates,
+                    )
                     Spacer(Modifier.width(12.dp))
                 }
                 if (update != null) {
-                    val open = { onUpdate(update) }
-                    Button(onClick = open, modifier = Modifier.pointerClick(onClick = open)) {
-                        Text(stringResource(R.string.tv_update_available, update.version))
-                    }
+                    TopButton(R.drawable.ic_round_system_update_24, stringResource(R.string.tv_update_available, update.version), { onUpdate(update) })
                     Spacer(Modifier.width(12.dp))
                 }
                 if (onSignIn != null) {
-                    Button(onClick = onSignIn, modifier = Modifier.pointerClick(onClick = onSignIn)) {
-                        Text(stringResource(R.string.tv_sign_in))
-                    }
+                    TopButton(R.drawable.ic_round_login_24, stringResource(R.string.tv_sign_in), onSignIn)
                     Spacer(Modifier.width(12.dp))
                 }
-                Button(onClick = onSearch, colors = ButtonDefaults.colors(), modifier = Modifier.pointerClick(onClick = onSearch)) {
-                    Text(stringResource(R.string.search))
-                }
+                TopButton(R.drawable.ic_round_search_24, stringResource(R.string.search), onSearch)
                 Spacer(Modifier.width(12.dp))
-                Button(onClick = onSettings, colors = ButtonDefaults.colors(), modifier = Modifier.pointerClick(onClick = onSettings)) {
-                    Text(stringResource(R.string.settings))
-                }
+                TopButton(R.drawable.ic_round_settings_24, stringResource(R.string.settings), onSettings)
                 // Not on a TV, where there's no other interface to leave for.
                 if (onExit != null) {
                     Spacer(Modifier.width(12.dp))
-                    Button(onClick = onExit, colors = ButtonDefaults.colors(), modifier = Modifier.pointerClick(onClick = onExit)) {
-                        Text(stringResource(R.string.tv_exit))
-                    }
+                    TopButton(R.drawable.ic_round_logout_24, stringResource(R.string.tv_exit), onExit)
                 }
                 // The signed-in user's avatar, last as the phone's sits: their profile and anime list.
                 if (onProfile != null) {
@@ -504,7 +544,18 @@ private fun TvHome(
                         val rowScale by androidx.compose.animation.core.animateFloatAsState(
                             if (inUse) 1f else AWAY_ROW_SCALE, label = "rowScale",
                         )
-                        Column(Modifier.graphicsLayer {
+                        // Laid out as much wider as the row is shrunk, so that shrunk it still spans the
+                        // screen: its fade at the screen's edge, not short of it in mid-air. Outside the
+                        // layer: dimmed, a row is drawn offscreen at its own size, which cut the extra off.
+                        Column(Modifier.layout { measurable, constraints ->
+                            if (!constraints.hasBoundedWidth || rowScale >= 1f) {
+                                val placeable = measurable.measure(constraints)
+                                return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                            }
+                            val wide = (constraints.maxWidth / rowScale).toInt()
+                            val placeable = measurable.measure(constraints.copy(minWidth = wide, maxWidth = wide))
+                            layout(constraints.maxWidth, placeable.height) { placeable.place(0, 0) }
+                        }.graphicsLayer {
                             alpha = rowAlpha
                             scaleX = rowScale
                             scaleY = rowScale
@@ -528,7 +579,10 @@ private fun TvHome(
                             val rowEntry = remember { FocusRequester() }.also { rowFocus[row.title] = it }
                             // ...and at the row's margin, so the first card comes back to where it began.
                             FocusRestingAt(48.dp) { LazyRow(
-                                modifier = Modifier.fadingEdges(horizontal = EDGE_FADE).focusRequester(rowEntry).focusRestorer(rowStart),
+                                // The fade grows as the row shrinks, to come out the width it is on a full-size row.
+                                modifier = Modifier
+                                    .fadingEdges(horizontal = EDGE_FADE / rowScale)
+                                    .focusRequester(rowEntry).focusRestorer(rowStart),
                                 contentPadding = PaddingValues(horizontal = 48.dp, vertical = ROW_PADDING),
                                 horizontalArrangement = Arrangement.spacedBy(18.dp),
                             ) {
@@ -656,7 +710,7 @@ private fun ContinueCard(media: Media, resumeTick: Int, onClick: () -> Unit, onF
         ) {
             Box(Modifier.fillMaxSize()) {
                 GlideImage(
-                    model = left?.thumb ?: media.banner ?: media.cover,
+                    model = left?.thumb ?: media.banner ?: tvCover(media.cover),
                     contentDescription = media.userPreferredName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),

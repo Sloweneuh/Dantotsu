@@ -53,12 +53,24 @@ internal val CARD_SHAPE = RoundedCornerShape(12.dp)
  * The screen-filling banner behind a TV screen, fading into the background towards the bottom and
  * the start edge so text laid over it stays readable. Cross-fades as the focused title changes.
  */
+/**
+ * An AniList cover at its largest. The app keeps the "large" one, which AniList files under
+ * `cover/medium/`: 230 px wide, about what a cover comes out at on a TV before focus grows it, so
+ * they were upscaled and soft. Every size of a cover sits at the same address but for its folder,
+ * so the TV takes the 460 px one (the "extraLarge" field, filed under `cover/large/`) from there,
+ * and the phone isn't made to load bigger images it doesn't need. Anything that isn't an AniList
+ * cover (a banner, an extension's image) is left as it is.
+ */
+fun tvCover(url: String?): String? =
+    url?.replace("/cover/medium/", "/cover/large/")?.replace("/cover/small/", "/cover/large/")
+
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun Backdrop(imageUrl: String?, modifier: Modifier = Modifier) {
     val background = MaterialTheme.colorScheme.background
     Box(modifier.fillMaxSize()) {
-        Crossfade(targetState = imageUrl, animationSpec = tween(450), label = "backdrop") { url ->
+        // A title with no banner shows its cover here, full screen.
+        Crossfade(targetState = tvCover(imageUrl), animationSpec = tween(450), label = "backdrop") { url ->
             if (url != null) GlideImage(
                 model = url,
                 contentDescription = null,
@@ -105,7 +117,7 @@ fun PosterCard(
             ),
         ) {
             GlideImage(
-                model = media.cover,
+                model = tvCover(media.cover),
                 contentDescription = media.userPreferredName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

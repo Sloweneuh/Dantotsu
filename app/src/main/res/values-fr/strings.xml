@@ -3469,6 +3469,7 @@
     <string name="tv_trending">Tendances du moment</string>
     <string name="tv_episodes">Épisodes</string>
     <string name="tv_watch_episode">Regarder l’épisode %1$s</string>
+    <string name="tv_rewatch_episode">Revoir · Épisode %1$s</string>
     <string name="tv_continue_episode">Reprendre · Épisode %1$s</string>
     <string name="tv_episode_n">Épisode %1$s</string>
     <string name="tv_finding_episodes">Recherche des épisodes sur %1$s…</string>
@@ -3514,7 +3515,7 @@
     <!-- TV mode interface: search -->
     <string name="tv_search_hint">Rechercher un anime</string>
     <string name="tv_search_none">Aucun anime trouvé pour « %1$s »</string>
-    <string name="tv_search_start">Tapez un titre pour chercher sur AniList</string>
+    <string name="tv_search_start">Tapez un titre pour chercher sur AniList, ou parcourez avec les filtres</string>
     <!-- TV mode interface: wrong title -->
     <string name="tv_wrong_title">Mauvais titre ?</string>
     <string name="tv_matched_as">Associé sur %1$s à « %2$s »</string>
@@ -3716,4 +3717,37 @@
     <string name="tv_favourite_remove">Retirer des favoris</string>
     <string name="tv_favourite_added">Ajouté à vos favoris</string>
     <string name="tv_favourite_removed">Retiré de vos favoris</string>
+    <!-- TV mode: search filters -->
+    <string name="tv_filters">Filtres</string>
+    <string name="tv_filter_any">Tous</string>
+    <string name="tv_filter_reset">Effacer tous les filtres</string>
+    <string name="tv_filter_status">Statut</string>
+    <string name="tv_filter_list">Votre liste</string>
+    <string name="tv_filter_on_list">Dans votre liste</string>
+    <string name="tv_filter_not_on_list">Hors de votre liste</string>
+    <string name="tv_filter_sort_default">Meilleure correspondance</string>
+    <string name="tv_filter_sort_popular">Les plus populaires</string>
+    <string name="tv_filter_sort_score">Les mieux notés</string>
+    <string name="tv_filter_sort_trending">Tendances</string>
+    <string name="tv_filter_sort_newest">Les plus récents</string>
+    <string name="tv_filter_sort_title">Titre (A à Z)</string>
+    <string name="tv_filter_format_tv">TV</string>
+    <string name="tv_filter_format_tv_short">Court TV</string>
+    <string name="tv_filter_format_movie">Film</string>
+    <string name="tv_filter_format_special">Spécial</string>
+    <string name="tv_filter_format_ova">OVA</string>
+    <string name="tv_filter_format_ona">ONA</string>
+    <string name="tv_filter_format_music">Musique</string>
+    <string name="tv_filter_season_winter">Hiver</string>
+    <string name="tv_filter_season_spring">Printemps</string>
+    <string name="tv_filter_season_summer">Été</string>
+    <string name="tv_filter_season_fall">Automne</string>
+    <string name="tv_filter_without">Sans %1$s</string>
+    <string name="tv_filter_wanted">%1$d voulus</string>
+    <string name="tv_filter_left_out">%1$d exclus</string>
+    <string name="tv_filter_include">Inclure</string>
+    <string name="tv_filter_exclude">Exclure</string>
+    <string name="tv_filter_tristate_hint">Appuyez une fois pour inclure, une deuxième pour exclure, une troisième pour effacer.</string>
+    <string name="tv_filter_find_tag">Trouver un tag</string>
+    <string name="tv_search_none_filtered">Aucun anime ne correspond à ces filtres</string>
 </resources>

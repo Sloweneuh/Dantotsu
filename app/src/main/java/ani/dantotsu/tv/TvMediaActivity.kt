@@ -516,7 +516,10 @@ private fun TvMedia(
     val sourceName = sourceNames.getOrNull(sourceIndex)
     val watched = media.userProgress ?: 0
     // The next one to watch: the first past the user's progress, else the first there is.
-    val next = episodes?.firstOrNull { (it.number.toFloatOrNull() ?: 0f) > watched } ?: episodes?.firstOrNull()
+    val unwatched = episodes?.firstOrNull { (it.number.toFloatOrNull() ?: 0f) > watched }
+    val next = unwatched ?: episodes?.firstOrNull()
+    // Every episode there is already watched: starting over from the first.
+    val rewatch = unwatched == null && watched > 0
     val playButton = remember { FocusRequester() }
     LaunchedEffect(next != null) { if (next != null) runCatching { playButton.requestFocus() } }
 
@@ -586,8 +589,11 @@ private fun TvMedia(
                         modifier = Modifier.focusRequester(playButton).pointerClick { onPlay(next) },
                     ) {
                         Text(
-                            if (watched > 0) stringResource(R.string.tv_continue_episode, next.number)
-                            else stringResource(R.string.tv_watch_episode, next.number)
+                            when {
+                                rewatch -> stringResource(R.string.tv_rewatch_episode, next.number)
+                                watched > 0 -> stringResource(R.string.tv_continue_episode, next.number)
+                                else -> stringResource(R.string.tv_watch_episode, next.number)
+                            }
                         )
                     }
                     // Where the title sits on the list, and the way to change it. Read through

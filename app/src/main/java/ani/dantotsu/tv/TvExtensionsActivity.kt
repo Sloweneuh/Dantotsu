@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.asImageBitmap
@@ -221,7 +222,11 @@ private fun TvExtensions(
                 ?.hideSoftInputFromWindow(view.windowToken, 0)
         }
     }
-    fun startsHere(key: String) = if (key == firstKey) Modifier.focusRequester(first) else Modifier
+    // Up from the top row goes straight to the search bar (or its field, while open). Left to the
+    // list, the first press only scrolled its heading into view, so it took two to get there.
+    val searchFocus = remember { FocusRequester() }
+    fun startsHere(key: String) =
+        if (key == firstKey) Modifier.focusRequester(first).focusProperties { up = searchFocus } else Modifier
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.TopCenter) {
         Column(Modifier.width(760.dp).padding(top = 36.dp)) {
@@ -232,27 +237,50 @@ private fun TvExtensions(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 var searching by remember { mutableStateOf(false) }
-                val searchField = remember { FocusRequester() }
+                // Closing the field from inside it (Search on the keyboard, or back) hands the focus
+                // back to the search button: the field went with the focus still in it, leaving none.
+                var backToButton by remember { mutableStateOf(false) }
+                val close = { searching = false; backToButton = true }
+                LaunchedEffect(searching, backToButton) {
+                    if (!searching && backToButton) {
+                        androidx.compose.runtime.withFrameNanos { }
+                        runCatching { searchFocus.requestFocus() }
+                        backToButton = false
+                    }
+                }
+                androidx.activity.compose.BackHandler(enabled = searching) { close() }
                 if (searching) {
+                    var fieldHadFocus by remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {
                         androidx.compose.runtime.withFrameNanos { }
-                        runCatching { searchField.requestFocus() }
+                        runCatching { searchFocus.requestFocus() }
                     }
                     TvSearchField(
                         query = query,
                         onQuery = { query = it },
                         hint = stringResource(R.string.tv_ext_search),
-                        onSubmit = { searching = false },
+                        onSubmit = close,
+                        compact = true,
                         modifier = Modifier
                             .weight(1f)
-                            .focusRequester(searchField)
-                            .onFocusChanged { if (!it.isFocused && !it.hasFocus) searching = false },
+                            .focusRequester(searchFocus)
+                            // Closed once focus has been in it and moved on (down to the list). Not
+                            // before: a field reports itself unfocused as it appears, before the
+                            // focus asked for above reaches it, and closing then dropped the focus
+                            // onto the first extension.
+                            .onFocusChanged {
+                                if (it.hasFocus) fieldHadFocus = true
+                                else if (fieldHadFocus) searching = false
+                            },
                     )
                 } else {
                     val search = { searching = true }
                     OutlinedButton(
                         onClick = search,
-                        modifier = Modifier.weight(1f).pointerClick(onClick = search),
+                        // It takes the row's width, so the usual growth by a tenth of it ran over the
+                        // Repositories button beside it: here it grows by a few dp, as narrow ones do.
+                        scale = androidx.tv.material3.ButtonDefaults.scale(focusedScale = 1.02f),
+                        modifier = Modifier.weight(1f).focusRequester(searchFocus).pointerClick(onClick = search),
                     ) {
                         androidx.tv.material3.Icon(
                             androidx.compose.ui.res.painterResource(R.drawable.ic_round_search_24),
