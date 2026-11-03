@@ -4050,4 +4050,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_discord_dantotsu_mode_desc">The button links to the anime on its site, under Dantotsu\'s icon</string>
     <string name="tv_discord_preview_watching">Watching %1$s</string>
     <string name="tv_discord_preview_details">Episode 1: The Journey\'s End</string>
+    <!-- Extensions: check for updates -->
+    <string name="check_extension_updates">Check for extension updates</string>
+    <string name="checking_extension_updates">Checking for extension updates…</string>
+    <string name="extensions_up_to_date">All extensions are up to date</string>
+    <plurals name="extension_updates_found">
+        <item quantity="one">%1$d extension update available</item>
+        <item quantity="other">%1$d extension updates available</item>
+    </plurals>
 </resources>

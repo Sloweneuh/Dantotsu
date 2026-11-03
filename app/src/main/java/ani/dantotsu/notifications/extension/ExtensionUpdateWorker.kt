@@ -141,7 +141,10 @@ class ExtensionUpdateWorker(appContext: Context, params: WorkerParameters) :
             }
         }
 
-        RefusedExtensionUpdates.record(refused, pending)
+        // Only what was refused on an earlier run too is reported as needing confirmation; one
+        // refused for the first time is tried again next run (see RefusedExtensionUpdates).
+        val confirmed = RefusedExtensionUpdates.record(refused, pending).mapTo(HashSet()) { it.name }
+        needsConfirmation.retainAll(confirmed)
 
         Logger.log(
             "ExtensionUpdateWorker: ${updated.size} updated, " +

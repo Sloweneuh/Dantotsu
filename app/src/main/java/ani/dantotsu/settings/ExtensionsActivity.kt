@@ -41,7 +41,10 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import ani.dantotsu.util.PagerTabsMediator
 import eu.kanade.domain.source.service.SourcePreferences
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import ani.dantotsu.snackString
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Locale
@@ -98,14 +101,12 @@ class ExtensionsActivity : AppCompatActivity() {
         viewPager.useSharedAxisTransitions()
         viewPager.offscreenPageLimit = 1
 
-        // Check if there are any extension updates
-        val preferences: SourcePreferences = Injekt.get()
-        hasUpdates = preferences.animeExtensionUpdatesCount().get() > 0 ||
-                     preferences.mangaExtensionUpdatesCount().get() > 0 ||
-                     preferences.novelExtensionUpdatesCount().get() > 0 ||
-                     PrefManager.getVal<Int>(PrefName.LNReaderUpdatesCount) > 0
+        // From the list the Updates tab itself shows, not the stored counts: those could be stale,
+        // and counted light-novel plugin updates the tab has no place for, so it opened empty.
+        hasUpdates = ExtensionUpdateRunner.pendingUpdates().isNotEmpty()
 
         setupExtensionsPager()
+        watchForUpdates()
 
         val searchView: AutoCompleteTextView = findViewById(R.id.searchViewText)
         searchView.stripSpansOnPaste()
@@ -141,13 +142,10 @@ class ExtensionsActivity : AppCompatActivity() {
         )
 
         // Set initial tab if provided in intent
+        // Positions as callers know them, counting the Updates tab: shifted down one without it.
         val initialTab = intent.getIntExtra("tab", -1)
-        val maxTab = if (hasUpdates) 6 else 5
-        if (initialTab in 0..maxTab) {
-            viewPager.setCurrentItem(initialTab, false)
-        } else if (initialTab == 0 && !hasUpdates) {
-            // If Updates tab was requested but no updates exist, go to first tab
-            viewPager.setCurrentItem(0, false)
+        if (initialTab in 0..Page.entries.lastIndex) {
+            viewPager.setCurrentItem(pages.indexOf(Page.entries[initialTab]).coerceAtLeast(0), false)
         }
 
         // The listener above only ever hears about *changes*, and the tab this opens on was
@@ -180,8 +178,7 @@ class ExtensionsActivity : AppCompatActivity() {
             }
 
             if (openType == "manga") {
-                val tabIndex = if (hasUpdates) 3 else 2
-                viewPager.setCurrentItem(tabIndex, false)
+                viewPager.setCurrentItem(pages.indexOf(Page.INSTALLED_MANGA), false)
                 val fragment = ani.dantotsu.settings.extensionprefs.MangaSourcePreferencesFragment().getInstance(openId) {
                     changeUIVisibility(true)
                 }
@@ -192,8 +189,7 @@ class ExtensionsActivity : AppCompatActivity() {
                     .addToBackStack(null)
                     .commit()
             } else if (openType == "anime") {
-                val tabIndex = if (hasUpdates) 1 else 0
-                viewPager.setCurrentItem(tabIndex, false)
+                viewPager.setCurrentItem(pages.indexOf(Page.INSTALLED_ANIME), false)
                 val fragment = ani.dantotsu.settings.extensionprefs.AnimeSourcePreferencesFragment().getInstance(openId) {
                     changeUIVisibility(true)
                 }
@@ -215,8 +211,7 @@ class ExtensionsActivity : AppCompatActivity() {
             }
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val currentFragment =
-                    supportFragmentManager.findFragmentByTag("f${viewPager.currentItem}")
+                val currentFragment = currentPageFragment()
                 if (currentFragment is SearchQueryHandler) {
                     currentFragment.updateContentBasedOnQuery(s?.toString()?.trim())
                 }
@@ -239,18 +234,87 @@ class ExtensionsActivity : AppCompatActivity() {
                     PrefName.LangSort,
                     LanguageMapper.Companion.Language.entries[which].code
                 )
-                val currentFragment =
-                    supportFragmentManager.findFragmentByTag("f${viewPager.currentItem}")
+                val currentFragment = currentPageFragment()
                 if (currentFragment is SearchQueryHandler) {
                     currentFragment.notifyDataChanged()
                 }
             }
         }
+        binding.checkUpdatesButton.setOnClickListener { checkForUpdates() }
         binding.settingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight
             bottomMargin = navBarHeight
         }
     }
+
+    /**
+     * Asks every repository again for what's new, rather than waiting for the next scheduled
+     * check, and says what it found. The Updates tab follows by itself ([watchForUpdates]).
+     */
+    private fun checkForUpdates() {
+        binding.checkUpdatesButton.isEnabled = false
+        snackString(getString(R.string.checking_extension_updates))
+        lifecycleScope.launch {
+            val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { coroutineScope {
+                listOf(
+                    async { runCatching { Injekt.get<eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager>().findAvailableExtensions() }.isSuccess },
+                    async { runCatching { Injekt.get<eu.kanade.tachiyomi.extension.manga.MangaExtensionManager>().findAvailableExtensions() }.isSuccess },
+                    async { runCatching { Injekt.get<ani.dantotsu.parsers.novel.NovelExtensionManager>().findAvailableExtensions() }.isSuccess },
+                    async { runCatching { Injekt.get<LNReaderPluginManager>().findAvailablePlugins() }.isSuccess },
+                ).map { it.await() }.all { it }
+            } }
+            binding.checkUpdatesButton.isEnabled = true
+            val count = ExtensionUpdateRunner.pendingUpdates().size
+            snackString(
+                when {
+                    count > 0 -> resources.getQuantityString(R.plurals.extension_updates_found, count, count)
+                    ok -> getString(R.string.extensions_up_to_date)
+                    else -> getString(R.string.update_check_failed)
+                }
+            )
+        }
+    }
+
+    /**
+     * The Updates tab comes and goes as updates do — a repository check finishing while the screen
+     * is open, or the last update installed — following the very list it shows.
+     */
+    private fun watchForUpdates() {
+        val flows = listOf(
+            Injekt.get<eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager>().installedExtensionsFlow,
+            Injekt.get<eu.kanade.tachiyomi.extension.manga.MangaExtensionManager>().installedExtensionsFlow,
+            Injekt.get<ani.dantotsu.parsers.novel.NovelExtensionManager>().installedExtensionsFlow,
+        )
+        lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(flows) { ExtensionUpdateRunner.pendingUpdates().isNotEmpty() }
+                .collect { now -> if (now != hasUpdates) showUpdatesTab(now) }
+        }
+    }
+
+    /** Adds or drops the Updates tab, staying on the page that was showing. */
+    private fun showUpdatesTab(show: Boolean) {
+        val showing = pages.getOrNull(viewPager.currentItem)
+        hasUpdates = show
+        setupExtensionsPager()
+        val at = showing?.let { pages.indexOf(it) }?.takeIf { it >= 0 } ?: pages.indexOf(Page.INSTALLED_ANIME)
+        viewPager.setCurrentItem(at, false)
+        syncHeaderForCurrentTab()
+    }
+
+    /**
+     * The pages, Updates only while there are updates. Each keeps its own id whatever its position,
+     * so the pager never hands one page's list to another: it identified them by position, and
+     * with the Updates tab gone (or the screen recreated without it) position 0 brought the
+     * remembered Updates page back under "Installed Anime", and the other way round.
+     */
+    private enum class Page { UPDATES, INSTALLED_ANIME, ANIME, INSTALLED_MANGA, MANGA, INSTALLED_NOVELS, NOVELS }
+
+    private val pages: List<Page>
+        get() = if (hasUpdates) Page.entries else Page.entries - Page.UPDATES
+
+    /** The fragment of the page showing: tagged "f" and its id by the pager. */
+    private fun currentPageFragment() =
+        pages.getOrNull(viewPager.currentItem)?.let { supportFragmentManager.findFragmentByTag("f${it.ordinal}") }
 
     /**
      * Puts the header in the state the given tab wants: language and repository apply to browsing
@@ -279,75 +343,47 @@ class ExtensionsActivity : AppCompatActivity() {
 
     private fun setupExtensionsPager() {
         viewPager.adapter = object : FragmentStateAdapter(this) {
-            override fun getItemCount(): Int = if (hasUpdates) 7 else 6
+            override fun getItemCount(): Int = pages.size
 
-            override fun createFragment(position: Int): Fragment {
-                return if (hasUpdates) {
-                    when (position) {
-                        0 -> ExtensionUpdatesFragment()
-                        1 -> InstalledAnimeExtensionsFragment()
-                        2 -> AnimeExtensionsFragment()
-                        3 -> InstalledMangaExtensionsFragment()
-                        4 -> MangaExtensionsFragment()
-                        5 -> InstalledNovelExtensionsFragment()
-                        6 -> NovelExtensionsFragment()
-                        else -> ExtensionUpdatesFragment()
-                    }
-                } else {
-                    when (position) {
-                        0 -> InstalledAnimeExtensionsFragment()
-                        1 -> AnimeExtensionsFragment()
-                        2 -> InstalledMangaExtensionsFragment()
-                        3 -> MangaExtensionsFragment()
-                        4 -> InstalledNovelExtensionsFragment()
-                        5 -> NovelExtensionsFragment()
-                        else -> InstalledAnimeExtensionsFragment()
-                    }
-                }
+            override fun getItemId(position: Int): Long = pages[position].ordinal.toLong()
+
+            override fun containsItem(itemId: Long): Boolean = pages.any { it.ordinal.toLong() == itemId }
+
+            override fun createFragment(position: Int): Fragment = when (pages[position]) {
+                Page.UPDATES -> ExtensionUpdatesFragment()
+                Page.INSTALLED_ANIME -> InstalledAnimeExtensionsFragment()
+                Page.ANIME -> AnimeExtensionsFragment()
+                Page.INSTALLED_MANGA -> InstalledMangaExtensionsFragment()
+                Page.MANGA -> MangaExtensionsFragment()
+                Page.INSTALLED_NOVELS -> InstalledNovelExtensionsFragment()
+                Page.NOVELS -> NovelExtensionsFragment()
             }
         }
 
         tabLayoutMediator?.detach()
         tabLayoutMediator = PagerTabsMediator(tabLayout, viewPager) { tab, position ->
-            tab.text = if (hasUpdates) {
-                when (position) {
-                    0 -> "Updates"
-                    1 -> "Installed Anime"
-                    2 -> "Available Anime"
-                    3 -> "Installed Manga"
-                    4 -> "Available Manga"
-                    5 -> "Installed Novels"
-                    6 -> "Available Novels"
-                    else -> null
-                }
-            } else {
-                when (position) {
-                    0 -> "Installed Anime"
-                    1 -> "Available Anime"
-                    2 -> "Installed Manga"
-                    3 -> "Available Manga"
-                    4 -> "Installed Novels"
-                    5 -> "Available Novels"
-                    else -> null
-                }
+            tab.text = when (pages.getOrNull(position)) {
+                Page.UPDATES -> "Updates"
+                Page.INSTALLED_ANIME -> "Installed Anime"
+                Page.ANIME -> "Available Anime"
+                Page.INSTALLED_MANGA -> "Installed Manga"
+                Page.MANGA -> "Available Manga"
+                Page.INSTALLED_NOVELS -> "Installed Novels"
+                Page.NOVELS -> "Available Novels"
+                null -> null
             }
         }
         tabLayoutMediator?.attach()
     }
 
     fun onExtensionUpdatesFinished() {
-        val preferences: SourcePreferences = Injekt.get()
-        val stillHasUpdates = preferences.animeExtensionUpdatesCount().get() > 0 ||
-                preferences.mangaExtensionUpdatesCount().get() > 0 ||
-                preferences.novelExtensionUpdatesCount().get() > 0
-
+        val stillHasUpdates = ExtensionUpdateRunner.pendingUpdates().isNotEmpty()
         if (hasUpdates != stillHasUpdates) {
             hasUpdates = stillHasUpdates
             setupExtensionsPager()
         }
 
-        val installedAnimeIndex = if (hasUpdates) 1 else 0
-        viewPager.setCurrentItem(installedAnimeIndex, false)
+        viewPager.setCurrentItem(pages.indexOf(Page.INSTALLED_ANIME), false)
         // Losing the Updates tab shifts every other tab down one, so the selected *position* can
         // stay put while the tab sitting there becomes a different one — and a position that
         // didn't change tells the listener nothing.

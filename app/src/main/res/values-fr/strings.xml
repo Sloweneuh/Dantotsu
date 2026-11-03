@@ -3929,4 +3929,13 @@
     <string name="tv_discord_dantotsu_mode_desc">Le bouton mène à l\'anime sur son site, sous l\'icône de Dantotsu</string>
     <string name="tv_discord_preview_watching">Regarde %1$s</string>
     <string name="tv_discord_preview_details">Épisode 1 : La fin du voyage</string>
+    <!-- Extensions: check for updates -->
+    <string name="check_extension_updates">Rechercher des mises à jour d\'extensions</string>
+    <string name="checking_extension_updates">Recherche de mises à jour d\'extensions…</string>
+    <string name="extensions_up_to_date">Toutes les extensions sont à jour</string>
+    <plurals name="extension_updates_found">
+        <item quantity="one">%1$d mise à jour d\'extension disponible</item>
+        <item quantity="many">%1$d mises à jour d\'extensions disponibles</item>
+        <item quantity="other">%1$d mises à jour d\'extensions disponibles</item>
+    </plurals>
 </resources>

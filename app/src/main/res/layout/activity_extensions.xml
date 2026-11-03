@@ -53,6 +53,16 @@
             android:orientation="horizontal">
 
             <ImageButton
+                android:id="@+id/checkUpdatesButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?android:attr/selectableItemBackground"
+                android:contentDescription="@string/check_extension_updates"
+                android:tooltipText="@string/check_extension_updates"
+                app:srcCompat="@drawable/ic_round_refresh_24"
+                app:tint="?attr/colorOnBackground" />
+
+            <ImageButton
                 android:id="@+id/testButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
