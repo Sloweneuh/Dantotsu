@@ -15,14 +15,15 @@ class TvLaunchActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val target = if (TvMode.isOn(this)) {
-            Intent(this, TvHomeActivity::class.java)
+        if (TvMode.isOn(this)) {
+            TvMode.startHome(this)
         } else {
-            Intent(this, MainActivity::class.java)
-                .setAction(Intent.ACTION_MAIN)
-                .addCategory(Intent.CATEGORY_LAUNCHER)
+            startActivity(
+                Intent(this, MainActivity::class.java)
+                    .setAction(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_LAUNCHER)
+            )
         }
-        startActivity(target)
         finish()
         // Black to TV home's own dark: a fade, not the system's slide over the launcher.
         @Suppress("DEPRECATION")

@@ -102,10 +102,7 @@ class TvSignInActivity : AppCompatActivity(), TvScreen {
         signingIn = name ?: ""
         // Long enough to read who it signed in as.
         delay(SHOW_DONE_MS)
-        startActivity(
-            Intent(this, TvHomeActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        )
+        TvMode.startHome(this, Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         finish()
     }
 

@@ -4058,4 +4058,5 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
         <item quantity="one">%1$d extension update available</item>
         <item quantity="other">%1$d extension updates available</item>
     </plurals>
+    <string name="tv_wsa_fullscreen_tip">Press F11 to show TV mode full screen</string>
 </resources>

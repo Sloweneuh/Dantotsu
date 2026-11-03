@@ -119,7 +119,7 @@ class MainActivity : AppCompatActivity() {
             intent.categories.orEmpty().any { it == Intent.CATEGORY_LAUNCHER || it == Intent.CATEGORY_LEANBACK_LAUNCHER } &&
             ani.dantotsu.tv.TvMode.isOn(this)
         ) {
-            startActivity(Intent(this, ani.dantotsu.tv.TvHomeActivity::class.java))
+            ani.dantotsu.tv.TvMode.startHome(this)
             finish()
             return
         }

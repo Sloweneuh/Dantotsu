@@ -103,6 +103,21 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
         ThemeManager(this).applyTheme()
         super.onCreate(savedInstanceState)
         initActivity(this)
+        // An app can't make its own window fullscreen on WSA (Android 13 has no call for it), but
+        // WSA can: said once, the first time TV mode opens there.
+        // Once the home is up, on its own window: in onCreate the screen that opened TV mode was
+        // still the current one, and the message went with it as it closed. Once a day: it's a
+        // small reminder, and nothing worse than a moment's message.
+        val today = java.time.LocalDate.now().toEpochDay()
+        if (savedInstanceState == null && PrefManager.getCustomVal(WSA_TIP_SHOWN_ON, -1L) != today &&
+            ani.dantotsu.connections.handoff.HandoffManager.isWsa(this)
+        ) {
+            window.decorView.postDelayed({
+                if (isFinishing || isDestroyed) return@postDelayed
+                PrefManager.setCustomVal(WSA_TIP_SHOWN_ON, today)
+                ani.dantotsu.snackString(getString(R.string.tv_wsa_fullscreen_tip), this)
+            }, WSA_TIP_DELAY_MS)
+        }
         setContent {
             TvTheme {
                 TvHome(
@@ -892,3 +907,7 @@ private fun Hero(media: Media?, modifier: Modifier = Modifier) {
         )
     }
 }
+
+/** The WSA fullscreen tip ([TvHomeActivity]): the day it was last shown, a moment after the home is up. */
+private const val WSA_TIP_SHOWN_ON = "tv_wsa_fullscreen_tip_day"
+private const val WSA_TIP_DELAY_MS = 1_500L

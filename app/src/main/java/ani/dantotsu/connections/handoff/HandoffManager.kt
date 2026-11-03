@@ -153,17 +153,29 @@ class HandoffManager(context: Context) {
             return computeVirtualDevice(context.applicationContext).also { virtualDevice = it }
         }
 
-        private fun computeVirtualDevice(context: Context): Boolean {
-            val props = listOf(
+        @Volatile private var wsaDevice: Boolean? = null
+
+        private val props: String
+            get() = listOf(
                 Build.FINGERPRINT, Build.MODEL, Build.MANUFACTURER, Build.BRAND,
                 Build.DEVICE, Build.PRODUCT, Build.HARDWARE, Build.BOARD
             ).joinToString(" ").lowercase()
-            val wsa = props.contains("subsystem for android") || props.contains("windows") ||
+
+        /** Windows Subsystem for Android, by its props or its host packages. Cached. */
+        fun isWsa(context: Context): Boolean {
+            wsaDevice?.let { return it }
+            val props = props
+            return (props.contains("subsystem for android") || props.contains("windows") ||
                 props.contains("wsa") || Build.MANUFACTURER.equals("Microsoft Corporation", true) ||
                 WSA_PACKAGES.any {
-                    runCatching { context.packageManager.getPackageInfo(it, 0); true }
+                    runCatching { context.applicationContext.packageManager.getPackageInfo(it, 0); true }
                         .getOrDefault(false)
-                }
+                }).also { wsaDevice = it }
+        }
+
+        private fun computeVirtualDevice(context: Context): Boolean {
+            val props = props
+            val wsa = isWsa(context)
             val emulator = props.contains("emulator") || props.contains("goldfish") ||
                 props.contains("ranchu") || props.contains("vbox86") ||
                 props.contains("sdk_gphone") || props.contains("genymotion") ||

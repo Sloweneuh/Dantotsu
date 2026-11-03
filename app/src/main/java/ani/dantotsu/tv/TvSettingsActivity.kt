@@ -1003,10 +1003,7 @@ private fun AppLanguageChoice() {
         val picked = languages[which].code
         if (picked == current) return@ChoiceRow
         LanguageHelper.setLanguage(context, picked)
-        context.startActivity(
-            android.content.Intent(context, TvHomeActivity::class.java)
-                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        )
+        TvMode.startHome(context, android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
     }
 }
 
@@ -1101,10 +1098,7 @@ private val SUBTITLE_COLORS = listOf(
 
 /** Theme and OLED apply as each screen starts: TV mode opens afresh on them. */
 private fun restartTvMode(context: android.content.Context) {
-    context.startActivity(
-        android.content.Intent(context, TvHomeActivity::class.java)
-            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
-    )
+    TvMode.startHome(context, android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
 }
 
 /**

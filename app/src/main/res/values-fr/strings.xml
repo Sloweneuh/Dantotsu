@@ -3938,4 +3938,5 @@
         <item quantity="many">%1$d mises à jour d\'extensions disponibles</item>
         <item quantity="other">%1$d mises à jour d\'extensions disponibles</item>
     </plurals>
+    <string name="tv_wsa_fullscreen_tip">Appuyez sur F11 pour afficher le mode TV en plein écran</string>
 </resources>
