@@ -100,6 +100,10 @@ class ListActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         ThemeManager(this).applyTheme()
+        // Before initActivity: it attaches the rate-limit badge and download pill to the window,
+        // which installs its content, and a window feature can't be requested after that.
+        val immersive = PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)
+        if (immersive) requestWindowFeature(Window.FEATURE_NO_TITLE)
         binding = ActivityListBinding.inflate(layoutInflater)
         // Every other list screen calls this; this one never did, which is why it was the one
         // place the AniList rate-limit badge and the download pill never appeared — both are
@@ -119,14 +123,13 @@ class ListActivity : AppCompatActivity() {
         binding.listTitle.setTextColor(primaryTextColor)
         binding.listTabLayout.setTabTextColors(secondaryTextColor, primaryTextColor)
         binding.listTabLayout.setSelectedTabIndicatorColor(primaryTextColor)
-        if (!PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)) {
+        if (!immersive) {
             this.window.statusBarColor =
                 ContextCompat.getColor(this, R.color.nav_bg_inv)
             binding.root.fitsSystemWindows = true
 
         } else {
             binding.root.fitsSystemWindows = false
-            requestWindowFeature(Window.FEATURE_NO_TITLE)
             hideSystemBarsExtendView()
             binding.settingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight

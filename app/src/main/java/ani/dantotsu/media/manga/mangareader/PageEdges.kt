@@ -465,12 +465,15 @@ object PageEdges {
         val reach = (self.width * MAX_PAGE_RATIO * SEARCH_PAGES).toInt()
         val from = maxOf(0, start - reach)
         val to = minOf(jumps.size, start + self.height + reach)
+        val blank = blankRows(run)
         val found = pageBreaks(
             jumps.copyOfRange(from, to), jumps2.copyOfRange(from, to), self.width,
             seams.filter { it in (from + 1) until to }.map { it - from }.toIntArray(),
+            blank.copyOfRange(from, minOf(blank.size, to + 1)),
         )
         if (found == null) {
             divide(urls, run, first, last, start, total, jumps, self, ::walled)?.let { return it }
+            wholePages(urls, self)?.let { return it }
         }
 
         var positions = found?.positions?.map { it + from }.orEmpty()
@@ -494,15 +497,73 @@ object PageEdges {
             positions = (positions + extra).sorted()
         }
         val local = positions.map { it - start }
-        val inside = local.filter { it > SEAM_TOLERANCE && it < self.height - SEAM_TOLERANCE }
+        // A break this close to an edge is the page edge the image was cut on: a fitted break can
+        // sit a few rows off it, and a sliver of a page went before or after it.
+        val edge = maxOf(SEAM_TOLERANCE.toFloat(), (found?.period ?: 0f) * EDGE_SHARE)
+        val inside = local.filter { it > edge && it < self.height - edge }
         return Breaks(
             self.width, self.height,
             inside.map { it.roundToInt() }.toIntArray(),
-            atStart = local.any { abs(it) <= SEAM_TOLERANCE },
+            atStart = local.any { abs(it) <= edge },
             stitched = found != null,
             period = found?.period ?: 0f,
             positions = inside.toFloatArray(),
         )
+    }
+
+    /**
+     * [self] cut into the pages the rest of its chapter is made of, when the period search found
+     * nothing in it: a source stitching a chapter's pages three to an image, say, with art soft
+     * enough in places that a run near the end shows too few clear page edges, while the runs
+     * before it were found. Only when [self] is a whole number of those pages tall, to within a
+     * [WHOLE_PAGES_SLACK] of it — no picture of another height is cut — and only from a period found by the
+     * period search itself in an image of the same width ([Breaks.divided] ones don't count), so
+     * never in a chapter that isn't pages in the first place.
+     */
+    private fun wholePages(urls: List<String?>, self: Profile): Breaks? {
+        val sameWidth = urls.filterNotNull().mapNotNull { url ->
+            profiles[url]?.takeIf { it !== self && abs(it.sourceWidth - self.sourceWidth) <= self.sourceWidth * SAME_BREADTH }
+                ?.let { url to it }
+        }
+        val periods = sameWidth.mapNotNull { (url, p) ->
+            val b = breaks[url]?.takeIf { it.stitched && !it.divided && it.period > 0f } ?: return@mapNotNull null
+            b.period * self.width / p.width
+        }.sorted()
+        // One mistaken image mustn't cut a whole chapter up: the period has to have been found in
+        // a fair share of them.
+        if (periods.size < 2 || periods.size * WHOLE_PAGES_SHARE < sameWidth.size) return null
+        val period = periods[periods.size / 2]
+        val k = (self.height / period).roundToInt()
+        // Scans of one chapter can differ in height by a few rows a page: 2835 rows for two
+        // pages where the others are 1422 each.
+        if (k < 2 || abs(self.height - k * period) > maxOf(k.toFloat(), self.height * WHOLE_PAGES_SLACK)) return null
+        val positions = (1 until k).map { snapToEdge(self.jumps, (period * it).roundToInt() - 1, SNAP) }
+        android.util.Log.d("SmartPages", "whole pages: $k of $period rows")
+        return Breaks(
+            self.width, self.height,
+            positions.map { it.roundToInt() }.toIntArray(),
+            // Whole pages, so it starts on a page edge.
+            atStart = true,
+            stitched = true,
+            period = period,
+            positions = positions.toFloatArray(),
+            divided = true,
+        )
+    }
+
+    /** Each row of [run], end to end: whether it is a blank gutter row (bright, and even across). */
+    private fun blankRows(run: List<Profile>): BooleanArray {
+        val out = BooleanArray(run.sumOf { it.height })
+        var at = 0
+        for (p in run) {
+            for (y in 0 until p.height) {
+                val brightness = 0.299f * p.rowColors[y * 3] + 0.587f * p.rowColors[y * 3 + 1] +
+                        0.114f * p.rowColors[y * 3 + 2]
+                out[at + y] = brightness >= GUTTER_BRIGHTNESS && p.rowSpread[y] < GUTTER_SPREAD
+            }
+            at += p.height
+        }
+        return out
     }
 
     /**
@@ -592,6 +653,8 @@ object PageEdges {
         jump2: FloatArray,
         width: Int,
         seams: IntArray = IntArray(0),
+        /** blank[y]: row y is a blank gutter row; see [blankRows]. */
+        blank: BooleanArray = BooleanArray(0),
     ): Detected? {
         val n = jump.size
         val minPeriod = width * MIN_PAGE_RATIO
@@ -604,6 +667,11 @@ object PageEdges {
         val threshold2 = maxOf(percentile(near2), MIN_BREAK_JUMP)
         val hit = BooleanArray(n) { near1[it] >= threshold1 || near2[it] >= threshold2 }
         val score = FloatArray(n) { near1[it] / threshold1 + near2[it] / threshold2 }
+        // Rows with a blank band on a side of them: where pages with white margins meet. Only for
+        // placing the breaks of a period already trusted; see [placed].
+        val band = maxOf(3, width / 150)
+        fun allBlank(from: Int, to: Int) = from >= 0 && to < blank.size && (from..to).all { blank[it] }
+        val margin = BooleanArray(n) { y -> allBlank(y + 1, y + band) || allBlank(y - band + 1, y) }
 
         // The rows a page break could be on; the right period has its breaks among them, so they
         // are the only offsets worth trying. All of them: over a long strip the most abrupt rows
@@ -627,6 +695,9 @@ object PageEdges {
             val k = ((seam - 1 - offset) / period).roundToInt()
             abs(offset + k * period - (seam - 1)) <= BREAK_SLACK + 1
         }
+        // Where the breaks of a trusted period go is settled apart from whether there are any:
+        // see [placed]. Every candidate that could be the answer to that, kept for it.
+        val placements = mutableListOf<Placement>()
         var period = minPeriod
         while (period <= maxPeriod && n >= period * MIN_BREAKS) {
             val tried = HashSet<Int>()
@@ -635,6 +706,7 @@ object PageEdges {
                 if (!tried.add((offset * 2).roundToInt())) continue
                 var teeth = 0
                 var hits = 0
+                var quiet = 0
                 var sum = 0f
                 var k = 0
                 while (true) {
@@ -642,7 +714,7 @@ object PageEdges {
                     if (y >= n) break
                     if (y > EDGE_MARGIN && y < n - EDGE_MARGIN) {
                         teeth++
-                        if (hit[y]) hits++
+                        if (hit[y]) hits++ else if (margin[y]) quiet++
                         sum += score[y]
                     }
                     k++
@@ -650,6 +722,32 @@ object PageEdges {
                 if (teeth < MIN_BREAKS) continue
                 val rate = hits.toFloat() / teeth
                 val mean = sum / teeth
+                val full = (hits + quiet).toFloat() / teeth
+                if (full >= PLACEMENT_HIT_RATE && rate >= MIN_ABRUPT_RATE) {
+                    val onSeams = seamHits(offset, period)
+                    // The breaks between the seams, judged apart: see below.
+                    var between = 0
+                    var betweenHits = 0
+                    var betweenQuiet = 0
+                    if (onSeams >= MIN_SEAM_HITS) {
+                        var j = 0
+                        while (true) {
+                            val y = (offset + j * period).roundToInt()
+                            if (y >= n) break
+                            if (y > EDGE_MARGIN && y < n - EDGE_MARGIN && seams.none { abs(it - 1 - y) <= BREAK_SLACK + 1 }) {
+                                between++
+                                if (hit[y]) betweenHits++ else if (margin[y]) betweenQuiet++
+                            }
+                            j++
+                        }
+                    }
+                    placements += Placement(
+                        period, offset, rate, full, onSeams, mean,
+                        between = between,
+                        betweenAbrupt = if (between > 0) betweenHits.toFloat() / between else 0f,
+                        betweenFull = if (between > 0) (betweenHits + betweenQuiet).toFloat() / between else 0f,
+                    )
+                }
                 val onSeams = if (rate >= bestRate) seamHits(offset, period) else 0
                 if (rate > bestRate || (rate == bestRate &&
                             (onSeams > bestSeams || (onSeams == bestSeams && mean > bestMean)))
@@ -664,7 +762,30 @@ object PageEdges {
             period += PERIOD_STEP
         }
         android.util.Log.d("SmartPages", "period search n=$n width=$width best rate=$bestRate period=$bestPeriod anchors=${anchors.size}")
-        if (bestRate < MIN_HIT_RATE) return null
+        if (bestRate < MIN_HIT_RATE) {
+            // Pages with white margins, or soft borderless art, can have too few abrupt edges to be
+            // trusted on them alone. A source that cut a strip of pages into images cut it between
+            // pages, though, so a period on most of the seams (two at least) is trusted when the
+            // breaks between the seams are mostly page edges too — abrupt, or on a margin. Those
+            // tell it from a webtoon cut at a fixed height, whose seams are every bit as regular:
+            // between them its breaks land on whatever the strip holds there, and measured on
+            // long strips, never a quarter of them on an abrupt row; stitched pages, 60% at least.
+            val seamed = placements.filter {
+                it.seams >= MIN_SEAM_HITS && it.seams * 2 >= seams.size && it.between >= MIN_BETWEEN_SEAMS &&
+                        it.betweenAbrupt >= BETWEEN_ABRUPT_RATE && it.betweenFull >= BETWEEN_HIT_RATE
+            }.maxWithOrNull(compareBy<Placement> { it.seams }.thenBy { it.betweenFull }.thenBy { it.full })
+                ?: return null
+            android.util.Log.d("SmartPages", "trusted on margins and seams: period ${seamed.period}, ${seamed.seams}/${seams.size} seams")
+            bestPeriod = seamed.period
+            bestOffset = seamed.offset
+        }
+        placed(placements, bestPeriod)?.let { best ->
+            if (best.offset != bestOffset || best.period != bestPeriod) {
+                android.util.Log.d("SmartPages", "placed at ${best.offset} (period ${best.period}) rather than $bestOffset")
+            }
+            bestPeriod = best.period
+            bestOffset = best.offset
+        }
 
         // Teeth as (k, predicted row), k counting periods from the offset.
         val teeth = generateSequence(0) { it + 1 }
@@ -672,8 +793,8 @@ object PageEdges {
             .takeWhile { it.second < n }
             .filter { it.second > EDGE_MARGIN && it.second < n - EDGE_MARGIN }
             .toList()
-        val firstHit = teeth.indexOfFirst { hit[it.second] }
-        val lastHit = teeth.indexOfLast { hit[it.second] }
+        val firstHit = teeth.indexOfFirst { hit[it.second] || margin[it.second] }
+        val lastHit = teeth.indexOfLast { hit[it.second] || margin[it.second] }
         if (firstHit < 0) return null
         val span = teeth.subList(firstHit, lastHit + 1)
 
@@ -707,6 +828,44 @@ object PageEdges {
 
     /** Stitched pages found in a strip: their [period] and where each starts, in rows. */
     private class Detected(val period: Float, val positions: List<Float>)
+
+    /** One way to lay a period's breaks: how many land on a break or a margin ([full]), and on seams. */
+    private class Placement(
+        val period: Float,
+        val offset: Float,
+        val abrupt: Float,
+        val full: Float,
+        val seams: Int,
+        val mean: Float,
+        /** Breaks not on a seam, and the share of them abrupt, or abrupt or on a margin. */
+        val between: Int = 0,
+        val betweenAbrupt: Float = 0f,
+        val betweenFull: Float = 0f,
+    )
+
+    /**
+     * Where the breaks of a [period] already trusted go, among [placements] of about that height.
+     *
+     * Counting only abrupt rows, pages with white margins put the period a margin's height off
+     * every page edge: where the artwork starts, abrupt in every page, while the edge itself is
+     * blank meeting blank. So here a break with a blank band on a side of it counts too (one side:
+     * a watermark in the margin above is common) — and one that agrees with the seams wins
+     * outright, a source that cut its strip into images having cut it between pages. A single seam
+     * can be a coincidence, so it takes two.
+     *
+     * Not a reason to trust a period in the first place, on its own: a white-heavy webtoon has
+     * blank bands and panel edges enough to look regular this way, and one cut at a fixed height
+     * has seams every bit as regular. See [pageBreaks].
+     */
+    private fun placed(placements: List<Placement>, period: Float): Placement? {
+        val near = placements.filter { abs(it.period - period) <= period * PLACEMENT_PERIOD_SHARE }
+        val top = near.maxOfOrNull { it.full } ?: return null
+        return near.filter { it.full >= top - PLACEMENT_SEAM_SLACK }
+            .maxWithOrNull(
+                compareBy<Placement> { if (it.seams >= MIN_SEAM_HITS) it.seams else 0 }
+                    .thenBy { it.full }.thenBy { it.mean }
+            )
+    }
 
     /** Each value raised to the largest within [BREAK_SLACK] of it. */
     private fun slackMax(values: FloatArray) = FloatArray(values.size) { i ->
@@ -900,6 +1059,29 @@ object PageEdges {
     /** Share of predicted page breaks that must land on an abrupt row. */
     private const val MIN_HIT_RATE = 0.8f
 
+    /** Share of a placement's breaks that must still land on an abrupt row ([placed])... */
+    private const val MIN_ABRUPT_RATE = 0.25f
+
+    /**
+     * For a period trusted on the seams ([pageBreaks]): the fewest breaks between the seams it is
+     * judged on, the share of them that must be abrupt, and abrupt or on a margin.
+     */
+    private const val MIN_BETWEEN_SEAMS = 3
+    private const val BETWEEN_ABRUPT_RATE = 0.5f
+    private const val BETWEEN_HIT_RATE = 0.6f
+
+    /** Seams a placement must put a page break on for that to count for it ([placed]). */
+    private const val MIN_SEAM_HITS = 2
+
+    /** Least share of breaks on a break or margin for a placement to be considered ([placed])... */
+    private const val PLACEMENT_HIT_RATE = 0.6f
+
+    /** ...how far below the best one's a placement on the seams may still be... */
+    private const val PLACEMENT_SEAM_SLACK = 0.25f
+
+    /** ...and how far off the trusted period, as a share of it, its own may be. */
+    private const val PLACEMENT_PERIOD_SHARE = 0.01f
+
     /** Rows either side of a break compared for a shared coloured backdrop. */
     private const val BACKDROP_BAND = 24
 
@@ -929,6 +1111,15 @@ object PageEdges {
 
     /** Rows a page break may miss an image's edge by and still count as falling on it. */
     private const val SEAM_TOLERANCE = 3
+
+    /** ...or this share of a page's height, when more. */
+    private const val EDGE_SHARE = 0.01f
+
+    /** How far, as a share of its height, an image may be off a whole number of pages ([wholePages]). */
+    private const val WHOLE_PAGES_SLACK = 0.005f
+
+    /** One in this many of a chapter's images of a width must have had their period found ([wholePages]). */
+    private const val WHOLE_PAGES_SHARE = 3
 
     /** Most pages a walled-in run is divided into ([divide]). */
     private const val MAX_DIVIDED_PAGES = 6

@@ -65,6 +65,10 @@ class MediaEquivalentsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
+        // Before initActivity: it reads the window's decor view, which installs its content, and a
+        // window feature can't be requested after that.
+        val immersive = PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)
+        if (immersive) requestWindowFeature(Window.FEATURE_NO_TITLE)
         initActivity(this)
         // Inflate binding early so we can adjust window features before adding content
         binding = ActivityMediaEquivalentsBinding.inflate(layoutInflater)
@@ -84,14 +88,13 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         }
 
         // If immersive mode is enabled, ensure appbar isn't under the status bar
-        if (!PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)) {
+        if (!immersive) {
             this.window.statusBarColor =
                 ContextCompat.getColor(this, R.color.nav_bg_inv)
             binding.root.fitsSystemWindows = true
 
         } else {
             binding.root.fitsSystemWindows = false
-            requestWindowFeature(Window.FEATURE_NO_TITLE)
             hideSystemBarsExtendView()
             binding.settingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight

@@ -92,15 +92,18 @@ class MediaListViewActivity : AppCompatActivity() {
         // by which point setTheme has run — used the real one.
         ThemeManager(this).applyTheme()
         binding = ActivityMediaListViewBinding.inflate(layoutInflater)
+        // Before initActivity: it reads the window's decor view, which installs its content, and a
+        // window feature can't be requested after that.
+        val immersive = PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)
+        if (immersive) requestWindowFeature(Window.FEATURE_NO_TITLE)
         initActivity(this)
-        if (!PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)) {
+        if (!immersive) {
             this.window.statusBarColor =
                 ContextCompat.getColor(this, R.color.nav_bg_inv)
             binding.root.fitsSystemWindows = true
 
         } else {
             binding.root.fitsSystemWindows = false
-            requestWindowFeature(Window.FEATURE_NO_TITLE)
             hideSystemBarsExtendView()
             binding.settingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight
