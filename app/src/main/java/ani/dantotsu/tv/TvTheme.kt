@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -122,20 +123,54 @@ private fun themeColors(context: Context): ColorScheme {
     val onSurfaceVariant = attr(com.google.android.material.R.attr.colorOnSurfaceVariant, if (night) 0xFFCAC4D0 else 0xFF49454F)
     val secondary = attr(com.google.android.material.R.attr.colorSecondary, 0xFFFF8A00)
     val onSecondary = attr(com.google.android.material.R.attr.colorOnSecondary, 0xFF000000)
+    // The rest of the scheme from the app theme too: left out, each fell back to tv-material's own
+    // purple palette — the accent-filled buttons (incognito, new episodes) came out in it.
+    val primaryContainer = attr(com.google.android.material.R.attr.colorPrimaryContainer, if (night) 0xFF5A3300 else 0xFFFFDCC0)
+    val onPrimaryContainer = attr(com.google.android.material.R.attr.colorOnPrimaryContainer, if (night) 0xFFFFDCC0 else 0xFF2D1600)
+    val secondaryContainer = attr(com.google.android.material.R.attr.colorSecondaryContainer, if (night) 0xFF5A3300 else 0xFFFFDCC0)
+    val onSecondaryContainer = attr(com.google.android.material.R.attr.colorOnSecondaryContainer, if (night) 0xFFFFDCC0 else 0xFF2D1600)
+    val tertiary = attr(com.google.android.material.R.attr.colorTertiary, primary.toArgb().toLong())
+    val onTertiary = attr(com.google.android.material.R.attr.colorOnTertiary, onPrimary.toArgb().toLong())
+    val tertiaryContainer = attr(com.google.android.material.R.attr.colorTertiaryContainer, primaryContainer.toArgb().toLong())
+    val onTertiaryContainer = attr(com.google.android.material.R.attr.colorOnTertiaryContainer, onPrimaryContainer.toArgb().toLong())
+    val error = attr(androidx.appcompat.R.attr.colorError, if (night) 0xFFFFB4AB else 0xFFBA1A1A)
+    val onError = attr(com.google.android.material.R.attr.colorOnError, if (night) 0xFF690005 else 0xFFFFFFFF)
+    val errorContainer = attr(com.google.android.material.R.attr.colorErrorContainer, if (night) 0xFF93000A else 0xFFFFDAD6)
+    val onErrorContainer = attr(com.google.android.material.R.attr.colorOnErrorContainer, if (night) 0xFFFFDAD6 else 0xFF410002)
+    val inverseSurface = attr(com.google.android.material.R.attr.colorSurfaceInverse, if (night) 0xFFE6E1E5 else 0xFF313033)
+    val inverseOnSurface = attr(com.google.android.material.R.attr.colorOnSurfaceInverse, if (night) 0xFF313033 else 0xFFF4EFF4)
+    val inversePrimary = attr(com.google.android.material.R.attr.colorPrimaryInverse, primary.toArgb().toLong())
+    val borderVariant = attr(com.google.android.material.R.attr.colorOutlineVariant, if (night) 0xFF49454F else 0xFFCAC4D0)
     return if (night) darkColorScheme(
         primary = primary, onPrimary = onPrimary,
+        primaryContainer = primaryContainer, onPrimaryContainer = onPrimaryContainer,
+        inversePrimary = inversePrimary,
         secondary = secondary, onSecondary = onSecondary,
+        secondaryContainer = secondaryContainer, onSecondaryContainer = onSecondaryContainer,
+        tertiary = tertiary, onTertiary = onTertiary,
+        tertiaryContainer = tertiaryContainer, onTertiaryContainer = onTertiaryContainer,
         background = background, onBackground = onBackground,
         surface = surface, onSurface = onSurface,
         surfaceVariant = surfaceVariant, onSurfaceVariant = onSurfaceVariant,
-        border = primary,
+        surfaceTint = primary,
+        inverseSurface = inverseSurface, inverseOnSurface = inverseOnSurface,
+        error = error, onError = onError, errorContainer = errorContainer, onErrorContainer = onErrorContainer,
+        border = primary, borderVariant = borderVariant,
     ) else lightColorScheme(
         primary = primary, onPrimary = onPrimary,
+        primaryContainer = primaryContainer, onPrimaryContainer = onPrimaryContainer,
+        inversePrimary = inversePrimary,
         secondary = secondary, onSecondary = onSecondary,
+        secondaryContainer = secondaryContainer, onSecondaryContainer = onSecondaryContainer,
+        tertiary = tertiary, onTertiary = onTertiary,
+        tertiaryContainer = tertiaryContainer, onTertiaryContainer = onTertiaryContainer,
         background = background, onBackground = onBackground,
         surface = surface, onSurface = onSurface,
         surfaceVariant = surfaceVariant, onSurfaceVariant = onSurfaceVariant,
-        border = primary,
+        surfaceTint = primary,
+        inverseSurface = inverseSurface, inverseOnSurface = inverseOnSurface,
+        error = error, onError = onError, errorContainer = errorContainer, onErrorContainer = onErrorContainer,
+        border = primary, borderVariant = borderVariant,
     )
 }
 

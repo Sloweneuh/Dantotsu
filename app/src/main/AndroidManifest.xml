@@ -760,6 +760,50 @@
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
             android:exported="false" />
+        <!-- Where the TV home screen's "Continue watching" entries lead (TvWatchNext). -->
+        <activity
+            android:name=".tv.TvWatchNextActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:excludeFromRecents="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data
+                    android:host="watch"
+                    android:scheme="dantotsutv" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".tv.TvDiscordSignInActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvPersonActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvInboxActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvCalendarActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:exported="false" />
+        <activity
+            android:name=".tv.TvClipActivity"
+            android:theme="@style/Theme.Dantotsu.Tv"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|locale|layoutDirection|uiMode"
+            android:exported="false" />
         <activity
             android:name=".tv.TvDownloadsActivity"
             android:theme="@style/Theme.Dantotsu.Tv"

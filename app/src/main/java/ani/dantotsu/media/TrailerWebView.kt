@@ -66,7 +66,7 @@ object TrailerWebView {
         return bind.root
     }
 
-    private const val BASE_URL = "https://www.youtube-nocookie.com"
+    internal const val BASE_URL = "https://www.youtube-nocookie.com"
 
     /** Hands the video to the window decor view so fullscreen actually fills the screen. */
     @Suppress("DEPRECATION")
@@ -99,7 +99,7 @@ object TrailerWebView {
         }
     }
 
-    private fun embedHtml(id: String) = """
+    internal fun embedHtml(id: String) = """
         <!DOCTYPE html>
         <html>
         <head>

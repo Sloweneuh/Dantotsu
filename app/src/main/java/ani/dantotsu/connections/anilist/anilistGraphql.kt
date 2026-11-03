@@ -152,6 +152,7 @@ fun staffInformation(page: Int, perPage: Int) = """
     age
     yearsActive
     homeTown
+    description
     staffMedia(page: $page,sort:START_DATE_DESC, perPage: $perPage) {
       $standardPageInformation
       edges {

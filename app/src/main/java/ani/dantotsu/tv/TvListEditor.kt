@@ -39,6 +39,13 @@ private val STATUSES = listOf(
     "REPEATING" to R.string.tv_list_repeating,
 )
 
+/** A manga's own words for the statuses that differ from an anime's: reading, rereading. */
+internal fun mangaStatus(status: String?): Int? = when (status) {
+    "CURRENT" -> R.string.tv_list_reading
+    "REPEATING" -> R.string.tv_list_rereading
+    else -> null
+}
+
 /**
  * The user's entry for [media], from the couch: its status and how many episodes are watched, then
  * save — or take it off the list. Score, notes and dates stay as they are (the phone edits those).
@@ -53,7 +60,8 @@ fun TvListEditor(
     val onList = media.userStatus != null
     var status by remember { mutableStateOf(media.userStatus ?: "PLANNING") }
     var progress by remember { mutableIntStateOf(media.userProgress ?: 0) }
-    val total = media.anime?.totalEpisodes
+    val manga = media.anime == null && media.manga != null
+    val total = media.anime?.totalEpisodes ?: media.manga?.totalChapters
     val current = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { current.requestFocus() } }
 
@@ -74,7 +82,7 @@ fun TvListEditor(
                     ListItem(
                         selected = status == value,
                         onClick = pick,
-                        headlineContent = { Text(stringResource(label)) },
+                        headlineContent = { Text(stringResource(if (manga) mangaStatus(value) ?: label else label)) },
                         trailingContent = { RadioButton(selected = status == value, onClick = null) },
                         modifier = (if (status == value) Modifier.focusRequester(current) else Modifier).pointerClick(onClick = pick),
                     )
@@ -84,7 +92,7 @@ fun TvListEditor(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(stringResource(R.string.tv_list_progress), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(if (manga) R.string.tv_list_progress_manga else R.string.tv_list_progress), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.weight(1f))
                     val less = { progress = (progress - 1).coerceAtLeast(0) }
                     val more = { progress = (progress + 1).coerceAtMost(total ?: Int.MAX_VALUE) }

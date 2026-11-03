@@ -3864,4 +3864,69 @@
     <string name="download_complete_item">%1$s : téléchargement terminé</string>
     <string name="extension_repo_added">Dépôt d\'extensions %1$s ajouté</string>
     <string name="media_on_source">%1$s sur %2$s</string>
+    <!-- TV mode player: episodes, settings menu, subtitle delay -->
+    <string name="tv_subtitle_delay">Décalage des sous-titres</string>
+    <string name="tv_subtitle_delay_hint">Gauche et droite avancent ou retardent les sous-titres d\'un quart de seconde, pendant la lecture.</string>
+    <!-- TV mode media page: trailer and theme songs -->
+    <string name="tv_clips">Vidéos et génériques</string>
+    <string name="tv_trailer">Bande-annonce</string>
+    <!-- TV mode: release calendar -->
+    <string name="tv_today">Aujourd\'hui</string>
+    <string name="tv_yesterday">Hier</string>
+    <string name="tv_tomorrow">Demain</string>
+    <string name="tv_calendar_episode_at">Ép. %1$s · %2$s</string>
+    <string name="tv_calendar_on_list">Dans ma liste</string>
+    <string name="tv_calendar_empty">Rien à l\'antenne cette semaine</string>
+    <string name="tv_calendar_day_empty">Rien à l\'antenne ce jour-là</string>
+    <!-- TV mode: new episodes inbox -->
+    <string name="tv_new_episodes">Nouveaux épisodes</string>
+    <string name="tv_mark_all_seen">Tout marquer comme vu</string>
+    <string name="tv_no_new_episodes">Aucun nouvel épisode annoncé pour l\'instant</string>
+    <plurals name="tv_new_episodes_count">
+        <item quantity="one">%1$d nouvel épisode</item>
+        <item quantity="other">%1$d nouveaux épisodes</item>
+        <item quantity="many">%1$d nouveaux épisodes</item>
+    </plurals>
+    <!-- TV mode: manga opened from a relation -->
+    <string name="tv_list_reading">En cours de lecture</string>
+    <string name="tv_list_rereading">Relecture</string>
+    <string name="tv_list_progress_manga">Chapitres lus</string>
+    <string name="tv_progress_of_chapters">Ch %1$d / %2$d</string>
+    <string name="tv_progress_chapters">Ch %1$d</string>
+    <string name="tv_manga_on_phone">Le mode TV est fait pour l\'anime : lisez ce manga sur votre téléphone (le bouton des appareils l\'y envoie)</string>
+    <!-- TV mode: character, staff and studio pages -->
+    <string name="tv_appears_in">Apparaît dans</string>
+    <string name="tv_voice_actors">Doubleurs</string>
+    <string name="tv_characters_voiced">Personnages doublés</string>
+    <string name="tv_date_of_death">Décès</string>
+    <string name="tv_home_town">Ville natale</string>
+    <string name="tv_years_active">Années d\'activité</string>
+    <string name="tv_cancelled">Annulés</string>
+    <string name="tv_no_description">Aucune description</string>
+    <string name="tv_about">À propos</string>
+    <string name="tv_studio">Studio</string>
+    <string name="tv_age">Âge</string>
+    <string name="tv_gender">Genre</string>
+    <string name="tv_birthday">Anniversaire</string>
+    <!-- TV mode: Discord -->
+    <string name="tv_settings_discord">Discord</string>
+    <string name="tv_discord_sign_in">Se connecter à Discord</string>
+    <string name="tv_discord_sign_in_desc">Scannez un code avec l\'application Discord de votre téléphone</string>
+    <string name="tv_discord_step_open">Ouvrez l\'application Discord sur votre téléphone</string>
+    <string name="tv_discord_step_scan">Allez dans Paramètres, puis Scanner le code QR, et scannez ce code</string>
+    <string name="tv_discord_step_confirm">Confirmez la connexion sur votre téléphone</string>
+    <string name="tv_discord_confirm_on_phone">Confirmez sur votre téléphone pour vous connecter en tant que %1$s</string>
+    <string name="tv_discord_signing_in">Connexion…</string>
+    <string name="tv_discord_cancelled">La connexion a été refusée sur le téléphone.</string>
+    <string name="tv_discord_timed_out">Le code a expiré avant d\'être scanné.</string>
+    <string name="tv_discord_captcha">Discord demande un captcha pour cette connexion : utilisez plutôt la page de connexion, avec une souris et un clavier.</string>
+    <string name="tv_discord_failed">Impossible de se connecter à Discord.</string>
+    <string name="tv_discord_new_code">Nouveau code</string>
+    <string name="tv_discord_web_page">Utiliser la page de connexion</string>
+    <string name="tv_discord_warning">Votre Discord affichera ce que vous regardez sur Dantotsu. La présence personnalisée enfreint les conditions de Discord ; personne n\'a été banni pour cela à notre connaissance, mais c\'est à vos risques.</string>
+    <string name="tv_discord_signed_in_as">Connecté à Discord en tant que %1$s</string>
+    <string name="tv_discord_media_mode_desc">Le bouton et l\'icône montrent d\'où vient l\'anime : AniList, MAL, Kitsu, Simkl ou l\'extension</string>
+    <string name="tv_discord_dantotsu_mode_desc">Le bouton mène à l\'anime sur son site, sous l\'icône de Dantotsu</string>
+    <string name="tv_discord_preview_watching">Regarde %1$s</string>
+    <string name="tv_discord_preview_details">Épisode 1 : La fin du voyage</string>
 </resources>

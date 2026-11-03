@@ -1002,6 +1002,8 @@ class ExoplayerView :
             PrefManager.getVal<Int>(PrefName.DefaultSpeed),
         )
         var curSpeed = savedIndex.coerceIn(0, speedsLength - 1)
+        speedOptions = speeds
+        speedIndex = curSpeed
 
 
         playbackParameters = PlaybackParameters(speeds[curSpeed])
@@ -1013,6 +1015,7 @@ class ExoplayerView :
                     PrefManager.setCustomVal("${media.id}_speed", i)
                     speed = speeds.getOrNull(i) ?: 1f
                     curSpeed = i
+                    speedIndex = i
                     playbackParameters = PlaybackParameters(speed)
                     exoPlayer.playbackParameters = playbackParameters
                     hideSystemBars()
@@ -1028,7 +1031,7 @@ class ExoplayerView :
         sleepTimer = PlayerSleepTimer(
             onExpire = {
                 exoPlayer.pause()
-                playerView.showController()
+                showControls()
                 snackString(getString(R.string.player_sleep_paused))
             },
             onChange = {
@@ -1462,7 +1465,12 @@ class ExoplayerView :
 
         val handler = assHandler!!
         Logger.log("Libass: Calling baseRenderersFactory.withAssSupport()")
-        val renderersFactory = baseRenderersFactory.withAssSupport(handler)
+        val renderersFactory = baseRenderersFactory.withAssSupport(handler).let {
+            if (ani.dantotsu.tv.TvMode.isOn(this)) {
+                subtitleDelay.delayMs = PrefManager.getCustomVal("${media.id}_subtitleDelay", 0L)
+                subtitleDelay.wrap(it)
+            } else it
+        }
 
         exoPlayer =
             ExoPlayer
@@ -1751,6 +1759,15 @@ class ExoplayerView :
                     "${media.id}_${media.anime!!.selectedEpisode}",
                     exoPlayer.currentPosition,
                 )
+            }
+            // The TV home screen's "Continue watching" picks up from here.
+            if (tvOverlay != null) {
+                val number = media.anime?.selectedEpisode
+                val position = exoPlayer.currentPosition
+                val duration = exoPlayer.duration.takeIf { it > 0 } ?: 0L
+                if (number != null) lifecycleScope.launch(Dispatchers.IO) {
+                    ani.dantotsu.tv.TvWatchNext.watched(applicationContext, media, number, position, duration)
+                }
             }
         }
     }
@@ -2252,6 +2269,13 @@ class ExoplayerView :
     private var isBuffering = true
     private var sleepTimer: PlayerSleepTimer? = null
 
+    /** The speeds on offer and the one picked, for TV mode's settings menu; see the speed button. */
+    private var speedOptions: Array<Float> = arrayOf(1f)
+    private var speedIndex = 0
+
+    /** Subtitles against the picture, in TV mode; see [PlayerSubtitleDelay]. */
+    private val subtitleDelay = PlayerSubtitleDelay()
+
     /** Opened to be cast: the cast picker comes up once the episode is ready to hand over. */
     private var castWhenReady = false
 
@@ -2666,6 +2690,93 @@ class ExoplayerView :
         )
     }
 
+    /** Every episode, the one playing chosen; picking one plays it, as the phone's dropdown does. */
+    private fun tvChooseEpisode() {
+        if (!::episodes.isInitialized) return
+        val options = episodeArr.mapIndexed { i, number ->
+            val episode = episodes[number]
+            val title = MediaNameAdapter.removeEpisodeNumberCompletely(episode?.title ?: "")
+                .takeIf { it.isNotBlank() && it != "null" }
+            val label = listOfNotNull(
+                getString(R.string.tv_episode_n, number),
+                title,
+                getString(R.string.filler).takeIf { episode?.filler == true },
+            ).joinToString(" · ")
+            ani.dantotsu.tv.TvPlayerController.Option(label, i == currentEpisodeIndex) {
+                if (i != currentEpisodeIndex) episodeTitle.setSelection(i)
+            }
+        }
+        tvOverlay?.choose(ani.dantotsu.tv.TvPlayerController.Choice(getString(R.string.tv_episodes), options))
+    }
+
+    /** The player's settings for a remote: speed, sleep timer, subtitle delay, server. */
+    private fun tvSettings() {
+        val overlay = tvOverlay ?: return
+        val timer = sleepTimer
+        val sleep = when {
+            timer == null -> getString(R.string.novel_tts_sleep_off)
+            timer.endOfEpisode -> getString(R.string.player_sleep_end_of_episode)
+            timer.minutesLeft > 0 -> getString(R.string.novel_tts_sleep_minutes, timer.minutesLeft)
+            else -> getString(R.string.novel_tts_sleep_off)
+        }
+        val items = listOfNotNull(
+            ani.dantotsu.tv.TvPlayerController.Option(
+                getString(R.string.speed), false, detail = "${speedOptions.getOrNull(speedIndex) ?: 1f}x",
+                icon = R.drawable.ic_round_slow_motion_video_24,
+            ) { tvChooseSpeed() },
+            ani.dantotsu.tv.TvPlayerController.Option(
+                getString(R.string.novel_tts_sleep_timer), false, detail = sleep, icon = R.drawable.ic_round_alarm_24,
+            ) { tvChooseSleep() },
+            ani.dantotsu.tv.TvPlayerController.Option(
+                getString(R.string.tv_subtitle_delay), false, detail = tvDelayLabel(subtitleDelay.delayMs),
+                icon = R.drawable.ic_round_subtitles_24,
+            ) { overlay.subtitleDelay = subtitleDelay.delayMs }.takeIf { overlay.hasSubtitles || hasExtSubtitles },
+            ani.dantotsu.tv.TvPlayerController.Option(
+                getString(R.string.tv_server), false, icon = R.drawable.ic_round_dns_24,
+            ) { exoSource.performClick() },
+        )
+        overlay.choose(ani.dantotsu.tv.TvPlayerController.Choice(getString(R.string.settings), items, menu = true))
+    }
+
+    private fun tvChooseSpeed() {
+        val options = speedOptions.mapIndexed { i, value ->
+            ani.dantotsu.tv.TvPlayerController.Option("${value}x", i == speedIndex) {
+                PrefManager.setCustomVal("${media.id}_speed", i)
+                speedIndex = i
+                playbackParameters = PlaybackParameters(value)
+                if (isInitialized) exoPlayer.playbackParameters = playbackParameters
+            }
+        }
+        tvOverlay?.choose(ani.dantotsu.tv.TvPlayerController.Choice(getString(R.string.speed), options))
+    }
+
+    /** Off, the end of this episode, or a number of minutes: the phone's choices. */
+    private fun tvChooseSleep() {
+        val timer = sleepTimer ?: return
+        val minutes = listOf(15, 30, 45, 60, 90)
+        val current = when {
+            timer.endOfEpisode -> 1
+            timer.minutesLeft > 0 -> 2 + minutes.indexOfFirst { it >= timer.minutesLeft }
+                .let { if (it < 0) minutes.lastIndex else it }
+            else -> 0
+        }
+        val options = listOf(
+            ani.dantotsu.tv.TvPlayerController.Option(getString(R.string.novel_tts_sleep_off), current == 0) { timer.cancel() },
+            ani.dantotsu.tv.TvPlayerController.Option(getString(R.string.player_sleep_end_of_episode), current == 1) {
+                timer.setEndOfEpisode()
+            },
+        ) + minutes.mapIndexed { i, m ->
+            ani.dantotsu.tv.TvPlayerController.Option(getString(R.string.novel_tts_sleep_minutes, m), current == i + 2) {
+                timer.setMinutes(m)
+            }
+        }
+        val title = if (timer.minutesLeft > 0) getString(R.string.player_sleep_left, timer.minutesLeft)
+        else getString(R.string.novel_tts_sleep_timer)
+        tvOverlay?.choose(ani.dantotsu.tv.TvPlayerController.Choice(title, options))
+    }
+
+    private fun tvDelayLabel(ms: Long): String = ani.dantotsu.tv.subtitleDelayLabel(ms)
+
     private fun setUpTvOverlay() {
         playerView.useController = false
         val controller = ani.dantotsu.tv.TvPlayerController(object : ani.dantotsu.tv.TvPlayerController.Actions {
@@ -2686,6 +2797,18 @@ class ExoplayerView :
             override fun playNext() { nextCountdown.playNow() }
             override fun cancelNext() { nextCountdown.cancelNow() }
             override fun server() { exoSource.performClick() }
+            override fun episodes() = tvChooseEpisode()
+            override fun settings() = tvSettings()
+            override fun setSubtitleDelay(ms: Long) {
+                subtitleDelay.delayMs = ms
+                tvOverlay?.subtitleDelay = ms
+                PrefManager.setCustomVal("${media.id}_subtitleDelay", ms)
+            }
+            override fun subtitleDelayDone() {
+                tvOverlay?.subtitleDelay = null
+                // The cues the old delay had already passed by are read again.
+                if (isInitialized) exoPlayer.seekTo(exoPlayer.currentPosition)
+            }
             // The phone controls' cast button, set up in TV mode too: Google Cast's device picker,
             // or Web Video Caster with the internal caster off.
             override fun cast() { playerView.findViewById<View>(R.id.exo_cast)?.performClick() }
@@ -2730,6 +2853,13 @@ class ExoplayerView :
                         nextCountdown.thumbUrl,
                     )
                 } else null
+                controller.sleepLabel = sleepTimer?.let { timer ->
+                    when {
+                        timer.endOfEpisode -> "${getString(R.string.novel_tts_sleep_timer)} · ${getString(R.string.player_sleep_end_of_episode)}"
+                        timer.minutesLeft > 0 -> getString(R.string.player_sleep_left, timer.minutesLeft)
+                        else -> null
+                    }
+                }
                 if (isInitialized) {
                     controller.playing = exoPlayer.isPlaying
                     controller.position = exoPlayer.currentPosition

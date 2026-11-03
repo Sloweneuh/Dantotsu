@@ -1,6 +1,5 @@
 package ani.dantotsu.settings
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -46,13 +45,17 @@ class ExtensionReconcileAdapter(
 
         if (item.isInstall) {
             b.reconcileActionIcon.setImageResource(R.drawable.ic_add)
-            b.reconcileActionIcon.setColorFilter(GREEN)
+            b.reconcileActionIcon.setColorFilter(
+                com.google.android.material.color.MaterialColors.getColor(b.reconcileActionIcon, androidx.appcompat.R.attr.colorPrimary)
+            )
             // Repo icon for a not-yet-installed extension; fall back to the type icon.
             Glide.with(ctx).load(item.iconUrl).placeholder(typeIcon).error(typeIcon)
                 .into(b.reconcileExtIcon)
         } else {
             b.reconcileActionIcon.setImageResource(R.drawable.ic_minus)
-            b.reconcileActionIcon.setColorFilter(RED)
+            b.reconcileActionIcon.setColorFilter(
+                com.google.android.material.color.MaterialColors.getColor(b.reconcileActionIcon, androidx.appcompat.R.attr.colorError)
+            )
             // Installed extension: use its real app icon. A novel source has no package to read
             // one off — it is a downloaded plugin — so it falls back to the URL its record keeps.
             val icon = runCatching { ctx.packageManager.getApplicationIcon(item.pkgName) }.getOrNull()
@@ -79,10 +82,5 @@ class ExtensionReconcileAdapter(
             checked[pos] = !checked[pos]
             b.reconcileCheck.isChecked = checked[pos]
         }
-    }
-
-    private companion object {
-        val GREEN = Color.parseColor("#43A047")
-        val RED = Color.parseColor("#E53935")
     }
 }

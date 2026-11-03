@@ -52,7 +52,11 @@ import com.bumptech.glide.integration.compose.GlideImage
  * stops on it on the way down — a list only scrolls to what can be focused, and would otherwise
  * jump over the text between one row of cards and the next.
  */
-fun LazyListScope.tvMediaInfo(media: Media, onOpen: (Media) -> Unit) {
+fun LazyListScope.tvMediaInfo(
+    media: Media,
+    onOpen: (Media) -> Unit,
+    themes: List<ani.dantotsu.connections.animethemes.AnimeThemeTrack>? = null,
+) {
     val synopsis = plainDescription(media)
     if (synopsis.isNotBlank()) item(key = "about") {
         InfoBlock(R.string.description) {
@@ -96,6 +100,10 @@ fun LazyListScope.tvMediaInfo(media: Media, onOpen: (Media) -> Unit) {
         }
         .distinctBy { it.first }
     if (streaming.isNotEmpty()) item(key = "available") { AvailableOn(streaming) }
+    // The trailer, then the openings and endings, as the phone's info page has them.
+    if (media.trailer != null || !themes.isNullOrEmpty()) item(key = "clips") {
+        Clips(media.trailer, themes.orEmpty(), media.banner ?: media.cover)
+    }
     item(key = "titles") {
         InfoBlock(R.string.tv_info_titles) {
             Fact(stringResource(R.string.name_romaji), media.nameRomaji, Modifier.padding(vertical = 5.dp))
@@ -123,17 +131,32 @@ fun LazyListScope.tvMediaInfo(media: Media, onOpen: (Media) -> Unit) {
         item(key = "characters") {
             CardRow(R.string.characters) {
                 items(characters, key = { it.id }) { character ->
-                    Portrait(character.image, character.name.orEmpty(), character.role.lowercase().replaceFirstChar { it.titlecase() })
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    Portrait(character.image, character.name.orEmpty(), character.role.lowercase().replaceFirstChar { it.titlecase() }) {
+                        TvPersonActivity.open(context, character)
+                    }
                 }
             }
         }
     }
-    media.staff?.takeIf { it.isNotEmpty() }?.let { staff ->
-        item(key = "staff") {
-            CardRow(R.string.staff) {
-                items(staff, key = { "${it.id}-${it.role}" }) { person ->
-                    Portrait(person.image, person.name.orEmpty(), person.role.orEmpty())
+    // The studio first, then the author when the staff list doesn't already have them, then the staff.
+    val studio = media.anime?.mainStudio
+    val author = (media.anime?.author ?: media.manga?.author)?.takeIf { a -> media.staff.orEmpty().none { it.id == a.id } }
+    val staff = listOfNotNull(author) + media.staff.orEmpty().distinctBy { "${it.id}-${it.role}" }
+    if (studio != null || staff.isNotEmpty()) item(key = "staff") {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        CardRow(R.string.staff) {
+            if (studio != null) item(key = "studio") {
+                // AniList has no picture of a studio; MAL has its logo, found by name.
+                val logo by androidx.compose.runtime.produceState<String?>(null, studio.name) {
+                    value = ani.dantotsu.others.MalStudios.logo(context, studio.name)
                 }
+                Portrait(logo, studio.name, stringResource(R.string.tv_studio), placeholder = R.drawable.ic_round_animation_24, logo = true) {
+                    TvPersonActivity.open(context, studio)
+                }
+            }
+            items(staff, key = { "${it.id}-${it.role}" }) { person ->
+                Portrait(person.image, person.name.orEmpty(), person.role.orEmpty()) { TvPersonActivity.open(context, person) }
             }
         }
     }
@@ -205,7 +228,7 @@ private fun untilText(seconds: Long): String {
 }
 
 @Composable
-private fun Fact(label: String, value: String, modifier: Modifier = Modifier) {
+internal fun Fact(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyLarge)
@@ -262,7 +285,7 @@ private fun AvailableOn(links: List<Pair<String, String>>) {
  * remote is while reading.
  */
 @Composable
-private fun InfoBlock(title: Int, content: @Composable () -> Unit) {
+internal fun InfoBlock(title: Int, content: @Composable () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Column(
@@ -283,7 +306,7 @@ private fun InfoBlock(title: Int, content: @Composable () -> Unit) {
 
 /** A titled row of cards, as the home's are. */
 @Composable
-private fun CardRow(title: Int, content: LazyListScope.() -> Unit) {
+internal fun CardRow(title: Int, content: LazyListScope.() -> Unit) {
     Column(Modifier.padding(top = 12.dp)) {
         Text(stringResource(title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 4.dp))
         FocusRestingAt(8.dp) {
@@ -299,18 +322,47 @@ private fun CardRow(title: Int, content: LazyListScope.() -> Unit) {
 /** A character or a member of staff: a round picture, the name, and their role beneath. */
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-private fun Portrait(image: String?, name: String, role: String) {
+internal fun Portrait(
+    image: String?,
+    name: String,
+    role: String,
+    placeholder: Int? = null,
+    /** A logo: fitted whole on a light disc, where a face is cropped to fill it. */
+    logo: Boolean = false,
+    onClick: () -> Unit = {},
+) {
     Column(Modifier.width(112.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Card(
-            onClick = {},
-            modifier = Modifier.size(96.dp),
+            onClick = onClick,
+            modifier = Modifier.size(96.dp).pointerClick(onClick = onClick),
             shape = CardDefaults.shape(CircleShape),
             scale = CardDefaults.scale(focusedScale = FOCUSED_SCALE),
             border = CardDefaults.border(
                 focusedBorder = Border(BorderStroke(FOCUS_OUTLINE, MaterialTheme.colorScheme.primary), shape = CircleShape),
             ),
         ) {
-            GlideImage(model = image, contentDescription = name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(CircleShape))
+            if (image == null && placeholder != null) Box(
+                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                androidx.tv.material3.Icon(
+                    androidx.compose.ui.res.painterResource(placeholder),
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                )
+            } else if (logo) Box(
+                // Light whatever the theme: logos are mostly dark lettering on nothing.
+                Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.White).padding(14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                GlideImage(
+                    model = image,
+                    contentDescription = name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                    failure = placeholder?.let { com.bumptech.glide.integration.compose.placeholder(it) },
+                )
+            } else GlideImage(model = image, contentDescription = name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(CircleShape))
         }
         Text(
             name,

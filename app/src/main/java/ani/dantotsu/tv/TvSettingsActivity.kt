@@ -94,6 +94,7 @@ class TvSettingsActivity : AppCompatActivity(), TvScreen {
 private enum class Category(val title: Int) {
     ACCOUNT(R.string.tv_settings_account),
     ANILIST(R.string.tv_settings_anilist),
+    DISCORD(R.string.tv_settings_discord),
     PLAYBACK(R.string.tv_settings_playback),
     PROGRESS(R.string.tv_settings_progress),
     SUBTITLES(R.string.subtitles),
@@ -173,6 +174,7 @@ private fun TvSettings(onExit: (() -> Unit)?) {
                     when (current) {
                         Category.ACCOUNT -> accountSettings(start)
                         Category.ANILIST -> anilistSettings(start)
+                        Category.DISCORD -> discordSettings(start)
                         Category.PLAYBACK -> playbackSettings(start)
                         Category.PROGRESS -> progressSettings(start)
                         Category.SUBTITLES -> subtitleSettings(start)
@@ -540,6 +542,113 @@ private fun SignedIn(name: String) {
             confirming = false
             Anilist.removeSavedToken()
             restartTvMode(context)
+        },
+        onDismiss = { confirming = false },
+    )
+}
+
+/**
+ * Discord: the account (signed in by scanning a code with the Discord app), and what the presence
+ * shows, as the phone's Discord sheet sets it.
+ */
+private fun androidx.compose.foundation.lazy.LazyListScope.discordSettings(start: Modifier) {
+    // Read through PresenceSettings first: that carries old settings over before the rows read them.
+    ani.dantotsu.connections.discord.PresenceSettings.mode
+    item { androidx.compose.foundation.layout.Box(start) { DiscordAccount() } }
+    item { Toggle(R.string.enable_rpc, PrefName.rpcEnabled) }
+    item { Header(R.string.discord_rich_presence) }
+    // What the presence looks like with the settings below, redrawn as they change.
+    item { DiscordPresencePreview() }
+    item {
+        val modes = listOf(
+            ani.dantotsu.connections.discord.PresenceSettings.MODE_MEDIA,
+            ani.dantotsu.connections.discord.PresenceSettings.MODE_DANTOTSU,
+        )
+        var mode by remember { mutableStateOf(ani.dantotsu.connections.discord.PresenceSettings.mode) }
+        androidx.compose.foundation.layout.Column {
+            ChoiceRow(
+                stringResource(R.string.discord_rpc_mode),
+                listOf(stringResource(R.string.discord_media_mode), stringResource(R.string.discord_dantotsu_mode)),
+                modes.indexOf(mode).coerceAtLeast(0),
+            ) { i ->
+                mode = modes[i]
+                PrefManager.setVal(PrefName.DiscordRPCMode, mode)
+                discordPreviewVersion.intValue++
+            }
+            Text(
+                stringResource(
+                    if (mode == ani.dantotsu.connections.discord.PresenceSettings.MODE_MEDIA) R.string.tv_discord_media_mode_desc
+                    else R.string.tv_discord_dantotsu_mode_desc
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+            )
+        }
+    }
+    item { Toggle(R.string.discord_rpc_show_site_icon, PrefName.DiscordRPCShowSiteIcon) { discordPreviewVersion.intValue++ } }
+    item { Toggle(R.string.discord_rpc_show_buttons, PrefName.DiscordShowButtons) { discordPreviewVersion.intValue++ } }
+    item { Toggle(R.string.discord_rpc_show_profile, PrefName.DiscordRPCShowProfile) { discordPreviewVersion.intValue++ } }
+    item { Toggle(R.string.discord_rpc_browsing, PrefName.DiscordRPCBrowsing) }
+}
+
+/**
+ * The Discord account: its avatar and name with a way to sign out (asked first), or the way in —
+ * a code to scan with the Discord app ([TvDiscordSignInActivity]). Looked at again on coming back.
+ */
+@OptIn(com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi::class)
+@Composable
+private fun DiscordAccount() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var signedIn by remember { mutableStateOf(ani.dantotsu.connections.discord.Discord.getSavedToken()) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) signedIn = ani.dantotsu.connections.discord.Discord.getSavedToken()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    var confirming by remember { mutableStateOf(false) }
+    if (!signedIn) {
+        val signIn = { context.startActivity(android.content.Intent(context, TvDiscordSignInActivity::class.java)) }
+        ListItem(
+            selected = false,
+            onClick = signIn,
+            headlineContent = { Text(stringResource(R.string.tv_discord_sign_in)) },
+            supportingContent = { Text(stringResource(R.string.tv_discord_sign_in_desc)) },
+            leadingContent = {
+                androidx.tv.material3.Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_discord), contentDescription = null)
+            },
+            modifier = Modifier.pointerClick(onClick = signIn),
+        )
+        return
+    }
+    val name = PrefManager.getVal(PrefName.DiscordUserName, "")
+    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        com.bumptech.glide.integration.compose.GlideImage(
+            model = ani.dantotsu.connections.discord.Discord.avatarUrl(),
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape),
+        )
+        Text(
+            stringResource(R.string.tv_discord_signed_in_as, name),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f).padding(start = 18.dp),
+        )
+        androidx.tv.material3.OutlinedButton(onClick = { confirming = true }, modifier = Modifier.pointerClick { confirming = true }) {
+            Text(stringResource(R.string.logout))
+        }
+    }
+    if (confirming) TvConfirm(
+        title = stringResource(R.string.logout_confirm_title, "Discord"),
+        message = stringResource(R.string.logout_confirm_message, "Discord"),
+        confirm = stringResource(R.string.logout),
+        onConfirm = {
+            confirming = false
+            ani.dantotsu.connections.discord.Discord.removeSavedToken(context)
+            signedIn = false
         },
         onDismiss = { confirming = false },
     )

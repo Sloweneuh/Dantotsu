@@ -115,6 +115,8 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
                     onGenre = { startActivity(Intent(this, TvBrowseActivity::class.java).putExtra(TvBrowseActivity.EXTRA_GENRE, it)) },
                     onDiscover = if (Anilist.token != null) ({ startActivity(Intent(this, TvDiscoverActivity::class.java)) }) else null,
                     onSearch = ::openSearch,
+                    onCalendar = { startActivity(Intent(this, TvCalendarActivity::class.java)) },
+                    onInbox = { startActivity(Intent(this, TvInboxActivity::class.java)) },
                     update = update,
                     onExtensionUpdates = { startActivity(Intent(this, TvExtensionsActivity::class.java)) },
                     onUpdate = { found -> startActivity(ani.dantotsu.others.AppUpdater.openIntent(this, found)) },
@@ -271,7 +273,7 @@ private sealed interface HomeRow {
  * pointer). Six named buttons ran across the top of the screen; this way only the one in use is.
  */
 @Composable
-private fun TopButton(icon: Int, label: String, onClick: () -> Unit) {
+private fun TopButton(icon: Int, label: String, onClick: () -> Unit, highlight: Boolean = false) {
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Button(
@@ -279,6 +281,14 @@ private fun TopButton(icon: Int, label: String, onClick: () -> Unit) {
         interactionSource = interaction,
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         modifier = Modifier.pointerClick(onClick = onClick),
+        // Grown by a share of its whole width, a button with its name out reached over the one
+        // beside it at the usual 1.1.
+        scale = androidx.tv.material3.ButtonDefaults.scale(focusedScale = 1.04f),
+        // A state to notice rather than a place to go: in the accent colour even unfocused.
+        colors = if (highlight) androidx.tv.material3.ButtonDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) else androidx.tv.material3.ButtonDefaults.colors(),
     ) {
         androidx.tv.material3.Icon(
             androidx.compose.ui.res.painterResource(icon),
@@ -348,6 +358,8 @@ private fun TvHome(
     onGenre: (String) -> Unit,
     onDiscover: (() -> Unit)?,
     onSearch: () -> Unit,
+    onCalendar: () -> Unit,
+    onInbox: () -> Unit,
     update: ani.dantotsu.others.AppUpdater.Update?,
     onUpdate: (ani.dantotsu.others.AppUpdater.Update) -> Unit,
     onExtensionUpdates: () -> Unit,
@@ -357,6 +369,12 @@ private fun TvHome(
     onProfile: (() -> Unit)?,
 ) {
     val continuing by home.getAnimeContinue().observeAsState()
+    // The TV home screen's "Continue watching" row, kept to the same list.
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    LaunchedEffect(continuing) {
+        val list = continuing ?: return@LaunchedEffect
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TvWatchNext.sync(appContext, list) }
+    }
     val planned by home.getAnimePlanned().observeAsState()
     val recommended by home.getRecommendation().observeAsState()
 
@@ -441,6 +459,36 @@ private fun TvHome(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Spacer(Modifier.weight(1f))
+                // Incognito, while it's on: a TV is a shared screen, and nothing else says nothing
+                // watched is being saved. Selecting it turns it off.
+                var incognito by remember(resumeTick) {
+                    mutableStateOf(PrefManager.getVal<Boolean>(PrefName.Incognito))
+                }
+                if (incognito) {
+                    TopButton(
+                        R.drawable.ic_incognito_24,
+                        stringResource(R.string.disable_incognito),
+                        {
+                            PrefManager.setVal(PrefName.Incognito, false)
+                            incognito = false
+                        },
+                        highlight = true,
+                    )
+                    Spacer(Modifier.width(12.dp))
+                }
+                // New episodes, as the phone's notifications list them: in the accent colour, with
+                // how many, while some haven't been looked at.
+                val (inboxStored, inboxUnread) = remember(resumeTick) { storedEpisodes().isNotEmpty() to unreadEpisodeCount() }
+                if (inboxStored) {
+                    TopButton(
+                        R.drawable.ic_round_notifications_active_24,
+                        if (inboxUnread > 0) pluralStringResource(R.plurals.tv_new_episodes_count, inboxUnread, inboxUnread)
+                        else stringResource(R.string.tv_new_episodes),
+                        onInbox,
+                        highlight = inboxUnread > 0,
+                    )
+                    Spacer(Modifier.width(12.dp))
+                }
                 // Extension updates, as the phone's notice banner announces them (TV mode shows no banners):
                 // the installed list knows which have one once the repositories have been read at startup.
                 val extensions = remember {
@@ -465,6 +513,8 @@ private fun TvHome(
                     Spacer(Modifier.width(12.dp))
                 }
                 TopButton(R.drawable.ic_round_search_24, stringResource(R.string.search), onSearch)
+                Spacer(Modifier.width(12.dp))
+                TopButton(R.drawable.ic_round_calendar_today_24, stringResource(R.string.release_calendar), onCalendar)
                 Spacer(Modifier.width(12.dp))
                 TopButton(R.drawable.ic_round_settings_24, stringResource(R.string.settings), onSettings)
                 // Not on a TV, where there's no other interface to leave for.

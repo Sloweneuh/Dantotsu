@@ -92,7 +92,7 @@
                             android:background="@drawable/notification_circle"
                             android:fontFamily="@font/poppins_semi_bold"
                             android:gravity="center"
-                            android:textColor="#F3F3F3"
+                            android:textColor="?attr/colorOnError"
                             android:textSize="8sp"
                             android:visibility="gone"
                             tools:text="3"

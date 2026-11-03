@@ -206,7 +206,8 @@ fun airingStatus(media: Media): String? {
 /** "Watching · Ep 5 / 12": the user's list status and progress, or null when it isn't on their list. */
 @Composable
 fun listStatusLabel(media: Media): String? {
-    val status = when (media.userStatus) {
+    val mangaWords = if (media.anime == null && media.manga != null) mangaStatus(media.userStatus) else null
+    val status = if (mangaWords != null) stringResource(mangaWords) else when (media.userStatus) {
         "CURRENT" -> stringResource(R.string.tv_list_current)
         "PLANNING" -> stringResource(R.string.tv_list_planning)
         "COMPLETED" -> stringResource(R.string.tv_list_completed)
@@ -249,6 +250,11 @@ fun plainDescription(media: Media): String =
 @Composable
 fun progressLabel(media: Media): String? {
     val progress = media.userProgress?.takeIf { it > 0 } ?: return null
+    if (media.anime == null && media.manga != null) {
+        val chapters = media.manga?.totalChapters
+        return if (chapters != null) stringResource(R.string.tv_progress_of_chapters, progress, chapters)
+        else stringResource(R.string.tv_progress_chapters, progress)
+    }
     val total = media.anime?.totalEpisodes ?: media.anime?.nextAiringEpisode
     return if (total != null) stringResource(R.string.tv_progress_of, progress, total)
     else stringResource(R.string.tv_progress, progress)

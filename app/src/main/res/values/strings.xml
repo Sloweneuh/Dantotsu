@@ -3986,4 +3986,68 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="download_complete_item">%1$s: download complete</string>
     <string name="extension_repo_added">%1$s extension repository added</string>
     <string name="media_on_source">%1$s on %2$s</string>
+    <!-- TV mode player: episodes, settings menu, subtitle delay -->
+    <string name="tv_subtitle_delay">Subtitle delay</string>
+    <string name="tv_subtitle_delay_hint">Left and right move the subtitles a quarter of a second earlier or later, while the episode plays.</string>
+    <!-- TV mode media page: trailer and theme songs -->
+    <string name="tv_clips">Videos and songs</string>
+    <string name="tv_trailer">Trailer</string>
+    <!-- TV mode: release calendar -->
+    <string name="tv_today">Today</string>
+    <string name="tv_yesterday">Yesterday</string>
+    <string name="tv_tomorrow">Tomorrow</string>
+    <string name="tv_calendar_episode_at">Ep. %1$s · %2$s</string>
+    <string name="tv_calendar_on_list">On my list</string>
+    <string name="tv_calendar_empty">Nothing airing this week</string>
+    <string name="tv_calendar_day_empty">Nothing airing that day</string>
+    <!-- TV mode: new episodes inbox -->
+    <string name="tv_new_episodes">New episodes</string>
+    <string name="tv_mark_all_seen">Mark all as seen</string>
+    <string name="tv_no_new_episodes">No new episodes announced yet</string>
+    <plurals name="tv_new_episodes_count">
+        <item quantity="one">%1$d new episode</item>
+        <item quantity="other">%1$d new episodes</item>
+    </plurals>
+    <!-- TV mode: manga opened from a relation -->
+    <string name="tv_list_reading">Reading</string>
+    <string name="tv_list_rereading">Rereading</string>
+    <string name="tv_list_progress_manga">Chapters read</string>
+    <string name="tv_progress_of_chapters">Ch %1$d / %2$d</string>
+    <string name="tv_progress_chapters">Ch %1$d</string>
+    <string name="tv_manga_on_phone">TV mode is for anime: read this manga on your phone (the devices button sends it there)</string>
+    <!-- TV mode: character, staff and studio pages -->
+    <string name="tv_appears_in">Appears in</string>
+    <string name="tv_voice_actors">Voice actors</string>
+    <string name="tv_characters_voiced">Characters voiced</string>
+    <string name="tv_date_of_death">Died</string>
+    <string name="tv_home_town">Home town</string>
+    <string name="tv_years_active">Years active</string>
+    <string name="tv_cancelled">Cancelled</string>
+    <string name="tv_no_description">No description</string>
+    <string name="tv_about">About</string>
+    <string name="tv_studio">Studio</string>
+    <string name="tv_age">Age</string>
+    <string name="tv_gender">Gender</string>
+    <string name="tv_birthday">Birthday</string>
+    <!-- TV mode: Discord -->
+    <string name="tv_settings_discord">Discord</string>
+    <string name="tv_discord_sign_in">Sign in to Discord</string>
+    <string name="tv_discord_sign_in_desc">Scan a code with the Discord app on your phone</string>
+    <string name="tv_discord_step_open">Open the Discord app on your phone</string>
+    <string name="tv_discord_step_scan">Go to Settings, then Scan QR Code, and scan this code</string>
+    <string name="tv_discord_step_confirm">Confirm the sign-in on your phone</string>
+    <string name="tv_discord_confirm_on_phone">Confirm on your phone to sign in as %1$s</string>
+    <string name="tv_discord_signing_in">Signing in…</string>
+    <string name="tv_discord_cancelled">The sign-in was turned down on the phone.</string>
+    <string name="tv_discord_timed_out">The code expired before it was scanned.</string>
+    <string name="tv_discord_captcha">Discord wants a captcha for this sign-in: use the sign-in page instead, with a mouse and keyboard.</string>
+    <string name="tv_discord_failed">Couldn\'t sign in to Discord.</string>
+    <string name="tv_discord_new_code">New code</string>
+    <string name="tv_discord_web_page">Use the sign-in page</string>
+    <string name="tv_discord_warning">Your Discord will show what you watch on Dantotsu. Custom rich presence is against Discord\'s terms; nobody is known to have been banned for it, but it\'s at your own risk.</string>
+    <string name="tv_discord_signed_in_as">Signed in to Discord as %1$s</string>
+    <string name="tv_discord_media_mode_desc">The button and icon show where the anime comes from: AniList, MAL, Kitsu, Simkl or the extension</string>
+    <string name="tv_discord_dantotsu_mode_desc">The button links to the anime on its site, under Dantotsu\'s icon</string>
+    <string name="tv_discord_preview_watching">Watching %1$s</string>
+    <string name="tv_discord_preview_details">Episode 1: The Journey\'s End</string>
 </resources>

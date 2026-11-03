@@ -38,6 +38,40 @@ object Discord {
         token = newToken  // keep in-memory token in sync
     }
 
+    /**
+     * Signs in with an account token however it was got (the login page, or a scan from the phone's
+     * Discord app): the account's name and avatar first, which also proves the token good, then the
+     * presence token made from it, then saved. False, and nothing kept, if any of it fails.
+     */
+    suspend fun completeLogin(context: Context, token: String): Boolean = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val response = DiscordHttpClient.instance.newCall(
+                Request.Builder().url("https://discord.com/api/v9/users/@me").header("Authorization", token).build()
+            ).execute()
+            if (!response.isSuccessful) throw IllegalStateException("Failed to fetch user: ${response.code}")
+            response.body?.string()?.let { body ->
+                val json = JSONObject(body)
+                PrefManager.setVal(PrefName.DiscordId, json.optString("id"))
+                PrefManager.setVal(PrefName.DiscordUserName, json.optString("username"))
+                PrefManager.setVal(PrefName.DiscordAvatar, json.optString("avatar"))
+            }
+            // The OAuth2 bearer token presence is set with (PKCE, a few seconds).
+            TokenManager(authToken = token, filesDir = File(context.filesDir, "discord")).getToken()
+            saveToken(token)
+            true
+        } catch (e: Exception) {
+            ani.dantotsu.util.Logger.log("Discord: login failed — ${e.message}")
+            false
+        }
+    }
+
+    /** The signed-in account's avatar, for showing it; null without one. */
+    fun avatarUrl(): String? {
+        val id = PrefManager.getVal(PrefName.DiscordId, null as String?)?.takeIf { it.isNotBlank() } ?: return null
+        val hash = PrefManager.getVal(PrefName.DiscordAvatar, null as String?)?.takeIf { it.isNotBlank() && it != "null" } ?: return null
+        return "https://cdn.discordapp.com/avatars/$id/$hash.png?size=128"
+    }
+
     fun removeSavedToken(context: Context) {
         PrefManager.removeVal(PrefName.DiscordToken)
         PrefManager.removeVal(PrefName.DiscordId)

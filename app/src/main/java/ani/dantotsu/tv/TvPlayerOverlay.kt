@@ -77,7 +77,17 @@ class TvPlayerController(private val actions: Actions) {
         fun cancelNext()
         fun cast()
         fun handoff()
+        fun episodes()
+        fun settings()
+        fun setSubtitleDelay(ms: Long)
+        fun subtitleDelayDone()
     }
+
+    /** "Sleep timer · 12 min left" while one is set; null otherwise. */
+    var sleepLabel by mutableStateOf<String?>(null)
+
+    /** The subtitle delay, in milliseconds, while its dialog is up; null otherwise. */
+    var subtitleDelay by mutableStateOf<Long?>(null)
 
     /** "Continue on another device" while its dialog is up, with where this has got to. */
     var handoff by mutableStateOf<ani.dantotsu.connections.handoff.HandoffPayload?>(null)
@@ -124,9 +134,18 @@ class TvPlayerController(private val actions: Actions) {
         actions.block()
     }
 
-    /** A list to pick one of — an audio track, a subtitle — drawn over the player for a remote. */
-    class Choice(val title: String, val options: List<Option>)
-    class Option(val label: String, val selected: Boolean, val pick: () -> Unit)
+    /**
+     * A list to pick one of — an audio track, a subtitle — drawn over the player for a remote. A
+     * [menu] is a list of things to open instead: no radio buttons, each with what it is set to.
+     */
+    class Choice(val title: String, val options: List<Option>, val menu: Boolean = false)
+    class Option(
+        val label: String,
+        val selected: Boolean,
+        val detail: String? = null,
+        val icon: Int? = null,
+        val pick: () -> Unit,
+    )
 
     var choice by mutableStateOf<Choice?>(null)
 
@@ -165,6 +184,7 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
 
     controller.choice?.let { choice -> ChoiceDialog(choice) { controller.choice = null } }
     controller.handoff?.let { payload -> TvHandoffSendDialog(payload) { controller.handoff = null } }
+    controller.subtitleDelay?.let { delay -> SubtitleDelayDialog(delay, controller) }
 
     // Skip and up next stay up whether or not the controls are, above them when they are: OK
     // presses them while the controls are hidden (see ExoplayerView.remoteKey), a mouse clicks them.
@@ -191,13 +211,26 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                     .padding(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 48.dp)
                     .align(Alignment.TopStart)
             ) {
-                Text(
-                    controller.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        controller.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    controller.sleepLabel?.let { label ->
+                        Row(
+                            Modifier.padding(start = 16.dp).background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(50))
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(painterResource(R.drawable.ic_round_alarm_24), contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Text(label, style = MaterialTheme.typography.labelMedium, color = Color.White, modifier = Modifier.padding(start = 6.dp))
+                        }
+                    }
+                }
                 Text(
                     controller.episodeLine,
                     style = MaterialTheme.typography.titleSmall,
@@ -248,20 +281,25 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                         controller.act { next() }
                     }
                     Spacer(Modifier.weight(1f))
+                    ControlButton(R.drawable.ic_round_playlist_play_24, R.string.tv_episodes) {
+                        controller.act { episodes() }
+                    }
                     ControlButton(R.drawable.ic_round_audiotrack_24, R.string.audio_tracks, controller.hasAudio) {
                         controller.act { audio() }
                     }
                     ControlButton(R.drawable.ic_round_subtitles_24, R.string.subtitles, controller.hasSubtitles) {
                         controller.act { subtitles() }
                     }
-                    ControlButton(R.drawable.ic_round_dns_24, R.string.tv_server) {
-                        controller.act { server() }
-                    }
                     ControlButton(R.drawable.ic_round_cast_24, R.string.tv_cast) {
                         controller.act { cast() }
                     }
                     ControlButton(R.drawable.ic_round_devices_24, R.string.continue_on_another_device) {
                         controller.act { handoff() }
+                    }
+                    // Speed, sleep timer, subtitle delay and server: a row of fourteen buttons
+                    // didn't fit a TV's width.
+                    ControlButton(R.drawable.ic_round_video_settings_24, R.string.settings) {
+                        controller.act { settings() }
                     }
                 }
             }
@@ -402,7 +440,7 @@ private fun ChoiceDialog(choice: TvPlayerController.Choice, onDismiss: () -> Uni
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 10.dp),
                 )
-                val focusAt = choice.options.indexOfFirst { it.selected }.coerceAtLeast(0)
+                val focusAt = if (choice.menu) 0 else choice.options.indexOfFirst { it.selected }.coerceAtLeast(0)
                 FocusRestingAt(48.dp) {
                     androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp)) {
                         items(choice.options.size) { i ->
@@ -415,7 +453,13 @@ private fun ChoiceDialog(choice: TvPlayerController.Choice, onDismiss: () -> Uni
                                 selected = option.selected,
                                 onClick = pick,
                                 headlineContent = { Text(option.label) },
-                                trailingContent = { androidx.tv.material3.RadioButton(selected = option.selected, onClick = null) },
+                                leadingContent = option.icon?.let { icon ->
+                                    { Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp)) }
+                                },
+                                trailingContent = {
+                                    if (choice.menu) option.detail?.let { Text(it, style = MaterialTheme.typography.labelLarge) }
+                                    else androidx.tv.material3.RadioButton(selected = option.selected, onClick = null)
+                                },
                                 modifier = (if (i == focusAt) Modifier.focusRequester(current) else Modifier).pointerClick(onClick = pick),
                             )
                         }
@@ -425,6 +469,78 @@ private fun ChoiceDialog(choice: TvPlayerController.Choice, onDismiss: () -> Uni
         }
     }
 }
+
+/** "+0.25 s", "−1.5 s", "0 s": a subtitle delay as the dialog and the settings menu show it. */
+fun subtitleDelayLabel(ms: Long): String {
+    if (ms == 0L) return "0 s"
+    val number = "%.2f".format(kotlin.math.abs(ms) / 1000.0).trimEnd('0').trimEnd('.', ',')
+    return "${if (ms > 0) "+" else "\u2212"}$number s"
+}
+
+/**
+ * The subtitles against the picture: left and right shift them a quarter of a second earlier or
+ * later, as it plays, until they match; Reset puts them back.
+ */
+@Composable
+private fun SubtitleDelayDialog(delay: Long, controller: TvPlayerController) {
+    val stepper = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { stepper.requestFocus() }
+    }
+    val done = { controller.act { subtitleDelayDone() } }
+    TvDialog(onDismissRequest = done) {
+        androidx.tv.material3.Surface(shape = CARD_SHAPE, modifier = Modifier.width(460.dp)) {
+            Column(Modifier.padding(24.dp)) {
+                Text(stringResource(R.string.tv_subtitle_delay), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    stringResource(R.string.tv_subtitle_delay_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+                )
+                androidx.tv.material3.ListItem(
+                    selected = false,
+                    onClick = {},
+                    headlineContent = {
+                        Text(
+                            subtitleDelayLabel(delay),
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    },
+                    leadingContent = { Icon(painterResource(R.drawable.ic_round_arrow_back_ios_new_24), contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    trailingContent = { Icon(painterResource(R.drawable.ic_round_arrow_forward_ios_new_24), contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    modifier = Modifier
+                        .focusRequester(stepper)
+                        .onPreviewKeyEvent { event ->
+                            val step = when (event.key) {
+                                Key.DirectionLeft -> -SUBTITLE_DELAY_STEP_MS
+                                Key.DirectionRight -> SUBTITLE_DELAY_STEP_MS
+                                else -> return@onPreviewKeyEvent false
+                            }
+                            if (event.type == KeyEventType.KeyDown) controller.act {
+                                setSubtitleDelay((delay + step).coerceIn(-SUBTITLE_DELAY_MAX_MS, SUBTITLE_DELAY_MAX_MS))
+                            }
+                            true
+                        },
+                )
+                Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.End) {
+                    androidx.tv.material3.OutlinedButton(
+                        onClick = { controller.act { setSubtitleDelay(0L) } },
+                        enabled = delay != 0L,
+                    ) { Text(stringResource(R.string.reset)) }
+                    Spacer(Modifier.width(12.dp))
+                    androidx.tv.material3.Button(onClick = done) { Text(stringResource(R.string.close)) }
+                }
+            }
+        }
+    }
+}
+
+private const val SUBTITLE_DELAY_STEP_MS = 250L
+private const val SUBTITLE_DELAY_MAX_MS = 30_000L
 
 /**
  * A button over the picture, focused the way the overlay's own controls are: the accent colour and

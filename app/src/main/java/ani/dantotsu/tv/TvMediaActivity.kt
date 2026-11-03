@@ -98,20 +98,36 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
         initActivity(this)
         val start: Media = intent.getSerialized("media") ?: return finish()
         readHandoff()
-        model.watchSources = if (start.isAdult) HAnimeSources else AnimeSources
+        // TV mode watches anime only: a manga, opened from a relation, is shown for what it is,
+        // and sent to the phone to read.
+        val manga = start.anime == null && start.manga != null
+        if (!manga) model.watchSources = if (start.isAdult) HAnimeSources else AnimeSources
 
         // Details arrive from AniList; the episode search starts once, on the full entry.
         model.getMedia().observe(this) { media ->
             if (media == null) return@observe
             favourite.value = media.isFav
+            // What the Discord presence says is open, when sharing that is on.
+            val isAnime = media.anime != null
+            browsingPresence.update(
+                ani.dantotsu.connections.discord.BrowsingPresence.Page(
+                    media.userPreferredName, media.cover,
+                    media.id.takeIf { it >= 0 }?.let {
+                        ani.dantotsu.connections.discord.PresenceSources.anilist(
+                            it, isAnime, ani.dantotsu.connections.discord.PresenceSources.noun(isAnime, media.format == "NOVEL"),
+                        )
+                    },
+                )
+            )
             // Opened from the downloads screen: on the downloaded episodes, the first time round.
             media.selected = model.loadSelected(media, !episodesRequested && intent.getBooleanExtra(EXTRA_DOWNLOADS, false))
             sourceIndex.intValue = media.selected!!.sourceIndex
-            if (!episodesRequested) {
+            if (!episodesRequested && !manga) {
                 episodesRequested = true
                 applyHandoffSource(media)
                 loadEpisodes(media)
                 loadMalSync(media)
+                lifecycleScope.launch(Dispatchers.IO) { model.loadFillerEpisodes(media) }
             }
         }
         lifecycleScope.launch(Dispatchers.IO) { model.loadMedia(start) }
@@ -142,6 +158,13 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                     .associateBy { it.label }
                 LaunchedEffect(active.keys) { downloadsVersion.intValue++ }
                 val version = downloadsVersion.intValue
+                val fillers by model.getFillerEpisodes().observeAsState()
+                val isFiller: (Episode) -> Boolean = { episode -> episode.filler || fillers?.get(episode.number)?.filler == true }
+                // On the episodes themselves too, as the phone's watch tab puts them: the player
+                // reads them there, for its episode list and to skip fillers when that's on.
+                LaunchedEffect(episodes, fillers) {
+                    episodes?.forEach { (number, episode) -> if (fillers?.get(number)?.filler == true) episode.filler = true }
+                }
                 val downloadState: (Episode) -> EpisodeDownload = { episode ->
                     val item = active[episode.number]
                     when {
@@ -153,15 +176,17 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                 }
                 TvMedia(
                     media = media,
-                    sourceNames = sourcesVersion.intValue.let { model.watchSources?.names.orEmpty() },
+                    sourceNames = if (manga) emptyList() else sourcesVersion.intValue.let { model.watchSources?.names.orEmpty() },
+                    manga = manga,
                     sourceIndex = sourceIndex.intValue,
                     sourceIcon = ::sourceIcon,
                     isDownloads = ::isDownloads,
                     onAddExtensions = { startActivity(android.content.Intent(this, TvExtensionsActivity::class.java)) },
+                    themes = model.getThemes().observeAsState().value,
                     onOpenMedia = { related ->
                         startActivity(android.content.Intent(this, TvMediaActivity::class.java).putExtra("media", related as java.io.Serializable))
                     },
-                    onSourceSettings = sourceSettingsId(sourceIndex.intValue)?.let { id ->
+                    onSourceSettings = if (manga) null else sourceSettingsId(sourceIndex.intValue)?.let { id ->
                         {
                             startActivity(
                                 android.content.Intent(this, TvExtensionSettingsActivity::class.java)
@@ -172,6 +197,7 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                     episodes = episodes?.values?.sortedBy { it.number.toFloatOrNull() ?: Float.MAX_VALUE },
                     onPlay = { play(media, it) },
                     downloadState = downloadState,
+                    isFiller = isFiller,
                     onDownload = { download(media, listOf(it.number)) },
                     onDownloadMany = { download(media, it) },
                     onCancelDownload = { cancelDownload(media, it, active[it.number]) },
@@ -213,6 +239,8 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
         }
     }
 
+    private val browsingPresence = ani.dantotsu.connections.discord.BrowsingPresence(this)
+
     companion object {
         /** Open on the title's downloaded episodes rather than its usual source. */
         const val EXTRA_DOWNLOADS = "downloads"
@@ -232,7 +260,9 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
         lifecycleScope.launch(Dispatchers.IO) {
             val ok = runCatching {
                 ani.dantotsu.connections.anilist.Anilist.mutation.toggleFav(
-                    ani.dantotsu.connections.anilist.AnilistMutations.FavType.ANIME, media.id,
+                    if (media.anime == null && media.manga != null) ani.dantotsu.connections.anilist.AnilistMutations.FavType.MANGA
+                    else ani.dantotsu.connections.anilist.AnilistMutations.FavType.ANIME,
+                    media.id,
                 )
             }.getOrDefault(false)
             if (ok) {
@@ -558,9 +588,11 @@ private fun TvMedia(
     onAddExtensions: () -> Unit,
     onSourceSettings: (() -> Unit)?,
     onOpenMedia: (Media) -> Unit,
+    themes: List<ani.dantotsu.connections.animethemes.AnimeThemeTrack>?,
     episodes: List<Episode>?,
     onPlay: (Episode) -> Unit,
     downloadState: (Episode) -> EpisodeDownload,
+    isFiller: (Episode) -> Boolean,
     onDownload: (Episode) -> Unit,
     onDownloadMany: (List<String>) -> Unit,
     onCancelDownload: (Episode) -> Unit,
@@ -578,6 +610,7 @@ private fun TvMedia(
     favourite: Boolean,
     onFavourite: (() -> Unit)?,
     onSendToDevice: () -> Unit,
+    manga: Boolean = false,
 ) {
     var editingList by remember { mutableStateOf(false) }
     var pickingSource by remember { mutableStateOf(false) }
@@ -606,6 +639,9 @@ private fun TvMedia(
             @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
             object : androidx.compose.foundation.gestures.BringIntoViewSpec {
                 override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+                    // Focus the mouse gave stays where it is, as in FocusRestingAt: scrolled up with
+                    // the wheel, the row arriving under the pointer took focus and pulled the page back.
+                    if (TvPointer.drivesFocus) return 0f
                     // In the top sections (the title, then the buttons, items 0 and 1): to the very top.
                     // Item offsets count from the content's start, after the top padding; [offset]
                     // from the list's own edge.
@@ -746,6 +782,7 @@ private fun TvMedia(
             } }
             item {
                 when {
+                    manga -> Status(stringResource(R.string.tv_manga_on_phone))
                     sourceNames.isEmpty() -> Status(stringResource(R.string.tv_no_extensions))
                     episodes == null -> Status(stringResource(R.string.tv_finding_episodes, sourceName.orEmpty()))
                     episodes.isEmpty() -> Status(stringResource(R.string.tv_no_episodes, sourceName.orEmpty()))
@@ -778,6 +815,7 @@ private fun TvMedia(
                                     fallbackImage = media.banner ?: media.cover,
                                     watched = (episode.number.toFloatOrNull() ?: Float.MAX_VALUE) <= watched,
                                     download = downloadState(episode),
+                                    filler = isFiller(episode),
                                     onClick = { onPlay(episode) },
                                     // From the downloads themselves there's nothing to fetch, only to play.
                                     onLongClick = if (isDownloads(sourceIndex)) null else ({ actionsFor = episode }),
@@ -787,7 +825,7 @@ private fun TvMedia(
                     }
                 }
             }
-            tvMediaInfo(media, onOpenMedia)
+            tvMediaInfo(media, onOpenMedia, themes)
         }
         }
     }
@@ -862,6 +900,7 @@ private fun EpisodeCard(
     fallbackImage: String?,
     watched: Boolean,
     download: EpisodeDownload,
+    filler: Boolean,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
 ) {
@@ -884,12 +923,23 @@ private fun EpisodeCard(
             )
             Box(Modifier.fillMaxSize()) { EpisodeDownloadMarks(download) }
         }
-        Text(
-            stringResource(R.string.tv_episode_n, episode.number),
-            style = MaterialTheme.typography.titleSmall,
-            color = if (watched) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 10.dp),
-        )
+        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.tv_episode_n, episode.number),
+                style = MaterialTheme.typography.titleSmall,
+                color = if (watched) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+            )
+            // Filler, as MyAnimeList lists it: worth knowing before starting one.
+            if (filler) Text(
+                stringResource(R.string.filler),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .background(MaterialTheme.colorScheme.secondaryContainer, androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            )
+        }
         // A title that only repeats the number ("Episode 3") says nothing the line above doesn't.
         episode.title?.takeIf { MediaNameAdapter.removeEpisodeNumberCompletely(it).isNotBlank() }?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

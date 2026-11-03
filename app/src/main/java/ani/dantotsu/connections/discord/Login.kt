@@ -122,44 +122,10 @@ class Login : AppCompatActivity() {
 
     private fun login(token: String) {
         lifecycleScope.launch(Dispatchers.IO) {
-            var loginSuccessful = false
-
-            try {
-                // 1. Fetch user details FIRST (fast, validates the token)
-                val client = DiscordHttpClient.instance
-                val request = Request.Builder()
-                    .url("https://discord.com/api/v9/users/@me")
-                    .header("Authorization", token)
-                    .build()
-
-                val userResponse = client.newCall(request).execute()
-                if (!userResponse.isSuccessful) {
-                    throw IllegalStateException("Failed to fetch user: ${userResponse.code}")
-                }
-
-                userResponse.body?.string()?.let { jsonString ->
-                    val json = JSONObject(jsonString)
-                    PrefManager.setVal(PrefName.DiscordId, json.optString("id"))
-                    PrefManager.setVal(PrefName.DiscordUserName, json.optString("username"))
-                    PrefManager.setVal(PrefName.DiscordAvatar, json.optString("avatar"))
-                }
-
-                // 2. Pre-fetch OAuth2 Bearer token (can take 3-5s for PKCE)
-                TokenManager(
-                    authToken = token,
-                    filesDir = File(filesDir, "discord")
-                ).getToken()
-
-                // 3. Both succeeded
-                loginSuccessful = true
-
-            } catch (e: Exception) {
-                Logger.log("Login: Login failed — ${e.message}")
-            }
+            val loginSuccessful = Discord.completeLogin(this@Login, token)
 
             withContext(Dispatchers.Main) {
                 if (loginSuccessful) {
-                    saveToken(token)
                     Toast.makeText(this@Login, "Logged in successfully", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this@Login, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)

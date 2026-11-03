@@ -1897,6 +1897,7 @@ Page(page:$page,perPage:50) {
             author.yearsActive =
                 if (query?.yearsActive?.isEmpty() == true) null else query?.yearsActive
             author.homeTown = if (query?.homeTown?.isBlank() == true) null else query?.homeTown
+            if (page == 1) author.description = query?.description?.takeIf { it.isNotBlank() }
             author.dateOfDeath = if (query?.dateOfDeath?.toStringOrEmpty()
                     ?.isBlank() == true
             ) null else query?.dateOfDeath?.toStringOrEmpty()
