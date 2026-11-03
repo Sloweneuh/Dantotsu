@@ -2187,10 +2187,22 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="all_episodes_downloaded">All episodes are already downloaded</string>
     <string name="cancel_all_downloads">Cancel all</string>
     <string name="cancel_all_downloads_confirm">Cancel every queued and in-progress download?</string>
-    <string name="download_chapters_count">%1$d chapters · %2$s</string>
-    <string name="download_episodes_count">%1$d episodes · %2$s</string>
-    <string name="download_chapters_count_only">%1$d chapters</string>
-    <string name="download_episodes_count_only">%1$d episodes</string>
+    <plurals name="download_chapters_count">
+        <item quantity="one">%1$d chapter · %2$s</item>
+        <item quantity="other">%1$d chapters · %2$s</item>
+    </plurals>
+    <plurals name="download_episodes_count">
+        <item quantity="one">%1$d episode · %2$s</item>
+        <item quantity="other">%1$d episodes · %2$s</item>
+    </plurals>
+    <plurals name="download_chapters_count_only">
+        <item quantity="one">%1$d chapter</item>
+        <item quantity="other">%1$d chapters</item>
+    </plurals>
+    <plurals name="download_episodes_count_only">
+        <item quantity="one">%1$d episode</item>
+        <item quantity="other">%1$d episodes</item>
+    </plurals>
     <string name="cancel_download">Cancel download</string>
     <string name="reorder">Reorder</string>
     <string name="expand">Expand</string>
@@ -4062,4 +4074,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_ext_filter">Filter</string>
     <string name="tv_ext_all_languages">All languages</string>
     <string name="tv_clip_failed">Couldn\'t play this video: AnimeThemes may be unreachable right now</string>
+    <string name="tv_offline_pill">Offline</string>
+    <string name="tv_offline_row">Downloaded</string>
+    <string name="tv_offline_empty">No downloaded anime. While offline, only downloads can be watched.</string>
 </resources>

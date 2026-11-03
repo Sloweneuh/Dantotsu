@@ -1327,10 +1327,22 @@
     <string name="all_chapters_downloaded">Tous les chapitres sont déjà téléchargés</string>
     <string name="all_episodes_downloaded">Tous les épisodes sont déjà téléchargés</string>
     <string name="cancel_all_downloads_confirm">Annuler tous les téléchargements en cours et en attente ?</string>
-    <string name="download_chapters_count">%1$d chapitres · %2$s</string>
-    <string name="download_episodes_count">%1$d épisodes · %2$s</string>
-    <string name="download_chapters_count_only">%1$d chapitres</string>
-    <string name="download_episodes_count_only">%1$d épisodes</string>
+    <plurals name="download_chapters_count">
+        <item quantity="one">%1$d chapitre · %2$s</item>
+        <item quantity="other">%1$d chapitres · %2$s</item>
+    </plurals>
+    <plurals name="download_episodes_count">
+        <item quantity="one">%1$d épisode · %2$s</item>
+        <item quantity="other">%1$d épisodes · %2$s</item>
+    </plurals>
+    <plurals name="download_chapters_count_only">
+        <item quantity="one">%1$d chapitre</item>
+        <item quantity="other">%1$d chapitres</item>
+    </plurals>
+    <plurals name="download_episodes_count_only">
+        <item quantity="one">%1$d épisode</item>
+        <item quantity="other">%1$d épisodes</item>
+    </plurals>
     <string name="cancel_download">Annuler le téléchargement</string>
     <string name="reorder">Réorganiser</string>
     <string name="expand">Développer</string>
@@ -3942,4 +3954,7 @@
     <string name="tv_ext_filter">Filtrer</string>
     <string name="tv_ext_all_languages">Toutes les langues</string>
     <string name="tv_clip_failed">Impossible de lire cette vidéo : AnimeThemes est peut-être injoignable pour le moment</string>
+    <string name="tv_offline_pill">Hors ligne</string>
+    <string name="tv_offline_row">Téléchargés</string>
+    <string name="tv_offline_empty">Aucun anime téléchargé. Hors ligne, seuls les téléchargements peuvent être regardés.</string>
 </resources>

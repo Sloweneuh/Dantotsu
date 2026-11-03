@@ -105,15 +105,17 @@ class DownloadManagementAdapter(
             val size = group.sizeBytes
             b.itemMediaSubtitle.text = if (size == null) {
                 // Still being measured; the count alone is worth showing right away.
-                ctx.getString(
-                    if (anime) R.string.download_episodes_count_only
-                    else R.string.download_chapters_count_only,
+                ctx.resources.getQuantityString(
+                    if (anime) R.plurals.download_episodes_count_only
+                    else R.plurals.download_chapters_count_only,
+                    group.itemCount,
                     group.itemCount
                 )
             } else {
-                ctx.getString(
-                    if (anime) R.string.download_episodes_count
-                    else R.string.download_chapters_count,
+                ctx.resources.getQuantityString(
+                    if (anime) R.plurals.download_episodes_count
+                    else R.plurals.download_chapters_count,
+                    group.itemCount,
                     group.itemCount,
                     formatBytes(size)
                 )

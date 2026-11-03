@@ -87,6 +87,8 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
     /** The source episodes are being shown from, as an index into [ani.dantotsu.parsers.WatchSources]. */
     private val sourceIndex = mutableIntStateOf(0)
     private var episodesRequested = false
+    /** No connection, or offline mode on: the page shows only what was saved with the download. */
+    private var offline = false
 
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(TvMode.attach(this, newBase))
@@ -101,6 +103,8 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
         // TV mode watches anime only: a manga, opened from a relation, is shown for what it is,
         // and sent to the phone to read.
         val manga = start.anime == null && start.manga != null
+        offline = ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.OfflineMode) ||
+            !ani.dantotsu.isOnline(this)
         if (!manga) model.watchSources = if (start.isAdult) HAnimeSources else AnimeSources
 
         // Details arrive from AniList; the episode search starts once, on the full entry.
@@ -120,17 +124,22 @@ class TvMediaActivity : AppCompatActivity(), TvScreen {
                 )
             )
             // Opened from the downloads screen: on the downloaded episodes, the first time round.
-            media.selected = model.loadSelected(media, !episodesRequested && intent.getBooleanExtra(EXTRA_DOWNLOADS, false))
+            // Offline, on them every time: no other source can load.
+            media.selected = model.loadSelected(media, offline || (!episodesRequested && intent.getBooleanExtra(EXTRA_DOWNLOADS, false)))
             sourceIndex.intValue = media.selected!!.sourceIndex
             if (!episodesRequested && !manga) {
                 episodesRequested = true
                 applyHandoffSource(media)
                 loadEpisodes(media)
-                loadMalSync(media)
-                lifecycleScope.launch(Dispatchers.IO) { model.loadFillerEpisodes(media) }
+                if (!offline) {
+                    loadMalSync(media)
+                    lifecycleScope.launch(Dispatchers.IO) { model.loadFillerEpisodes(media) }
+                }
             }
         }
-        lifecycleScope.launch(Dispatchers.IO) { model.loadMedia(start) }
+        // Offline, the details are the ones it was opened with: those saved with the download.
+        if (offline) model.setMedia(start)
+        else lifecycleScope.launch(Dispatchers.IO) { model.loadMedia(start) }
 
         setContent {
             TvTheme {

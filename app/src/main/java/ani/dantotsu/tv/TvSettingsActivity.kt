@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import kotlinx.coroutines.launch
@@ -131,7 +132,13 @@ private fun TvSettings(onExit: (() -> Unit)?) {
                     style = MaterialTheme.typography.displaySmall,
                     modifier = Modifier.padding(start = 12.dp, bottom = 20.dp),
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Scrolled when they outgrow the screen (eleven of them on a short window): the
+                // focused one is brought into view, the mouse wheel moves them too.
+                Column(
+                    Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())
+                        .padding(bottom = 36.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     categories.forEach { category ->
                         val pick = {
                             current = category
@@ -753,6 +760,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.downloadSettings(star
             modifier = Modifier.pointerClick(onClick = open),
         )
     } }
+    // Switched by hand, it's left by hand: not the network's to undo once a connection is back.
+    item {
+        Toggle(R.string.offline_mode, PrefName.OfflineMode) { context ->
+            PrefManager.setVal(PrefName.OfflineModeAuto, false)
+            restartTvMode(context)
+        }
+    }
     item { DownloadLocationChoice() }
     item { Toggle(R.string.allow_metered_downloads, PrefName.AllowMeteredDownloads) }
     item {

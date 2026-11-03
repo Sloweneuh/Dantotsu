@@ -79,6 +79,7 @@ import ani.dantotsu.settings.saving.PrefName
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import kotlinx.coroutines.withContext
+import ani.dantotsu.download.findValidName
 
 /**
  * The TV interface's home: the focused title shown large over its banner, and rows of the user's
@@ -94,6 +95,11 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
     private val genres = androidx.compose.runtime.mutableStateListOf<Pair<String, String?>>()
     private val resumeTick = mutableIntStateOf(0)
     private var update by androidx.compose.runtime.mutableStateOf<ani.dantotsu.others.AppUpdater.Update?>(null)
+    /** Set while the home is the offline one ([TvOfflineHome]): the downloaded titles, once read. */
+    private var offline = false
+    private val offlineTitles = mutableStateOf<List<OfflineTitle>?>(null)
+    private val connected = mutableStateOf(true)
+    private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
 
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(TvMode.attach(this, newBase))
@@ -109,6 +115,16 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
         ThemeManager(this).applyTheme()
         super.onCreate(savedInstanceState)
         initActivity(this)
+        // No connection: offline mode on, as the phone interface's start does, marked as the
+        // network's doing so it's left again once the connection is back.
+        if (!ani.dantotsu.isOnline(this) && !PrefManager.getVal<Boolean>(PrefName.OfflineMode)) {
+            PrefManager.setVal(PrefName.OfflineMode, true)
+            PrefManager.setVal(PrefName.OfflineModeAuto, true)
+        }
+        if (PrefManager.getVal<Boolean>(PrefName.OfflineMode)) {
+            showOffline()
+            return
+        }
         // An app can't make its own window fullscreen on WSA (Android 13 has no call for it), but
         // WSA can: said once, the first time TV mode opens there.
         // Once the home is up, on its own window: in onCreate the screen that opened TV mode was
@@ -239,15 +255,102 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
         }
     }
 
+    /** The downloads in place of the AniList rows, none of which can load without the internet. */
+    private fun showOffline() {
+        offline = true
+        connected.value = ani.dantotsu.isOnline(this)
+        setContent {
+            TvTheme {
+                TvOfflineHome(
+                    titles = offlineTitles.value,
+                    onOpen = ::openDownloaded,
+                    onGoOnline = if (connected.value) ::goOnline else null,
+                    onDownloads = { startActivity(Intent(this, TvDownloadsActivity::class.java)) },
+                    onSettings = { startActivity(Intent(this, TvSettingsActivity::class.java)) },
+                    onExit = if (TvMode.canExit(this)) ({ TvMode.exit(this) }) else null,
+                )
+            }
+        }
+        loadOfflineTitles()
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        val callback = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                main.post { onConnectionChanged() }
+            }
+
+            override fun onLost(network: android.net.Network) {
+                main.post { onConnectionChanged() }
+            }
+        }
+        if (runCatching { cm.registerDefaultNetworkCallback(callback) }.isSuccess) networkCallback = callback
+    }
+
+    private fun onConnectionChanged() {
+        if (isFinishing || isDestroyed) return
+        connected.value = ani.dantotsu.isOnline(this)
+        // Offline because the connection dropped: back online with it, while the home is on screen.
+        // Somewhere else (an episode playing), it waits until the home is back.
+        if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) goOnlineIfAutomatic()
+    }
+
+    private fun goOnlineIfAutomatic() {
+        if (connected.value && PrefManager.getVal<Boolean>(PrefName.OfflineModeAuto)) goOnline()
+    }
+
+    private fun goOnline() {
+        PrefManager.setVal(PrefName.OfflineMode, false)
+        PrefManager.setVal(PrefName.OfflineModeAuto, false)
+        TvMode.startHome(this)
+        finish()
+    }
+
+    private fun loadOfflineTitles() {
+        lifecycleScope.launch {
+            offlineTitles.value = withContext(Dispatchers.IO) {
+                runCatching {
+                    val counts = uy.kohesive.injekt.Injekt.get<ani.dantotsu.download.DownloadsManager>()
+                        .animeDownloadedTypes.groupingBy { it.titleName.findValidName() }.eachCount()
+                    ani.dantotsu.download.OfflineMediaLoader.loadDownloadedMediaList(this@TvHomeActivity, true)
+                        .distinctBy { it.id }
+                        .map { OfflineTitle(it, counts[it.mainName().findValidName()] ?: 0) }
+                }.getOrDefault(emptyList())
+            }
+        }
+    }
+
+    /** A downloaded title's page, on its downloaded episodes, from the details saved with it. */
+    private fun openDownloaded(media: Media) {
+        startActivity(
+            Intent(this, TvMediaActivity::class.java)
+                .putExtra("media", media as Serializable)
+                .putExtra(TvMediaActivity.EXTRA_DOWNLOADS, true)
+        )
+    }
+
     override fun onResume() {
         super.onResume()
         TvMode.tvWindowOpened(this)
+        if (offline) {
+            connected.value = ani.dantotsu.isOnline(this)
+            goOnlineIfAutomatic()
+            return
+        }
         resumeTick.intValue++
         // New episodes of what's being watched, if switched on, as the phone home does; at most hourly.
         ani.dantotsu.download.AutoDownloads.runIfDue(this, animeOnly = true)
     }
 
+    override fun onRestart() {
+        super.onRestart()
+        // A download deleted, or finished, on the way.
+        if (offline) loadOfflineTitles()
+    }
+
     override fun onDestroy() {
+        networkCallback?.let { callback ->
+            runCatching { (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).unregisterNetworkCallback(callback) }
+        }
         Refresh.activity.remove(hashCode())
         super.onDestroy()
     }
@@ -295,7 +398,7 @@ private sealed interface HomeRow {
  * pointer). Six named buttons ran across the top of the screen; this way only the one in use is.
  */
 @Composable
-private fun TopButton(icon: Int, label: String, onClick: () -> Unit, highlight: Boolean = false) {
+internal fun TopButton(icon: Int, label: String, onClick: () -> Unit, highlight: Boolean = false) {
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Button(
@@ -893,7 +996,7 @@ private fun TileHero(tile: Tile, modifier: Modifier = Modifier) {
 
 /** The focused title, large: name, what it is, and the start of its synopsis. */
 @Composable
-private fun Hero(media: Media?, modifier: Modifier = Modifier) {
+internal fun Hero(media: Media?, modifier: Modifier = Modifier) {
     Column(modifier.width(520.dp), verticalArrangement = Arrangement.Bottom) {
         if (media == null) return@Column
         FittedTitle(media.userPreferredName)
