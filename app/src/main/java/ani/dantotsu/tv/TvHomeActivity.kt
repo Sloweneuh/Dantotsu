@@ -99,6 +99,12 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
         super.attachBaseContext(TvMode.attach(this, newBase))
     }
 
+    /** Its window's size, for TV mode to reopen at on WSA ([TvMode.rememberTvWindow]). */
+    override fun onPause() {
+        super.onPause()
+        TvMode.rememberTvWindow(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeManager(this).applyTheme()
         super.onCreate(savedInstanceState)
@@ -235,6 +241,7 @@ class TvHomeActivity : AppCompatActivity(), TvScreen {
 
     override fun onResume() {
         super.onResume()
+        TvMode.tvWindowOpened(this)
         resumeTick.intValue++
         // New episodes of what's being watched, if switched on, as the phone home does; at most hourly.
         ani.dantotsu.download.AutoDownloads.runIfDue(this, animeOnly = true)

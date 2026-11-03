@@ -63,8 +63,7 @@ object TvMode {
     /** Switches to the TV interface, leaving nothing of the phone one behind to back out into. */
     fun enter(activity: Activity) {
         PrefManager.setVal(PrefName.BigPictureMode, ON)
-        // The phone interface's window, as the user had it: TV mode takes the whole screen on WSA,
-        // and leaving it goes back to this ([exit]).
+        // The phone interface's window, as the user had it: leaving TV mode goes back to it ([exit]).
         if (ani.dantotsu.connections.handoff.HandoffManager.isWsa(activity)) windowBounds(activity)?.let {
             PrefManager.setCustomVal(PHONE_WINDOW, it.flattenToString())
         }
@@ -72,52 +71,96 @@ object TvMode {
     }
 
     /**
-     * Opens TV home, with [flags] as the caller wants them. On WSA, in a window the size of the
-     * screen: an app can't make its own window fullscreen there (Android 13 has no call for it), but
-     * a window it opens can be given any size. Only a new window takes that size, so TV home opens
-     * in one of its own, and the window it was opened from is closed — what clearing the task
-     * did, the phone interface or the TV mode being reopened left behind.
+     * Opens TV home, with [flags] as the caller wants them: every way into TV mode goes through
+     * here. On WSA its window stays the size WSA remembers for the app — it applies that over any
+     * size an app asks for — so full screen there is WSA's own F11, which TV home suggests.
      */
     fun startHome(context: Context, flags: Int = 0) {
         val intent = Intent(context, TvHomeActivity::class.java).addFlags(flags)
-        val bounds = if (ani.dantotsu.connections.handoff.HandoffManager.isWsa(context)) screenBounds(context) else null
+        // On WSA, from the phone interface (not a TV screen restarting TV mode): TV mode back at the
+        // size it last had. A window keeps its size within its task, and TV mode opened in the phone
+        // interface's, at its size; only a new window takes the one asked for (and not with the task
+        // cleared), so it opens in its own and the phone interface's is closed.
+        val bounds = if (context !is TvScreen && ani.dantotsu.connections.handoff.HandoffManager.isWsa(context)) {
+            savedBounds(TV_WINDOW) ?: desktopBounds(context)
+        } else null
         if (bounds == null) {
             context.startActivity(intent)
             return
         }
+        intent.removeFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
         context.startActivity(intent, android.app.ActivityOptions.makeBasic().setLaunchBounds(bounds).toBundle())
         (context as? Activity)?.finishAndRemoveTask()
     }
 
     /**
-     * The whole screen: on WSA, the Windows desktop. The display's own size — not the window
-     * manager's "maximum window", which for a window in a desktop-style mode is that window's own
-     * bounds, so TV mode reopened exactly as small as the phone window it came from.
+     * Notes the size TV mode's window has, for [startHome] to open it at next time: on leaving it,
+     * and whenever TV home goes to the background (the app closed while in TV mode). WSA only.
      */
-    private fun screenBounds(context: Context): android.graphics.Rect? = runCatching {
+    fun rememberTvWindow(activity: Activity) {
+        if (!ani.dantotsu.connections.handoff.HandoffManager.isWsa(activity)) return
+        val now = windowBounds(activity) ?: return
+        // Only a size the user gave it: one WSA imposed (the window it remembered for the app,
+        // over the size asked for) was saved too, and asked for at every launch after, so TV mode
+        // stayed that small until resized by hand.
+        if (now == openedAt[activity]) return
+        PrefManager.setCustomVal(TV_WINDOW, now.flattenToString())
+    }
+
+    /** The size each TV home window opened at ([tvWindowOpened]), to tell a resize from it. */
+    private val openedAt = java.util.WeakHashMap<Activity, android.graphics.Rect>()
+
+    /** Notes the size [activity]'s window opened at, the first time it's in front. WSA only. */
+    fun tvWindowOpened(activity: Activity) {
+        if (activity in openedAt || !ani.dantotsu.connections.handoff.HandoffManager.isWsa(activity)) return
+        windowBounds(activity)?.let { openedAt[activity] = it }
+    }
+
+    /**
+     * The screen less room for Windows' title bar above the window and its taskbar below: as large
+     * as WSA lets a window open. Asked for the whole display (0, 0 to its full size), it opened the
+     * window at its remembered size instead — a window there would have its title bar off the top
+     * and its bottom under the taskbar.
+     */
+    private fun desktopBounds(context: Context): android.graphics.Rect? = runCatching {
         val display = (context.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager)
             .getDisplay(android.view.Display.DEFAULT_DISPLAY)
+        // The physical mode, not the display's metrics: asked from inside a window, WSA reports the
+        // display as that window, turned on its side (543 by 1000 from a 1000 by 543 window), and
+        // TV mode asked to be the phone window's size.
+        val mode = display.mode
+        val width = maxOf(mode.physicalWidth, mode.physicalHeight)
+        val height = minOf(mode.physicalWidth, mode.physicalHeight)
         val metrics = android.util.DisplayMetrics()
         @Suppress("DEPRECATION") display.getRealMetrics(metrics)
-        android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
+        val scale = metrics.densityDpi / 160f
+        android.graphics.Rect(0, (WSA_TITLE_BAR_DP * scale).toInt(), width, height - (WSA_TASKBAR_DP * scale).toInt())
     }.getOrNull()?.takeIf { !it.isEmpty }
+
+    /** Windows' title bar over a WSA window, and the taskbar, in dp (at 160 dpi, WSA's pixels). */
+    private const val WSA_TITLE_BAR_DP = 32
+    private const val WSA_TASKBAR_DP = 48
+
+    private fun savedBounds(key: String): android.graphics.Rect? =
+        PrefManager.getNullableCustomVal(key, null, String::class.java)
+            ?.let { android.graphics.Rect.unflattenFromString(it) }?.takeIf { !it.isEmpty }
 
     /** Back to the phone interface, until switched on again (even on a TV). */
     fun exit(activity: Activity) {
         PrefManager.setVal(PrefName.BigPictureMode, OFF)
+        rememberTvWindow(activity)
         val intent = Intent(activity, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        // On WSA, back in the window the phone interface had before TV mode took the screen: a
-        // window of its own, as only a new one takes a size, and TV mode's closed.
-        val bounds = if (ani.dantotsu.connections.handoff.HandoffManager.isWsa(activity)) {
-            PrefManager.getNullableCustomVal(PHONE_WINDOW, null, String::class.java)
-                ?.let { android.graphics.Rect.unflattenFromString(it) }?.takeIf { !it.isEmpty }
-        } else null
+        // On WSA, back in the window the phone interface had before TV mode: a window of its own,
+        // as only a new one takes a size (and not with the task cleared, or WSA kept the old
+        // window's), and TV mode's closed.
+        val bounds = if (ani.dantotsu.connections.handoff.HandoffManager.isWsa(activity)) savedBounds(PHONE_WINDOW) else null
         if (bounds == null) {
             activity.startActivity(intent)
             return
         }
+        intent.removeFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
         intent.addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
         activity.startActivity(intent, android.app.ActivityOptions.makeBasic().setLaunchBounds(bounds).toBundle())
         activity.finishAndRemoveTask()
@@ -137,6 +180,9 @@ object TvMode {
 
     /** The phone interface's window before TV mode ([enter], [exit]); on WSA only. */
     private const val PHONE_WINDOW = "tv_phone_window_bounds"
+
+    /** TV mode's own window, the last time it was left ([rememberTvWindow], [startHome]); on WSA only. */
+    private const val TV_WINDOW = "tv_window_bounds_3"
 
     /** A connected gamepad or joystick: the moment to offer the TV interface. */
     fun hasController(): Boolean = InputDevice.getDeviceIds().any { id ->

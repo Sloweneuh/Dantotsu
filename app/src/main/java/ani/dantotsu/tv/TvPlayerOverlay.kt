@@ -61,7 +61,11 @@ import kotlinx.coroutines.delay
  * What TV mode's player overlay shows, kept up to date by the player; and what it can ask of it.
  * The player keeps its own logic — the overlay only draws it for a remote, and passes the buttons on.
  */
-class TvPlayerController(private val actions: Actions) {
+class TvPlayerController(
+    private val actions: Actions,
+    /** A clip rather than an episode (an opening, an ending): the timeline and playback buttons only. */
+    val simple: Boolean = false,
+) {
 
     interface Actions {
         fun playPause()
@@ -252,7 +256,7 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     verticalAlignment = Alignment.Top,
                 ) {
-                    ControlButton(R.drawable.ic_round_skip_previous_24, R.string.tv_previous_episode, controller.hasPrevious) {
+                    if (!controller.simple) ControlButton(R.drawable.ic_round_skip_previous_24, R.string.tv_previous_episode, controller.hasPrevious) {
                         controller.act { previous() }
                     }
                     ControlButton(R.drawable.ic_round_replay_10_24, R.string.tv_rewind_10) {
@@ -277,10 +281,11 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                     ControlButton(R.drawable.ic_round_forward_10_24, R.string.tv_forward_10) {
                         controller.act { seekBy(seekStepMs) }
                     }
-                    ControlButton(R.drawable.ic_round_skip_next_24, R.string.tv_next_episode, controller.hasNext) {
+                    if (!controller.simple) ControlButton(R.drawable.ic_round_skip_next_24, R.string.tv_next_episode, controller.hasNext) {
                         controller.act { next() }
                     }
                     Spacer(Modifier.weight(1f))
+                    if (!controller.simple) {
                     ControlButton(R.drawable.ic_round_playlist_play_24, R.string.tv_episodes) {
                         controller.act { episodes() }
                     }
@@ -300,6 +305,7 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                     // didn't fit a TV's width.
                     ControlButton(R.drawable.ic_round_video_settings_24, R.string.settings) {
                         controller.act { settings() }
+                    }
                     }
                 }
             }

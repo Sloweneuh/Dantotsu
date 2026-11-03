@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -49,8 +50,10 @@ fun DiscordPresencePreview(modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(12.dp)
     Column(
         modifier
-            .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
+            // About as wide as Discord's own profile card, not the settings column's whole width.
+            .widthIn(max = 420.dp)
+            .fillMaxWidth()
             .clip(shape)
             .background(DISCORD_CARD)
             .border(1.dp, Color.White.copy(alpha = 0.06f), shape)

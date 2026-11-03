@@ -189,16 +189,21 @@ private fun TvExtensions(
     // Re-read when the dialog changes them: a pref, not state.
     var reposVersion by remember { androidx.compose.runtime.mutableIntStateOf(0) }
 
-    val showNsfw = PrefManager.getVal<Boolean>(PrefName.NSFWExtension)
+    var showNsfw by remember { mutableStateOf(PrefManager.getVal<Boolean>(PrefName.NSFWExtension)) }
+    // The language the list is narrowed to, null for all of them; kept between visits.
+    var language by remember { mutableStateOf(PrefManager.getNullableCustomVal(LANGUAGE_FILTER, null, String::class.java)) }
+    var filtering by remember { mutableStateOf(false) }
     val installedPkgs = installed.map { it.pkgName }.toSet()
     fun matches(name: String) = query.isBlank() || name.contains(query.trim(), ignoreCase = true)
-    val updates = installed.filter { it.hasUpdate && matches(it.name) }
+    // A multi-language extension has every language, so it stays whichever is picked.
+    fun inLanguage(lang: String) = language == null || lang == language || lang == "all" || lang.isEmpty()
+    val updates = installed.filter { it.hasUpdate && matches(it.name) && inLanguage(it.lang) }
     val missing = available.filter { it.pkgName in fromOtherDevices && it.pkgName !in installedPkgs }
-    val shownInstalled = installed.filter { matches(it.name) }.sortedBy { it.name.lowercase() }
+    val shownInstalled = installed.filter { matches(it.name) && inLanguage(it.lang) }.sortedBy { it.name.lowercase() }
     // Installed ones stay, marked: a row that left the list as it installed took the focus with
     // it, and the focus fell to the search field, keyboard and all.
     val shownAvailable = available
-        .filter { (showNsfw || !it.isNsfw) && matches(it.name) }
+        .filter { (showNsfw || !it.isNsfw) && matches(it.name) && inLanguage(it.lang) }
         .sortedBy { it.name.lowercase() }
     val installedByPkg = installed.associateBy { it.pkgName }
     val noRepos = PrefManager.getVal<Set<String>>(PrefName.AnimeExtensionRepos).isEmpty()
@@ -290,6 +295,15 @@ private fun TvExtensions(
                         Text(query.ifBlank { stringResource(R.string.tv_ext_search) }, maxLines = 1)
                     }
                 }
+                val filter = { filtering = true }
+                OutlinedButton(onClick = filter, modifier = Modifier.pointerClick(onClick = filter)) {
+                    androidx.tv.material3.Icon(
+                        androidx.compose.ui.res.painterResource(R.drawable.ic_round_filter_list_24),
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp).size(20.dp),
+                    )
+                    Text(language?.let { languageName(it) } ?: stringResource(R.string.tv_ext_filter), maxLines = 1)
+                }
                 val repos = { managingRepos = true }
                 OutlinedButton(onClick = repos, modifier = Modifier.pointerClick(onClick = repos)) {
                     Text(stringResource(R.string.tv_ext_repos))
@@ -363,6 +377,28 @@ private fun TvExtensions(
                 }
             }
         }
+    }
+
+    if (filtering) {
+        // The languages there are, by how many extensions have each: no list of languages nothing has.
+        val counts = (installed.map { it.lang } + available.map { it.lang })
+            .filter { it.isNotEmpty() && it != "all" }
+            .groupingBy { it }.eachCount()
+        val languages = counts.keys.sortedBy { languageName(it).lowercase() }
+        ExtensionFilterDialog(
+            languages = languages.map { it to counts.getValue(it) },
+            language = language,
+            showNsfw = showNsfw,
+            onLanguage = {
+                language = it
+                if (it == null) PrefManager.removeCustomVal(LANGUAGE_FILTER) else PrefManager.setCustomVal(LANGUAGE_FILTER, it)
+            },
+            onNsfw = {
+                showNsfw = it
+                PrefManager.setVal(PrefName.NSFWExtension, it)
+            },
+            onDismiss = { filtering = false },
+        )
     }
 
     managing?.let { ext ->
@@ -450,7 +486,7 @@ private fun TvExtensions(
                             ListItem(
                                 selected = false,
                                 onClick = ask,
-                                headlineContent = { Text(repo, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                                headlineContent = { Text(ani.dantotsu.settings.shownRepoName(repo), maxLines = 2, overflow = TextOverflow.Ellipsis) },
                                 trailingContent = { Text(stringResource(R.string.tv_ext_remove_repo)) },
                                 modifier = (if (repo == repos.first()) Modifier.focusRequester(focus) else Modifier).pointerClick(onClick = ask),
                             )
@@ -474,7 +510,7 @@ private fun TvExtensions(
                     Column(Modifier.padding(24.dp)) {
                         Text(stringResource(R.string.tv_ext_remove_repo_title), style = MaterialTheme.typography.headlineSmall)
                         Text(
-                            repo,
+                            ani.dantotsu.settings.shownRepoName(repo),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
@@ -530,6 +566,75 @@ private fun TvExtensions(
                         val cancel = { addingRepo = false }
                         OutlinedButton(onClick = cancel, modifier = Modifier.pointerClick(onClick = cancel)) {
                             Text(stringResource(R.string.cancel))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The extensions list's language filter, kept between visits. */
+private const val LANGUAGE_FILTER = "tv_ext_language_filter"
+
+/**
+ * What the extensions list shows: one language (or all of them), and whether 18+ extensions are
+ * offered. Picked languages apply at once; the current one has the focus.
+ */
+@Composable
+private fun ExtensionFilterDialog(
+    languages: List<Pair<String, Int>>,
+    language: String?,
+    showNsfw: Boolean,
+    onLanguage: (String?) -> Unit,
+    onNsfw: (Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val current = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { current.requestFocus() }
+    }
+    TvDialog(onDismissRequest = onDismiss) {
+        Surface(shape = CARD_SHAPE, modifier = Modifier.width(460.dp)) {
+            Column(Modifier.padding(24.dp)) {
+                Text(stringResource(R.string.tv_ext_filter), style = MaterialTheme.typography.headlineSmall)
+                val flip = { onNsfw(!showNsfw) }
+                ListItem(
+                    selected = false,
+                    onClick = flip,
+                    headlineContent = { Text(stringResource(R.string.tv_ext_show_nsfw)) },
+                    trailingContent = { androidx.tv.material3.Switch(checked = showNsfw, onCheckedChange = null) },
+                    modifier = Modifier.padding(top = 10.dp).pointerClick(onClick = flip),
+                )
+                Text(
+                    stringResource(R.string.language),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                )
+                FocusRestingAt(48.dp) {
+                    LazyColumn(Modifier.heightIn(max = 380.dp)) {
+                        item(key = "all") {
+                            val pick = { onLanguage(null); onDismiss() }
+                            ListItem(
+                                selected = language == null,
+                                onClick = pick,
+                                headlineContent = { Text(stringResource(R.string.tv_ext_all_languages)) },
+                                trailingContent = { androidx.tv.material3.RadioButton(selected = language == null, onClick = null) },
+                                modifier = (if (language == null) Modifier.focusRequester(current) else Modifier).pointerClick(onClick = pick),
+                            )
+                        }
+                        items(languages, key = { it.first }) { (lang, count) ->
+                            val pick = { onLanguage(lang); onDismiss() }
+                            ListItem(
+                                selected = lang == language,
+                                onClick = pick,
+                                headlineContent = { Text(languageName(lang)) },
+                                supportingContent = { Text(count.toString()) },
+                                trailingContent = { androidx.tv.material3.RadioButton(selected = lang == language, onClick = null) },
+                                modifier = (if (lang == language) Modifier.focusRequester(current) else Modifier).pointerClick(onClick = pick),
+                            )
                         }
                     }
                 }

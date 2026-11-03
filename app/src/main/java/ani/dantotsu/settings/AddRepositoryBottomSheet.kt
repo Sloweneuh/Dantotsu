@@ -37,7 +37,7 @@ class RepoItem(
     override fun getLayout() = R.layout.item_repo
 
     override fun bind(viewBinding: ItemRepoBinding, position: Int) {
-        viewBinding.repoNameTextView.text = url.cleanShownUrl()
+        viewBinding.repoNameTextView.text = shownRepoName(url)
         viewBinding.repoDeleteImageView.setOnClickListener {
             onRemove(url, mediaType)
         }
@@ -51,15 +51,19 @@ class RepoItem(
         return ItemRepoBinding.bind(view)
     }
 
-    private fun String.cleanShownUrl(): String {
-        return this
-            .removePrefix("https://raw.githubusercontent.com/")
-            .replace("index.min.json", "")
-            .replace("index.json", "")
-            .replace("index.pb", "")
-            .removeSuffix("/")
-    }
 }
+
+/**
+ * A repository as the lists show it: its GitHub owner, repository and branch, without the raw
+ * content host and the index file name ("keiyoushi/extensions/repo"), or what's left of any
+ * other address once that file name is off it. TV mode's list shows them the same way.
+ */
+fun shownRepoName(url: String): String = url
+    .removePrefix("https://raw.githubusercontent.com/")
+    .replace("index.min.json", "")
+    .replace("index.json", "")
+    .replace("index.pb", "")
+    .removeSuffix("/")
 
 class AddRepositoryBottomSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetAddRepositoryBinding? = null

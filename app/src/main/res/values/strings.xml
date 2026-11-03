@@ -4059,4 +4059,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
         <item quantity="other">%1$d extension updates available</item>
     </plurals>
     <string name="tv_wsa_fullscreen_tip">Press F11 to show TV mode full screen</string>
+    <string name="tv_ext_filter">Filter</string>
+    <string name="tv_ext_all_languages">All languages</string>
+    <string name="tv_clip_failed">Couldn\'t play this video: AnimeThemes may be unreachable right now</string>
 </resources>

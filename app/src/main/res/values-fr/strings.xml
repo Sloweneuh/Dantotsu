@@ -3939,4 +3939,7 @@
         <item quantity="other">%1$d mises à jour d\'extensions disponibles</item>
     </plurals>
     <string name="tv_wsa_fullscreen_tip">Appuyez sur F11 pour afficher le mode TV en plein écran</string>
+    <string name="tv_ext_filter">Filtrer</string>
+    <string name="tv_ext_all_languages">Toutes les langues</string>
+    <string name="tv_clip_failed">Impossible de lire cette vidéo : AnimeThemes est peut-être injoignable pour le moment</string>
 </resources>
