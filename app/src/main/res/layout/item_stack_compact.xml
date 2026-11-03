@@ -57,6 +57,8 @@
 
         <TextView
             android:id="@+id/itemCompactTitle"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:textColor="?attr/colorOnBackground"
             android:layout_width="108dp"
             android:layout_height="wrap_content"
             android:ellipsize="end"

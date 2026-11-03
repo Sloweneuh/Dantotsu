@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The theme's background (was a fixed light grey / black). -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="?android:attr/colorBackground" />
+</selector>

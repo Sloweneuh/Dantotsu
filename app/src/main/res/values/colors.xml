@@ -3,20 +3,17 @@
     <color name="violet_400">#91A6FF</color>
     <color name="bg_black">#000000</color>
     <color name="bg_white">#EEEEEE</color>
-    <color name="bg">@color/bg_white</color>
-    <color name="bg_opp">@color/bg_black</color>
-    <color name="fg">#A8000000</color>
+    <color name="bg_fixed">@color/bg_white</color>
+    <color name="bg_opp_fixed">@color/bg_black</color>
     <color name="bg_black_50" alpha="128">#80000000</color>
-    <color name="nav_bg">#fff</color>
+    <color name="nav_bg_fixed">#fff</color>
     <color name="nav_bg_inv">#00BFAEAE</color>
     <color name="gradiant_bg_start">#ACACAC</color>
     <color name="gradiant_bg_end">#00BFAEAE</color>
     <color name="nav_tab_disabled">#19000000</color>
-    <color name="nav_tab">#40000000</color>
     <color name="transparent">#00000000</color>
     <color name="nav_status">#80FFFFFF</color>
     <!-- Adaptive scrim for text containers: light mode uses semi-white, dark mode overrides in values-night -->
-    <color name="text_scrim">#80FFFFFF</color>
     <color name="theme">#B313DC</color>
     <color name="incognito">#291B65</color>
     <color name="warning">#FF0000</color>
@@ -29,7 +26,6 @@
     <color name="darkest_Black">#000000</color>
     <color name="yt_red">#CD201F</color>
     <color name="chip">#a3a2a2</color>
-    <color name="grey_nav">#F9EDEDED</color>
     <color name="tags">#5E057E</color>
 
     <!-- theme 1 -->
