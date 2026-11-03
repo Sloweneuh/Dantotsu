@@ -165,6 +165,7 @@ object ExtensionSettingsOpener {
         }
 
         val sheet = BottomSheetDialog(activity)
+        ani.dantotsu.tv.PhoneControllerBlock.guard(sheet.window, activity)
         val dp = activity.resources.displayMetrics.density
         val rootView = activity.window.decorView
         val onBgColor = MaterialColors.getColor(rootView, com.google.android.material.R.attr.colorOnBackground)

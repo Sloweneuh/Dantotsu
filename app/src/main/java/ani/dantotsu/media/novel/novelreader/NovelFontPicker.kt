@@ -26,6 +26,7 @@ object NovelFontPicker {
         val onBg = MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnBackground, 0)
         val fallback = ResourcesCompat.getFont(context, R.font.poppins_semi_bold)
         val sheet = BottomSheetDialog(context)
+        ani.dantotsu.tv.PhoneControllerBlock.guard(sheet.window, context)
 
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL

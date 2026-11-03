@@ -227,6 +227,8 @@ class AlertDialogBuilder(private val context: Context) {
         }
         builder.setCancelable(cancelable)
         val dialog = builder.create()
+        // Controllers, remotes and keyboards are TV mode's: a dialog's keys never pass its activity.
+        ani.dantotsu.tv.PhoneControllerBlock.guard(dialog.window, context)
         attach?.invoke(dialog)
         dialog.setOnDismissListener {
             onDismiss?.invoke()
@@ -289,4 +291,8 @@ fun Context.customAlertDialog(): AlertDialogBuilder {
 
 /** A bare Material 3 builder in the app's dialog theme, for dialogs that need more than [customAlertDialog]. */
 fun Context.materialDialog(): MaterialAlertDialogBuilder =
-    MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_Dantotsu_Dialog)
+    object : MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_Dantotsu_Dialog) {
+        // Controllers, remotes and keyboards are TV mode's: a dialog's keys never pass its activity.
+        override fun create(): androidx.appcompat.app.AlertDialog =
+            super.create().also { ani.dantotsu.tv.PhoneControllerBlock.guard(it.window, context) }
+    }

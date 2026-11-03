@@ -99,6 +99,7 @@ class ComickCoverAdapter(
 
         val dialog = Dialog(context)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        ani.dantotsu.tv.PhoneControllerBlock.guard(dialog.window, context)
 
         // Root layout (gallery) — use fully opaque surface color for background
         val root = android.widget.LinearLayout(context).apply {
@@ -184,6 +185,7 @@ class ComickCoverAdapter(
 
         val dialog = Dialog(context)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        ani.dantotsu.tv.PhoneControllerBlock.guard(dialog.window, context)
 
         val root = FrameLayout(context).apply {
             setBackgroundColor(0xDD000000.toInt())

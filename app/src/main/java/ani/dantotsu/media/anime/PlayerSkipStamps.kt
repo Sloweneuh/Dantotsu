@@ -150,6 +150,7 @@ class PlayerSkipStamps(
             }
             exoSkip.setOnLongClickListener {
                 val dialog = Dialog(activity, R.style.MyPopup)
+                ani.dantotsu.tv.PhoneControllerBlock.guard(dialog.window, activity)
                 dialog.setContentView(R.layout.item_seekbar_dialog)
                 dialog.setCancelable(true)
                 dialog.setCanceledOnTouchOutside(true)

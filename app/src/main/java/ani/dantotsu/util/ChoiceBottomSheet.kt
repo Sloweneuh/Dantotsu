@@ -31,6 +31,7 @@ fun Context.choiceBottomSheet(
     onSelected: (Int) -> Unit,
 ) {
     val sheet = BottomSheetDialog(this)
+    ani.dantotsu.tv.PhoneControllerBlock.guard(sheet.window, this)
     val dp = resources.displayMetrics.density
     val scrollView = NestedScrollView(this)
     val onBackground = MaterialColors.getColor(

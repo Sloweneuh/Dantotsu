@@ -106,6 +106,7 @@ fun Activity.showSyncOverviewDialog() {
 
     val scroll = NestedScrollView(this).apply { addView(container) }
     val sheet = BottomSheetDialog(this)
+    ani.dantotsu.tv.PhoneControllerBlock.guard(sheet.window, this)
     sheet.setContentView(scroll)
     sheet.show()
 

@@ -86,7 +86,7 @@ import java.io.Serializable
 
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), ani.dantotsu.tv.PhoneControllerBlock.TvOfferHost {
     private lateinit var binding: ActivityMainBinding
     private lateinit var incognitoLiveData: SharedPreferenceBooleanLiveData
     private val scope = lifecycleScope
@@ -702,9 +702,20 @@ class MainActivity : AppCompatActivity() {
         // Off is a choice the user made (leaving TV mode, or the setting): don't argue with it.
         if (PrefManager.getVal<Int>(PrefName.BigPictureMode) == ani.dantotsu.tv.TvMode.OFF) return
         tvModeOffered = true
-        com.google.android.material.snackbar.Snackbar.make(
+        tvOffer = com.google.android.material.snackbar.Snackbar.make(
             binding.root, R.string.tv_controller_offer, com.google.android.material.snackbar.Snackbar.LENGTH_LONG
-        ).setAction(R.string.tv_switch) { ani.dantotsu.tv.TvMode.enter(this) }.show()
+        ).setAction(R.string.tv_switch) { ani.dantotsu.tv.TvMode.enter(this) }.also { it.show() }
+    }
+
+    /** The offer on screen, if it is: the one thing a controller does in the phone interface. */
+    private var tvOffer: com.google.android.material.snackbar.Snackbar? = null
+
+    override fun acceptTvOffer(): Boolean {
+        // The controller's press that accepts it, or a remote's OK.
+        val offer = tvOffer?.takeIf { it.isShownOrQueued } ?: return false
+        offer.dismiss()
+        ani.dantotsu.tv.TvMode.enter(this)
+        return true
     }
 
     //ViewPager

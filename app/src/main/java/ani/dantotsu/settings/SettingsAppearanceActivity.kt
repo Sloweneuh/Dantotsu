@@ -804,6 +804,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
         val selected = keys.indexOf(AppFont.current()).coerceAtLeast(0)
 
         val sheet = BottomSheetDialog(this)
+        ani.dantotsu.tv.PhoneControllerBlock.guard(sheet.window, this)
         val dp = resources.displayMetrics.density
         val onBgColor = MaterialColors.getColor(
             binding.root, com.google.android.material.R.attr.colorOnBackground

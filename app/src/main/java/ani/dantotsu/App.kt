@@ -189,6 +189,8 @@ class App : MultiDexApplication() {
             DynamicColors.applyToActivitiesIfAvailable(this)
         }
         registerActivityLifecycleCallbacks(mFTActivityLifecycleCallbacks)
+        // Controllers and remotes are TV mode's: the phone interface ignores them.
+        registerActivityLifecycleCallbacks(ani.dantotsu.tv.PhoneControllerBlock)
         // Keeps media covers' badges with the cover through its shared-element flight.
         registerActivityLifecycleCallbacks(ani.dantotsu.media.CoverBadgeTransitions)
         // Settings pages move on a shared X axis between each other.

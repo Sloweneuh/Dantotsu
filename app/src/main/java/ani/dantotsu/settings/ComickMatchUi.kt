@@ -47,6 +47,7 @@ internal fun AppCompatActivity.showComickPickSheet(
     onPicked: (slug: String, hid: String, comickTitle: String) -> Unit,
 ) {
     val dialog = BottomSheetDialog(this)
+    ani.dantotsu.tv.PhoneControllerBlock.guard(dialog.window, this)
     val view = layoutInflater.inflate(R.layout.fragment_search_page, null)
     dialog.setContentView(view)
     dialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
