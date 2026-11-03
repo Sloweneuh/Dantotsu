@@ -91,6 +91,16 @@ android {
             universalApk true
         }
     }
+    // Release apks named for the app and version, as they're attached to the GitHub release:
+    // Dantotsu-6.0.0-arm64-v8a.apk, ..., Dantotsu-6.0.0-universal.apk. AppUpdater builds and
+    // matches these names, so keep the two in step. Other builds keep AGP's names.
+    applicationVariants.all { variant ->
+        if (variant.buildType.name != "release") return
+        variant.outputs.all { output ->
+            def abi = output.getFilter(com.android.build.OutputFile.ABI) ?: "universal"
+            outputFileName = "Dantotsu-${variant.versionName}-${abi}.apk"
+        }
+    }
     // Not ndk.abiFilters: AGP refuses those alongside abi splits, and the universal apk ignores
     // the splits' include list.
     packaging {

@@ -129,14 +129,15 @@ object AppUpdater {
 
     /**
      * Canonical GitHub releases download URL, derived from the version alone. Release builds are
-     * split per ABI (`app-google-<abi>-release.apk`, plus `app-google-universal-release.apk`);
-     * pre-releases don't follow the naming, so they have to go through the releases API. A release
-     * published before the split 404s here, and the service falls through to [githubApkUrl].
+     * split per ABI (`Dantotsu-<version>-<abi>.apk`, plus `Dantotsu-<version>-universal.apk`, as
+     * app/build.gradle names them); pre-releases don't follow the naming, so they have to go
+     * through the releases API. A release published before that naming 404s here, and the
+     * service falls through to [githubApkUrl].
      */
     internal fun constructedApkUrl(repo: String, version: String, isDebug: Boolean): String? =
         if (isDebug) null
         else "https://github.com/$repo/releases/download/$version/" +
-                "app-google-${deviceAbi ?: "universal"}-release.apk"
+                "Dantotsu-${version.removePrefix("v")}-${deviceAbi ?: "universal"}.apk"
 
     internal suspend fun githubApkUrl(repo: String, version: String): String? {
         // Always use the releases list endpoint and filter by tag_name to find the matching release
@@ -149,9 +150,10 @@ object AppUpdater {
                 ?: res.firstOrNull { it.tagName.equals(version, ignoreCase = true) || it.tagName.equals("v$version", ignoreCase = true) }
 
             // This device's split, then the universal apk, then whatever single apk an older
-            // release carries.
+            // release carries. The split as named now (Dantotsu-6.0.0-arm64-v8a.apk) or as the
+            // first split releases named it (app-google-arm64-v8a-release.apk).
             val apks = match?.assets?.map { it.browserDownloadURL }?.filter { it.endsWith(".apk") }.orEmpty()
-            val apk = deviceAbi?.let { abi -> apks.firstOrNull { it.contains("-$abi-") } }
+            val apk = deviceAbi?.let { abi -> apks.firstOrNull { it.endsWith("-$abi.apk") || it.contains("-$abi-") } }
                 ?: apks.firstOrNull { it.contains("universal") }
                 ?: apks.firstOrNull()
             if (!apk.isNullOrBlank()) return apk
