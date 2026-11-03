@@ -73,7 +73,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
-import ani.dantotsu.media.anime.WATCHED_FRACTION
+import ani.dantotsu.media.anime.watchedToEnd
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
@@ -810,7 +810,7 @@ private fun leftPartWay(media: Media): PartWay? {
     val length = PrefManager.getNullableCustomVal("${media.id}_${episode}_max", null, Long::class.java)
         ?.takeIf { it > 0 } ?: return null
     val fraction = position.toFloat() / length
-    if (fraction <= 0f || fraction >= WATCHED_FRACTION) return null
+    if (fraction <= 0f || watchedToEnd(position, length)) return null
     return PartWay(episode, fraction, PrefManager.getNullableCustomVal("${media.id}_current_thumb", null, String::class.java))
 }
 

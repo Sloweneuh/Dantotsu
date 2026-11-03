@@ -33,16 +33,32 @@ import kotlin.math.pow
 
 /**
  * Past this share of an episode it counts as watched: the player starts it over rather than
- * resuming a few seconds from the end, and the episode list shows its bar full to match.
+ * resuming a few seconds from the end, and the episode list shows its bar full to match. Only
+ * with [WATCHED_MAX_LEFT_MS] or less left as well — see [watchedToEnd].
  */
 const val WATCHED_FRACTION = 0.92f
+
+/**
+ * The most that can be left of something watched to the end. A share alone was too much of a film:
+ * 8% of two hours is nearly ten minutes, past a last scene or one after the credits, and a film
+ * stopped there started over on reopening, and showed as finished.
+ */
+const val WATCHED_MAX_LEFT_MS = 3 * 60_000L
+
+/**
+ * Whether stopping at [positionMs] of [durationMs] is watching it to the end: past [WATCHED_FRACTION]
+ * of it, with no more than [WATCHED_MAX_LEFT_MS] left. An episode's ending and preview, a film's last
+ * credits.
+ */
+fun watchedToEnd(positionMs: Long, durationMs: Long): Boolean =
+    durationMs > 0 && positionMs > durationMs * WATCHED_FRACTION && durationMs - positionMs <= WATCHED_MAX_LEFT_MS
 
 fun handleProgress(cont: LinearLayout, bar: View, empty: View, mediaId: Int, ep: String) {
     val curr = PrefManager.getNullableCustomVal("${mediaId}_${ep}", null, Long::class.java)
     val max = PrefManager.getNullableCustomVal("${mediaId}_${ep}_max", null, Long::class.java)
     if (curr != null && max != null) {
         cont.visibility = View.VISIBLE
-        val div = (curr.toFloat() / max.toFloat()).let { if (it > WATCHED_FRACTION) 1f else it }
+        val div = if (watchedToEnd(curr, max)) 1f else curr.toFloat() / max.toFloat()
         val barParams = bar.layoutParams as LinearLayout.LayoutParams
         barParams.weight = div
         bar.layoutParams = barParams

@@ -1980,8 +1980,8 @@ class ExoplayerView :
                 exoPlayer.seekTo(0)
             }
 
-            // Past WATCHED_FRACTION it was watched to the end: start over, as the list's full bar says.
-            if (playbackPosition > duration.toFloat() * WATCHED_FRACTION) {
+            // Watched to the end: start over, as the list's full bar says.
+            if (watchedToEnd(playbackPosition, duration)) {
                 playbackPosition = 0
                 exoPlayer.seekTo(0)
             }

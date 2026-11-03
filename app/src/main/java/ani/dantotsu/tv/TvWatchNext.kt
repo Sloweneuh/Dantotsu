@@ -56,8 +56,9 @@ object TvWatchNext {
     fun watched(context: Context, media: Media, number: String, positionMs: Long, durationMs: Long) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || !available(context) || media.id < 0) return
         runCatching {
-            // Near the end is as good as watched: what's next is the next episode, from its start.
-            val done = durationMs > 0 && positionMs >= durationMs * 0.9
+            // Watched to the end, as the player and the episode list judge it: what's next is the
+            // next episode, from its start.
+            val done = ani.dantotsu.media.anime.watchedToEnd(positionMs, durationMs)
             val shown = if (done) nextNumber(number) ?: return@runCatching remove(context, media.id) else number
             upsert(context, media, shown, if (done) 0L else positionMs, durationMs, System.currentTimeMillis())
         }.onFailure { Logger.log("TvWatchNext: update failed: ${it.message}") }
