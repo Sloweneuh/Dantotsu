@@ -3917,7 +3917,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_downloads_manage">Manage downloads</string>
     <string name="tv_downloading">Downloading</string>
     <string name="tv_downloads_empty">Nothing downloaded yet. Hold OK on an episode, or use Download episodes on a title\'s page.</string>
-    <string name="tv_download_failed">Failed</string>
     <string name="tv_stop_download_confirm">Stop downloading episode %1$s?</string>
     <string name="tv_downloads_open">Open on its downloaded episodes</string>
     <string name="tv_downloads_delete_all">Delete all its downloads</string>
@@ -4014,13 +4013,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="novel_download_progress">Novel download progress</string>
     <string name="downloading_item">Downloading %1$s</string>
     <string name="saved_item">Saved %1$s</string>
-    <string name="download_file_error">Error while downloading the file: %1$s</string>
     <string name="download_save_image_error">Error while saving the image: %1$s</string>
     <string name="download_pdf_error">Error while creating the PDF: %1$s</string>
-    <string name="novel_download_failed">Novel download failed: %1$s</string>
     <string name="already_downloaded">Already downloaded</string>
     <string name="download_not_epub">The download link isn\'t an .epub file</string>
-    <string name="download_epub_error">Error while downloading the .epub: %1$s</string>
     <string name="failed_delete_directory">Couldn\'t delete the folder</string>
     <string name="directory_not_found">Folder not found</string>
     <string name="failed_save_settings">Couldn\'t save the settings: %1$s</string>
@@ -4090,8 +4086,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="sort_z_a">Z-A</string>
     <string name="sort_pure_pain">Pure pain</string>
     <!-- Formerly hardcoded (templated) -->
-    <string name="download_failed_item">%1$s: download failed</string>
-    <string name="download_page_retry">%1$s: retrying page %2$s, attempt %3$d</string>
     <string name="creating_pdf_item">%1$s: creating the PDF</string>
     <string name="download_complete_item">%1$s: download complete</string>
     <string name="extension_repo_added">%1$s extension repository added</string>
@@ -4187,4 +4181,14 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="chip_search_on">Search on</string>
     <string name="mal_genre_tap_again">MyAnimeList genres can\'t be searched in the app. Tap again to open this one on the website.</string>
     <string name="chip_search_opens_website">Opens the website</string>
+    <string name="download_failed_section">Failed</string>
+    <string name="download_failed_retry_all">Retry all</string>
+    <string name="download_failed_clear">Clear</string>
+    <string name="download_failed_dismiss">Dismiss</string>
+    <string name="download_failed_open">Open</string>
+    <string name="download_failed_unknown">The download failed</string>
+    <plurals name="downloads_failed_summary">
+        <item quantity="one">%1$d download failed</item>
+        <item quantity="other">%1$d downloads failed</item>
+    </plurals>
 </resources>

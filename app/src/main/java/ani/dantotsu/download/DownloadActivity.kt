@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
@@ -18,6 +19,8 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.SettingsRouter
 import ani.dantotsu.settings.bindQuickSettings
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.LauncherWrapper
@@ -87,6 +90,13 @@ class DownloadActivity : AppCompatActivity() {
                 bar.selectTabAt(position)
             }
         })
+
+        lifecycleScope.launch {
+            FailedDownloads.items.collectLatest { failed ->
+                if (failed.isEmpty()) bar.clearBadgeAtTabIndex(0)
+                else bar.setBadgeAtTabIndex(0, AnimatedBottomBar.Badge(failed.size.toString()))
+            }
+        }
 
         val startTab = intent.getIntExtra("tab", 0)
         pager.setCurrentItem(startTab, false)

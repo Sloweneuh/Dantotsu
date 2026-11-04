@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="8dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="8dp">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="48dp"
+        android:layout_height="68dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="0dp">
+
+        <ImageView
+            android:id="@+id/itemFailedCover"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop" />
+    </androidx.cardview.widget.CardView>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="4dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/itemFailedTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:maxLines="1"
+            android:textSize="14sp"
+            tools:text="Series title" />
+
+        <TextView
+            android:id="@+id/itemFailedLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="12sp"
+            tools:text="Chapter 12" />
+
+        <TextView
+            android:id="@+id/itemFailedReason"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="?attr/colorError"
+            android:textSize="12sp"
+            tools:text="Unable to download all pages" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/itemFailedAction"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="0dp"
+        android:paddingHorizontal="8dp"
+        tools:text="@string/retry" />
+
+    <ImageView
+        android:id="@+id/itemFailedDismiss"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/download_failed_dismiss"
+        android:padding="8dp"
+        app:srcCompat="@drawable/ic_round_close_24"
+        app:tint="?attr/colorOnBackground" />
+</LinearLayout>

@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-enum class DownloadState { QUEUED, DOWNLOADING, FAILED }
+enum class DownloadState { QUEUED, DOWNLOADING }
 
 /**
  * A single in-flight (queued or downloading) item shown in the download queue UI.
@@ -56,6 +56,7 @@ object DownloadTracker {
 
     @Synchronized
     fun enqueue(item: DownloadItem) {
+        FailedDownloads.forget(item.id)
         if (_items.value.any { it.id == item.id }) return
         if (_items.value.isEmpty()) sessionTotal = 0
         sessionTotal++
@@ -104,11 +105,15 @@ object DownloadTracker {
         }
     }
 
+    /**
+     * Takes a failed item off the queue and onto [FailedDownloads]. An item no longer here was
+     * cancelled, whose job can end by throwing like a failure does: that isn't one.
+     */
     @Synchronized
-    fun markFailed(id: String) {
-        _items.value = _items.value.map {
-            if (it.id == id) it.copy(state = DownloadState.FAILED) else it
-        }
+    fun fail(id: String, muSeriesId: Long?, reason: String?, requeue: () -> Unit) {
+        val item = _items.value.find { it.id == id } ?: return
+        _items.value = _items.value.filterNot { it.id == id }
+        FailedDownloads.record(item, muSeriesId, reason, requeue)
     }
 
     @Synchronized

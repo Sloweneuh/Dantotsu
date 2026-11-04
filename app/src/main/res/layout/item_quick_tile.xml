@@ -69,6 +69,21 @@
     <!-- Shelf-only: the "+" that puts an unplaced tile on the panel. ic_add carries its own
          colorControlNormal tint, which is near-invisible on the accent disc, so the code retints
          it to colorOnPrimary. -->
+    <TextView
+        android:id="@+id/quickTileCount"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/notification_circle"
+        android:fontFamily="@font/poppins_semi_bold"
+        android:gravity="center"
+        android:textColor="?attr/colorOnError"
+        android:textSize="12sp"
+        android:visibility="gone"
+        tools:ignore="TextContrastCheck" />
+
     <ImageView
         android:id="@+id/quickTileBadge"
         android:layout_width="24dp"

@@ -47,7 +47,7 @@ fun TvDownloadIndicator(modifier: Modifier = Modifier) {
     // Read along with the items, which are what it changes with.
     val overall = remember(items) { DownloadTracker.overallPercent() / 100f }
     val current = items.firstOrNull { it.state == DownloadState.DOWNLOADING }
-    val left = items.count { it.state != DownloadState.FAILED }
+    val left = items.size
 
     AnimatedVisibility(
         visible = left > 0,

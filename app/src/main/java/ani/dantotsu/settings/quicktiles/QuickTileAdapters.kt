@@ -109,6 +109,9 @@ internal fun ItemQuickTileBinding.paintQuickTile(
     quickTileRoot.alpha = if (dimmed) 0.4f else 1f
 
     quickTileBadge.isVisible = false
+    val attention = (tile as? QuickTile.Action)?.takeIf { !editing && !dimmed }?.attentionCount?.invoke() ?: 0
+    quickTileCount.isVisible = attention > 0
+    quickTileCount.text = attention.toString()
     quickTileResize.isVisible = false
     // Cleared with the width above: a stretch drags the handle along, and the offset would
     // otherwise ride the recycled view onto the next tile.

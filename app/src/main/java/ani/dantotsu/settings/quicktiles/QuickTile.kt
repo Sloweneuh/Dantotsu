@@ -109,6 +109,8 @@ sealed class QuickTile(
          * [Toggle.onLongClick] — a search tile uses it to offer "pin to home screen".
          */
         val onLongClick: ((QuickTileHost) -> Unit)? = null,
+        /** Something waiting there, shown as a number on the tile. */
+        val attentionCount: () -> Int = { 0 },
         val onClick: (QuickTileHost) -> Unit,
     ) : QuickTile(id, icon, category, needsNetwork, isAvailable, unavailableReason) {
         override fun label(host: QuickTileHost): CharSequence = host.activity.getString(labelRes)
@@ -358,6 +360,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         QuickTile.Action(
             "downloads", R.string.downloads, R.drawable.ic_round_download_24,
             QuickTileCategory.LIBRARY,
+            attentionCount = { ani.dantotsu.download.FailedDownloads.count },
         ) { it.open(DownloadActivity::class.java) },
 
         QuickTile.Action(

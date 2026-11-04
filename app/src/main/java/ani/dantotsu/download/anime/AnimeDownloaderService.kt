@@ -206,6 +206,12 @@ class AnimeDownloaderService : Service() {
         notificationManager.notify(NOTIFICATION_ID, builder.build())
     }
 
+    private fun failTask(itemId: String, task: AnimeDownloadTask, reason: String?) {
+        DownloadTracker.fail(itemId, task.sourceMedia?.muSeriesId, reason) {
+            AnimeServiceDataSingleton.downloadQueue.offer(task.copy(sessionId = -1))
+        }
+    }
+
     @androidx.annotation.OptIn(UnstableApi::class)
     suspend fun download(task: AnimeDownloadTask) {
         withContext(Dispatchers.IO) {
@@ -317,7 +323,6 @@ class AnimeDownloaderService : Service() {
                                 notificationManager.notify(NOTIFICATION_ID, builder.build())
                             }
                         }
-                        toast(ani.dantotsu.getAppString(R.string.download_failed_item, getTaskName(task.title, task.episode)))
                         Logger.log("Download failed: ${ffExtension.getStackTrace(ffTask)}")
                         cleanupFailedDownload(outputDir, outputFile)
                         Injekt.get<CrashlyticsInterface>().logException(
@@ -331,7 +336,7 @@ class AnimeDownloaderService : Service() {
                         )
                         currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
                         broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
-                        DownloadTracker.remove(itemId)
+                        failTask(itemId, task, null)
                         break
                     }
                     val p = percent.coerceAtMost(99)
@@ -383,7 +388,6 @@ class AnimeDownloaderService : Service() {
                                 notificationManager.notify(NOTIFICATION_ID, builder.build())
                             }
                         }
-                        snackString(ani.dantotsu.getAppString(R.string.download_failed_item, getTaskName(task.title, task.episode)))
                         cleanupFailedDownload(outputDir, outputFile)
                         Injekt.get<CrashlyticsInterface>().logException(
                             Exception(
@@ -396,7 +400,7 @@ class AnimeDownloaderService : Service() {
                         )
                         currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
                         broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
-                        DownloadTracker.remove(itemId)
+                        failTask(itemId, task, null)
                         return@withContext
                     }
                     Logger.log("Download completed")
@@ -432,14 +436,15 @@ class AnimeDownloaderService : Service() {
                 } else throw Exception("Download failed")
 
             } catch (e: Exception) {
-                if (e.message?.contains("Coroutine was cancelled") == false) {  //wut
+                val cancelled = e is kotlinx.coroutines.CancellationException ||
+                        e.message?.contains("Coroutine was cancelled") == true  //wut
+                if (!cancelled) {
                     Logger.log("Exception while downloading file: ${e.message}")
-                    snackString(ani.dantotsu.getAppString(R.string.download_file_error, e.message))
                     e.printStackTrace()
                     Injekt.get<CrashlyticsInterface>().logException(e)
                 }
                 broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
-                DownloadTracker.remove(itemId)
+                if (cancelled) DownloadTracker.remove(itemId) else failTask(itemId, task, e.message)
             }
         }
     }

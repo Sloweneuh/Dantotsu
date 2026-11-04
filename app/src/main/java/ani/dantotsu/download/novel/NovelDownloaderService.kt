@@ -340,9 +340,8 @@ class NovelDownloaderService : Service() {
             throw e
         } catch (e: Exception) {
             Logger.log("LNReader run download failed: ${e.message}")
-            snackString(ani.dantotsu.getAppString(R.string.novel_download_failed, e.message))
             broadcastDownloadFailed(task.originalLink)
-            DownloadTracker.remove(itemId)
+            failTask(itemId, task, e.message)
         }
     }
 
@@ -392,8 +391,7 @@ class NovelDownloaderService : Service() {
                     }
                     Logger.log("Download link is not an .epub file")
                     broadcastDownloadFailed(task.originalLink)
-                    DownloadTracker.remove(itemId)
-                    snackString(R.string.download_not_epub)
+                    failTask(itemId, task, ani.dantotsu.getAppString(R.string.download_not_epub))
                     return@withContext
                 }
 
@@ -532,10 +530,15 @@ class NovelDownloaderService : Service() {
             throw e
         } catch (e: Exception) {
             Logger.log("Exception while downloading .epub: ${e.message}")
-            snackString(ani.dantotsu.getAppString(R.string.download_epub_error, e.message))
             Injekt.get<CrashlyticsInterface>().logException(e)
             broadcastDownloadFailed(task.originalLink)
-            DownloadTracker.remove(itemId)
+            failTask(itemId, task, e.message)
+        }
+    }
+
+    private fun failTask(itemId: String, task: DownloadTask, reason: String?) {
+        DownloadTracker.fail(itemId, task.sourceMedia?.muSeriesId, reason) {
+            NovelServiceDataSingleton.downloadQueue.offer(task)
         }
     }
 

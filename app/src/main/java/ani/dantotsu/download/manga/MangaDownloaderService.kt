@@ -266,7 +266,7 @@ class MangaDownloaderService : Service() {
                                 image.source
                             )
                             if (bitmap == null) {
-                                snackString(ani.dantotsu.getAppString(R.string.download_page_retry, task.chapter, index.ofLength(3), retryCount + 1))
+                                Logger.log("${task.chapter}: retrying page ${index + 1}")
                             }
                             retryCount++
                         }
@@ -345,10 +345,11 @@ class MangaDownloaderService : Service() {
             throw e
         } catch (e: Exception) {
             Logger.log("Exception while downloading file: ${e.message}")
-            snackString(ani.dantotsu.getAppString(R.string.download_file_error, e.message))
             Injekt.get<CrashlyticsInterface>().logException(e)
             broadcastDownloadFailed(task.uniqueName)
-            DownloadTracker.remove(itemId)
+            DownloadTracker.fail(itemId, task.sourceMedia?.muSeriesId, e.message) {
+                MangaServiceDataSingleton.downloadQueue.offer(task)
+            }
         }
     }
 

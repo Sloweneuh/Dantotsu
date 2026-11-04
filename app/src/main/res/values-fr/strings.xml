@@ -3792,7 +3792,6 @@
     <string name="tv_downloads_manage">Gérer les téléchargements</string>
     <string name="tv_downloading">En cours de téléchargement</string>
     <string name="tv_downloads_empty">Rien de téléchargé pour l\'instant. Maintenez OK sur un épisode, ou utilisez Télécharger des épisodes sur la page d\'un titre.</string>
-    <string name="tv_download_failed">Échec</string>
     <string name="tv_stop_download_confirm">Arrêter le téléchargement de l\'épisode %1$s ?</string>
     <string name="tv_downloads_open">Ouvrir sur ses épisodes téléchargés</string>
     <string name="tv_downloads_delete_all">Supprimer tous ses téléchargements</string>
@@ -3889,13 +3888,10 @@
     <string name="novel_download_progress">Progression du téléchargement de roman</string>
     <string name="downloading_item">Téléchargement de %1$s</string>
     <string name="saved_item">%1$s enregistré</string>
-    <string name="download_file_error">Erreur lors du téléchargement du fichier : %1$s</string>
     <string name="download_save_image_error">Erreur lors de l\'enregistrement de l\'image : %1$s</string>
     <string name="download_pdf_error">Erreur lors de la création du PDF : %1$s</string>
-    <string name="novel_download_failed">Échec du téléchargement du roman : %1$s</string>
     <string name="already_downloaded">Déjà téléchargé</string>
     <string name="download_not_epub">Le lien de téléchargement n\'est pas un fichier .epub</string>
-    <string name="download_epub_error">Erreur lors du téléchargement de l\'.epub : %1$s</string>
     <string name="failed_delete_directory">Impossible de supprimer le dossier</string>
     <string name="directory_not_found">Dossier introuvable</string>
     <string name="failed_save_settings">Impossible d\'enregistrer les paramètres : %1$s</string>
@@ -3965,8 +3961,6 @@
     <string name="sort_z_a">Z-A</string>
     <string name="sort_pure_pain">Douleur pure</string>
     <!-- Formerly hardcoded (templated) -->
-    <string name="download_failed_item">%1$s : échec du téléchargement</string>
-    <string name="download_page_retry">%1$s : nouvel essai pour la page %2$s, tentative %3$d</string>
     <string name="creating_pdf_item">%1$s : création du PDF</string>
     <string name="download_complete_item">%1$s : téléchargement terminé</string>
     <string name="extension_repo_added">Dépôt d\'extensions %1$s ajouté</string>
@@ -4064,4 +4058,15 @@
     <string name="chip_search_on">Rechercher sur</string>
     <string name="mal_genre_tap_again">Les genres MyAnimeList ne peuvent pas être recherchés dans l\'application. Touchez à nouveau pour ouvrir celui-ci sur le site.</string>
     <string name="chip_search_opens_website">Ouvre le site web</string>
+    <string name="download_failed_section">Échecs</string>
+    <string name="download_failed_retry_all">Tout réessayer</string>
+    <string name="download_failed_clear">Effacer</string>
+    <string name="download_failed_dismiss">Ignorer</string>
+    <string name="download_failed_open">Ouvrir</string>
+    <string name="download_failed_unknown">Le téléchargement a échoué</string>
+    <plurals name="downloads_failed_summary">
+        <item quantity="one">%1$d téléchargement a échoué</item>
+        <item quantity="many">%1$d de téléchargements ont échoué</item>
+        <item quantity="other">%1$d téléchargements ont échoué</item>
+    </plurals>
 </resources>

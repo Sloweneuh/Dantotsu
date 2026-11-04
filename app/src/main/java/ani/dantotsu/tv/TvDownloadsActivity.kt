@@ -271,7 +271,6 @@ private fun ActiveRow(item: DownloadItem, modifier: Modifier, onClick: () -> Uni
                     stringResource(R.string.tv_episode_n, item.label) + "  ·  " + when (item.state) {
                         DownloadState.DOWNLOADING -> "${item.percent}%"
                         DownloadState.QUEUED -> stringResource(R.string.tv_download_queued)
-                        DownloadState.FAILED -> stringResource(R.string.tv_download_failed)
                     }
                 )
                 if (running) Box(

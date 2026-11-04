@@ -14,9 +14,11 @@ import ani.dantotsu.R
 import ani.dantotsu.databinding.FragmentDownloadQueueBinding
 import ani.dantotsu.download.DownloadState
 import ani.dantotsu.download.DownloadTracker
+import ani.dantotsu.download.FailedDownloads
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.util.customAlertDialog
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class DownloadQueueFragment : Fragment() {
@@ -39,7 +41,12 @@ class DownloadQueueFragment : Fragment() {
         (view as? ViewGroup)?.capContentWidth()
         adapter = DownloadQueueAdapter(
             onCancel = { DownloadTracker.cancel(requireContext(), it) },
-            onStartDrag = { itemTouchHelper.startDrag(it) }
+            onStartDrag = { itemTouchHelper.startDrag(it) },
+            onRetry = { FailedDownloads.retry(requireContext(), it) },
+            onOpen = { FailedDownloads.open(requireContext(), it) },
+            onDismiss = { FailedDownloads.forget(it.id) },
+            onRetryAll = { FailedDownloads.retryAll(requireContext()) },
+            onClearFailed = { FailedDownloads.clear() },
         )
         binding.downloadQueueRecycler.layoutManager = LinearLayoutManager(requireContext())
         binding.downloadQueueRecycler.adapter = adapter
@@ -102,11 +109,13 @@ class DownloadQueueFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            DownloadTracker.items.collectLatest { list ->
+            combine(DownloadTracker.items, FailedDownloads.items) { list, failed ->
+                list to failed
+            }.collectLatest { (list, failed) ->
                 if (dragging) return@collectLatest
-                adapter.submit(list)
+                adapter.submit(list, failed)
                 binding.downloadQueueEmpty.visibility =
-                    if (list.isEmpty()) View.VISIBLE else View.GONE
+                    if (list.isEmpty() && failed.isEmpty()) View.VISIBLE else View.GONE
                 binding.downloadQueueCancelAllContainer.visibility =
                     if (list.isEmpty()) View.GONE else View.VISIBLE
             }
