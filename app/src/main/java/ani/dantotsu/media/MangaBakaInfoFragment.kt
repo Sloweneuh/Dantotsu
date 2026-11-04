@@ -23,7 +23,7 @@ class MangaBakaInfoFragment : TrackerInfoFragment<MangaBakaApi.Series>() {
     override val requiresInternetMessageRes = R.string.mangabaka_requires_internet
 
     override fun noData(media: Media) = NoDataConfig(
-        logoRes = R.drawable.ic_round_mangabaka_24,
+        logoRes = R.drawable.ic_mangabaka,
         titleRes = R.string.mangabaka_no_data_title,
         descRes = R.string.mangabaka_no_data_desc,
         buttonTextRes = R.string.open_on_mangabaka,

@@ -999,26 +999,6 @@ class MediaDetailsViewModel : ViewModel() {
         }
     }
 
-    fun saveMangaUpdatesLink(
-            mediaId: Int,
-            link: String,
-            preloadedSeries: ani.dantotsu.connections.mangaupdates.MUSeriesRecord? = null
-    ) {
-        val key = "mangaupdates_link_${mediaId}"
-        val serialized = link // String is handled natively
-        ani.dantotsu.settings.saving.PrefManager.setCustomVal(key, serialized)
-
-        mangaUpdatesLink.postValue(link)
-
-        if (preloadedSeries != null) {
-            mangaUpdatesLoaded.postValue(true)
-            mangaUpdatesSeries.postValue(preloadedSeries)
-        } else {
-            val identifier = extractMUIdentifier(link)
-            if (identifier.isNotBlank()) {}
-        }
-    }
-
     fun removeMangaUpdatesLink(mediaId: Int) {
         val key = "mangaupdates_link_${mediaId}"
         ani.dantotsu.settings.saving.PrefManager.removeCustomVal(key)

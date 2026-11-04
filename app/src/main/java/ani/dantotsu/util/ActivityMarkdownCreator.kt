@@ -105,7 +105,7 @@ class ActivityMarkdownCreator : AppCompatActivity() {
         )
         binding.markdownCreatorToolbar.formBarPrimary.apply {
             setText(if (isEdit) R.string.save else R.string.form_action_post)
-            setIconResource(if (isEdit) R.drawable.ic_round_check_24 else R.drawable.ic_round_send_24)
+            setIconResource(if (isEdit) R.drawable.ic_round_check_24 else R.drawable.ic_round_send_outline_24)
         }
 
         var private = false

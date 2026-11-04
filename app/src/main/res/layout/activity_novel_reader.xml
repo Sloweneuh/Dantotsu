@@ -106,7 +106,7 @@
                             android:backgroundTint="#00FFFFFF"
                             android:contentDescription="@string/novel_bookmark_add"
                             android:scaleType="center"
-                            android:src="@drawable/ic_round_bookmark_border_24"
+                            android:src="@drawable/ic_round_bookmark_outline_24"
                             app:tint="#fff"
                             tools:ignore="ImageContrastCheck" />
 
@@ -130,7 +130,7 @@
                             android:layout_height="48dp"
                             android:backgroundTint="#00FFFFFF"
                             android:scaleType="fitCenter"
-                            android:src="@drawable/ic_round_dots_vertical_24"
+                            android:src="@drawable/ic_round_more_vert_24"
                             app:tint="#fff"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
 

@@ -124,7 +124,7 @@ class CharacterDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChang
             }
             withContext(Dispatchers.Main) {
                 binding.characterFav.setImageResource(
-                    if (character.isFav) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_border_24
+                    if (character.isFav) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_outline_24
                 )
             }
         }
@@ -133,7 +133,7 @@ class CharacterDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChang
                 if (Anilist.mutation.toggleFav(AnilistMutations.FavType.CHARACTER, character.id)) {
                     character.isFav = !character.isFav
                     binding.characterFav.setImageResource(
-                        if (character.isFav) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_border_24
+                        if (character.isFav) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_outline_24
                     )
                 } else {
                     snackString(R.string.failed_toggle_favourite)

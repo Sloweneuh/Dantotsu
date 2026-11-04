@@ -82,7 +82,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_marginStart="8dp"
-            android:src="@drawable/ic_round_devices_24"
+            android:src="@drawable/ic_round_devices_outline_24"
             android:contentDescription="@string/handoff_open"
             app:tint="?attr/colorPrimary" />
 

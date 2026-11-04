@@ -90,7 +90,7 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:layout_gravity="center_vertical"
-                    app:srcCompat="@drawable/ic_round_mangaupdates_24"
+                    app:srcCompat="@drawable/ic_mangaupdates"
                     app:tint="?attr/colorOnPrimary"
                     tools:ignore="ContentDescription" />
 

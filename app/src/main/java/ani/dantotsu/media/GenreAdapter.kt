@@ -3,7 +3,6 @@ package ani.dantotsu.media
 import android.content.Intent
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.RecyclerView
@@ -50,11 +49,7 @@ class GenreAdapter(
                         .putExtra("search", true)
                         .also {
                             if (pos[bindingAdapterPosition].lowercase() == "hentai") {
-                                if (!Anilist.adult) Toast.makeText(
-                                    itemView.context,
-                                    currActivity()?.getString(R.string.content_18),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                if (!Anilist.adult) ani.dantotsu.toast(currActivity()?.getString(R.string.content_18))
                                 it.putExtra("hentai", true)
                             }
                         },

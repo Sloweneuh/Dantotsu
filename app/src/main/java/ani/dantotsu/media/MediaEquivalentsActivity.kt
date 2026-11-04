@@ -349,7 +349,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                         // No AniList match: gray card with the AniList search icon (tap to quick-search)
                         Glide.with(holder.matchCover.context).clear(holder.matchCover)
                         holder.matchCover.scaleType = ImageView.ScaleType.CENTER_INSIDE
-                        holder.matchCover.setImageResource(R.drawable.ic_anilist_search_24)
+                        holder.matchCover.setImageResource(R.drawable.ic_anilist_search)
                         holder.matchCover.imageTintList = android.content.res.ColorStateList.valueOf(
                             getThemeColor(com.google.android.material.R.attr.colorOutline)
                         )

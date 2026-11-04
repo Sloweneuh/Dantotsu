@@ -88,7 +88,7 @@ private fun TextInputLayout.showSourceIcon(field: AutoCompleteTextView) {
     )
     when {
         icon == null -> {
-            setStartIconDrawable(R.drawable.ic_extension_24)
+            setStartIconDrawable(R.drawable.ic_extension_alt)
             setStartIconTintList(themedTint)
         }
         name == DOWNLOADED_SOURCE -> {

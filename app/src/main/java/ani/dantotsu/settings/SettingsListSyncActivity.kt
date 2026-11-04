@@ -117,7 +117,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.comick_matches_title),
                 desc = getString(R.string.comick_matches_desc),
-                icon = R.drawable.ic_round_comick_24,
+                icon = R.drawable.ic_comick,
                 onClick = {
                     SettingsPageTransitions.open(this, it, ComickMatchesActivity::class.java)
                 },
@@ -129,7 +129,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 name = getString(R.string.auto_list_sync),
                 startsGroup = true,
                 desc = autoSyncDesc(autoInterval),
-                icon = R.drawable.ic_round_compare_schedule_24,
+                icon = R.drawable.ic_compare_schedule,
                 onClick = { view -> showIntervalDropdown(view.root) },
                 isVisible = canAutoSync,
             ),
@@ -137,7 +137,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 type = 2,
                 name = getString(R.string.auto_list_sync_removals),
                 desc = getString(R.string.auto_list_sync_removals_desc),
-                icon = R.drawable.ic_round_delete_sweep_24,
+                icon = R.drawable.ic_round_delete_sweep_outline_24,
                 isChecked = PrefManager.getVal(PrefName.AutoListSyncRemovals),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.AutoListSyncRemovals, isChecked)

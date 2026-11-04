@@ -30,7 +30,7 @@
             android:layout_gravity="end"
             android:background="?android:colorBackground"
             android:contentDescription="@string/open_label"
-            android:src="@drawable/ic_open_24"
+            android:src="@drawable/ic_round_open_in_browser_24"
             app:tint="?attr/colorPrimary"
             tools:ignore="HardcodedText" />
 

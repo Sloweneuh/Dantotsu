@@ -240,7 +240,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    app:icon="@drawable/ic_round_format_text_24"
+                    app:icon="@drawable/ic_round_title_white_24"
                     app:title="@string/reader_section_text">
 
                     <androidx.recyclerview.widget.RecyclerView

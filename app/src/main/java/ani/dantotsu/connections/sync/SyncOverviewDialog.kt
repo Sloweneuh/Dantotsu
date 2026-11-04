@@ -73,7 +73,7 @@ fun Activity.showSyncOverviewDialog() {
         addView(title(getString(module.nameRes), 15f, true, 1f))
         if (module.conflict) addView(
             title(getString(R.string.cloud_sync_conflict_label), 12f, true, 1f)
-                .withIcon(R.drawable.ic_round_cloud_alert_24, 14f, error)
+                .withIcon(R.drawable.ic_round_cloud_alert_outline_24, 14f, error)
                 .apply {
                     setTextColor(error)
                     setPadding((8 * dp).toInt(), 0, 0, (2 * dp).toInt())
@@ -127,11 +127,11 @@ fun Activity.showSyncOverviewDialog() {
                 title(
                     getString(R.string.cloud_sync_this_device, describeLocal(module)),
                     13f, false, 0.66f
-                ).withIcon(R.drawable.ic_round_devices_24, 15f, onBg)
+                ).withIcon(R.drawable.ic_round_devices_outline_24, 15f, onBg)
             )
             body.addView(
                 title(getString(R.string.cloud_sync_in_cloud, describeCloud(module)), 13f, false, 0.66f)
-                    .withIcon(R.drawable.ic_round_cloud_24, 15f, onBg)
+                    .withIcon(R.drawable.ic_round_cloud_outline_24, 15f, onBg)
             )
         }
     }

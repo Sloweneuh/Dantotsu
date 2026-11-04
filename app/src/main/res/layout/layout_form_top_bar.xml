@@ -48,6 +48,6 @@
         android:layout_marginStart="8dp"
         android:fontFamily="@font/poppins_bold"
         app:iconGravity="textStart"
-        tools:icon="@drawable/ic_round_send_24"
+        tools:icon="@drawable/ic_round_send_outline_24"
         tools:text="@string/save" />
 </LinearLayout>

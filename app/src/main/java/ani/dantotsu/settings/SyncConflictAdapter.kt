@@ -47,8 +47,8 @@ class SyncConflictAdapter(
         // The same two icons the sync details sheet uses for the same two sides. Which column is
         // which was carried by a 10sp all-caps label alone, on a dialog whose whole job is telling
         // them apart — and the choice underneath it is between exactly these two.
-        holder.binding.conflictLocalLabel.setLeadingIcon(R.drawable.ic_round_devices_24, 12f, gapDp = 4f)
-        holder.binding.conflictRemoteLabel.setLeadingIcon(R.drawable.ic_round_cloud_24, 12f, gapDp = 4f)
+        holder.binding.conflictLocalLabel.setLeadingIcon(R.drawable.ic_round_devices_outline_24, 12f, gapDp = 4f)
+        holder.binding.conflictRemoteLabel.setLeadingIcon(R.drawable.ic_round_cloud_outline_24, 12f, gapDp = 4f)
     }
 
     companion object {

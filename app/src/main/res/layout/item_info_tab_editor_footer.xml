@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="8dp"
+    android:paddingBottom="24dp">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/infoTabEditorAddSection"
+        style="@style/Widget.Material3.Button"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:fontFamily="@font/poppins_bold"
+        android:text="@string/info_tab_add_section"
+        app:icon="@drawable/ic_round_add_tinted_24"
+        app:iconGravity="textStart" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/infoTabEditorCopy"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:fontFamily="@font/poppins_bold"
+        android:text="@string/info_tab_copy_from"
+        app:icon="@drawable/ic_round_content_copy_outline_24"
+        app:iconGravity="textStart" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/infoTabEditorDestructive"
+        style="@style/Widget.Material3.Button.TextButton.Icon"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="8dp"
+        android:fontFamily="@font/poppins_bold"
+        android:textColor="?attr/colorError"
+        app:iconGravity="textStart"
+        app:iconTint="?attr/colorError"
+        tools:text="@string/info_tab_reset" />
+</LinearLayout>

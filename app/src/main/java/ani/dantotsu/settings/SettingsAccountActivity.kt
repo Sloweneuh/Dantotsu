@@ -185,7 +185,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             type = 1,
             name = getString(R.string.backup_sync),
             desc = getString(R.string.backup_sync_desc),
-            icon = R.drawable.backup_restore,
+            icon = R.drawable.ic_round_settings_backup_restore_24,
             isActivity = true,
             anchorKey = "backup_sync",
             onClick = {
@@ -198,9 +198,9 @@ class SettingsAccountActivity : AppCompatActivity() {
             startsGroup = true,
             desc = getString(R.string.customize_info_tabs_desc),
             icon = R.drawable.ic_round_view_array_24,
+            isActivity = true,
             onClick = {
-                InfoTabOrderBottomSheet.newInstance()
-                    .show(supportFragmentManager, InfoTabOrderBottomSheet.TAG)
+                SettingsPageTransitions.open(this, it, InfoTabsActivity::class.java)
             },
         ),
         // Lives here rather than on the Comick card: it also governs MangaBaka, so a shared
@@ -264,7 +264,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 if (anilistIn) AccountState.SignedIn(
                     Anilist.username ?: knownName(PrefName.AnilistUserName), Anilist.avatar
                 ) else knownOrOut(PrefName.AnilistUserName)),
-            gatedCard(AccountProvider.MANGAUPDATES, R.drawable.ic_round_mangaupdates_24, R.string.mangaupdates, anilistIn,
+            gatedCard(AccountProvider.MANGAUPDATES, R.drawable.ic_mangaupdates, R.string.mangaupdates, anilistIn,
                 if (MangaUpdates.token != null) AccountState.SignedIn(
                     MangaUpdates.username ?: knownName(PrefName.MangaUpdatesUsername), MangaUpdates.avatar
                 ) else knownOrOut(PrefName.MangaUpdatesUsername)),
@@ -272,7 +272,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 if (MAL.token != null) AccountState.SignedIn(
                     MAL.username ?: knownName(PrefName.MALUserName), MAL.avatar
                 ) else knownOrOut(PrefName.MALUserName)),
-            gatedCard(AccountProvider.MANGABAKA, R.drawable.ic_round_mangabaka_24, R.string.mangabaka, anilistIn,
+            gatedCard(AccountProvider.MANGABAKA, R.drawable.ic_mangabaka, R.string.mangabaka, anilistIn,
                 if (MangaBaka.token != null) AccountState.SignedIn(
                     MangaBaka.username ?: knownName(PrefName.MangaBakaUserName), MangaBaka.avatar
                 ) else knownOrOut(PrefName.MangaBakaUserName)),
@@ -294,7 +294,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 discordStatusRes = if (Discord.token != null) discordStatusDrawable() else null,
             ),
             // An account without a public username (or not fetched yet) still shows as connected.
-            card(AccountProvider.COMICK, R.drawable.ic_round_comick_24, R.string.comick,
+            card(AccountProvider.COMICK, R.drawable.ic_comick, R.string.comick,
                 if (Comick.token != null) AccountState.SignedIn(
                     Comick.username ?: getString(R.string.comick_connected), Comick.avatar
                 ) else knownOrOut(PrefName.ComickUserName)),
@@ -363,7 +363,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.comick_notifications_section),
                 desc = getString(R.string.comick_notifications_section_desc),
-                icon = R.drawable.ic_round_notifications_none_24,
+                icon = R.drawable.ic_round_notifications_outline_24,
                 isActivity = true,
                 isEnabled = Comick.token != null,
                 compact = true,
@@ -418,7 +418,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.anilist_notifications),
                 desc = getString(R.string.anilist_notifications_desc),
-                icon = R.drawable.ic_round_notifications_none_24,
+                icon = R.drawable.ic_round_notifications_outline_24,
                 isActivity = true,
                 compact = true,
                 anchorKey = "notifications",
@@ -472,7 +472,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.mu_custom_list_mapping),
                 desc = getString(R.string.mu_custom_list_mapping_desc),
-                icon = R.drawable.view_list_24,
+                icon = R.drawable.ic_round_view_list_outline_24,
                 isActivity = true,
                 isEnabled = signedIn,
                 compact = true,
@@ -486,7 +486,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.mu_notifications),
                 desc = getString(R.string.mu_notifications_desc),
-                icon = R.drawable.ic_round_notifications_none_24,
+                icon = R.drawable.ic_round_notifications_outline_24,
                 isActivity = true,
                 isEnabled = signedIn,
                 compact = true,
@@ -507,7 +507,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             type = 1,
             name = getString(R.string.mangabaka_tag_weight),
             desc = tagWeightDesc(),
-            icon = R.drawable.ic_label_24,
+            icon = R.drawable.ic_round_label_outline_24,
             compact = true,
             anchorKey = "tagWeight",
             attach = { b ->
@@ -587,7 +587,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             type = 1,
             name = getString(R.string.unread_chapter_notifications),
             desc = getString(R.string.unread_chapter_notifications_desc),
-            icon = R.drawable.ic_round_notifications_none_24,
+            icon = R.drawable.ic_round_notifications_outline_24,
             isActivity = true,
             compact = true,
             anchorKey = "notifications",
@@ -607,7 +607,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 type = 2,
                 name = getString(R.string.enable_rpc),
                 desc = getString(R.string.enable_rpc_desc),
-                icon = R.drawable.ic_round_sports_esports_24,
+                icon = R.drawable.ic_round_sports_esports_outline_24,
                 isChecked = PrefManager.getVal(PrefName.rpcEnabled),
                 switch = { isChecked, _ -> PrefManager.setVal(PrefName.rpcEnabled, isChecked) },
                 isEnabled = signedIn,

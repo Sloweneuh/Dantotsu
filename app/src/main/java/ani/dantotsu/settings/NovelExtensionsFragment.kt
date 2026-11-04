@@ -206,7 +206,7 @@ class NovelExtensionsFragment : Fragment(),
             plugin.iconUrl?.let { holder.icon.loadImage(it) }
 
             holder.action.isVisible = true
-            holder.action.setImageResource(R.drawable.ic_download_24)
+            holder.action.setImageResource(R.drawable.ic_round_download_24)
             holder.action.setOnClickListener { onInstall(plugin) }
             holder.itemView.setOnClickListener { onInstall(plugin) }
         }

@@ -81,7 +81,7 @@
 
                 <TextView
                     style="@style/ReaderMtlRowLabel"
-                    android:drawableStart="@drawable/ic_round_format_text_24"
+                    android:drawableStart="@drawable/ic_round_title_white_24"
                     android:text="@string/ocr_source_script" />
 
                 <TextView

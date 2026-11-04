@@ -69,8 +69,6 @@ import ani.dantotsu.util.AudioHelper
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
 import ani.dantotsu.util.useSharedAxisTransitions
-import com.google.android.material.snackbar.BaseTransientBottomBar
-import com.google.android.material.snackbar.Snackbar
 import io.noties.markwon.Markwon
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -85,6 +83,8 @@ import uy.kohesive.injekt.api.get
 import java.io.Serializable
 
 
+
+private const val BACK_TO_EXIT_MILLIS = 2_000L
 
 class MainActivity : AppCompatActivity(), ani.dantotsu.tv.PhoneControllerBlock.TvOfferHost {
     private lateinit var binding: ActivityMainBinding
@@ -206,20 +206,16 @@ class MainActivity : AppCompatActivity(), ani.dantotsu.tv.PhoneControllerBlock.T
         }
         incognitoNotification(this)
 
-        var doubleBackToExitPressedOnce = false
+        // By the clock: the message saying so may be waiting behind another one.
+        var lastBackPress = 0L
         onBackPressedDispatcher.addCallback(this) {
-            if (doubleBackToExitPressedOnce) {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (lastBackPress != 0L && now - lastBackPress < BACK_TO_EXIT_MILLIS) {
                 finish()
+                return@addCallback
             }
-            doubleBackToExitPressedOnce = true
-            snackString(this@MainActivity.getString(R.string.back_to_exit)).apply {
-                this?.addCallback(object : BaseTransientBottomBar.BaseCallback<Snackbar>() {
-                    override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
-                        super.onDismissed(transientBottomBar, event)
-                        doubleBackToExitPressedOnce = false
-                    }
-                })
-            }
+            lastBackPress = now
+            snackString(this@MainActivity.getString(R.string.back_to_exit))
         }
 
         binding.root.isMotionEventSplittingEnabled = false

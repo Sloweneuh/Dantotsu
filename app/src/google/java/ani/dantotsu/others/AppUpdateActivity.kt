@@ -278,8 +278,8 @@ class AppUpdateActivity : AppCompatActivity() {
                     getString(R.string.update_download_size, formatBytes(probedSize))
                 action.setContent(
                     getString(R.string.download_update),
-                    R.drawable.ic_download_tray_24,
-                    R.drawable.ic_download_arrow_24
+                    R.drawable.ic_download_tray,
+                    R.drawable.ic_download_arrow
                 )
                 action.setPercentText(null)
                 action.setProgress(0, animate = false)
@@ -293,8 +293,8 @@ class AppUpdateActivity : AppCompatActivity() {
                     getString(R.string.update_download_size, formatBytes(download.bytesTotal))
                 action.setContent(
                     getString(R.string.update_downloading),
-                    R.drawable.ic_download_tray_24,
-                    R.drawable.ic_download_arrow_24
+                    R.drawable.ic_download_tray,
+                    R.drawable.ic_download_arrow
                 )
                 action.setPercentText(
                     if (known) getString(R.string.update_percent, download.percent) else null

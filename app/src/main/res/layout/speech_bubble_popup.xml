@@ -10,7 +10,7 @@
         android:layout_width="24dp"
         android:layout_height="12dp"
         android:layout_gravity="center_horizontal"
-        android:src="@drawable/triangle_down"
+        android:src="@drawable/ic_triangle_down"
         android:contentDescription=""
         android:visibility="gone" />
 
@@ -34,7 +34,7 @@
         android:layout_width="24dp"
         android:layout_height="12dp"
         android:layout_gravity="center_horizontal"
-        android:src="@drawable/triangle_down"
+        android:src="@drawable/ic_triangle_down"
         android:contentDescription="" />
 
 </LinearLayout>

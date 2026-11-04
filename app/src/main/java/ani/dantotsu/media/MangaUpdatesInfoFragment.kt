@@ -29,7 +29,6 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.util.LinkTouchListener
 import ani.dantotsu.util.Logger
 import androidx.core.view.isVisible
@@ -221,9 +220,9 @@ class MangaUpdatesInfoFragment : Fragment() {
                         loaded = true
                     }
                 } else {
-                    // No MU link found, show search buttons and mark loaded
-                    Logger.log("MangaUpdates Fragment: No MU link found — showing search fallback")
-                    showNoDataWithSearch(media)
+                    // No MU link found, nothing to show
+                    Logger.log("MangaUpdates Fragment: No MU link found")
+                    showNoMatch()
                     loaded = true
                 }
             }
@@ -328,7 +327,7 @@ class MangaUpdatesInfoFragment : Fragment() {
             notLoggedInView
                     .findViewById<android.widget.ImageView>(R.id.logo)
                     ?.setImageDrawable(
-                            requireContext().getDrawable(R.drawable.ic_round_mangaupdates_24)
+                            requireContext().getDrawable(R.drawable.ic_mangaupdates)
                     )
 
             // Set text
@@ -346,7 +345,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                             ani.dantotsu.R.id.connectButton
                     )
                     ?.icon =
-                    requireContext().getDrawable(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
+                    requireContext().getDrawable(ani.dantotsu.R.drawable.ic_mangaupdates)
 
             notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(
                             ani.dantotsu.R.id.connectButton
@@ -392,283 +391,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
     }
 
-    private fun showQuickSearchModal(media: Media) {
-        // Guard: if fragment is detached, bail out to avoid IllegalStateException
-        val fragmentContext = context ?: return
-        val titles = ArrayList<String>()
-        titles.add(media.userPreferredName)
-        if (media.nameRomaji != media.userPreferredName) {
-            titles.add(media.nameRomaji)
-        }
-
-        // Filter English titles
-        val englishSynonyms =
-                media.synonyms.filter { title ->
-                    if (title.isBlank()) return@filter false
-                    val hasCJK =
-                            title.any { char ->
-                                char.code in 0x3040..0x309F ||
-                                        char.code in 0x30A0..0x30FF ||
-                                        char.code in 0x4E00..0x9FFF ||
-                                        char.code in 0xAC00..0xD7AF ||
-                                        char.code in 0x1100..0x11FF
-                            }
-                    !hasCJK
-                }
-        englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
-
-        val modal =
-                ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
-                    // Use fragmentContext for resource lookups to avoid accidental requireContext()
-                    setTitleText(fragmentContext.getString(R.string.mu_search_title))
-
-                    // Add each title as a clickable TextView
-                    titles.forEach { title ->
-                        val textView =
-                                android.widget.TextView(fragmentContext).apply {
-                                    text = title
-                                    textSize = 16f
-                                    val padding = 16f.px
-                                    setPadding(padding, padding, padding, padding)
-                                    setTextColor(
-                                            androidx.core.content.ContextCompat.getColor(
-                                                    fragmentContext,
-                                                    ani.dantotsu.R.color.bg_opp
-                                            )
-                                    )
-                                    // Use a simple rounded background with ripple effect
-                                    val outValue = android.util.TypedValue()
-                                    fragmentContext.theme.resolveAttribute(
-                                            android.R.attr.selectableItemBackground,
-                                            outValue,
-                                            true
-                                    )
-                                    setBackgroundResource(outValue.resourceId)
-                                    isClickable = true
-                                    isFocusable = true
-                                    setOnClickListener {
-                                        // Perform search and show results in-tab (guarded inside the method)
-                                        showMangaUpdatesSearchResults(media, title)
-                                        dismiss()
-                                    }
-                                }
-                        addView(textView)
-                    }
-                }
-
-        // Only show the dialog if the fragment is still added and the FragmentManager state
-        // hasn't been saved (avoids IllegalStateException when committing after onSaveInstanceState)
-        if (isAdded && !parentFragmentManager.isStateSaved) {
-            modal.show(parentFragmentManager, "mangaupdates_quick_search")
-        }
-    }
-
-    private fun showMangaUpdatesSearchResults(media: Media, initialQuery: String) {
-        // Capture context early to avoid issues if fragment gets detached
-        val fragmentContext = context ?: return
-
-        // Hide the current content
-        binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.GONE
-
-        val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
-
-        frameLayout?.let { container ->
-            val model: MediaDetailsViewModel by activityViewModels()
-
-            // Build title options and fetch remote titles (Comick / MU preload) before rendering UI
-            viewLifecycleOwner.lifecycleScope.launch {
-                val titleOptions = mutableListOf<String>()
-                titleOptions.add(media.userPreferredName)
-                if (media.nameRomaji != media.userPreferredName) titleOptions.add(media.nameRomaji)
-
-                // Do not include MangaUpdates titles here — quick-search is only for AniList/Comick
-
-                // If Comick data is available in ViewModel (fetched by Comick tab), reuse it for titles
-                val comickResponse = try { model.comickData.value } catch (_: Exception) { null }
-                if (comickResponse != null) {
-                    comickResponse.comic?.title?.let { t -> if (t.isNotBlank() && !titleOptions.contains(t)) titleOptions.add(t) }
-                    comickResponse.comic?.md_titles?.filter { it.lang?.equals("en", true) == true }
-                        ?.mapNotNull { it.title }
-                        ?.forEach { t -> if (!titleOptions.contains(t)) titleOptions.add(t) }
-                }
-
-                // Add English synonyms from Media
-                val englishSynonyms =
-                    media.synonyms.filter { title ->
-                        if (title.isBlank()) return@filter false
-                        val hasCJK =
-                            title.any { char ->
-                                char.code in 0x3040..0x309F ||
-                                char.code in 0x30A0..0x30FF ||
-                                char.code in 0x4E00..0x9FFF ||
-                                char.code in 0xAC00..0xD7AF ||
-                                char.code in 0x1100..0x11FF
-                            }
-                        !hasCJK
-                    }
-                englishSynonyms.forEach { if (!titleOptions.contains(it)) titleOptions.add(it) }
-
-                // Now render the UI on the main thread
-                withContext(Dispatchers.Main) {
-                    // IMPORTANT: Remove all previous views to prevent overlap
-                    container.removeAllViews()
-
-                    // Inflate search layout
-                    val searchView = layoutInflater.inflate(R.layout.fragment_search_page, container, false)
-
-                    val searchBarLayout =
-                        searchView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.searchBarLayout)
-                    val searchBar = searchView.findViewById<android.widget.AutoCompleteTextView>(R.id.searchBarText)
-                    searchBar.stripSpansOnPaste()
-                    val searchProgress = searchView.findViewById<android.widget.ProgressBar>(R.id.searchProgress)
-                    val emptyMessage = searchView.findViewById<android.widget.TextView>(R.id.emptyMessage)
-                    val recyclerView = searchView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.searchRecyclerView)
-
-                    // Set up RecyclerView
-                    recyclerView.layoutManager =
-                        androidx.recyclerview.widget.GridLayoutManager(
-                            fragmentContext,
-                            androidx.core.math.MathUtils.clamp(
-                                fragmentContext.resources.displayMetrics.widthPixels / 124f.px,
-                                1,
-                                4
-                            )
-                        )
-
-                    // Set initial query
-                    searchBar.setText(initialQuery)
-
-                    // Function to perform search - define early so it can be used in dropdown
-                    fun performSearch(query: String) {
-                        if (query.isBlank()) return
-
-                        searchProgress.visibility = View.VISIBLE
-                        emptyMessage.visibility = View.GONE
-                        recyclerView.visibility = View.GONE
-
-                        viewLifecycleOwner.lifecycleScope.launch {
-                            try {
-                                val results = withContext(Dispatchers.IO) { MangaUpdates.searchSeries(query) }
-                                withContext(Dispatchers.Main) {
-                                    searchProgress.visibility = View.GONE
-                                    if (results?.results.isNullOrEmpty()) {
-                                        emptyMessage.visibility = View.VISIBLE
-                                        recyclerView.visibility = View.GONE
-                                    } else {
-                                        emptyMessage.visibility = View.GONE
-                                        recyclerView.visibility = View.VISIBLE
-                                        recyclerView.adapter =
-                                            MangaUpdatesSearchAdapter(results!!.results!!) { selectedResult ->
-                                                selectedResult.record?.let { series -> saveMangaUpdatesSelection(media, series) }
-                                            }
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    searchProgress.visibility = View.GONE
-                                    emptyMessage.visibility = View.VISIBLE
-                                    emptyMessage.text = fragmentContext.getString(R.string.error_loading_data)
-                                    android.widget.Toast.makeText(fragmentContext, getString(R.string.error_message, e.message ?: ""), android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    }
-
-                    // Add dropdown icon to search bar if there are multiple titles
-                    if (titleOptions.size > 1) {
-                        searchBarLayout.endIconMode = com.google.android.material.textfield.TextInputLayout.END_ICON_DROPDOWN_MENU
-                        searchBarLayout.setEndIconOnClickListener {
-                            val adapter = android.widget.ArrayAdapter(fragmentContext, R.layout.item_titles_dropdown, titleOptions)
-                            val popup = androidx.appcompat.widget.ListPopupWindow(fragmentContext)
-                            popup.anchorView = searchBar
-                            popup.setAdapter(adapter)
-                            popup.isModal = true
-                            searchBarLayout.post {
-                                popup.width = searchBarLayout.width
-                                popup.verticalOffset = searchBarLayout.height
-                                popup.setBackgroundDrawable(androidx.core.content.ContextCompat.getDrawable(fragmentContext, R.drawable.dropdown_background))
-                                try { popup.listView?.elevation = 12f } catch (e: Throwable) { Logger.log(e) }
-                                popup.show()
-                            }
-                            popup.setOnItemClickListener { _, _, position, _ ->
-                                val selected = titleOptions[position]
-                                searchBar.setText(selected)
-                                popup.dismiss()
-                                performSearch(selected)
-                            }
-                        }
-                    }
-
-                    // Set up search listener
-                    searchBar.setOnEditorActionListener { _, actionId, _ ->
-                        if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
-                            performSearch(searchBar.text.toString())
-                            val imm = fragmentContext.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-                            imm?.hideSoftInputFromWindow(searchBar.windowToken, 0)
-                            true
-                        } else false
-                    }
-
-                    // Add the search view to the container
-                    container.addView(searchView)
-
-                    // Perform initial search
-                    performSearch(initialQuery)
-                }
-            }
-        }
-    }
-
-    private fun saveMangaUpdatesSelection(
-            media: Media,
-            series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord
-    ) {
-        val muLink = "https://www.mangaupdates.com/series/${series.seriesId.toString(36)}"
-        val model: MediaDetailsViewModel by activityViewModels()
-
-        // Persist the link immediately (without posting partial series to LiveData — the search
-        // API returns an abbreviated MUSeriesRecord that lacks genres, categories, synonyms, etc.)
-        model.saveMangaUpdatesLink(media.id, muLink)
-
-        // Clear the search view and restore the original layout
-        val frameLayout =
-                binding.root.findViewById<ViewGroup>(R.id.mediaInfoScroll)?.getChildAt(0) as?
-                        ViewGroup
-        frameLayout?.let { parent ->
-            parent.removeAllViews()
-            parent.addView(binding.mediaInfoProgressBar)
-            parent.addView(binding.mediaInfoContainer)
-        }
-
-        // Block observer re-renders while we fetch full details; show progress
-        loaded = true
-        binding.mediaInfoProgressBar.visibility = View.VISIBLE
-        binding.mediaInfoContainer.visibility = View.GONE
-
-        android.widget.Toast.makeText(
-                        requireContext(),
-                        getString(R.string.linked_mangaupdates_entry),
-                        android.widget.Toast.LENGTH_SHORT
-                )
-                .show()
-
-        // Search results only carry a partial MUSeriesRecord (no genres, categories, synonyms,
-        // anime adaptation, etc.). Fetch the full detail record before rendering so all dynamic
-        // sections are populated correctly.
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val fullSeries = MangaUpdates.getSeriesDetails(series.seriesId) ?: series
-            withContext(Dispatchers.Main) {
-                if (_binding == null) return@withContext
-                loaded = false
-                displaySeriesDetails(fullSeries, media, model)
-                // Update ViewModel with full data; postValue fires after loaded=true, so observers bail
-                model.saveMangaUpdatesLink(media.id, muLink, fullSeries)
-            }
-        }
-    }
-
-    private fun showNoDataWithSearch(media: Media) {
+    private fun showNoMatch() {
         binding.mediaInfoProgressBar.visibility = View.GONE
         binding.mediaInfoContainer.visibility = View.GONE
 
@@ -691,26 +414,19 @@ class MangaUpdatesInfoFragment : Fragment() {
             pageView.findViewById<android.widget.ImageView>(R.id.logo)
                     ?.setImageDrawable(
                             requireContext()
-                                    .getDrawable(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
+                                    .getDrawable(ani.dantotsu.R.drawable.ic_mangaupdates)
                     )
 
             // Set title
             pageView.findViewById<android.widget.TextView>(R.id.title)?.text =
-                    getString(ani.dantotsu.R.string.mu_no_data_title)
+                    getString(ani.dantotsu.R.string.mu_not_found_title)
 
             // Set small subtitle message
             pageView.findViewById<android.widget.TextView>(R.id.subtitle)?.text =
-                    getString(ani.dantotsu.R.string.search_sub_mangaupdates)
+                    getString(ani.dantotsu.R.string.mu_not_found_desc)
 
-            // Single button: Quick Search (since we don't have a link)
-            pageView.findViewById<com.google.android.material.button.MaterialButton>(
-                            ani.dantotsu.R.id.quickSearchButton
-                    )
-                    ?.apply {
-                        text = getString(ani.dantotsu.R.string.quick_search)
-                        icon = context.getDrawable(ani.dantotsu.R.drawable.ic_round_search_24)
-                        setOnClickListener { showQuickSearchModal(media) }
-                    }
+            // MangaBaka does the matching: there is nothing to search for by hand.
+            pageView.findViewById<View>(ani.dantotsu.R.id.quickSearchButton)?.visibility = View.GONE
 
             container.addView(pageView)
             // Mark loaded after adding the fallback page
@@ -965,7 +681,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                 }
 
                 bind.root.tag = "dynamic_mu_section"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.DETAILED_STATUS, bind.root)
             }
         }
 
@@ -1002,7 +718,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                     }
                 }
                 bind.root.tag = "dynamic_mu_section"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.ANIME_ADAPTATION, bind.root)
             }
         }
 
@@ -1033,7 +749,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                 }
             }
             bind.root.tag = "dynamic_mu_section"
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.SYNONYMS, bind.root)
         }
 
         // Invisible anchor — latest release card is inserted here once the async fetch completes
@@ -1091,19 +807,14 @@ class MangaUpdatesInfoFragment : Fragment() {
                     }
                     chip.setOnLongClickListener {
                         copyToClipboard(genre)
-                        android.widget.Toast.makeText(
-                                        requireContext(),
-                                        "Copied: $genre",
-                                        android.widget.Toast.LENGTH_SHORT
-                                )
-                                .show()
+                        ani.dantotsu.toast("Copied: $genre")
                         true
                     }
                     bind.itemChipGroup.addView(chip)
                 }
             }
             bind.root.tag = "dynamic_mu_section"
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.GENRES, bind.root)
         }
 
         // Categories (clickable for search, like Comick)
@@ -1137,20 +848,17 @@ class MangaUpdatesInfoFragment : Fragment() {
                     }
                     chip.setOnLongClickListener {
                         copyToClipboard(category)
-                        android.widget.Toast.makeText(
-                                        requireContext(),
-                                        "Copied: $category",
-                                        android.widget.Toast.LENGTH_SHORT
-                                )
-                                .show()
+                        ani.dantotsu.toast("Copied: $category")
                         true
                     }
                     bind.itemChipGroup.addView(chip)
                 }
             }
             bind.root.tag = "dynamic_mu_section"
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.TAGS, bind.root)
         }
+        InfoExtraSections.addMangaUpdatesExtras(requireContext(), parent, series)
+
         // Recommendations — resolve all recs in one pass (original logic), then display as two rows
         val directRecIds = series.recommendations?.mapNotNull { it.seriesId }?.toSet() ?: emptySet()
         val allRecs = buildList<ani.dantotsu.connections.mangaupdates.MURecommendation> {
@@ -1166,6 +874,8 @@ class MangaUpdatesInfoFragment : Fragment() {
             }
         }.distinctBy { it.seriesId }
         if (allRecs.isNotEmpty() &&
+                (parent.wantsInfoSection(InfoSectionKind.RECOMMENDATIONS) ||
+                        parent.wantsInfoSection(InfoSectionKind.CATEGORY_RECOMMENDATIONS)) &&
                 parent.findViewWithTag<View>("recommendations_mu") == null
         ) {
             viewLifecycleOwner.lifecycleScope.launch {
@@ -1286,7 +996,8 @@ class MangaUpdatesInfoFragment : Fragment() {
                                     )
                                 }
                                 root.tag = "dynamic_mu_section"
-                                parent.addView(root)
+                                parent.addInfoSection(InfoSectionKind.RECOMMENDATIONS, root)
+                                parent.offerInfoMedia(InfoSectionKind.RECOMMENDATIONS, directMedia)
                             }
                         }
                         if (categoryMedia.isNotEmpty()) {
@@ -1316,7 +1027,8 @@ class MangaUpdatesInfoFragment : Fragment() {
                                     )
                                 }
                                 root.tag = "dynamic_mu_section"
-                                parent.addView(root)
+                                parent.addInfoSection(InfoSectionKind.CATEGORY_RECOMMENDATIONS, root)
+                                parent.offerInfoMedia(InfoSectionKind.CATEGORY_RECOMMENDATIONS, categoryMedia)
                             }
                         }
                     }
@@ -1325,7 +1037,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
 
         // Latest release card — fetched async from /v1/series/{id}/groups
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+        if (parent.wantsInfoSection(InfoSectionKind.LATEST_CHAPTER)) viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val latest = MangaUpdates.getSeriesGroups(series.seriesId)?.releaseList?.firstOrNull()
                 ?: return@launch
             withContext(Dispatchers.Main) {
@@ -1373,8 +1085,8 @@ class MangaUpdatesInfoFragment : Fragment() {
 
                 // Replace the anchor with the title + card
                 parent.removeView(anchor)
-                parent.addView(titleBind.root, insertIndex)
-                parent.addView(b.root, insertIndex + 1)
+                parent.addInfoSection(InfoSectionKind.LATEST_CHAPTER, titleBind.root, insertIndex)
+                parent.addInfoSection(InfoSectionKind.LATEST_CHAPTER, b.root, insertIndex + 1)
             }
         }
 
@@ -1411,12 +1123,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                 setOnClickListener {
                     loaded = false
                     model.removeMangaUpdatesLink(media.id)
-                    android.widget.Toast.makeText(
-                            requireContext(),
-                            getString(R.string.mangaupdates_entry_unlinked),
-                            android.widget.Toast.LENGTH_SHORT
-                        )
-                        .show()
+                    ani.dantotsu.toast(getString(R.string.mangaupdates_entry_unlinked))
                 }
                 tag = "unlink_mangaupdates_button"
                 }

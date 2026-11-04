@@ -72,7 +72,7 @@
         <ImageView
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@drawable/ic_manga_discover_24"
+            android:src="@drawable/ic_manga_discover"
             app:tint="?attr/colorPrimary"
             tools:ignore="ContentDescription" />
 

@@ -275,11 +275,11 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
 
     private fun updateSortButtonIcon(sort: String) {
         val iconRes = when (sort) {
-            "title" -> R.drawable.ic_round_sort_24
+            "title" -> R.drawable.ic_sort
             "bayesian_rating" -> R.drawable.ic_round_star_24
             "uploaded_at" -> R.drawable.ic_round_new_releases_24
             "created_at" -> R.drawable.ic_round_calendar_today_24
-            else -> R.drawable.ic_round_sort_24
+            else -> R.drawable.ic_sort
         }
         binding.comickListFilterSortButton.setImageResource(iconRes)
     }

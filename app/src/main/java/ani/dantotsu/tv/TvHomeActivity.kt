@@ -591,7 +591,7 @@ private fun TvHome(
                 }
                 if (incognito) {
                     TopButton(
-                        R.drawable.ic_incognito_24,
+                        R.drawable.ic_incognito,
                         stringResource(R.string.disable_incognito),
                         {
                             PrefManager.setVal(PrefName.Incognito, false)
@@ -623,7 +623,7 @@ private fun TvHome(
                 val extensionUpdates = installedExtensions.count { it.hasUpdate }
                 if (extensionUpdates > 0) {
                     TopButton(
-                        R.drawable.ic_round_extension_sync_24,
+                        R.drawable.ic_extension_sync,
                         pluralStringResource(R.plurals.tv_extension_updates, extensionUpdates, extensionUpdates),
                         onExtensionUpdates,
                     )

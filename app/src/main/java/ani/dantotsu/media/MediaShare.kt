@@ -37,12 +37,12 @@ fun mediaShareLinks(
         // Comick's anime entries sit under /anime/ in a separate catalogue.
         comickSlug?.let {
             val comickType = if (isAnime) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
-            put(InfoTabType.COMICK, ShareLink("Comick", ComickApi.webUrl(it, comickType), R.drawable.ic_round_comick_24))
+            put(InfoTabType.COMICK, ShareLink("Comick", ComickApi.webUrl(it, comickType), R.drawable.ic_comick))
         }
         if (!isAnime) {
-            mangaUpdatesUrl?.let { put(InfoTabType.MANGAUPDATES, ShareLink("MangaUpdates", it, R.drawable.ic_round_mangaupdates_24)) }
+            mangaUpdatesUrl?.let { put(InfoTabType.MANGAUPDATES, ShareLink("MangaUpdates", it, R.drawable.ic_mangaupdates)) }
             mangaBakaId?.takeIf { it > 0 }?.let {
-                put(InfoTabType.MANGABAKA, ShareLink("MangaBaka", "https://mangabaka.org/$it", R.drawable.ic_round_mangabaka_24))
+                put(InfoTabType.MANGABAKA, ShareLink("MangaBaka", "https://mangabaka.org/$it", R.drawable.ic_mangabaka))
             }
         }
     }

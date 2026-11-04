@@ -677,6 +677,28 @@ object MangaBakaApi {
     } ?: emptyList()
 
     /**
+     * Related series via `GET /v1/series/{id}/relationships`. Public route, with each target
+     * embedded. Parodies and cameos are left out: on a popular title they are dozens of doujin
+     * edges, and they bury the sequels. Reading-order kinds come first.
+     */
+    suspend fun getRelationships(seriesId: Long, allowAdult: Boolean = true): List<Relationship> =
+        tryWithSuspend(snackbar = false) {
+            val request = Request.Builder()
+                .url("$API_URL/v1/series/$seriesId/relationships?limit=50").get().build()
+            val response = execute(request)
+            val body = response.body?.string()
+            if (!response.isSuccessful || body.isNullOrBlank()) {
+                Logger.log("MangaBaka relationships[$seriesId]: HTTP ${response.code}")
+                return@tryWithSuspend emptyList<Relationship>()
+            }
+            val first = listOf("prequel", "sequel", "main", "source", "adaptation", "side_story", "spin_off")
+            Mapper.json.decodeFromString<RelationshipsResponse>(body).data.orEmpty()
+                .filter { it.series != null && it.relationType != "parody" && it.relationType != "cameo" }
+                .filter { allowAdult || it.series?.contentRating in listOf(null, "safe", "suggestive") }
+                .sortedBy { first.indexOf(it.relationType).let { i -> if (i < 0) first.size else i } }
+        } ?: emptyList()
+
+    /**
      * Fetches series news via `GET /v1/series/{id}/news`. Public route — no auth.
      *
      * The route answers the whole feed in one response (no paging), already newest-first, and
@@ -759,6 +781,8 @@ object MangaBakaApi {
         val titles: List<TitleEntry>? = null,
         @SerialName("tags_v2") val tags: List<TagEntry>? = null,
         val source: SeriesSource? = null,
+        val publishers: List<Publisher>? = null,
+        @SerialName("links_v2") val links: List<SeriesLink>? = null,
     ) {
         /**
          * The [PrefName.ComickMangaBakaLanguage] entry in [titles], else the English one — see
@@ -898,6 +922,32 @@ object MangaBakaApi {
     // --- Similar models ---
 
     @Serializable
+    data class Publisher(
+        val name: String? = null,
+        @SerialName("canonical_url") val canonicalUrl: String? = null,
+        val type: String? = null,
+    )
+
+    /** Legitimate places only: MangaBaka doesn't record piracy links. */
+    @Serializable
+    data class SeriesLink(
+        val url: String? = null,
+        val name: String? = null,
+        @SerialName("name_display") val nameDisplay: String? = null,
+        val type: String? = null,
+        val language: String? = null,
+    )
+
+    @Serializable
+    data class RelationshipsResponse(val data: List<Relationship>? = null)
+
+    @Serializable
+    data class Relationship(
+        @SerialName("relation_type") val relationType: String? = null,
+        val series: SimilarSeries? = null,
+    )
+
+    @Serializable
     data class SimilarResponse(val data: List<SimilarItem>? = null)
 
     @Serializable
@@ -917,6 +967,7 @@ object MangaBakaApi {
         // Confirmed present on the live `similar` route despite this model otherwise being a slim
         // stub: same shape TitleEntry/Series.titles uses, so recommendations can prefer English too.
         val titles: List<TitleEntry>? = null,
+        @SerialName("content_rating") val contentRating: String? = null,
     ) {
         /** See [Series.displayTitle] / [pickPreferredTitle] — same preference, same titles shape. */
         fun displayTitle(): String? = pickPreferredTitle(legacyTitle, titles)

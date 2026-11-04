@@ -11,7 +11,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
@@ -663,8 +662,7 @@ class AnimeWatchFragment : Fragment() {
             }
             changeUIVisibility(false)
         } else {
-            Toast.makeText(requireContext(), "Source is not configurable", Toast.LENGTH_SHORT)
-                .show()
+            ani.dantotsu.toast("Source is not configurable")
         }
     }
 
@@ -686,7 +684,7 @@ class AnimeWatchFragment : Fragment() {
 
                     // Validate URL
                     if (url.isBlank()) {
-                        Toast.makeText(requireContext(), "Invalid episode URL", Toast.LENGTH_SHORT).show()
+                        ani.dantotsu.toast("Invalid episode URL")
                         return
                     }
 
@@ -709,13 +707,13 @@ class AnimeWatchFragment : Fragment() {
                     startActivity(intent)
                 } catch (e: Exception) {
                     android.util.Log.e("AnimeWatchFragment", "Error opening episode in browser", e)
-                    Toast.makeText(requireContext(), "Failed to open episode link: ${e.message}", Toast.LENGTH_SHORT).show()
+                    ani.dantotsu.toast("Failed to open episode link: ${e.message}")
                 }
             } else {
-                Toast.makeText(requireContext(), "Browser view not available for this source", Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast("Browser view not available for this source")
             }
         } else {
-            Toast.makeText(requireContext(), "Browser view not available for this source", Toast.LENGTH_SHORT).show()
+            ani.dantotsu.toast("Browser view not available for this source")
         }
     }
 

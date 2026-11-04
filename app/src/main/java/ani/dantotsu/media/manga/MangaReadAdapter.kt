@@ -201,7 +201,7 @@ class MangaReadAdapter(
             val sourceName = mangaReadSources.names.getOrNull(index)
             if (sourceName == "Downloaded") {
                 // Use download icon for Downloaded source
-                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_download_24)
+                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_round_download_24)
             } else {
                 (lazierParser.get?.value as? DynamicMangaParser)?.extension?.icon
             }
@@ -274,7 +274,7 @@ class MangaReadAdapter(
             fragment.lifecycleScope,
             binding.mediaSourceSubscribe,
             R.drawable.ic_round_notifications_active_24,
-            R.drawable.ic_round_notifications_none_24,
+            R.drawable.ic_round_notifications_outline_24,
             R.color.bg_opp,
             R.color.violet_400,
             fragment.subscribed,
@@ -441,9 +441,9 @@ class MangaReadAdapter(
                             }
                         }
                         return when {
-                            allChecked -> R.drawable.untick_all_boxes
-                            allUnchecked -> R.drawable.tick_all_boxes
-                            else -> R.drawable.invert_all_boxes
+                            allChecked -> R.drawable.ic_untick_all_boxes
+                            allUnchecked -> R.drawable.ic_tick_all_boxes
+                            else -> R.drawable.ic_invert_all_boxes
                         }
                     }
 
@@ -529,7 +529,7 @@ class MangaReadAdapter(
             val sourceName = mangaReadSources.names.getOrNull(index)
             if (sourceName == "Downloaded") {
                 // Use download icon for Downloaded source
-                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_download_24)
+                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_round_download_24)
             } else {
                 (lazierParser.get?.value as? DynamicMangaParser)?.extension?.icon
             }

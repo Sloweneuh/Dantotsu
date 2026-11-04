@@ -146,7 +146,7 @@ object Notifications {
                     setName("Comments")
                 },
                 buildNotificationChannelGroup(GROUP_ANILIST) {
-                    setName("Anilist")
+                    setName("AniList")
                 },
                 buildNotificationChannelGroup(GROUP_SUBSCRIPTION_CHECK) {
                     setName("Subscription Checks")
@@ -194,7 +194,7 @@ object Notifications {
                     setGroup(GROUP_COMMENTS)
                 },
                 buildNotificationChannel(CHANNEL_ANILIST, IMPORTANCE_DEFAULT) {
-                    setName("Anilist")
+                    setName("AniList")
                     setGroup(GROUP_ANILIST)
                 },
                 buildNotificationChannel(CHANNEL_SUBSCRIPTION_CHECK, IMPORTANCE_LOW) {

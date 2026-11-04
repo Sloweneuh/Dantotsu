@@ -726,7 +726,7 @@ private fun TvMedia(
                     ) {
                         androidx.tv.material3.Icon(
                             androidx.compose.ui.res.painterResource(
-                                if (favourite) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_border_24
+                                if (favourite) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_outline_24
                             ),
                             // Filled while it's a favourite, an outline otherwise, in the button's own colours.
                             contentDescription = stringResource(if (favourite) R.string.tv_favourite_remove else R.string.tv_favourite_add),
@@ -738,7 +738,7 @@ private fun TvMedia(
                         modifier = Modifier.pointerClick(onClick = onSendToDevice),
                     ) {
                         androidx.tv.material3.Icon(
-                            androidx.compose.ui.res.painterResource(R.drawable.ic_round_devices_24),
+                            androidx.compose.ui.res.painterResource(R.drawable.ic_round_devices_outline_24),
                             contentDescription = stringResource(R.string.continue_on_another_device),
                         )
                     }
@@ -775,7 +775,7 @@ private fun TvMedia(
                         modifier = Modifier.pointerClick { batchDownloading = true },
                     ) {
                         androidx.tv.material3.Icon(
-                            androidx.compose.ui.res.painterResource(R.drawable.ic_download_24),
+                            androidx.compose.ui.res.painterResource(R.drawable.ic_round_download_24),
                             contentDescription = null,
                             modifier = Modifier.padding(end = 8.dp).size(20.dp),
                         )
@@ -994,7 +994,7 @@ private fun SourcePicker(
                             headlineContent = { Text(stringResource(R.string.tv_add_extensions)) },
                             leadingContent = {
                                 androidx.tv.material3.Icon(
-                                    androidx.compose.ui.res.painterResource(R.drawable.ic_round_add_24),
+                                    androidx.compose.ui.res.painterResource(R.drawable.ic_round_add_tinted_24),
                                     contentDescription = null,
                                     modifier = Modifier.size(28.dp),
                                 )
@@ -1027,7 +1027,7 @@ private fun SourceIcon(
     when {
         bitmap != null -> androidx.compose.foundation.Image(bitmap, contentDescription = null, modifier = modifier)
         downloads -> androidx.tv.material3.Icon(
-            androidx.compose.ui.res.painterResource(R.drawable.ic_download_24),
+            androidx.compose.ui.res.painterResource(R.drawable.ic_round_download_24),
             contentDescription = null,
             modifier = modifier,
         )

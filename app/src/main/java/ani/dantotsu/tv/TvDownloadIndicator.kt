@@ -70,7 +70,7 @@ fun TvDownloadIndicator(modifier: Modifier = Modifier) {
                     drawArc(track, 0f, 360f, useCenter = false, style = stroke)
                     drawArc(ring, -90f, 360f * overall, useCenter = false, style = stroke)
                 }
-                Icon(painterResource(R.drawable.ic_download_24), contentDescription = null, modifier = Modifier.size(14.dp))
+                Icon(painterResource(R.drawable.ic_round_download_24), contentDescription = null, modifier = Modifier.size(14.dp))
             }
             Column(Modifier.widthIn(max = 320.dp)) {
                 Text(

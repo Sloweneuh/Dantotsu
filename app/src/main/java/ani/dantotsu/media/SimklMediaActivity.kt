@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.updateLayoutParams
@@ -139,7 +138,7 @@ class SimklMediaActivity : AppCompatActivity() {
             if (full == null) {
                 episodesDeferred.cancel()
                 binding.simklMediaProgress.visibility = View.GONE
-                Toast.makeText(this@SimklMediaActivity, getString(R.string.simkl_no_data_title), Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast(getString(R.string.simkl_no_data_title))
                 finish()
                 return@launch
             }
@@ -159,7 +158,8 @@ class SimklMediaActivity : AppCompatActivity() {
             SimklMediaRenderer.render(
                 activity = this@SimklMediaActivity,
                 info = info,
-                contentHost = binding.simklMediaContent,
+                contentHost = InfoTabContext.ANILIST_ANIME
+                    .standaloneContent(info, InfoTabType.SIMKL, binding.simklMediaContent),
                 full = full,
                 anilistTags = anilistTags,
                 onGenreClick = { genre -> startSimklSearch(genre) },

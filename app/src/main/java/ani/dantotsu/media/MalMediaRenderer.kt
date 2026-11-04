@@ -13,8 +13,6 @@ import ani.dantotsu.buildMarkwon
 import ani.dantotsu.connections.mal.MALAnimeResponse
 import ani.dantotsu.connections.mal.MALGenre
 import ani.dantotsu.connections.mal.MALMangaResponse
-import ani.dantotsu.connections.mal.MALRelatedNode
-import ani.dantotsu.connections.mal.MALRelation
 import ani.dantotsu.connections.mal.MALStack
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.openLinkInAppOrBrowser
@@ -45,8 +43,6 @@ object MalMediaRenderer {
         info: FragmentMediaInfoBinding,
         contentHost: LinearLayout,
         full: MALAnimeResponse,
-        onGenreClick: (name: String) -> Unit,
-        onRelationClick: (malId: Int, isAnime: Boolean) -> Unit,
         anilistRecs: List<Media> = emptyList(),
     ) {
         val container = prepare(info, contentHost)
@@ -109,10 +105,12 @@ object MalMediaRenderer {
         setPopularityFavorites(info, full.rank, full.popularity, full.numScoringUsers)
         setSynopsis(activity, info, full.synopsis)
 
-        addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), canonical)
-        addGenres(activity, contentHost, full.genres, onGenreClick)
-        addRelations(activity, contentHost, full.relatedAnime, full.relatedManga, onRelationClick)
-        addRecommendations(activity, contentHost, anilistRecs)
+        contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), canonical) }
+        contentHost.infoSection(InfoSectionKind.GENRES) { addGenres(activity, contentHost, full.genres, isAnime = true) }
+        InfoExtraSections.addMalExtras(
+            contentHost, full.background, full.pictures, full.relatedAnime, full.relatedManga,
+        )
+        contentHost.infoSection(InfoSectionKind.RECOMMENDATIONS) { addRecommendations(activity, contentHost, anilistRecs) }
     }
 
     @SuppressLint("SetTextI18n")
@@ -121,8 +119,6 @@ object MalMediaRenderer {
         info: FragmentMediaInfoBinding,
         contentHost: LinearLayout,
         full: MALMangaResponse,
-        onGenreClick: (name: String) -> Unit,
-        onRelationClick: (malId: Int, isAnime: Boolean) -> Unit,
         anilistRecs: List<Media> = emptyList(),
     ) {
         val container = prepare(info, contentHost)
@@ -172,10 +168,13 @@ object MalMediaRenderer {
         setPopularityFavorites(info, full.rank, full.popularity, full.numScoringUsers)
         setSynopsis(activity, info, full.synopsis)
 
-        addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), canonical)
-        addGenres(activity, contentHost, full.genres, onGenreClick)
-        addRelations(activity, contentHost, full.relatedAnime, full.relatedManga, onRelationClick)
-        addRecommendations(activity, contentHost, anilistRecs)
+        contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), canonical) }
+        contentHost.infoSection(InfoSectionKind.GENRES) { addGenres(activity, contentHost, full.genres, isAnime = false) }
+        InfoExtraSections.addMalExtras(
+            contentHost, full.background, full.pictures, full.relatedAnime, full.relatedManga,
+            full.serialization,
+        )
+        contentHost.infoSection(InfoSectionKind.RECOMMENDATIONS) { addRecommendations(activity, contentHost, anilistRecs) }
     }
 
     // ---- shared field setters ----
@@ -233,6 +232,7 @@ object MalMediaRenderer {
         if (numScoringUsers != null && numScoringUsers > 0) {
             favRow?.visibility = View.VISIBLE
             info.mediaInfoFavorites.text = numScoringUsers.toString()
+            (favRow?.getChildAt(0) as? android.widget.TextView)?.setText(R.string.scored_by)
         } else {
             favRow?.visibility = View.GONE
         }
@@ -298,7 +298,7 @@ object MalMediaRenderer {
         activity: AppCompatActivity,
         parent: ViewGroup,
         genres: List<MALGenre>,
-        onGenreClick: (String) -> Unit,
+        isAnime: Boolean,
     ) {
         if (genres.isEmpty()) return
         val bind = ItemTitleChipgroupBinding.inflate(activity.layoutInflater, parent, false)
@@ -306,33 +306,9 @@ object MalMediaRenderer {
         genres.forEach { g ->
             val chip = ItemChipBinding.inflate(activity.layoutInflater, bind.itemChipGroup, false).root
             chip.text = g.name
-            chip.setOnClickListener { onGenreClick(g.name) }
+            val tap = MalGenreLinks.confirmingTap { MalGenreLinks.open(g.id, isAnime) }
+            chip.setOnClickListener { tap() }
             chip.setOnLongClickListener { copyToClipboard(g.name); true }
-            bind.itemChipGroup.addView(chip)
-        }
-        parent.addView(bind.root)
-    }
-
-    /** MAL's related-node entries carry only id/title/main_picture — no synopsis — so a chip
-     * strip, not a card recycler, same call as Kitsu's relations for name-only data.
-     * `relatedAnime`/`relatedManga` come from separate response fields, so the anime/manga split
-     * is tagged onto each pair here rather than concatenated away before we can use it. */
-    private fun addRelations(
-        activity: AppCompatActivity,
-        parent: ViewGroup,
-        relatedAnime: List<MALRelation>,
-        relatedManga: List<MALRelation>,
-        onRelationClick: (Int, Boolean) -> Unit,
-    ) {
-        val relations = relatedAnime.map { it to true } + relatedManga.map { it to false }
-        if (relations.isEmpty()) return
-        val bind = ItemTitleChipgroupBinding.inflate(activity.layoutInflater, parent, false)
-        bind.itemTitle.setText(R.string.relations)
-        relations.forEach { (rel, relIsAnime) ->
-            val node: MALRelatedNode = rel.node
-            val chip = ItemChipBinding.inflate(activity.layoutInflater, bind.itemChipGroup, false).root
-            chip.text = "${titleCase(rel.relationTypeFormatted)}: ${node.title}"
-            chip.setOnClickListener { onRelationClick(node.id, relIsAnime) }
             bind.itemChipGroup.addView(chip)
         }
         parent.addView(bind.root)
@@ -395,6 +371,6 @@ object MalMediaRenderer {
                     .putExtra("isAnime", isAnime)
             )
         }
-        parent.addView(bind.root)
+        parent.addInfoSection(InfoSectionKind.STACKS, bind.root)
     }
 }

@@ -167,7 +167,7 @@
                         android:textAlignment="viewStart"
                         android:textAllCaps="false"
                         android:visibility="gone"
-                        app:icon="@drawable/ic_round_mangaupdates_24"
+                        app:icon="@drawable/ic_mangaupdates"
                         app:iconGravity="textStart"
                         app:iconPadding="16dp" />
 

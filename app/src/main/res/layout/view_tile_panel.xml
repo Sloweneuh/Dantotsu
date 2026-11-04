@@ -160,7 +160,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/quick_tiles_edit"
             android:padding="8dp"
-            android:src="@drawable/ic_round_edit_24"
+            android:src="@drawable/ic_round_edit_outline_24"
             app:tint="?attr/colorOnBackground" />
 
     </FrameLayout>

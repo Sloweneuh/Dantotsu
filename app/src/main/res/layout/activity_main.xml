@@ -44,7 +44,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_incognito_24"
+                android:src="@drawable/ic_incognito"
                 app:tint="@color/bg"
                 tools:ignore="ContentDescription" />
         </androidx.cardview.widget.CardView>

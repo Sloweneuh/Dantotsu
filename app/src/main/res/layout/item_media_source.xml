@@ -66,7 +66,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/open_in_browser"
                 android:padding="4dp"
-                android:src="@drawable/ic_open_24"
+                android:src="@drawable/ic_round_open_in_browser_24"
                 android:visibility="gone"
                 app:tint="?attr/colorPrimary"
                 tools:ignore="ImageContrastCheck"
@@ -87,7 +87,7 @@
                 android:layout_gravity="center_vertical"
                 android:contentDescription="@string/extensions"
                 android:padding="8dp"
-                app:srcCompat="@drawable/ic_extension_24"
+                app:srcCompat="@drawable/ic_extension_alt"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ImageContrastCheck" />
 
@@ -104,7 +104,7 @@
                 app:boxCornerRadiusTopStart="8dp"
                 app:boxStrokeColor="@color/text_input_layout_stroke_color"
                 app:hintAnimationEnabled="true"
-                app:startIconDrawable="@drawable/ic_extension_24">
+                app:startIconDrawable="@drawable/ic_extension_alt">
 
                 <AutoCompleteTextView
                     android:id="@+id/mediaSource"
@@ -267,7 +267,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
                 android:padding="8dp"
-                app:srcCompat="@drawable/ic_download_24"
+                app:srcCompat="@drawable/ic_round_download_24"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ContentDescription,ImageContrastCheck" />
 
@@ -278,7 +278,7 @@
                 android:layout_gravity="center_vertical"
                 android:alpha="0.33"
                 android:padding="8dp"
-                app:srcCompat="@drawable/ic_round_notifications_none_24"
+                app:srcCompat="@drawable/ic_round_notifications_outline_24"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ContentDescription,ImageContrastCheck" />
 
@@ -289,7 +289,7 @@
                 android:layout_gravity="end"
                 android:alpha="1"
                 android:padding="8dp"
-                app:srcCompat="@drawable/ic_round_filter_24"
+                app:srcCompat="@drawable/ic_round_menu_24"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ContentDescription,ImageContrastCheck" />
         </LinearLayout>
@@ -422,7 +422,7 @@
             android:textColor="?attr/colorOnPrimaryContainer"
             android:visibility="gone"
             app:cornerRadius="12dp"
-            app:icon="@drawable/ic_round_help_outline"
+            app:icon="@drawable/ic_round_help_outline_24"
             app:iconGravity="textStart"
             app:iconTint="?attr/colorOnPrimaryContainer" />
 

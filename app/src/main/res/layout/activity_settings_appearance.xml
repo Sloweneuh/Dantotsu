@@ -57,7 +57,7 @@
                 android:layout_marginEnd="44dp"
                 android:layout_marginBottom="44dp"
                 android:transitionName="settingsPageIcon"
-                app:srcCompat="@drawable/ic_palette"
+                app:srcCompat="@drawable/ic_round_palette_outline_24"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ContentDescription" />
 
@@ -148,7 +148,7 @@
             app:boxCornerRadiusTopEnd="8dp"
             app:boxCornerRadiusTopStart="8dp"
             app:hintAnimationEnabled="true"
-            app:startIconDrawable="@drawable/ic_palette">
+            app:startIconDrawable="@drawable/ic_round_palette_outline_24">
 
             <AutoCompleteTextView
                 android:id="@+id/themeSwitcher"

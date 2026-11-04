@@ -86,6 +86,6 @@
             android:layout_height="wrap_content"
             android:contentDescription="@string/tool_results_ignore"
             android:tooltipText="@string/tool_results_ignore"
-            app:icon="@drawable/ic_round_visibility_off_24" />
+            app:icon="@drawable/ic_round_visibility_off_outline_white_24" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

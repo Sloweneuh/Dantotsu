@@ -86,9 +86,9 @@ object ReleaseSourcesSheet {
     }
 
     private fun iconOf(provider: Provider) = when (provider) {
-        Provider.MALSYNC -> R.drawable.ic_round_malsync_notifications_24
-        Provider.MANGAUPDATES -> R.drawable.ic_round_mangaupdates_24
-        Provider.COMICK -> R.drawable.ic_round_comick_24
+        Provider.MALSYNC -> R.drawable.ic_malsync_notifications
+        Provider.MANGAUPDATES -> R.drawable.ic_mangaupdates
+        Provider.COMICK -> R.drawable.ic_comick
     }
 }
 

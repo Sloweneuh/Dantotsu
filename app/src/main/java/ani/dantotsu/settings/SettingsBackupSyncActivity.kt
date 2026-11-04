@@ -186,7 +186,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.backup_restore),
                 desc = getString(R.string.backup_restore_desc),
-                icon = R.drawable.backup_restore,
+                icon = R.drawable.ic_round_settings_backup_restore_24,
                 onClick = {
                     showBackupRestoreChooser(openDocumentLauncher)
                 },
@@ -195,7 +195,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 5,
                 name = getString(R.string.auto_backup),
                 desc = getString(R.string.auto_backup_desc),
-                icon = R.drawable.ic_round_schedule_24,
+                icon = R.drawable.ic_round_schedule_outline_24,
                 choice = ChoiceConfig(
                     options = listOf(
                         ChoiceOption(R.drawable.ic_round_close_24, getString(R.string.off)),
@@ -219,7 +219,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 // Not the plain sync glyph the row below it uses: the toggle is the feature and that
                 // one is a single action, and sharing an icon made two rows that mean quite
                 // different things indistinguishable at a glance.
-                icon = R.drawable.ic_round_cloud_sync_24,
+                icon = R.drawable.ic_round_cloud_sync_outline_24,
                 isEnabled = linked,
                 isChecked = PrefManager.getVal(PrefName.CloudSyncEnabled),
                 switch = { isChecked, _ ->
@@ -242,7 +242,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 // A plain padlock already means the player's screen lock and a private activity
                 // elsewhere in the app; this one is specifically the key the cloud nodes are named
                 // from, and says so.
-                icon = R.drawable.ic_round_cloud_lock_24,
+                icon = R.drawable.ic_round_cloud_lock_outline_24,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
                         toast(getString(R.string.cloud_sync_no_account))
@@ -274,7 +274,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                     // follow a conflict raised or settled while the screen is open.
                     val conflict = SyncConflictNotice.isPending()
                     b.settingsIcon.setImageResource(
-                        if (conflict) R.drawable.ic_round_cloud_alert_24
+                        if (conflict) R.drawable.ic_round_cloud_alert_outline_24
                         else R.drawable.ic_round_sync_24
                     )
                     b.settingsIcon.imageTintList = ColorStateList.valueOf(
@@ -359,7 +359,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.sync_extensions),
                 startsGroup = true,
                 desc = getString(R.string.sync_extensions_desc),
-                icon = R.drawable.ic_round_extension_cloud_24,
+                icon = R.drawable.ic_extension_cloud,
                 isEnabled = linked,
                 isChecked = PrefManager.getVal(PrefName.SyncExtensionsEnabled),
                 switch = { isChecked, _ ->
@@ -371,7 +371,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.sync_extensions_now),
                 desc = getString(R.string.sync_extensions_now_desc),
-                icon = R.drawable.ic_round_extension_sync_24,
+                icon = R.drawable.ic_extension_sync,
                 isEnabled = linked,
                 onClick = {
                     when {
@@ -408,7 +408,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 2,
                 name = getString(R.string.sync_extension_settings),
                 desc = getString(R.string.sync_extension_settings_desc),
-                icon = R.drawable.ic_round_extension_settings_24,
+                icon = R.drawable.ic_extension_settings,
                 isEnabled = linked,
                 isChecked = PrefManager.getVal(PrefName.SyncExtensionSettingsEnabled),
                 switch = { isChecked, _ ->
@@ -420,7 +420,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.force_upload),
                 startsGroup = true,
                 desc = getString(R.string.force_upload_desc),
-                icon = R.drawable.ic_round_cloud_upload_24,
+                icon = R.drawable.ic_round_cloud_upload_outline_24,
                 isEnabled = linked,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
@@ -462,7 +462,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.force_download),
                 desc = getString(R.string.force_download_desc),
-                icon = R.drawable.ic_round_cloud_download_24,
+                icon = R.drawable.ic_round_cloud_download_outline_24,
                 isEnabled = linked,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
@@ -507,7 +507,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.cloud_wipe),
                 desc = getString(R.string.cloud_wipe_desc),
-                icon = R.drawable.ic_round_delete_forever_24,
+                icon = R.drawable.ic_round_delete_forever_outline_24,
                 isEnabled = linked,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {

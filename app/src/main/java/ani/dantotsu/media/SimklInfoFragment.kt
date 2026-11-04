@@ -74,6 +74,7 @@ class SimklInfoFragment : TrackerInfoFragment<SimklInfoFragment.Data>() {
             info = binding,
             contentHost = binding.mediaInfoContainer,
             full = full.full,
+            showMalScore = false,
             // The AniList tab one swipe away already carries the full tag list.
             anilistTags = null,
             onGenreClick = { genre ->
@@ -96,15 +97,17 @@ class SimklInfoFragment : TrackerInfoFragment<SimklInfoFragment.Data>() {
 
         if (full.episodes.isNotEmpty()) {
             val rows = SimklMediaRenderer.toEpisodeRows(full.episodes).asReversed()
-            TrackerEpisodeRenderer.renderPreview(
-                activity, binding.mediaInfoContainer, rows, take = 5, titleRes = R.string.eps,
-                coverUrl = SimklApi.posterUrl(full.full.poster, "_ca"),
-            ) {
-                startActivity(
-                    Intent(requireContext(), SimklMediaActivity::class.java)
-                        .putExtra(SimklMediaActivity.EXTRA_SIMKL_ID, full.simklId)
-                        .putExtra(SimklMediaActivity.EXTRA_OPEN_EPISODES, true)
-                )
+            binding.mediaInfoContainer.infoSection(InfoSectionKind.EPISODES) {
+                TrackerEpisodeRenderer.renderPreview(
+                    activity, binding.mediaInfoContainer, rows, take = 5, titleRes = R.string.eps,
+                    coverUrl = SimklApi.posterUrl(full.full.poster, "_ca"),
+                ) {
+                    startActivity(
+                        Intent(requireContext(), SimklMediaActivity::class.java)
+                            .putExtra(SimklMediaActivity.EXTRA_SIMKL_ID, full.simklId)
+                            .putExtra(SimklMediaActivity.EXTRA_OPEN_EPISODES, true)
+                    )
+                }
             }
         }
     }

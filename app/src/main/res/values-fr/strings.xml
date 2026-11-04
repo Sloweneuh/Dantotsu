@@ -64,9 +64,108 @@
     <string name="unread_sort_option_recent">Mis à jour le plus récemment</string>
     <string name="unread_sort_desc">Ordre d\'affichage des chapitres non lus sur l\'accueil</string>
     <string name="malsync_preferred_track_label">Version diffusée de l\'anime</string>
-    <string name="customize_info_tabs">Ordre des onglets d\'infos</string>
+    <string name="customize_info_tabs">Personnaliser les onglets d\'infos</string>
     <string name="info_tab_fetch_disabled">connexion désactivée</string>
-    <string name="customize_info_tabs_desc">Réorganiser et afficher/masquer les onglets d\'infos pour AniList anime, AniList manga et MangaUpdates manga</string>
+    <string name="customize_info_tabs_desc">Réorganiser, masquer et modifier les onglets d\'infos, ou créer les vôtres à partir de plusieurs sources</string>
+    <string name="info_tabs_add_custom">Nouvel onglet personnalisé</string>
+    <string name="info_tab_custom_note">personnalisé</string>
+    <string name="info_tab_default_name">Onglet personnalisé %1$d</string>
+    <string name="info_tab_name">Nom de l\'onglet</string>
+    <string name="info_tab_icon">Icône</string>
+    <string name="info_tab_icons_genres">Genres et ambiances</string>
+    <string name="info_tab_icons_media">Histoires et médias</string>
+    <string name="info_tab_icons_rankings">Notes et classements</string>
+    <string name="info_tab_icons_community">Communauté et actualités</string>
+    <string name="info_tab_icons_discovery">Découverte et liens</string>
+    <string name="info_tab_icons_organisation">Organisation</string>
+    <string name="info_tab_icons_sources">Sources</string>
+    <string name="info_tab_show_sources">Afficher le nom des sources</string>
+    <string name="info_tab_sections">Sections</string>
+    <string name="info_tab_custom_hint">Appuyez sur une section pour changer sa source ou en fusionner plusieurs.</string>
+    <string name="info_tab_long_press_title">Appui long sur l\'onglet</string>
+    <string name="info_tab_long_press_name">Afficher le nom de l\'onglet</string>
+    <string name="info_tab_long_press_edit">Modifier cet onglet</string>
+    <string name="info_tab_long_press_none">Ne rien faire</string>
+    <string name="info_tab_long_press_open">Ouvrir sur %1$s</string>
+    <string name="info_tab_merge_sources">Fusionner plusieurs sources</string>
+    <string name="info_tab_merge_hint_stack">Affichées à la suite, chacune avec le nom de sa source.</string>
+    <string name="info_tab_merge_hint_chips">Une seule rangée de puces, sans doublons.</string>
+    <string name="info_tab_merge_hint_media">Une seule rangée sans doublons ; les titres suggérés par le plus de sources passent en premier.</string>
+    <string name="info_tab_merge_hint_fields">Un seul tableau ; une valeur ne se répète que si les sources divergent.</string>
+    <string name="info_tab_merge_hint_row">Une seule rangée défilante avec les cartes de chaque source.</string>
+    <plurals name="info_tab_section_count">
+        <item quantity="one">%1$d section à ajouter</item>
+        <item quantity="other">%1$d sections à ajouter</item>
+    </plurals>
+    <string name="info_tab_section_used">Déjà sur cet onglet</string>
+    <string name="info_tab_section_blocked">Nécessite une connexion ou un compte</string>
+    <string name="info_tab_login_required">compte requis</string>
+    <string name="info_tab_section_unavailable">Indisponible pour %1$s</string>
+    <string name="info_tab_builtin_hint">Faites glisser pour réorganiser, désactivez pour masquer.</string>
+    <string name="info_tab_add_section">Ajouter une section</string>
+    <string name="info_tab_copy_from">Copier les sections d\'un onglet</string>
+    <string name="info_tab_all_sections_added">Toutes les sections sont déjà sur cet onglet</string>
+    <string name="info_tab_reset">Réinitialiser cet onglet</string>
+    <string name="info_tab_delete">Supprimer cet onglet</string>
+    <string name="info_tab_delete_confirm">Supprimer « %1$s » ?</string>
+    <string name="info_tab_nothing_to_show">Rien à afficher ici. Vérifiez que les sources de cet onglet sont connectées et connaissent ce titre.</string>
+    <string name="info_tab_visible_details">Détails visibles</string>
+    <string name="info_tab_merged">fusionnées</string>
+    <string name="info_tab_hidden_count">%1$d masqués</string>
+    <string name="info_tab_remove_section">Retirer la section</string>
+    <string name="info_section_countdown">Compte à rebours du prochain épisode</string>
+    <string name="info_section_details">Détails</string>
+    <string name="info_section_titles">Titres</string>
+    <string name="info_section_detailed_status">Statut détaillé</string>
+    <string name="info_section_social">Amis</string>
+    <string name="info_section_themes">Génériques</string>
+    <string name="info_section_quels">Préquelle et suite</string>
+    <string name="info_section_background">Contexte</string>
+    <string name="scored_by">Noté par</string>
+    <string name="info_section_publishers">Éditeurs</string>
+    <string name="info_section_pictures">Images</string>
+    <string name="info_section_desc_background">L\'historique de production et des anecdotes sur ce titre, d\'après MyAnimeList.</string>
+    <string name="info_section_desc_publishers">Qui publie ce titre et les magazines où il paraît.</string>
+    <string name="info_tab_fields_hint">Faites glisser pour réorganiser, désactivez pour masquer.</string>
+    <string name="info_tab_fields_hint_merged">Faites glisser pour réorganiser, désactivez pour masquer. Appuyez sur une icône pour choisir la source de cette ligne.</string>
+    <string name="info_tab_field_auto">Automatique</string>
+    <string name="info_tab_field_provider">Choisir la source de cette ligne</string>
+    <string name="info_section_stacks_lists">Piles et listes</string>
+    <string name="info_tab_section_about">À propos de cette section</string>
+    <string name="info_section_desc_countdown">Temps restant avant la diffusion du prochain épisode.</string>
+    <string name="info_section_desc_details">Le tableau de statistiques : note, statut, format, dates, popularité, etc.</string>
+    <string name="info_section_desc_titles">Le titre et sa version romanisée.</string>
+    <string name="info_section_desc_description">Ce que raconte ce titre.</string>
+    <string name="info_section_desc_detailed_status">Le statut de parution complet de MangaUpdates, comme le nombre de chapitres par volume ou par langue.</string>
+    <string name="info_section_desc_broadcast">La saison de diffusion et le créneau hebdomadaire.</string>
+    <string name="info_section_desc_external_links">Liens vers les sites officiels, les services de streaming et les sites de référence.</string>
+    <string name="info_section_desc_quicklinks">Autres sites où trouver ce titre, d\'après MALSync.</string>
+    <string name="info_section_desc_synonyms">Les autres noms de ce titre.</string>
+    <string name="info_section_desc_social">Vos amis AniList qui l\'ont dans leur liste, avec leur statut et leur note.</string>
+    <string name="info_section_desc_episodes">Un aperçu des derniers épisodes.</string>
+    <string name="info_section_desc_latest_chapter">Le dernier chapitre paru.</string>
+    <string name="info_section_desc_covers">Une galerie de couvertures et d\'images.</string>
+    <string name="info_section_desc_anime_adaptation">Où l\'adaptation animée de ce manga commence et s\'arrête dans l\'histoire.</string>
+    <string name="info_section_desc_studios">Les studios qui ont réalisé cet anime.</string>
+    <string name="info_section_desc_trailer">La vidéo promotionnelle.</string>
+    <string name="info_section_desc_themes">Les génériques de début et de fin et les chansons d\'AnimeThemes, à écouter dans l\'application.</string>
+    <string name="info_section_desc_genres">Les genres de ce titre.</string>
+    <string name="info_section_desc_tags">Thèmes et caractéristiques détaillés ; les spoilers restent masqués jusqu\'à l\'appui.</string>
+    <string name="info_section_desc_authors">Toutes les personnes créditées comme auteur ou artiste.</string>
+    <string name="info_section_desc_watch_order">Un bouton qui ouvre l\'ordre de visionnage de cette franchise, d\'après Chiaki.</string>
+    <string name="info_section_desc_news">Un bouton qui ouvre les actualités de ce titre, de Kuroiru pour les anime et de MangaBaka pour les mangas et les romans.</string>
+    <string name="info_section_desc_quels">Accès direct à la préquelle et à la suite.</string>
+    <string name="info_section_desc_relations">Les entrées liées, comme les adaptations, les dérivés et les histoires parallèles.</string>
+    <string name="info_section_desc_recommendations">Des titres similaires suggérés par la source.</string>
+    <string name="info_section_desc_category_recommendations">Des titres suggérés par MangaUpdates parce qu\'ils partagent des catégories avec celui-ci.</string>
+    <string name="info_section_desc_stacks">Des collections créées par les utilisateurs qui incluent ce titre : piles sur MyAnimeList et MangaBaka, listes sur Comick.</string>
+    <string name="info_section_desc_reviews">Les critiques écrites par les utilisateurs.</string>
+    <string name="info_section_desc_characters">Les personnages.</string>
+    <string name="info_section_desc_staff">Les personnes qui ont travaillé sur ce titre.</string>
+    <string name="info_section_desc_comments">Ce que disent les utilisateurs de Comick sur cette entrée.</string>
+    <string name="info_field_score_mal">Note MyAnimeList</string>
+    <string name="info_field_score_imdb">Note IMDb</string>
+    <string name="info_field_total">Total d\'épisodes ou de chapitres</string>
     <string name="anilist_equivalent_found_title">Correspondance AniList trouvée</string>
     <string name="anilist_equivalent_found_desc">Ce manga possède également une entrée correspondante sur AniList. Souhaitez-vous plutôt la consulter là-bas ?</string>
     <string name="malsync_disabled_home">MALSync désactivé — activez MALSync dans Comptes pour voir les chapitres non lus</string>
@@ -241,23 +340,23 @@
     <string name="no_watch_order">Aucun ordre de visionnage trouvé</string>
     <string name="no_news">Aucune actualité pour le moment</string>
 
-    <string name="anilist_settings">Paramètres Anilist</string>
+    <string name="anilist_settings">Paramètres AniList</string>
     <string name="full_mangaupdates_account_help">
-        Anilist ne répertorie pas tous les mangas existants, et c\'est là qu\'intervient MangaUpdates. En vous connectant avec votre compte MangaUpdates, Dantotsu peut récupérer des informations supplémentaires sur les mangas ainsi que vos listes de lecture depuis MangaUpdates, en complément des données d\'Anilist.
+        AniList ne répertorie pas tous les mangas existants, et c\'est là qu\'intervient MangaUpdates. En vous connectant avec votre compte MangaUpdates, Dantotsu peut récupérer des informations supplémentaires sur les mangas ainsi que vos listes de lecture depuis MangaUpdates, en complément des données d\'AniList.
         \n\n Se connecter avec votre compte MangaUpdates ajoute les fonctionnalités suivantes :
         \n - Rechercher des mangas sur MangaUpdates et les ajouter à vos listes MangaUpdates
-        \n - Les listes MangaUpdates sont affichées aux côtés des listes Anilist
-        \n - La progression de lecture est enregistrée sur MangaUpdates (séparément de la progression Anilist)
-        \n - Un onglet d\'informations MangaUpdates pour les mangas Anilist avec des détails supplémentaires
-        \n\n L\'API MangaUpdates est bien plus limitée que celle d\'Anilist, certaines fonctionnalités peuvent donc être plus lentes ou plus limitées que sur le site MangaUpdates.
+        \n - Les listes MangaUpdates sont affichées aux côtés des listes AniList
+        \n - La progression de lecture est enregistrée sur MangaUpdates (séparément de la progression AniList)
+        \n - Un onglet d\'informations MangaUpdates pour les mangas AniList avec des détails supplémentaires
+        \n\n L\'API MangaUpdates est bien plus limitée que celle d\'AniList, certaines fonctionnalités peuvent donc être plus lentes ou plus limitées que sur le site MangaUpdates.
         \n\n *Notez que l\'intégration MangaUpdates est optionnelle et n\'ajoute des fonctionnalités supplémentaires que pour les mangas. Dantotsu continuera à fonctionner parfaitement sans connexion à MangaUpdates.*
     </string>
     <string name="mangabaka_account_help">Comment fonctionne MangaBaka \?</string>
     <string name="full_mangabaka_account_help">
-        MangaBaka est une base de données multi-sources qui relie les titres entre Anilist, MangaUpdates et MyAnimeList. Se connecter avec votre compte MangaBaka ajoute les fonctionnalités suivantes :
-        \n - Envoyer vos mises à jour de listes Anilist et MangaUpdates vers votre bibliothèque MangaBaka — configurez cela dans **Synchronisation des listes MangaBaka**, dans les paramètres **Synchronisation des listes**
+        MangaBaka est une base de données multi-sources qui relie les titres entre AniList, MangaUpdates et MyAnimeList. Se connecter avec votre compte MangaBaka ajoute les fonctionnalités suivantes :
+        \n - Envoyer vos mises à jour de listes AniList et MangaUpdates vers votre bibliothèque MangaBaka — configurez cela dans **Synchronisation des listes MangaBaka**, dans les paramètres **Synchronisation des listes**
         \n - Comparer vos listes entre services et repérer les entrées obsolètes
-        \n\n La connexion n\'est pas nécessaire pour l\'onglet d\'informations MangaBaka ni pour la liaison multi-sources entre Anilist, MangaUpdates et MyAnimeList — celles-ci fonctionnent via l\'API publique MangaBaka, connecté ou non (voir le bouton **MangaBaka** dans les paramètres **Connexions**).
+        \n\n La connexion n\'est pas nécessaire pour l\'onglet d\'informations MangaBaka ni pour la liaison multi-sources entre AniList, MangaUpdates et MyAnimeList — celles-ci fonctionnent via l\'API publique MangaBaka, connecté ou non (voir le bouton **MangaBaka** dans les paramètres **Connexions**).
         \n\n *Notez que la connexion à MangaBaka est optionnelle et n\'ajoute que la synchronisation et la comparaison de listes. Dantotsu continuera à fonctionner parfaitement sans connexion à MangaBaka.*
     </string>
 
@@ -323,7 +422,7 @@
     <string name="full_mal_connections_help">
         Activer MAL ajoute un **onglet MAL** — un onglet d\'informations supplémentaire dans les détails du contenu avec des données propres à MAL (scores, genres, staff, recommandations, avis, etc.), récupérées anonymement depuis MyAnimeList.
         \n\n Aucun compte MAL n\'est requis pour cet onglet. **Désactiver MAL arrête ces requêtes et retire MAL du sélecteur d\'onglets (Comptes \> ⋮ \> Ordre des onglets d\'infos). Cela ne désactive PAS la synchronisation de la progression.**
-        \n\n La synchronisation de la progression vers votre compte MAL est contrôlée séparément — connectez votre compte MAL sur sa carte dans **Comptes**, puis activez la **Synchronisation des listes MAL** sur la même carte pour envoyer vos mises à jour de liste Anilist vers MAL.
+        \n\n La synchronisation de la progression vers votre compte MAL est contrôlée séparément — connectez votre compte MAL sur sa carte dans **Comptes**, puis activez la **Synchronisation des listes MAL** sur la même carte pour envoyer vos mises à jour de liste AniList vers MAL.
     </string>
     <string name="disable_mangaupdates">Afficher les infos MangaUpdates</string>
     <string name="disable_mangaupdates_desc">Activer ou désactiver la récupération des données MangaUpdates et l\'onglet MangaUpdates</string>
@@ -360,12 +459,12 @@
         \n\n Aucun compte MangaBaka n\'est requis pour tout cela — les données sont récupérées anonymement via l\'API publique de MangaBaka. La connexion à un compte MangaBaka pour la synchronisation des listes se fait sur sa carte dans **Comptes**.
         \n\n *Désactiver MangaBaka masque l\'onglet MangaBaka, arrête toutes les recherches et liaisons multi-sources associées, le retire du sélecteur d\'onglets (Comptes \> ⋮ \> Ordre des onglets d\'infos), et désactive l\'alerte de correspondance AniList sur les médias MangaUpdates.*
     </string>
-    <string name="switch_to_anilist_message">Ce média MangaUpdates a un équivalent sur Anilist. Voulez-vous ouvrir le média ?</string>
+    <string name="switch_to_anilist_message">Ce média MangaUpdates a un équivalent sur AniList. Voulez-vous ouvrir le média ?</string>
     <string name="malsync_connections_help">Comment fonctionne MALSync ?</string>
     <string name="full_malsync_connections_help">
-        MALSync est une base de données de correspondances maintenue par la communauté, qui relie les titres entre différents sites de suivi d\'anime et de manga (Anilist, MAL, Comick, MangaUpdates, etc.).
+        MALSync est une base de données de correspondances maintenue par la communauté, qui relie les titres entre différents sites de suivi d\'anime et de manga (AniList, MAL, Comick, MangaUpdates, etc.).
         \n\n Activer MALSync ajoute les fonctionnalités suivantes :
-        \n - **Liaison améliorée** — Dantotsu utilise MALSync pour faire correspondre avec précision les titres Anilist avec leurs équivalents sur Comick et MangaUpdates
+        \n - **Liaison améliorée** — Dantotsu utilise MALSync pour faire correspondre avec précision les titres AniList avec leurs équivalents sur Comick et MangaUpdates
         \n - **Suivi de la progression des sorties** — MALSync fournit des informations de sortie à jour pour les épisodes d\'anime et les chapitres de manga, utilisées notamment pour le suivi des chapitres non lus et les notifications de sortie
         \n\n Vous pouvez configurer si MALSync est utilisé pour les **Manga**, les **Anime** ou les **Deux** via l\'icône de paramètres à côté du bouton.
         \n\n Aucun compte requis. Les données MALSync sont récupérées anonymement via l\'API publique.
@@ -832,8 +931,8 @@
     <string name="categories">Catégories</string>
     <string name="authors">Auteurs</string>
     <string name="search_all">Tout rechercher</string>
-    <string name="login_with_anilist">Connectez-vous avec Anilist !</string>
-    <string name="anilist">Anilist</string>
+    <string name="login_with_anilist">Connectez-vous avec AniList !</string>
+    <string name="anilist">AniList</string>
 
     <string name="notification_for_checking_subscriptions">Notification de vérification des abonnements</string>
     <string name="use_alarm_manager">Utiliser Alarm Manager</string>
@@ -877,7 +976,7 @@
     <string name="back_online">De nouveau en ligne</string>
     <string name="go_online">Passer en ligne</string>
     <string name="back_online_hint">Le mode hors ligne est toujours activé</string>
-    <string name="anilist_not_found">Il semble que cela n\'a pas été trouvé sur Anilist.</string>
+    <string name="anilist_not_found">Il semble que cela n\'a pas été trouvé sur AniList.</string>
     <string name="disabled_auto_skip">Saut automatique OP &amp; ED désactivé</string>
     <string name="auto_skip">Saut automatique OP &amp; ED</string>
     <string name="show_skip_time_stamp_button">Afficher le bouton de saut timestamp</string>
@@ -893,13 +992,13 @@
     <string name="logging_in_mal">Connexion à MAL</string>
     <string name="getting_user_data">Récupération des données utilisateur</string>
     <string name="no_next_episode">Aucun épisode suivant trouvé !</string>
-    <string name="please_login_anilist">Veuillez vous connecter avec Anilist !</string>
+    <string name="please_login_anilist">Veuillez vous connecter avec AniList !</string>
     <string name="downloading">Téléchargement…</string>
     <string name="next_chapter_not_found">Chapitre suivant non trouvé</string>
     <string name="first_chapter">C\'est le 1er chapitre !</string>
-    <string name="error_getting_data">Erreur de récupération des données depuis Anilist.</string>
+    <string name="error_getting_data">Erreur de récupération des données depuis AniList.</string>
     <string name="error_loading_mal_user_data">Erreur de chargement des données utilisateur MAL</string>
-    <string name="error_loading_anilist_user_data">Erreur de chargement des données utilisateur Anilist</string>
+    <string name="error_loading_anilist_user_data">Erreur de chargement des données utilisateur AniList</string>
     <string name="episode_not_found">Impossible de trouver l\'épisode : %1$s</string>
     <string name="list_updated">Liste mise à jour</string>
     <string name="list_update_failed">Échec de la mise à jour de la liste</string>
@@ -977,7 +1076,7 @@
     <string name="close">Fermer</string>
     <string name="no_chapter">Aucun chapitre</string>
     <string name="no_episode">Aucun épisode</string>
-    <string name="content_18">Activez le contenu 18+ dans vos paramètres Anilist</string>
+    <string name="content_18">Activez le contenu 18+ dans vos paramètres AniList</string>
     <string name="available">Disponible</string>
     <string name="lets_go">C\'est parti</string>
     <string name="cope">Tant pis</string>
@@ -1024,7 +1123,7 @@
     <string name="similarity_text">Similarité : %1$s %%</string>
     <string name="time_range">De %1$s à %2$s</string>
     <string name="invalid_url">URL invalide</string>
-    <string name="no_anilist_id_found">Aucun ID Anilist trouvé</string>
+    <string name="no_anilist_id_found">Aucun ID AniList trouvé</string>
     <string name="error_loading_image">Erreur de chargement de l\'image</string>
     <string name="discord_logout_success">Déconnexion réussie</string>
     <string name="warning">Avertissement</string>
@@ -1179,7 +1278,7 @@
     <string name="use_anilist_icon">Utiliser l\'icône AniList</string>
     <string name="audio_tracks">Pistes audio</string>
     <string name="disabled_track">Désactivé</string>
-    <string name="accounts_desc">Anilist, MAL et Discord.\nQue demander de plus ?</string>
+    <string name="accounts_desc">AniList, MAL et Discord.\nQue demander de plus ?</string>
     <string name="theme_desc">Changez l\'ambiance de votre app</string>
     <string name="common_desc">Interface et autres paramètres</string>
     <string name="anime_desc">Choisissez comment vous regardez</string>
@@ -1352,8 +1451,8 @@
     <string name="are_you_sure_delete_episode">Êtes-vous sûr de vouloir supprimer l\'épisode %1$s ?</string>
     <string name="delete_stored_progress_chapters">Cela supprimera toute la progression stockée localement pour les chapitres</string>
 
-    <string name="allow_opening_links_title">Autoriser Dantotsu à ouvrir automatiquement les liens Anilist &amp; MAL ?</string>
-    <string name="allow_opening_links_desc">Ouvrez les paramètres &amp; cliquez sur +Ajouter des liens &amp; sélectionnez les URLs Anilist &amp; Mal</string>
+    <string name="allow_opening_links_title">Autoriser Dantotsu à ouvrir automatiquement les liens AniList &amp; MAL ?</string>
+    <string name="allow_opening_links_desc">Ouvrez les paramètres &amp; cliquez sur +Ajouter des liens &amp; sélectionnez les URLs AniList &amp; Mal</string>
 
     <string name="search_on_comick_title">Rechercher sur Comick</string>
 
@@ -1376,14 +1475,13 @@
     <string name="ranking">Classement</string>
     <string name="copied_title_toast">Copié : %1$s</string>
 
-    <string name="search_on_myanimelist">Rechercher sur MyAnimeList</string>
 
     <string name="question_marks">\?\?</string>
 
 
     <string name="downloading_progress">Téléchargement : %1$d%%</string>
 
-    <string name="new_anilist_notification">Nouvelle notification Anilist</string>
+    <string name="new_anilist_notification">Nouvelle notification AniList</string>
     <string name="update_from_dantotsu">Mise à jour de Dantotsu</string>
     <string name="new_feature_available">Nouvelle fonctionnalité disponible</string>
 
@@ -1473,10 +1571,10 @@
     <string name="auto_skip_fillers_info">Passe les épisodes filler lors du passage à l\'épisode suivant.</string>
     <string name="ask_update_progress_info_ep">Désactiver mettra toujours à jour automatiquement la progression lorsque l\'épisode est regardé.</string>
     <string name="ask_update_progress_info_chap">Désactiver mettra toujours à jour automatiquement la progression lorsque le chapitre est lu.</string>
-    <string name="ask_update_progress_info_zero">Activer ajoutera les éléments nouvellement commencés à Anilist avec une progression définie au chapitre 0.</string>
-    <string name="ask_update_progress_info_zero_ep">Activer ajoutera les éléments nouvellement commencés à Anilist avec une progression définie à l\'épisode 0.</string>
+    <string name="ask_update_progress_info_zero">Activer ajoutera les éléments nouvellement commencés à AniList avec une progression définie au chapitre 0.</string>
+    <string name="ask_update_progress_info_zero_ep">Activer ajoutera les éléments nouvellement commencés à AniList avec une progression définie à l\'épisode 0.</string>
     <string name="very_bold">très audacieux de votre part sar</string>
-    <string name="watch_complete_percentage_info">Le pourcentage auquel votre progression Anilist doit être mise à jour après avoir regardé un épisode. \nCela définit également le \% pour le préchargement des liens pour l\'épisode suivant.</string>
+    <string name="watch_complete_percentage_info">Le pourcentage auquel votre progression AniList doit être mise à jour après avoir regardé un épisode. \nCela définit également le \% pour le préchargement des liens pour l\'épisode suivant.</string>
     <string name="double_tap_info">Désactiver affichera les boutons d\'avance rapide et de retour rapide</string>
     <string name="seek_time_info">Durée en secondes pour l\'avance rapide et le retour rapide.</string>
     <string name="skip_time_info">Régler sur 0 cache le bouton Passer.</string>
@@ -1507,17 +1605,17 @@
     <string name="timestamp_proxy_desc">Utile si vous obtenez des échecs de Handshake</string>
     <string name="account_help">Comment ça marche \?</string>
     <string name="full_account_help">
-        Dantotsu est une application basée sur Anilist, donc connecter un compte MAL nécessite qu\'un compte Anilist soit d\'abord connecté.
-        \n\nUne fois connecté avec les deux comptes, activez la **Synchronisation des listes MyAnimeList** dans les paramètres **Synchronisation des listes** pour envoyer vos modifications de liste Anilist (ajouts, modifications, suppressions) vers votre compte MAL à partir de maintenant.
+        Dantotsu est une application basée sur AniList, donc connecter un compte MAL nécessite qu\'un compte AniList soit d\'abord connecté.
+        \n\nUne fois connecté avec les deux comptes, activez la **Synchronisation des listes MyAnimeList** dans les paramètres **Synchronisation des listes** pour envoyer vos modifications de liste AniList (ajouts, modifications, suppressions) vers votre compte MAL à partir de maintenant.
 
-        \n\nNote : Cela n\'envoie que les nouveaux changements — cela ne synchronisera pas l\'historique existant de votre liste Anilist vers MAL. Il est recommandé de le synchroniser manuellement au préalable.
+        \n\nNote : Cela n\'envoie que les nouveaux changements — cela ne synchronisera pas l\'historique existant de votre liste AniList vers MAL. Il est recommandé de le synchroniser manuellement au préalable.
         \n- Vérifiez la __FAQ__ pour la _Méthode Facile_
 
         \n\nEt pour les _Intermédiaires_ :
-        \n- [Comment synchroniser les données Anilist avec MAL](https://anilist.co/forum/thread/2654)
-        \n- [Comment synchroniser les données MAL avec Anilist](https://anilist.co/forum/thread/3393)
+        \n- [Comment synchroniser les données AniList avec MAL](https://anilist.co/forum/thread/2654)
+        \n- [Comment synchroniser les données MAL avec AniList](https://anilist.co/forum/thread/3393)
 
-        \n\n_Connecter un compte MAL est entièrement optionnel — l\'onglet d\'informations MAL fonctionne sans, et il n\'est pas nécessaire de synchroniser à la fois les comptes MAL et Anilist._
+        \n\n_Connecter un compte MAL est entièrement optionnel — l\'onglet d\'informations MAL fonctionne sans, et il n\'est pas nécessaire de synchroniser à la fois les comptes MAL et AniList._
     </string>
     <string name="use_alarm_manager_reliable">Utiliser Alarm Manager pour des notifications fiables</string>
     <string name="use_alarm_manager_confirm">L\'utilisation d\'Alarm Manager peut aider à lutter contre l\'optimisation de la batterie, mais peut consommer plus de batterie. Il nécessite également la permission Alarm Manager.</string>
@@ -1536,7 +1634,7 @@
     <string name="adult_stuff">Trucs d\'adultes ?( ͡° ͜ʖ ͡° )</string>
     <string name="what_did_you_open">Qu\'est-ce que tu as ouvert ?</string>
     <string name="error_getting_image_data">Erreur lors de la récupération des données de l\'image</string>
-    <string name="anilist_down">Il semble qu\'Anilist soit en panne, essayez peut-être d\'utiliser un VPN ou attendez qu\'il revienne.</string>
+    <string name="anilist_down">Il semble qu\'AniList soit en panne, essayez peut-être d\'utiliser un VPN ou attendez qu\'il revienne.</string>
     <string name="anilist_not_responding">AniList ne répond pas</string>
     <string name="anilist_api_unavailable">L\'API d\'AniList est indisponible</string>
     <string name="anilist_api_unavailable_info">AniList a temporairement désactivé son API. Consultez le Discord officiel d\'AniList pour plus d\'informations.</string>
@@ -1560,7 +1658,7 @@
     <string name="years_active">\n"__Années d\'activité :__ "</string>
     <string name="date_of_death">\n"__Date de décès :__ "</string>
     <string name="question_1">Qu\'est-ce que Dantotsu ?</string>
-    <string name="answer_1">Dantotsu est conçu à partir des cendres de Saikou et basé sur une élégance simpliste mais de pointe. C\'est un client Anilist uniquement, qui vous permet également de regarder et télécharger des Anime / Manga via des extensions. \n>Dantotsu (断トツ; Dan-totsu) signifie littéralement le meilleur du meilleur en japonais. Eh bien, nous aimerions dire que c\'est la meilleure application open source pour l\'anime et le manga sur Android, mais hé, essayez-la vous-même et jugez !</string>
+    <string name="answer_1">Dantotsu est conçu à partir des cendres de Saikou et basé sur une élégance simpliste mais de pointe. C\'est un client AniList uniquement, qui vous permet également de regarder et télécharger des Anime / Manga via des extensions. \n>Dantotsu (断トツ; Dan-totsu) signifie littéralement le meilleur du meilleur en japonais. Eh bien, nous aimerions dire que c\'est la meilleure application open source pour l\'anime et le manga sur Android, mais hé, essayez-la vous-même et jugez !</string>
     <string name="question_2">Quelles sont les fonctionnalités de Dantotsu ?</string>
     <string name="answer_2">Certaines fonctionnalités notables de Dantotsu sont\n\n- Moyen facile et fonctionnel pour à la fois regarder des animes et lire des mangas et light novels, sans publicité.\n- Une application entièrement open source avec une belle interface et des animations\n- Support de plugins tiers \n- Synchronisation des animes et mangas en temps réel avec AniList. Catégorisez facilement anime et manga en fonction de votre statut actuel. (Propulsé par AniList)\n- Trouvez toutes les séries en utilisant une liste minutieusement et fréquemment mise à jour de tous les animes tendances, populaires et en cours basés sur les scores.\n- Voir des détails complets sur les séries anime, films et titres manga. Il dispose également d\'un compte à rebours pour le prochain épisode des animes en diffusion. (Propulsé par AniList &amp; MyAnimeList)</string>
     <string name="question_3">Quelle est la différence entre les versions Stable, Beta &amp; Alpha ?</string>
@@ -1570,17 +1668,17 @@
     <string name="question_5">Dantotsu est-il disponible pour iOS ?</string>
     <string name="answer_5">Non, le mieux qu\'on puisse faire c\'est graver Dantotsu sur une pomme.</string>
     <string name="question_6">Pourquoi mes statistiques ne se mettent-elles pas à jour ?</string>
-    <string name="answer_6">C\'est parce qu\'elles se mettent à jour automatiquement toutes les 48 heures (par Anilist). Si vous avez vraiment besoin de mettre à jour vos statistiques, vous pouvez forcer la mise à jour après être allé sur ce [lien](https://anilist.co/settings/lists).</string>
+    <string name="answer_6">C\'est parce qu\'elles se mettent à jour automatiquement toutes les 48 heures (par AniList). Si vous avez vraiment besoin de mettre à jour vos statistiques, vous pouvez forcer la mise à jour après être allé sur ce [lien](https://anilist.co/settings/lists).</string>
     <string name="question_7">Comment télécharger des Anime ?</string>
     <string name="answer_7">Il existe deux méthodes de téléchargement. Interne et externe. Si vous téléchargez en interne, cela peut être visionné dans l\'application et le suivi fonctionnera normalement. L\'autre option est d\'utiliser un téléchargeur externe. Cela nécessite un gestionnaire de téléchargement pour télécharger et un lecteur vidéo séparé pour regarder. Les téléchargements externes ne peuvent pas être visionnés dans l\'application Dantotsu.\n\n•Pour télécharger en interne :\n\n1. Appuyez sur le bouton de téléchargement.\n2. Pour la première fois, il vous demandera de définir un emplacement de téléchargement. Tous vos téléchargements y seront stockés.\n3. Choisissez le serveur et la qualité vidéo.\n4. Profitez.\n\n•Pour télécharger en externe :\n\n 1. Téléchargez 1DM ou ADM depuis le Google Play Store.\n2. Entrez dans l\'app, donnez l\'accès au stockage et définissez vos préférences (vitesse de téléchargement, chemin de téléchargement, etc (optionnel))\n3. Allez maintenant dans \`Dantotsu > Paramètres > Général > Gestionnaires de téléchargement\` et choisissez le gestionnaire de téléchargement que vous venez de configurer.\n4. Allez à votre épisode désiré et appuyez sur l\'icône de téléchargement de n\'importe quel serveur. Il peut y avoir une fenêtre contextuelle pour définir à nouveau vos préférences, appuyez simplement sur "Télécharger" et ce sera enregistré dans le chemin indiqué.\n\nNote : Les téléchargements externes sont aussi possibles sans gestionnaire mais ce n\'est pas recommandé.\n\nNote pour les Nerds : Les épisodes téléchargés en interne sont stockés dans \`{votre emplacement défini}/Dantotsu/Anime/*`\nVous pouvez changer votre emplacement de téléchargement dans les paramètres mais vos épisodes téléchargés précédemment n\'apparaîtront plus dans l\'application.</string>
     <string name="question_9">Comment activer le contenu NSFW ?</string>
     <string name="answer_9">Vous pouvez activer le contenu NSFW en activant les contenus 18+ depuis ce [lien](https://anilist.co/settings/media). Vous devez également activer les extensions NSFW dans \`Paramètres > Extensions > Extensions NSFW\` </string>
-    <string name="question_10">Comment importer mes listes MAL/Kitsu vers Anilist ?</string>
+    <string name="question_10">Comment importer mes listes MAL/Kitsu vers AniList ?</string>
     <string name="answer_10">Voici comment faire,\n\nExport :\n\n1. Allez sur ce [lien](https://malscraper.azurewebsites.net).\n2. Donnez votre nom d\'utilisateur Kitsu/MAL et téléchargez les listes anime et manga. (Elles seront au format XML)\nNote : Vous devez écrire le nom d\'utilisateur du tracker que vous avez sélectionné\n\nImport :\n\n1. Après avoir exporté votre liste anime et manga depuis Kitsu/MAL, allez maintenant [ici](https://anilist.co/settings/import) \n2. Sélectionnez/déposez le fichier XML anime dans la case du haut.\n|→Sélectionnez/déposez le fichier XML manga dans la case du bas.</string>
-    <string name="question_11">Comment importer mes listes Anilist/Kitsu vers MAL ?</string>
-    <string name="answer_11">Voici comment faire,\n\nExport :\n\n1. Allez sur ce [lien](https://malscraper.azurewebsites.net/). \n2. Donnez votre nom d\'utilisateur Anilist/ID Kitsu dans la case \'Username/Kitsu User ID\'. \n3. Sélectionnez le type de liste et activez \'update_on_import\'. \n4. Téléchargez le fichier; il sera au format .xml. Assurez-vous de télécharger les listes Anime et Manga.\n\nImport :\n1. Pour l\'importer dans votre compte MAL, allez sur ce [lien](https://myanimelist.net/import.php) et choisissez \'MyAnimeList Import\' comme type d\'import. \n2. Appuyez sur \'Choose File\' et sélectionnez le fichier XML de la liste anime/manga téléchargée. \n3. Appuyez sur \'Import Data\'. \nFélicitations, vous venez d\'importer la liste sélectionnée sur votre compte MAL.</string>
+    <string name="question_11">Comment importer mes listes AniList/Kitsu vers MAL ?</string>
+    <string name="answer_11">Voici comment faire,\n\nExport :\n\n1. Allez sur ce [lien](https://malscraper.azurewebsites.net/). \n2. Donnez votre nom d\'utilisateur AniList/ID Kitsu dans la case \'Username/Kitsu User ID\'. \n3. Sélectionnez le type de liste et activez \'update_on_import\'. \n4. Téléchargez le fichier; il sera au format .xml. Assurez-vous de télécharger les listes Anime et Manga.\n\nImport :\n1. Pour l\'importer dans votre compte MAL, allez sur ce [lien](https://myanimelist.net/import.php) et choisissez \'MyAnimeList Import\' comme type d\'import. \n2. Appuyez sur \'Choose File\' et sélectionnez le fichier XML de la liste anime/manga téléchargée. \n3. Appuyez sur \'Import Data\'. \nFélicitations, vous venez d\'importer la liste sélectionnée sur votre compte MAL.</string>
     <string name="question_12">Pourquoi je ne trouve pas un titre anime/manga spécifique ?</string>
-    <string name="answer_12">Disons que vous cherchez Castlevania dans Dantotsu. Mais Anilist ne l\'a pas, donc Dantotsu ne l\'a pas non plus.\nUne solution au problème ci-dessus est la suivante :\n1) Allez sur n\'importe quel anime qui n\'est pas dans votre liste.\n2) Allez dans la section regarder.\n3) Sélectionnez n\'importe quelle source et appuyez sur \'Mauvais titre ?\'.\n4) Cherchez maintenant Castlevania (L\'anime que vous cherchiez) et sélectionnez-le.\n5) PROFITEZ !\n\nSi vous ne trouvez pas l\'anime même via ces étapes, alors c\'est pas de chance pour vous, mon pote. Même cette source ne l\'a pas. Essayez une autre source.</string>
+    <string name="answer_12">Disons que vous cherchez Castlevania dans Dantotsu. Mais AniList ne l\'a pas, donc Dantotsu ne l\'a pas non plus.\nUne solution au problème ci-dessus est la suivante :\n1) Allez sur n\'importe quel anime qui n\'est pas dans votre liste.\n2) Allez dans la section regarder.\n3) Sélectionnez n\'importe quelle source et appuyez sur \'Mauvais titre ?\'.\n4) Cherchez maintenant Castlevania (L\'anime que vous cherchiez) et sélectionnez-le.\n5) PROFITEZ !\n\nSi vous ne trouvez pas l\'anime même via ces étapes, alors c\'est pas de chance pour vous, mon pote. Même cette source ne l\'a pas. Essayez une autre source.</string>
     <string name="question_13">Comment corriger les sources sélectionnant un titre complètement faux ?</string>
     <string name="answer_13">Dantotsu lui-même n\'héberge rien mais s\'appuie sur d\'autres sources. Lors de l\'affichage des épisodes, il choisit le 1er résultat donné par la source après avoir recherché le titre. Dantotsu n\'a aucun moyen de détecter si c\'est légitime ou non. Donc, pour cela, nous avons le \'Mauvais titre ?\' juste sous le nom de la source (au-dessus des dispositions). Vous pouvez choisir le bon résultat/titre en appuyant dessus et profiter de ses épisodes.</string>
     <string name="question_14">Comment lire des mangas en couleur ?</string>
@@ -1591,8 +1689,8 @@
     <string name="answer_16">Quelques correctifs de base seraient : \n\n• Mettez à jour vos extensions s\'il y en a. \n• Ouvrez la Web View et attendez qu\'elle charge. Une fois le chargement terminé, revenez en arrière. (Si la Web View affiche une erreur 404 ou similaire, il est probable que votre source soit en panne)\n• Utilisez un DNS différent dans vos paramètres, de préférence, Libre. \n• Essayez un VPN fiable. (Vous devrez répéter l\'étape 1 après cela) \n\nSi aucune des étapes ci-dessus ne fonctionne, utilisez une autre source ou rejoignez notre [discord](https://discord.gg/invite/4HPZ5nAWwM) pour de l\'aide.</string>
     <string name="question_17">Quelques trucs et astuces utiles</string>
     <string name="answer_17">Ce qui suit présente quelques trucs et astuces que vous connaissez peut-être ou non - \n \n \n - En maintenant appuyé le logo Dantotsu dans les paramètres, vous pouvez vérifier manuellement s\'il y a de nouvelles mises à jour. \n \n - Maintenir appuyé un message d\'erreur/tag/synonyme ou titre le copiera. \n \n - Vous pouvez ouvrir un épisode avec d\'autres applications en maintenant appuyé n\'importe quel serveur pour cet épisode. Cela aide à streamer l\'épisode en utilisant d\'autres lecteurs vidéo ou à télécharger l\'épisode en utilisant des gestionnaires de téléchargement. \n \n - Vous pouvez configurer des listes personnalisées en utilisant ce [lien](https://anilist.co/settings/lists). (vous devez être connecté) \n \n - Si votre épisode/chapitre ne progresse pas automatiquement après avoir fini de regarder/lire, alors maintenez appuyée la barre de statut (bouton prévu/en cours/visionnage) de cet anime/manga. La prochaine fois que vous commencez un chapitre/finissez un épisode, vous tomberez sur un popup. Appuyez sur oui à cet endroit. </string>
-    <string name="question_18">Je ne peux pas me connecter à Anilist.</string>
-    <string name="answer_18">La raison pour laquelle cela arrive est probablement parce que vous n\'utilisez pas le navigateur par défaut.\n\n>Vous devez définir Chrome comme votre navigateur par défaut pour vous connecter à Anilist.\n\n>Cela prend quelques secondes pour que le bouton de connexion affiche les changements.\n\nSi cela ne fonctionne pas, alors vous pourriez être banni par IP d\'Anilist ou votre FAI a banni Anilist. Nous pensons que c\'est très improbable, alors ouvrez [Anilist](https://anilist.co) dans votre navigateur pour voir si c\'est le cas.</string>
+    <string name="question_18">Je ne peux pas me connecter à AniList.</string>
+    <string name="answer_18">La raison pour laquelle cela arrive est probablement parce que vous n\'utilisez pas le navigateur par défaut.\n\n>Vous devez définir Chrome comme votre navigateur par défaut pour vous connecter à AniList.\n\n>Cela prend quelques secondes pour que le bouton de connexion affiche les changements.\n\nSi cela ne fonctionne pas, alors vous pourriez être banni par IP d\'AniList ou votre FAI a banni AniList. Nous pensons que c\'est très improbable, alors ouvrez [AniList](https://anilist.co) dans votre navigateur pour voir si c\'est le cas.</string>
     <string name="question_19">Qu\'est-ce que torrent ? Comment l\'utiliser ?</string>
     <string name="answer_19" formatted="false">Torrent ou formellement connu sous le nom de BitTorrent est un protocole de communication internet pour le partage de fichiers peer-to-peer. Un réseau torrent n\'utilise pas de serveur centralisé pour héberger des fichiers. Il partage les fichiers de manière décentralisée. Un réseau torrent a deux types de pairs. Seeders &amp; Leachers.\n\n• Seeders : Ce sont des pairs qui ont terminé le téléchargement et ont le fichier complet. Et maintenant ils partagent ce fichier avec d\'autres pairs, ce qui s\'appelle le seeding. Un torrent ne peut pas fonctionner sans au moins un seeder. Plus un torrent a de seeders, mieux c\'est.\n\n• Leachers : Ce sont des pairs qui téléchargent actuellement le fichier. S\'ils ont actuellement 40% téléchargé, alors ils partageront les 40% avec tout autre pair qui le demande.\n\nContrairement à un serveur centralisé, les torrents n\'ont pas de limite de bande passante. Vous pouvez obtenir vos fichiers de centaines de seeders à la vitesse la plus élevée que votre internet peut offrir. Mais de nombreux FAI brident le torrent pour les ralentir car c\'est exigeant pour leur infrastructure. Utilisez un VPN pour contourner cela.\n\n• Comment utiliser les torrents :\n\n1. Installez l\'Add-on Torrent depuis \`Dantotsu &gt; Paramètres &gt; Add-ons &gt; Add-on Torrent.\` \n2. Obtenez une source qui fournit des torrents.\n3. UTILISEZ UN VPN. Utiliser un VPN tout en torrentant n\'a que des avantages. Sans VPN votre adresse IP sera exposée, votre FAI bridera votre réseau et vous pourriez potentiellement être condamné à une amende si vous vivez dans un pays du premier monde. NE L\'UTILISEZ PAS SANS VPN SI VOUS NE SAVEZ PAS CE QUE VOUS FAITES.\n4. Utilisez maintenant cette source pour commencer à torrenter.</string>
     <string name="filter_status">"Statut : %1$s"</string>
@@ -1613,10 +1711,10 @@
     <string name="enter_password_to_decrypt_file">Entrez votre mot de passe pour déchiffrer le fichier</string>
     <string name="exporting_requires_encryption">L\'exportation des identifiants nécessite un mot de passe pour le chiffrement.</string>
     <string name="logging_warning">La journalisation dans un fichier ralentira l\'application. Activez uniquement si vous rencontrez des problèmes.</string>
-    <string name="anilist_notifications_checking_time">Fréquence de mise à jour des notifications Anilist : %1$s</string>
+    <string name="anilist_notifications_checking_time">Fréquence de mise à jour des notifications AniList : %1$s</string>
     <string name="comment_notification_checking_time">Fréquence de mise à jour des notifications de commentaires : %1$s</string>
     <string name="unread_chapter_notification_checking_time">Intervalle de vérification des notifications : %1$s</string>
-    <string name="anilist_notifications_checking_time_label">Fréquence de mise à jour des notifications Anilist</string>
+    <string name="anilist_notifications_checking_time_label">Fréquence de mise à jour des notifications AniList</string>
     <string name="comment_notification_checking_time_label">Fréquence de mise à jour des notifications de commentaires</string>
     <string name="unread_chapter_notification_checking_time_label">Intervalle de vérification des notifications</string>
     <string name="custom">Personnalisé…</string>
@@ -1888,7 +1986,7 @@
     <string name="anilist_notification_options_saved">Paramètres de notification AniList mis à jour</string>
     <string name="anilist_notification_options_save_failed">Impossible de mettre à jour les paramètres de notification AniList</string>
     <string name="anilist_notification_options_load_failed">Impossible de charger les paramètres de notification AniList</string>
-    <string name="anilist_notifications_checking_time_desc">Définir la fréquence à laquelle vous voulez que l\'app vérifie les notifications Anilist</string>
+    <string name="anilist_notifications_checking_time_desc">Définir la fréquence à laquelle vous voulez que l\'app vérifie les notifications AniList</string>
     <string name="comment_notification_checking_time_desc">Définir la fréquence à laquelle vous voulez que l\'app vérifie les notifications de commentaires</string>
     <string name="unread_chapter_notification_checking_time_desc">Définir la fréquence de vérification des nouveaux chapitres de manga et épisodes d\'anime non lus</string>
     <string name="unread_manga_notifications">Notifications de chapitres de manga</string>
@@ -2064,18 +2162,14 @@
     <string name="add_repository_desc">Un lien de dépôt devrait ressembler à ceci : https://raw.githubusercontent.com/username/repo/branch/index.pb\nOu : username/repo/branch\nLes liens index.json et index.min.json fonctionnent également.</string>
     <string name="add_repository_warning">Avertissement : Les extensions du dépôt peuvent exécuter du code arbitraire sur votre appareil. N\'utilisez que des dépôts de confiance. \n\nEn ajoutant un dépôt, vous acceptez de : \n\n1. Ne pas utiliser l\'application pour voir ou distribuer du contenu protégé par des droits d\'auteur. \n2. Ne pas utiliser l\'application pour des activités illégales. \n3. Ne pas utiliser l\'application pour des activités qui violent les conditions d\'utilisation des fournisseurs de contenu. \n\nL\'application ou son mainteneur ne sont affiliés d\'aucune façon avec les fournisseurs d\'extensions. Les développeurs ne sont pas responsables des dommages causés par l\'application. \n\nEn ajoutant un dépôt, vous acceptez ces termes.</string>
     <string name="privacy_policy_desc">Lire notre politique de confidentialité</string>
-    <string name="mu_no_data_title">Recherche sur MangaUpdates</string>
     <string name="error_no_parent_id">Erreur : Pas d\'ID parent</string>
     <string name="update_extensions_count">Mettre à jour %1$d extension(s) ?</string>
     <string name="error_serializing_preference">Erreur lors de la sérialisation de la préférence : %1$s</string>
     <string name="search_sub_comick">Aucun média correspondant trouvé sur Comick. \n Vous pouvez essayer de le rechercher et ajouter manuellement.</string>
-    <string name="search_sub_myanimelist">Aucun média correspondant existant sur MyAnimeList. \n Vous pouvez essayer de chercher sur le site.</string>
-    <string name="search_sub_mangaupdates">Aucun média correspondant trouvé sur MangaUpdates. \n Vous pouvez essayer de le rechercher et ajouter manuellement.</string>
 
     <string name="comick">Comick</string>
     <string name="mangaupdates_requires_internet">MangaUpdates requiert une connexion internet</string>
     <string name="comick_requires_internet">Comick data requiert une connexion internet</string>
-    <string name="linked_mangaupdates_entry">MangaUpdates lié avec succès</string>
     <string name="linked_comick_entry">Comick lié avec succès</string>
     <string name="mangaupdates_entry_unlinked">MangaUpdates délié</string>
     <string name="comick_entry_unlinked">Comick délié</string>
@@ -2232,7 +2326,7 @@
     <string name="capture_defaults">Réglages par défaut des captures et clips</string>
     <string name="capture_defaults_desc">Ce que les captures et les clips affichent par défaut, et comment les clips sont capturés</string>
     <string name="mangaupdates_account_help">Comment fonctionne MangaUpdates \?</string>
-    <string name="switch_to_anilist_title">Média Anilist trouvé</string>
+    <string name="switch_to_anilist_title">Média AniList trouvé</string>
     <string name="convert_to_anilist">Convertir</string>
     <string name="converted_to_anilist">Déplacé vers votre liste AniList</string>
     <string name="filter_provider_anilist">AniList</string>
@@ -2268,7 +2362,7 @@
     <string name="chapter_gap_warning_message_single">Un chapitre est manquant avant celui-là. Continuer quand même ?</string>
     <string name="popular">Populaire</string>
     <string name="latest">Nouveau</string>
-    <string name="search_anilist">Rechercher sur Anilist</string>
+    <string name="search_anilist">Rechercher sur AniList</string>
 
     <!-- Sauvegarde et restauration -->
     <string name="backup_restore_chooser_msg">Voulez-vous sauvegarder vos paramètres dans un fichier, ou restaurer depuis une sauvegarde existante ?</string>
@@ -2642,7 +2736,7 @@
     <string name="search_kw_disable_mangabaka">mangabaka onglet parcourir explorer info informations source</string>
     <string name="search_kw_unread_sort_label">non lus chapitres accueil tri trier ordre récent dernier mis à jour malsync mangaupdates</string>
     <string name="search_kw_malsync_checks_dialog_title">malsync vérifications mode manga anime les deux quoi vostfr vf sous-titré doublé version langue</string>
-    <string name="search_kw_customize_info_tabs">anilist anime animé manga mangaupdates info informations onglet ordre réordonner visibilité mal comick mangabaka</string>
+    <string name="search_kw_customize_info_tabs">anilist anime animé manga mangaupdates info informations onglet ordre réordonner visibilité mal comick mangabaka kitsu simkl personnalisé fusion sections recommandations icône</string>
     <string name="search_kw_compare_lists">comparer comparaison audit différence diff différences sortie de date myanimelist mal kitsu simkl mangabaka anilist mangaupdates sync synchronisation</string>
     <string name="search_kw_auto_list_sync">automatique auto comparer comparaison planification programmer intervalle fréquence arrière-plan fond périodique liste sync synchronisation envoyer pousser myanimelist mal mangabaka</string>
     <string name="search_kw_auto_list_sync_removals">automatique auto comparer comparaison supprimer retirer suppressions entrées tracker suivi liste sync synchronisation</string>
@@ -2914,6 +3008,7 @@
     <string name="pref_info_tab_visibility_novel">Onglets d\'info visibles (romans)</string>
     <string name="pref_info_tab_order_mangaupdates_novel">Ordre des onglets d\'info (romans MangaUpdates)</string>
     <string name="pref_info_tab_visibility_mangaupdates_novel">Onglets d\'info visibles (romans MangaUpdates)</string>
+    <string name="pref_info_tabs_config">Onglets d\'infos personnalisés et disposition des sections</string>
     <string name="last_chapter">Dernier chapitre</string>
     <string name="downloaded">Téléchargé</string>
     <string name="download_failed">Échec du téléchargement</string>
@@ -3957,4 +4052,16 @@
     <string name="tv_offline_pill">Hors ligne</string>
     <string name="tv_offline_row">Téléchargés</string>
     <string name="tv_offline_empty">Aucun anime téléchargé. Hors ligne, seuls les téléchargements peuvent être regardés.</string>
+    <string name="comick_no_match">Aucune correspondance trouvée sur Comick</string>
+    <string name="comick_matched_by_hand">Associé à Comick manuellement</string>
+    <string name="unlink">Délier</string>
+    <string name="mu_not_found_title">Absent de MangaUpdates</string>
+    <string name="mu_not_found_desc">Aucune entrée MangaUpdates correspondante n\'a été trouvée pour ce titre.</string>
+    <string name="mal_not_found_title">Absent de MyAnimeList</string>
+    <string name="mal_not_found_desc">Ce titre n\'a pas d\'entrée sur MyAnimeList.</string>
+    <string name="mal_load_failed_title">Impossible de charger depuis MyAnimeList</string>
+    <string name="mal_load_failed_desc">Vous pouvez toujours ouvrir cette entrée sur le site.</string>
+    <string name="chip_search_on">Rechercher sur</string>
+    <string name="mal_genre_tap_again">Les genres MyAnimeList ne peuvent pas être recherchés dans l\'application. Touchez à nouveau pour ouvrir celui-ci sur le site.</string>
+    <string name="chip_search_opens_website">Ouvre le site web</string>
 </resources>

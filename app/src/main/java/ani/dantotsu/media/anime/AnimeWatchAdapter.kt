@@ -199,7 +199,7 @@ class AnimeWatchAdapter(
             val sourceName = watchSources.names.getOrNull(index)
             if (sourceName == "Downloaded") {
                 // Use download icon for Downloaded source
-                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_download_24)
+                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_round_download_24)
             } else {
                 (lazierParser.get?.value as? DynamicAnimeParser)?.extension?.icon
             }
@@ -277,7 +277,7 @@ class AnimeWatchAdapter(
             fragment.lifecycleScope,
             binding.mediaSourceSubscribe,
             R.drawable.ic_round_notifications_active_24,
-            R.drawable.ic_round_notifications_none_24,
+            R.drawable.ic_round_notifications_outline_24,
             R.color.bg_opp,
             R.color.violet_400,
             fragment.subscribed,
@@ -459,7 +459,7 @@ class AnimeWatchAdapter(
             val sourceName = watchSources.names.getOrNull(index)
             if (sourceName == "Downloaded") {
                 // Use download icon for Downloaded source
-                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_download_24)
+                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_round_download_24)
             } else {
                 (lazierParser.get?.value as? DynamicAnimeParser)?.extension?.icon
             }

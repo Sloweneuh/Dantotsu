@@ -39,11 +39,11 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
     private fun updateFilterTextViewDrawable() {
         val filterDrawable = when (activity.aniMangaResult.sort) {
             Anilist.sortBy[0] -> R.drawable.ic_round_area_chart_24
-            Anilist.sortBy[1] -> R.drawable.ic_round_filter_peak_24
-            Anilist.sortBy[2] -> R.drawable.ic_round_star_graph_24
+            Anilist.sortBy[1] -> R.drawable.ic_round_landscape_24
+            Anilist.sortBy[2] -> R.drawable.ic_round_insights_24
             Anilist.sortBy[3] -> R.drawable.ic_round_new_releases_24
             Anilist.sortBy[4] -> R.drawable.ic_round_filter_list_24
-            Anilist.sortBy[5] -> R.drawable.ic_round_filter_list_24_reverse
+            Anilist.sortBy[5] -> R.drawable.ic_filter_list_reverse
             Anilist.sortBy[6] -> R.drawable.ic_round_assist_walker_24
             else -> R.drawable.ic_round_filter_alt_24
         }
@@ -81,7 +81,7 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
         // Was aniMangaResult.type, the AniList wire value ("ANIME"/"MANGA") — untranslated.
         binding.searchBar.hint = activity.searchType.hint(binding.root.context)
         if (PrefManager.getVal(PrefName.Incognito)) {
-            val startIconDrawableRes = R.drawable.ic_incognito_24
+            val startIconDrawableRes = R.drawable.ic_incognito
             val startIconDrawable: Drawable? =
                 context?.let { AppCompatResources.getDrawable(it, startIconDrawableRes) }
             binding.searchBar.startIconDrawable = startIconDrawable
@@ -273,12 +273,12 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             SearchType.ANIME -> R.drawable.ic_round_movie_filter_24
             SearchType.MANGA -> R.drawable.ic_round_menu_book_24
             SearchType.USER -> R.drawable.ic_round_person_24
-            SearchType.CHARACTER -> R.drawable.ic_round_face_24
-            SearchType.STAFF -> R.drawable.ic_round_group_24
-            SearchType.STUDIO -> R.drawable.ic_round_movie_edit_24
-            SearchType.MANGAUPDATES -> R.drawable.ic_round_mangaupdates_24
-            SearchType.COMICK -> R.drawable.ic_round_comick_manga_24
-            SearchType.COMICK_ANIME -> R.drawable.ic_round_comick_anime_24
+            SearchType.CHARACTER -> R.drawable.ic_round_face_outline_24
+            SearchType.STAFF -> R.drawable.ic_round_group_outline_24
+            SearchType.STUDIO -> R.drawable.ic_round_movie_edit_outline_24
+            SearchType.MANGAUPDATES -> R.drawable.ic_mangaupdates
+            SearchType.COMICK -> R.drawable.ic_comick_manga
+            SearchType.COMICK_ANIME -> R.drawable.ic_comick_anime
             else -> R.drawable.ic_round_search_24
         }
     }

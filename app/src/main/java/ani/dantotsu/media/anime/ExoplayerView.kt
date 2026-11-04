@@ -2725,7 +2725,7 @@ class ExoplayerView :
                 icon = R.drawable.ic_round_slow_motion_video_24,
             ) { tvChooseSpeed() },
             ani.dantotsu.tv.TvPlayerController.Option(
-                getString(R.string.novel_tts_sleep_timer), false, detail = sleep, icon = R.drawable.ic_round_alarm_24,
+                getString(R.string.novel_tts_sleep_timer), false, detail = sleep, icon = R.drawable.ic_round_alarm_outline_24,
             ) { tvChooseSleep() },
             ani.dantotsu.tv.TvPlayerController.Option(
                 getString(R.string.tv_subtitle_delay), false, detail = tvDelayLabel(subtitleDelay.delayMs),

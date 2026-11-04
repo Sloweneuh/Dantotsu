@@ -332,13 +332,13 @@ class CommentsFragment : Fragment() {
                     if (tag == null) {
                         activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
                             resources,
-                            R.drawable.ic_label_off_24,
+                            R.drawable.ic_round_label_off_outline_24,
                             null
                         )
                     } else {
                         activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
                             resources,
-                            R.drawable.ic_label_24,
+                            R.drawable.ic_round_label_outline_24,
                             null
                         )
                     }
@@ -347,7 +347,7 @@ class CommentsFragment : Fragment() {
                     tag = null
                     activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
                         resources,
-                        R.drawable.ic_label_off_24,
+                        R.drawable.ic_round_label_off_outline_24,
                         null
                     )
                 }
@@ -355,7 +355,7 @@ class CommentsFragment : Fragment() {
                     tag = null
                     activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
                         resources,
-                        R.drawable.ic_label_off_24,
+                        R.drawable.ic_round_label_off_outline_24,
                         null
                     )
                 }
@@ -400,7 +400,7 @@ class CommentsFragment : Fragment() {
     private fun updateSpoilerButton() {
         val button = activity.binding.commentSpoiler
         button.alpha = if (spoilerMode) 1f else 0.6f
-        button.setImageResource(if (spoilerMode) R.drawable.ic_round_visibility_off_24 else R.drawable.ic_round_visibility_24)
+        button.setImageResource(if (spoilerMode) R.drawable.ic_round_visibility_off_outline_white_24 else R.drawable.ic_round_visibility_24)
         button.imageTintList = ColorStateList.valueOf(
             activity.getThemeColor(
                 if (spoilerMode) androidx.appcompat.R.attr.colorPrimary
@@ -829,7 +829,7 @@ class CommentsFragment : Fragment() {
                 tag = null
                 activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
                     resources,
-                    R.drawable.ic_label_off_24,
+                    R.drawable.ic_round_label_off_outline_24,
                     null
                 )
             }

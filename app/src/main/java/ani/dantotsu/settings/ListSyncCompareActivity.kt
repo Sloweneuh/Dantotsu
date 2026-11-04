@@ -115,11 +115,11 @@ class ListSyncCompareActivity : AppCompatActivity() {
             ListCompare.Section.SIMKL_ANIME ->
                 "${getString(R.string.simkl)} · ${getString(R.string.anime)}" to R.drawable.ic_simkl
             ListCompare.Section.MANGABAKA ->
-                getString(R.string.mangabaka) to R.drawable.ic_round_mangabaka_24
+                getString(R.string.mangabaka) to R.drawable.ic_mangabaka
             ListCompare.Section.COMICK_ANIME ->
-                "${getString(R.string.comick)} · ${getString(R.string.anime)}" to R.drawable.ic_round_comick_24
+                "${getString(R.string.comick)} · ${getString(R.string.anime)}" to R.drawable.ic_comick
             ListCompare.Section.COMICK_MANGA ->
-                "${getString(R.string.comick)} · ${getString(R.string.manga)}" to R.drawable.ic_round_comick_24
+                "${getString(R.string.comick)} · ${getString(R.string.manga)}" to R.drawable.ic_comick
         }
         // MangaUpdates contributes to the manga comparisons when it's active — never to the
         // anime-only sections (MAL anime, Simkl).
@@ -129,7 +129,7 @@ class ListSyncCompareActivity : AppCompatActivity() {
             section == ListCompare.Section.COMICK_ANIME
         val sourceIcons = if (animeOnly || !muActive)
             listOf(R.drawable.ic_anilist)
-        else listOf(R.drawable.ic_anilist, R.drawable.ic_round_mangaupdates_24)
+        else listOf(R.drawable.ic_anilist, R.drawable.ic_mangaupdates)
 
         val sb = ItemListSyncSectionBinding.inflate(layoutInflater, binding.compareSections, false)
         sb.sectionLabel.text = sectionTitle

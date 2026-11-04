@@ -115,7 +115,7 @@ class AuthorActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener
             }
             withContext(Dispatchers.Main) {
                 binding.characterFav.setImageResource(
-                    if (author.isFav) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_border_24
+                    if (author.isFav) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_outline_24
                 )
             }
         }
@@ -125,7 +125,7 @@ class AuthorActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener
                     if (Anilist.mutation.toggleFav(AnilistMutations.FavType.CHARACTER, author.id)) {
                         author.isFav = !author.isFav
                         binding.characterFav.setImageResource(
-                            if (author.isFav) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_border_24
+                            if (author.isFav) R.drawable.ic_round_favorite_24 else R.drawable.ic_round_favorite_outline_24
                         )
                     } else {
                         snackString(R.string.failed_toggle_favourite)

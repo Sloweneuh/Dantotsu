@@ -31,7 +31,7 @@
         android:layout_gravity="center_vertical"
         android:layout_marginStart="3dp"
         android:background="?android:attr/selectableItemBackground"
-        app:srcCompat="@drawable/ic_delete"
+        app:srcCompat="@drawable/ic_round_delete_outline_24"
         app:tint="?attr/colorOnBackground"
         tools:ignore="ContentDescription" />
 
@@ -46,7 +46,7 @@
         android:layout_gravity="center_vertical"
         android:layout_marginStart="3dp"
         android:background="?android:attr/selectableItemBackground"
-        app:srcCompat="@drawable/format_link_24"
+        app:srcCompat="@drawable/ic_round_link_24"
         app:tint="?attr/colorOnBackground"
         tools:ignore="ContentDescription" />
 

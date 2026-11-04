@@ -120,7 +120,7 @@ object GlobalHandoffReceiver {
         )
 
         val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_APP_GLOBAL)
-            .setSmallIcon(R.drawable.ic_round_devices_24)
+            .setSmallIcon(R.drawable.ic_round_devices_outline_24)
             .setContentTitle(context.getString(R.string.handoff_incoming_title))
             .setContentText(context.getString(R.string.handoff_incoming_text, payload.title ?: ""))
             .setPriority(NotificationCompat.PRIORITY_HIGH)

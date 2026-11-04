@@ -581,22 +581,22 @@ class PlayerSettingsActivity :
         }
         return listOf(
             SubtitleStyleTile(
-                TILE_FONT, R.drawable.ic_round_format_text_24, getString(R.string.sub_font),
+                TILE_FONT, R.drawable.ic_round_title_white_24, getString(R.string.sub_font),
                 subtitleFonts.getOrElse(PrefManager.getVal(PrefName.Font)) { subtitleFonts[0] },
                 SubtitleTileEditor.CHOICE, on,
             ),
-            slider(TILE_SIZE, R.drawable.ic_round_font_size_24, R.string.sub_size),
-            color(TILE_TEXT_COLOR, R.drawable.ic_round_color_24, R.string.sub_text_color, PrefName.PrimaryColor),
+            slider(TILE_SIZE, R.drawable.ic_round_format_size_24, R.string.sub_size),
+            color(TILE_TEXT_COLOR, R.drawable.ic_round_palette_24, R.string.sub_text_color, PrefName.PrimaryColor),
             SubtitleStyleTile(
-                TILE_OUTLINE_STYLE, R.drawable.format_title_24, getString(R.string.sub_outline_style),
+                TILE_OUTLINE_STYLE, R.drawable.ic_round_title_24, getString(R.string.sub_outline_style),
                 outlineStyles().getOrElse(PrefManager.getVal(PrefName.Outline)) { outlineStyles()[0] },
                 SubtitleTileEditor.CHOICE, on,
             ),
-            color(TILE_OUTLINE_COLOR, R.drawable.ic_round_color_picker_24, R.string.sub_outline_color, PrefName.SecondaryColor),
-            slider(TILE_THICKNESS, R.drawable.ic_format_line_spacing_24, R.string.sub_outline_thickness, textRenderer),
-            color(TILE_BEHIND, R.drawable.ic_palette, R.string.sub_background_color, PrefName.SubBackground),
-            color(TILE_AROUND, R.drawable.format_video_24, R.string.sub_window_color, PrefName.SubWindow),
-            slider(TILE_OPACITY, R.drawable.blur_on, R.string.sub_opacity),
+            color(TILE_OUTLINE_COLOR, R.drawable.ic_round_colorize_24, R.string.sub_outline_color, PrefName.SecondaryColor),
+            slider(TILE_THICKNESS, R.drawable.ic_round_format_line_spacing_24, R.string.sub_outline_thickness, textRenderer),
+            color(TILE_BEHIND, R.drawable.ic_round_palette_outline_24, R.string.sub_background_color, PrefName.SubBackground),
+            color(TILE_AROUND, R.drawable.ic_round_videocam_outline_24, R.string.sub_window_color, PrefName.SubWindow),
+            slider(TILE_OPACITY, R.drawable.ic_round_blur_on_24, R.string.sub_opacity),
             slider(TILE_POSITION, R.drawable.ic_round_swipe_vertical_24, R.string.sub_bottom, textRenderer),
         )
     }
@@ -804,7 +804,7 @@ class PlayerSettingsActivity :
                     type = 2,
                     name = getString(R.string.prefer_dub),
                     desc = getString(R.string.prefer_dub_desc),
-                    icon = R.drawable.ic_anime_dub_24,
+                    icon = R.drawable.ic_round_record_voice_over_outline_24,
                     anchorKey = "prefer_dub",
                     isChecked = PrefManager.getVal(PrefName.SettingsPreferDub),
                     switch = { isChecked, _ ->
@@ -815,7 +815,7 @@ class PlayerSettingsActivity :
                     type = 2,
                     name = getString(R.string.show_yt),
                     desc = getString(R.string.show_yt_desc),
-                    icon = R.drawable.format_youtube_24,
+                    icon = R.drawable.ic_format_youtube,
                     anchorKey = "show_yt",
                     isChecked = PrefManager.getVal(PrefName.ShowYtButton),
                     switch = { isChecked, _ ->
@@ -826,7 +826,7 @@ class PlayerSettingsActivity :
                     type = 2,
                     name = getString(R.string.include_list),
                     desc = getString(R.string.include_list_anime_desc),
-                    icon = R.drawable.view_list_24,
+                    icon = R.drawable.ic_round_view_list_outline_24,
                     anchorKey = "include_anime_list",
                     isChecked = PrefManager.getVal(PrefName.IncludeAnimeList),
                     switch = { isChecked, _ ->
@@ -848,7 +848,7 @@ class PlayerSettingsActivity :
                         options = listOf(
                             ChoiceOption(R.drawable.ic_round_view_list_24, getString(R.string.list)),
                             ChoiceOption(R.drawable.ic_round_grid_view_24, getString(R.string.grid)),
-                            ChoiceOption(R.drawable.ic_round_view_comfy_24, getString(R.string.compact)),
+                            ChoiceOption(R.drawable.ic_round_grid_on_24, getString(R.string.compact)),
                         ),
                         selected = PrefManager.getVal(PrefName.AnimeDefaultView),
                         onSelect = { PrefManager.setVal(PrefName.AnimeDefaultView, it) },

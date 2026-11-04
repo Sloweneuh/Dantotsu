@@ -64,7 +64,6 @@ import androidx.lifecycle.MutableLiveData
 import com.flaviofaria.kenburnsview.RandomTransitionGenerator
 import com.google.android.material.appbar.AppBarLayout
 import android.util.Log
-import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -396,7 +395,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         detectedAniListId = anilistId
         binding.mediaAniList?.visibility = View.VISIBLE
         binding.mediaAniList?.setImageResource(
-            if (anilistId != null) R.drawable.ic_anilist else R.drawable.ic_anilist_search_24
+            if (anilistId != null) R.drawable.ic_anilist else R.drawable.ic_anilist_search
         )
         binding.mediaAniList?.setOnClickListener {
             val id = detectedAniListId
@@ -505,7 +504,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                         launchMediaDetails(muMedia)
                     } else {
                         Log.e("MUMediaDetailsActivity", "No details found for slugOrId: $slugOrId, finishing activity.")
-                        Toast.makeText(this@MUMediaDetailsActivity, "No details found for this MangaUpdates link.", Toast.LENGTH_LONG).show()
+                        ani.dantotsu.toast("No details found for this MangaUpdates link.", android.widget.Toast.LENGTH_LONG)
                         finish()
                     }
                 }
@@ -515,7 +514,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             Log.w("MUMediaDetailsActivity", "Intent did not match deep link, attempting to getSerialized(muMedia)")
             muMedia = intent?.getSerialized("muMedia") ?: run {
                 Log.e("MUMediaDetailsActivity", "muMedia is null, finishing activity.")
-                Toast.makeText(this@MUMediaDetailsActivity, "No media data found, closing.", Toast.LENGTH_LONG).show()
+                ani.dantotsu.toast("No media data found, closing.", android.widget.Toast.LENGTH_LONG)
                 finish()
                 return
             }

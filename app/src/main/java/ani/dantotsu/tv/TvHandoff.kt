@@ -158,7 +158,7 @@ fun TvHandoffSendDialog(payload: HandoffPayload, onDismiss: () -> Unit) {
                                         headlineContent = { Text(device.name) },
                                         supportingContent = if (sendingTo == device.name) ({ Text(stringResource(R.string.handoff_sending, device.name)) }) else null,
                                         leadingContent = {
-                                            Icon(painterResource(R.drawable.ic_round_devices_24), contentDescription = null, modifier = Modifier.size(24.dp))
+                                            Icon(painterResource(R.drawable.ic_round_devices_outline_24), contentDescription = null, modifier = Modifier.size(24.dp))
                                         },
                                         modifier = (if (device == devices.first()) Modifier.focusRequester(first) else Modifier)
                                             .pointerClick(onClick = send),

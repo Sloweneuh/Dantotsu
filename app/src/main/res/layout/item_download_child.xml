@@ -73,7 +73,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/open_folder"
         android:padding="8dp"
-        app:srcCompat="@drawable/ic_round_folder_24"
+        app:srcCompat="@drawable/ic_round_folder_outline_24"
         app:tint="?attr/colorOnBackground" />
 
     <ImageView

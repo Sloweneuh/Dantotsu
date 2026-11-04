@@ -374,7 +374,7 @@
                 app:stateScope="player"
                 app:title="@string/timestamps"
                 app:summary="@string/timestamps_group_desc"
-                app:icon="@drawable/ic_round_notif_schedule_24">
+                app:icon="@drawable/ic_notif_schedule">
 
 
                 <com.google.android.material.materialswitch.MaterialSwitch
@@ -383,7 +383,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:checked="true"
-                    android:drawableStart="@drawable/ic_round_art_track_24"
+                    android:drawableStart="@drawable/ic_round_art_track_outline_24"
                     android:drawablePadding="16dp"
                     android:elegantTextHeight="true"
                     android:fontFamily="@font/poppins_bold"
@@ -457,7 +457,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:checked="true"
-                    android:drawableStart="@drawable/ic_round_art_track_24"
+                    android:drawableStart="@drawable/ic_round_art_track_outline_24"
                     android:drawablePadding="16dp"
                     android:elegantTextHeight="true"
                     android:fontFamily="@font/poppins_bold"
@@ -571,7 +571,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                                        android:drawableStart="@drawable/ic_round_schedule_24"
+                                        android:drawableStart="@drawable/ic_round_schedule_outline_24"
                     android:drawablePadding="16dp"
                     android:elegantTextHeight="true"
                     android:fontFamily="@font/poppins_bold"
@@ -855,7 +855,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="?attr/selectableItemBackground"
-                    android:drawableStart="@drawable/ic_round_picture_in_picture_alt_24"
+                    android:drawableStart="@drawable/ic_round_picture_in_picture_alt_outline_24"
                     android:drawablePadding="16dp"
                     android:fontFamily="@font/poppins_bold"
                     android:gravity="center_vertical"
@@ -1119,7 +1119,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:checked="true"
-                android:drawableStart="@drawable/ic_round_cast_24"
+                android:drawableStart="@drawable/ic_round_cast_outline_24"
                 android:drawablePadding="16dp"
                 android:elegantTextHeight="true"
                 android:fontFamily="@font/poppins_bold"
@@ -1162,7 +1162,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:checked="false"
-                android:drawableStart="@drawable/cast_warning"
+                android:drawableStart="@drawable/ic_round_cast_warning_outline_24"
                 android:drawablePadding="16dp"
                 android:elegantTextHeight="true"
                 android:fontFamily="@font/poppins_bold"

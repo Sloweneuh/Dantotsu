@@ -37,7 +37,7 @@
                 android:layout_height="20dp"
                 app:tint="?attr/colorPrimary"
                 tools:ignore="ContentDescription"
-                tools:srcCompat="@drawable/ic_round_format_text_24" />
+                tools:srcCompat="@drawable/ic_round_title_white_24" />
 
             <Space
                 android:layout_width="0dp"

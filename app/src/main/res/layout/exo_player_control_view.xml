@@ -179,7 +179,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:backgroundTint="#00FFFFFF"
-                        android:src="@drawable/ic_round_devices_24"
+                        android:src="@drawable/ic_round_devices_outline_24"
                         app:tint="#fff"
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
@@ -199,7 +199,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:backgroundTint="#00FFFFFF"
-                        android:src="@drawable/ic_round_movie_edit_24"
+                        android:src="@drawable/ic_round_movie_edit_outline_24"
                         app:tint="#fff"
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
@@ -209,7 +209,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:backgroundTint="#00FFFFFF"
-                        android:src="@drawable/ic_round_source_24"
+                        android:src="@drawable/ic_source"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
@@ -232,7 +232,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:backgroundTint="#00FFFFFF"
-                        android:src="@drawable/ic_round_audiotrack_24"
+                        android:src="@drawable/ic_round_music_note_24"
                         android:visibility="gone"
                         app:tint="#fff"
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
@@ -269,7 +269,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:backgroundTint="#00FFFFFF"
-                        android:src="@drawable/ic_round_picture_in_picture_alt_24"
+                        android:src="@drawable/ic_round_picture_in_picture_alt_outline_24"
                         app:tint="#fff"
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
@@ -301,7 +301,7 @@
                         android:layout_height="48dp"
                         android:backgroundTint="#00FFFFFF"
                         android:contentDescription="@string/more_options"
-                        android:src="@drawable/ic_round_more_vert_24"
+                        android:src="@drawable/ic_round_more_vert_tinted_24"
                         android:visibility="gone"
                         app:tint="#fff" />
 
@@ -500,7 +500,7 @@
                             android:layout_height="48dp"
                             android:backgroundTint="#00FFFFFF"
                             android:contentDescription="@string/novel_tts_sleep_timer"
-                            android:src="@drawable/ic_round_alarm_24"
+                            android:src="@drawable/ic_round_alarm_outline_24"
                             app:tint="#fff" />
 
                         <ImageButton
@@ -509,7 +509,7 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:backgroundTint="#00FFFFFF"
-                            app:srcCompat="@drawable/ic_round_lock_open_24"
+                            app:srcCompat="@drawable/ic_round_lock_open_outline_24"
                             app:tint="@color/bg_white"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
                     </LinearLayout>

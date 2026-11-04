@@ -14,14 +14,15 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.annotation.DrawableRes
 import androidx.appcompat.widget.ListPopupWindow
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
+import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.buildMarkwon
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.FuzzyDate
@@ -202,15 +203,37 @@ object MangaBakaMediaRenderer {
             contentHost.addView(container)
         }
 
-        addSynonyms(activity, contentHost, series, nativeLangs)
-        addCovers(activity, scope, isAlive, contentHost, seriesId, nativeLangs)
-        addAnimeAdaptation(activity, contentHost, series)
-        addGenres(activity, scope, isAlive, contentHost, series, onSearch)
-        addTags(activity, contentHost, series, onSearch)
-        addRecommendations(activity, scope, isAlive, contentHost, seriesId, reco)
-        MangaBakaStackUi.addSeriesStacks(
-            activity, scope, isAlive, contentHost, seriesId, series.displayTitle(), series.cover?.thumbUrl()
+        contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, series, nativeLangs) }
+        addSeriesLinks(activity, contentHost, series)
+        contentHost.infoSection(InfoSectionKind.COVERS) { addCovers(activity, scope, isAlive, contentHost, seriesId, nativeLangs) }
+        contentHost.infoSection(InfoSectionKind.ANIME_ADAPTATION) { addAnimeAdaptation(activity, contentHost, series) }
+        contentHost.infoSection(InfoSectionKind.GENRES) { addGenres(activity, scope, isAlive, contentHost, series, onSearch) }
+        contentHost.infoSection(InfoSectionKind.TAGS) { addTags(activity, contentHost, series, onSearch) }
+        InfoExtraSections.addChips(
+            contentHost, InfoSectionKind.PUBLISHERS, activity.getString(R.string.info_section_publishers),
+            series.publishers.orEmpty().mapNotNull { publisher ->
+                val name = publisher.name ?: return@mapNotNull null
+                val label = publisher.type?.takeIf { it.isNotBlank() }?.let { "$name ($it)" } ?: name
+                InfoExtraSections.Chip(label, publisher.canonicalUrl?.let { url -> { openLinkInBrowser(url) } })
+            },
         )
+        if (contentHost.wantsInfoSection(InfoSectionKind.RELATIONS)) {
+            contentHost.infoSection(InfoSectionKind.RELATIONS) {
+                addRelations(activity, scope, isAlive, contentHost, seriesId)
+            }
+        }
+        if (contentHost.wantsInfoSection(InfoSectionKind.RECOMMENDATIONS)) {
+            contentHost.infoSection(InfoSectionKind.RECOMMENDATIONS) {
+                addRecommendations(activity, scope, isAlive, contentHost, seriesId, reco)
+            }
+        }
+        if (contentHost.wantsInfoSection(InfoSectionKind.STACKS)) {
+            contentHost.infoSection(InfoSectionKind.STACKS) {
+                MangaBakaStackUi.addSeriesStacks(
+                    activity, scope, isAlive, contentHost, seriesId, series.displayTitle(), series.cover?.thumbUrl()
+                )
+            }
+        }
     }
 
     private fun addSynonyms(
@@ -237,7 +260,7 @@ object MangaBakaMediaRenderer {
             chip.text = title
             chip.setOnLongClickListener {
                 copyToClipboard(title)
-                Toast.makeText(activity, activity.getString(R.string.copied_title_toast, title), Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast(activity.getString(R.string.copied_title_toast, title))
                 true
             }
             bind.itemChipGroup.addView(chip)
@@ -330,11 +353,20 @@ object MangaBakaMediaRenderer {
                 }
                 chip.setOnLongClickListener {
                     copyToClipboard(display)
-                    Toast.makeText(activity, activity.getString(R.string.copied_title_toast, display), Toast.LENGTH_SHORT).show()
+                    ani.dantotsu.toast(activity.getString(R.string.copied_title_toast, display))
                     true
                 }
                 bind.itemChipGroup.addView(chip)
             }
+            // These arrive after the section was handed over, too late for a merged one to find.
+            parent.offerInfoChips(InfoSectionKind.GENRES, genres.map { genre ->
+                val display = genre.name!!
+                val slug = slugsByLabel[display.lowercase()]
+                InfoChip(display) {
+                    if (slug != null) onSearch(slug, display, null)
+                    else onSearch(null, null, display)
+                }
+            })
         }
     }
 
@@ -348,20 +380,59 @@ object MangaBakaMediaRenderer {
             ?: return
         if (tags.isEmpty()) return
 
-        val textColor = themeColor(activity, com.google.android.material.R.attr.colorOnSurface)
+        // Every tag, whatever the filter: a merged section has its own filter over all of them.
+        parent.offerInfoChips(InfoSectionKind.TAGS, tags.map { tag ->
+            val name = tag.name!!
+            InfoChip(
+                label = name,
+                weightIcon = weightDrawable(tag.weight),
+                weightLevel = weightRank(tag.weight),
+                isSpoiler = tag.isSpoiler == true,
+                onClick = { onSearch(null, null, name) },
+            )
+        })
+
         val bind = ItemTagsSectionBinding.inflate(activity.layoutInflater, parent, false)
         bind.root.tag = "tags_mangabaka"
-
-        val filters = MangaBakaTagWeights.options.map {
-            TagFilter(activity.getString(it.label), it.chevron, it.threshold)
-        }
 
         // Chips are rebuilt whenever the weight filter changes, so what the spoiler toggle last
         // said has to be carried over to the new ones rather than silently unmasking them.
         var spoilersShown = false
         val spoilerChips = mutableListOf<Pair<MangaBakaApi.TagEntry, Chip>>()
 
-        fun selectFilter(f: TagFilter) {
+        fun applyFilter(threshold: Int) {
+            bind.tagsChipGroup.removeAllViews()
+            spoilerChips.clear()
+            tags.filter { weightRank(it.weight) >= threshold }.forEach { tag ->
+                val chip = makeTagChip(activity, tag, bind.tagsChipGroup, spoilersShown, onSearch)
+                if (tag.isSpoiler == true) spoilerChips.add(tag to chip)
+                bind.tagsChipGroup.addView(chip)
+            }
+            bind.tagsSpoilerAction.isVisible = spoilerChips.isNotEmpty()
+        }
+
+        ChipSections.spoilerToggle(bind.tagsSpoilerAction) { showing ->
+            spoilersShown = showing
+            spoilerChips.forEach { (tag, chip) -> setTagChipMasked(activity, chip, tag, !showing) }
+        }
+
+        parent.addView(bind.root)
+        setupWeightFilter(activity, bind, ::applyFilter)
+    }
+
+    /**
+     * Wires a tag section's weight dropdown, here and in a merged section. [onSelect] gets the
+     * minimum weight rank to show, straight away for the step the list starts on.
+     */
+    internal fun setupWeightFilter(
+        activity: AppCompatActivity, bind: ItemTagsSectionBinding, onSelect: (Int) -> Unit,
+    ) {
+        val textColor = themeColor(activity, com.google.android.material.R.attr.colorOnSurface)
+        val filters = MangaBakaTagWeights.options.map {
+            TagFilter(activity.getString(it.label), it.chevron, it.threshold)
+        }
+
+        fun select(f: TagFilter) {
             bind.tagsFilterText.text = f.label
             if (f.chevron != null) {
                 bind.tagsFilterChevron.visibility = View.VISIBLE
@@ -370,14 +441,7 @@ object MangaBakaMediaRenderer {
             } else {
                 bind.tagsFilterChevron.visibility = View.GONE
             }
-            bind.tagsChipGroup.removeAllViews()
-            spoilerChips.clear()
-            tags.filter { weightRank(it.weight) >= f.threshold }.forEach { tag ->
-                val chip = makeTagChip(activity, tag, bind.tagsChipGroup, spoilersShown, onSearch)
-                if (tag.isSpoiler == true) spoilerChips.add(tag to chip)
-                bind.tagsChipGroup.addView(chip)
-            }
-            bind.tagsSpoilerAction.isVisible = spoilerChips.isNotEmpty()
+            onSelect(f.threshold)
         }
 
         bind.tagsFilterButton.setOnClickListener {
@@ -388,19 +452,22 @@ object MangaBakaMediaRenderer {
             popup.setContentWidth(200f.px)
             popup.setBackgroundDrawable(ContextCompat.getDrawable(activity, R.drawable.dropdown_background))
             popup.setOnItemClickListener { _, _, pos, _ ->
-                selectFilter(filters[pos])
+                select(filters[pos])
                 popup.dismiss()
             }
             popup.show()
         }
+        select(filters[MangaBakaTagWeights.defaultIndex()])
+    }
 
-        ChipSections.spoilerToggle(bind.tagsSpoilerAction) { showing ->
-            spoilersShown = showing
-            spoilerChips.forEach { (tag, chip) -> setTagChipMasked(activity, chip, tag, !showing) }
-        }
-
-        parent.addView(bind.root)
-        selectFilter(filters[MangaBakaTagWeights.defaultIndex()])
+    /** A tag's weight, shown after its name. Tapping it does what tapping the chip does. */
+    internal fun showWeightIcon(chip: Chip, @DrawableRes icon: Int) {
+        chip.closeIcon = ContextCompat.getDrawable(chip.context, icon)
+        chip.isCloseIconVisible = true
+        chip.closeIconTint = chip.textColors
+        chip.closeIconSize = 16f.px.toFloat()
+        chip.closeIconStartPadding = 2f.px.toFloat()
+        chip.setOnCloseIconClickListener { chip.performClick() }
     }
 
     private fun makeTagChip(
@@ -410,13 +477,7 @@ object MangaBakaMediaRenderer {
         val name = tag.name ?: ""
         val chip = ItemChipBinding.inflate(activity.layoutInflater, group, false).root
 
-        weightDrawable(tag.weight)?.let { res ->
-            chip.closeIcon = ContextCompat.getDrawable(activity, res)
-            chip.isCloseIconVisible = true
-            chip.closeIconTint = chip.textColors
-            chip.closeIconSize = 16f.px.toFloat()
-            chip.closeIconStartPadding = 2f.px.toFloat()
-        }
+        weightDrawable(tag.weight)?.let { showWeightIcon(chip, it) }
 
         val search = { onSearch(null, null, name) }
         val masked = tag.isSpoiler == true && !spoilersShown
@@ -429,10 +490,9 @@ object MangaBakaMediaRenderer {
             else search()
         }
         chip.setOnClickListener { onTap() }
-        chip.setOnCloseIconClickListener { onTap() }
         chip.setOnLongClickListener {
             copyToClipboard(name)
-            Toast.makeText(activity, activity.getString(R.string.copied_title_toast, name), Toast.LENGTH_SHORT).show()
+            ani.dantotsu.toast(activity.getString(R.string.copied_title_toast, name))
             true
         }
         return chip
@@ -488,6 +548,61 @@ object MangaBakaMediaRenderer {
             format = if (isMuNovelType(muType)) "NOVEL" else "MANGA",
             muSeriesId = muId,
         )
+    }
+
+    /** Where to read or buy it first, then everything else; the user's language leads each. */
+    private fun addSeriesLinks(activity: AppCompatActivity, parent: ViewGroup, series: MangaBakaApi.Series) {
+        val language = java.util.Locale.getDefault().language
+        val typeOrder = listOf("webplatform", "retailer", "publisher")
+        val links = series.links.orEmpty().filter { !it.url.isNullOrBlank() }.sortedWith(
+            compareBy(
+                { link -> typeOrder.indexOf(link.type).let { if (it < 0) typeOrder.size else it } },
+                { it.language != language && it.language != "en" },
+            )
+        )
+        InfoExtraSections.addChips(
+            parent, InfoSectionKind.EXTERNAL_LINKS, activity.getString(R.string.external_links),
+            links.mapNotNull { link ->
+                val label = link.nameDisplay ?: link.name ?: return@mapNotNull null
+                InfoExtraSections.Chip(label) { openLinkInBrowser(link.url!!) }
+            },
+        )
+    }
+
+    private fun addRelations(
+        activity: AppCompatActivity, scope: CoroutineScope, isAlive: () -> Boolean,
+        parent: ViewGroup, seriesId: Long,
+    ) {
+        val placeholder = FrameLayout(activity).apply {
+            tag = "relations_mangabaka"
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        parent.addView(placeholder)
+        scope.launch {
+            val related = withContext(Dispatchers.IO) {
+                MangaBakaApi.getRelationships(seriesId, allowAdult = PrefManager.getVal(PrefName.AdultOnly))
+            }
+            if (!isAlive() || related.isEmpty() || placeholder.childCount > 0) return@launch
+            val cards = related.mapNotNull { relation ->
+                val target = relation.series ?: return@mapNotNull null
+                val cover = target.cover?.thumbUrl()
+                InfoExtraSections.RelationCard(
+                    title = target.displayTitle() ?: return@mapNotNull null,
+                    coverUrl = cover,
+                    relation = relation.relationType.orEmpty(),
+                    isAnime = false,
+                ) {
+                    activity.startActivity(
+                        Intent(activity, MangaBakaMediaActivity::class.java)
+                            .putExtra(MangaBakaMediaActivity.EXTRA_SERIES_ID, target.id)
+                            .putExtra(MangaBakaMediaActivity.EXTRA_COVER_URL, cover)
+                    )
+                }
+            }
+            if (cards.isNotEmpty()) placeholder.addView(InfoExtraSections.relationCardsView(placeholder, cards))
+        }
     }
 
     private fun addRecommendations(
@@ -564,6 +679,7 @@ object MangaBakaMediaRenderer {
                         )
                     }
                     placeholder.addView(root)
+                    parent.offerInfoMedia(InfoSectionKind.RECOMMENDATIONS, recommended)
                 }
             }
         }

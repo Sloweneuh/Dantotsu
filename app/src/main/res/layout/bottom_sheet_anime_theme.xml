@@ -55,7 +55,7 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/download"
                 android:padding="8dp"
-                app:srcCompat="@drawable/ic_download_24" />
+                app:srcCompat="@drawable/ic_round_download_24" />
         </LinearLayout>
 
         <androidx.constraintlayout.widget.ConstraintLayout

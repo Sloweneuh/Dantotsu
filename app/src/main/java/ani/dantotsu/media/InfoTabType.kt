@@ -18,9 +18,9 @@ enum class InfoTabType(
 ) {
     ANILIST("anilist", R.drawable.ic_anilist, R.string.anilist),
     MAL("mal", R.drawable.ic_myanimelist, R.string.myanimelist),
-    COMICK("comick", R.drawable.ic_round_comick_24, R.string.comick),
-    MANGAUPDATES("mangaupdates", R.drawable.ic_round_mangaupdates_24, R.string.mangaupdates),
-    MANGABAKA("mangabaka", R.drawable.ic_round_mangabaka_24, R.string.mangabaka),
+    COMICK("comick", R.drawable.ic_comick, R.string.comick),
+    MANGAUPDATES("mangaupdates", R.drawable.ic_mangaupdates, R.string.mangaupdates),
+    MANGABAKA("mangabaka", R.drawable.ic_mangabaka, R.string.mangabaka),
     KITSU("kitsu", R.drawable.ic_kitsu, R.string.kitsu, defaultVisible = false),
     SIMKL("simkl", R.drawable.ic_simkl, R.string.simkl, defaultVisible = false);
 
@@ -39,6 +39,10 @@ enum class InfoTabType(
             KITSU -> PrefManager.getVal(PrefName.KitsuInfoEnabled)
             SIMKL -> PrefManager.getVal(PrefName.SimklInfoEnabled)
         }
+
+    companion object {
+        fun forKey(key: String): InfoTabType? = entries.find { it.key == key }
+    }
 }
 
 /** The media contexts that each get their own customizable info-tab order/visibility. */

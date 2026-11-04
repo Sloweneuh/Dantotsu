@@ -46,7 +46,7 @@ object AniListAnimeDiscovery : DiscoverySource {
     private const val TAG_MIN_RANK = 40
 
     override val store = DiscoveryQueueStore(id)
-    override val icon = R.drawable.ic_anime_discover_24
+    override val icon = R.drawable.ic_anime_discover
     override val addLabel = R.string.discover_add_watch
     override val needsLoginMessage = R.string.discover_anime_needs_login
     override val helpBody = R.string.discover_anime_reason_help_body

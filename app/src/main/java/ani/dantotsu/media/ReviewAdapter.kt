@@ -81,22 +81,22 @@ class ReviewAdapter(
     private fun userVote(type: String) {
         when (type) {
             "NO_VOTE" -> {
-                binding.reviewUpVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
-                binding.reviewDownVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                binding.reviewUpVote.setImageResource(R.drawable.ic_round_shift_outline_24)
+                binding.reviewDownVote.setImageResource(R.drawable.ic_round_shift_outline_24)
                 binding.reviewUpVote.alpha = 0.6f
                 binding.reviewDownVote.alpha = 0.6f
             }
 
             "UP_VOTE" -> {
-                binding.reviewUpVote.setImageResource(R.drawable.ic_round_upvote_active_24)
-                binding.reviewDownVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                binding.reviewUpVote.setImageResource(R.drawable.ic_round_shift_24)
+                binding.reviewDownVote.setImageResource(R.drawable.ic_round_shift_outline_24)
                 binding.reviewUpVote.alpha = 1f
                 binding.reviewDownVote.alpha = 0.6f
             }
 
             "DOWN_VOTE" -> {
-                binding.reviewUpVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
-                binding.reviewDownVote.setImageResource(R.drawable.ic_round_upvote_active_24)
+                binding.reviewUpVote.setImageResource(R.drawable.ic_round_shift_outline_24)
+                binding.reviewDownVote.setImageResource(R.drawable.ic_round_shift_24)
                 binding.reviewDownVote.alpha = 1f
                 binding.reviewUpVote.alpha = 0.6f
             }

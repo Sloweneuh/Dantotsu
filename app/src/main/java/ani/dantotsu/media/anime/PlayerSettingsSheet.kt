@@ -71,7 +71,7 @@ class PlayerSettingsSheet : BottomSheetDialogFragment() {
                     player.applySubtitleStyle()
                     refresh()
                 },
-                SettingsRows.slider(ctx, R.string.sub_size, R.drawable.ic_round_format_text_24, SliderConfig(
+                SettingsRows.slider(ctx, R.string.sub_size, R.drawable.ic_round_title_white_24, SliderConfig(
                     from = SUB_SIZE_MIN, to = SUB_SIZE_MAX, stepSize = 1f,
                     value = PrefManager.getVal<Int>(PrefName.FontSize).toFloat().coerceIn(SUB_SIZE_MIN, SUB_SIZE_MAX),
                     onChange = {
@@ -106,7 +106,7 @@ class PlayerSettingsSheet : BottomSheetDialogFragment() {
             homeActionRefresh = refresh
             listOf(
                 pref(PrefName.AutoPlay, R.string.auto_play_next_episode, R.drawable.ic_round_play_arrow_24),
-                pref(PrefName.NextEpisodeCountdown, R.string.next_episode_countdown, R.drawable.ic_round_schedule_24),
+                pref(PrefName.NextEpisodeCountdown, R.string.next_episode_countdown, R.drawable.ic_round_schedule_outline_24),
                 pref(PrefName.SkipOutroToNext, R.string.skip_outro_to_next, R.drawable.ic_round_fast_forward_24,
                     R.string.skip_outro_to_next_desc),
                 pref(PrefName.AlwaysContinue, R.string.always_continue, R.drawable.ic_round_replay_10_24),
@@ -164,7 +164,7 @@ class PlayerSettingsSheet : BottomSheetDialogFragment() {
             type = 1,
             name = getString(R.string.player_home_action),
             desc = names[PlayerHomeAction.current()],
-            icon = R.drawable.ic_round_picture_in_picture_alt_24,
+            icon = R.drawable.ic_round_picture_in_picture_alt_outline_24,
             onClick = {
                 requireContext().customAlertDialog().apply {
                     setTitle(R.string.player_home_action)

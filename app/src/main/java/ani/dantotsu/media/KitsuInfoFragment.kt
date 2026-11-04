@@ -97,16 +97,18 @@ class KitsuInfoFragment : TrackerInfoFragment<KitsuInfoFragment.Data>() {
             val rows = KitsuMediaRenderer.toEpisodeRows(full.episodes).asReversed()
             val poster = full.full.media.posterImage
             val coverUrl = poster?.original ?: poster?.medium ?: poster?.small
-            TrackerEpisodeRenderer.renderPreview(
-                activity, binding.mediaInfoContainer, rows, take = 5, titleRes = R.string.eps,
-                coverUrl = coverUrl,
-            ) {
-                startActivity(
-                    Intent(requireContext(), KitsuMediaActivity::class.java)
-                        .putExtra(KitsuMediaActivity.EXTRA_MEDIA_ID, full.full.id)
-                        .putExtra(KitsuMediaActivity.EXTRA_IS_ANIME, true)
-                        .putExtra(KitsuMediaActivity.EXTRA_OPEN_EPISODES, true)
-                )
+            binding.mediaInfoContainer.infoSection(InfoSectionKind.EPISODES) {
+                TrackerEpisodeRenderer.renderPreview(
+                    activity, binding.mediaInfoContainer, rows, take = 5, titleRes = R.string.eps,
+                    coverUrl = coverUrl,
+                ) {
+                    startActivity(
+                        Intent(requireContext(), KitsuMediaActivity::class.java)
+                            .putExtra(KitsuMediaActivity.EXTRA_MEDIA_ID, full.full.id)
+                            .putExtra(KitsuMediaActivity.EXTRA_IS_ANIME, true)
+                            .putExtra(KitsuMediaActivity.EXTRA_OPEN_EPISODES, true)
+                    )
+                }
             }
         }
     }

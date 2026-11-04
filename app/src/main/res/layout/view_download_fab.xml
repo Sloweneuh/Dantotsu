@@ -20,7 +20,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center"
-            app:srcCompat="@drawable/ic_download_24"
+            app:srcCompat="@drawable/ic_round_download_24"
             app:tint="?attr/colorOnPrimaryContainer"
             tools:ignore="ContentDescription" />
     </com.google.android.material.card.MaterialCardView>

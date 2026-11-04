@@ -142,7 +142,7 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:contentDescription="@string/menu"
-                        android:src="@drawable/ic_round_dots_vertical_24"
+                        android:src="@drawable/ic_round_more_vert_24"
                         app:tint="@color/bg_opp" />
                 </LinearLayout>
             </FrameLayout>

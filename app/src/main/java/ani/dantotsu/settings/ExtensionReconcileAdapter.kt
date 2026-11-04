@@ -44,7 +44,7 @@ class ExtensionReconcileAdapter(
         b.reconcileTypeIcon.setImageResource(typeIcon)
 
         if (item.isInstall) {
-            b.reconcileActionIcon.setImageResource(R.drawable.ic_add)
+            b.reconcileActionIcon.setImageResource(R.drawable.ic_round_add_24)
             b.reconcileActionIcon.setColorFilter(
                 com.google.android.material.color.MaterialColors.getColor(b.reconcileActionIcon, androidx.appcompat.R.attr.colorPrimary)
             )
@@ -52,7 +52,7 @@ class ExtensionReconcileAdapter(
             Glide.with(ctx).load(item.iconUrl).placeholder(typeIcon).error(typeIcon)
                 .into(b.reconcileExtIcon)
         } else {
-            b.reconcileActionIcon.setImageResource(R.drawable.ic_minus)
+            b.reconcileActionIcon.setImageResource(R.drawable.ic_round_remove_24)
             b.reconcileActionIcon.setColorFilter(
                 com.google.android.material.color.MaterialColors.getColor(b.reconcileActionIcon, androidx.appcompat.R.attr.colorError)
             )

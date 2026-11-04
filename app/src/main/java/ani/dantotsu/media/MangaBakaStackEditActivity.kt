@@ -444,7 +444,7 @@ class MangaBakaStackEditActivity : AppCompatActivity() {
             // Flat in the dialog, which is a surface of its own.
             vh.b.root.setCardBackgroundColor(android.graphics.Color.TRANSPARENT)
             vh.b.root.updateLayoutParams<ViewGroup.MarginLayoutParams> { marginStart = 0; marginEnd = 0 }
-            vh.b.stackEntryRemove.setIconResource(R.drawable.ic_add)
+            vh.b.stackEntryRemove.setIconResource(R.drawable.ic_round_add_24)
             val pick = View.OnClickListener {
                 items.getOrNull(vh.bindingAdapterPosition)?.let(onPick)
             }

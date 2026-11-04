@@ -387,7 +387,7 @@ class MangaChapterAdapter(
             } else if (isDownloaded(chapterNumber)) {
                 if (justFinished) {
                     // A download that just completed: pop in a check, then settle on delete.
-                    binding.itemDownload.setImageResource(R.drawable.ic_circle_check)
+                    binding.itemDownload.setImageResource(R.drawable.ic_round_check_circle_outline_24)
                     binding.itemDownload.popIn()
                     binding.itemDownload.postDelayed({
                         // The row may have been recycled for another chapter meanwhile.
@@ -401,7 +401,7 @@ class MangaChapterAdapter(
                 }
                 binding.itemDownload.rotation = 0f
             } else {
-                binding.itemDownload.setImageResource(R.drawable.ic_download_24)
+                binding.itemDownload.setImageResource(R.drawable.ic_round_download_24)
                 binding.itemDownload.rotation = 0f
             }
         }

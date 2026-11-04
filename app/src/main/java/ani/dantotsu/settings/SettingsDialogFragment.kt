@@ -118,7 +118,7 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
             val notificationIcon = if (Anilist.unreadNotificationCount > 0) {
                 R.drawable.ic_round_notifications_active_24
             } else {
-                R.drawable.ic_round_notifications_none_24
+                R.drawable.ic_round_notifications_outline_24
             }
             binding.settingsNotification.setImageResource(notificationIcon)
 
@@ -297,11 +297,11 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
                 SyncStatus.state.collect { state ->
                     binding.settingsCloudStatus.setImageResource(
                         when (state) {
-                            SyncStatus.State.Disabled -> R.drawable.ic_round_cloud_off_24
-                            SyncStatus.State.Synced -> R.drawable.ic_round_cloud_done_24
-                            SyncStatus.State.Downloading -> R.drawable.ic_round_cloud_download_24
-                            SyncStatus.State.Uploading -> R.drawable.ic_round_cloud_upload_24
-                            SyncStatus.State.Conflict -> R.drawable.ic_round_cloud_alert_24
+                            SyncStatus.State.Disabled -> R.drawable.ic_round_cloud_off_outline_24
+                            SyncStatus.State.Synced -> R.drawable.ic_round_cloud_done_outline_24
+                            SyncStatus.State.Downloading -> R.drawable.ic_round_cloud_download_outline_24
+                            SyncStatus.State.Uploading -> R.drawable.ic_round_cloud_upload_outline_24
+                            SyncStatus.State.Conflict -> R.drawable.ic_round_cloud_alert_outline_24
                         }
                     )
                 }

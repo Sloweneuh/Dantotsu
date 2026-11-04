@@ -81,7 +81,7 @@ fun Context.downloadSettingsRows(compact: Boolean = false, onRebuild: () -> Unit
             type = 1,
             name = getString(R.string.download_manager_select),
             desc = getString(R.string.download_manager_select_desc),
-            icon = R.drawable.ic_round_download_manager_24,
+            icon = R.drawable.ic_download_manager,
             compact = compact,
             anchorKey = "download_manager",
             onClick = {
@@ -99,7 +99,7 @@ fun Context.downloadSettingsRows(compact: Boolean = false, onRebuild: () -> Unit
             type = 2,
             name = getString(R.string.allow_metered_downloads),
             desc = getString(R.string.allow_metered_downloads_desc),
-            icon = R.drawable.ic_round_download_metered_24,
+            icon = R.drawable.ic_download_metered,
             compact = compact,
             anchorKey = "metered_downloads",
             isChecked = PrefManager.getVal(PrefName.AllowMeteredDownloads),
@@ -113,7 +113,7 @@ fun Context.downloadSettingsRows(compact: Boolean = false, onRebuild: () -> Unit
             type = 2,
             name = getString(R.string.auto_download),
             desc = getString(R.string.auto_download_desc),
-            icon = R.drawable.ic_download_24,
+            icon = R.drawable.ic_round_download_24,
             compact = compact,
             anchorKey = "auto_download",
             startsGroup = true,
@@ -136,15 +136,15 @@ fun Context.downloadSettingsRows(compact: Boolean = false, onRebuild: () -> Unit
         header(R.string.download_settings_delete),
         purgeRow(
             MediaType.ANIME, R.string.purge_anime_downloads, R.string.purge_anime_downloads_desc,
-            R.string.anime, R.drawable.ic_round_purge_anime_24, "purge_anime", startsGroup = true,
+            R.string.anime, R.drawable.ic_purge_anime, "purge_anime", startsGroup = true,
         ),
         purgeRow(
             MediaType.MANGA, R.string.purge_manga_downloads, R.string.purge_manga_downloads_desc,
-            R.string.manga, R.drawable.ic_round_purge_manga_24, "purge_manga",
+            R.string.manga, R.drawable.ic_purge_manga, "purge_manga",
         ),
         purgeRow(
             MediaType.NOVEL, R.string.purge_novel_downloads, R.string.purge_novel_downloads_desc,
-            R.string.novels, R.drawable.ic_round_purge_novel_24, "purge_novel",
+            R.string.novels, R.drawable.ic_purge_novel, "purge_novel",
         ),
     )
 }

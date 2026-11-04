@@ -102,7 +102,7 @@ object SettingsRows {
                 onChange = { PrefManager.setVal(PrefName.ReaderWarmth, it); onChange() },
                 format = ::percent,
             ), desc = R.string.reader_warmth_desc),
-            switch(context, R.string.reader_greyscale, R.drawable.ic_palette,
+            switch(context, R.string.reader_greyscale, R.drawable.ic_round_palette_outline_24,
                 PrefManager.getVal(PrefName.ReaderGreyscale)) {
                 PrefManager.setVal(PrefName.ReaderGreyscale, it); onChange()
             },
@@ -165,7 +165,7 @@ object SettingsRows {
         type = 1,
         name = context.getString(R.string.novel_font),
         desc = NovelFonts.label(context, current),
-        icon = R.drawable.ic_round_font_size_24,
+        icon = R.drawable.ic_round_format_size_24,
         onClick = { NovelFontPicker.show(context, current, onSelect) },
     )
 
@@ -212,7 +212,7 @@ object SettingsRows {
         ChoiceOption(
             when (mode) {
                 CurrentReaderSettings.DualPageModes.No -> R.drawable.ic_round_close_24
-                CurrentReaderSettings.DualPageModes.Automatic -> R.drawable.ic_round_screen_rotation_24
+                CurrentReaderSettings.DualPageModes.Automatic -> R.drawable.ic_round_screen_rotation_outline_24
                 CurrentReaderSettings.DualPageModes.Force -> R.drawable.ic_round_menu_book_24
             },
             mode.toString(),

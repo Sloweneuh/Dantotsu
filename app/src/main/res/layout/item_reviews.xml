@@ -135,7 +135,7 @@
             android:layout_marginStart="12dp"
             android:alpha="0.6"
             android:padding="2dp"
-            app:srcCompat="@drawable/ic_round_upvote_inactive_24"
+            app:srcCompat="@drawable/ic_round_shift_outline_24"
             tools:ignore="ContentDescription" />
 
         <TextView
@@ -162,7 +162,7 @@
             android:rotation="180"
             app:layout_constraintStart_toEndOf="@+id/commentTotalVotes"
             app:layout_constraintTop_toBottomOf="@+id/reviewText"
-            app:srcCompat="@drawable/ic_round_upvote_inactive_24"
+            app:srcCompat="@drawable/ic_round_shift_outline_24"
             tools:ignore="ContentDescription" />
     </LinearLayout>
 

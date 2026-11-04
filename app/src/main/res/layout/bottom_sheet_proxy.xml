@@ -85,7 +85,7 @@
                 app:boxStrokeColor="@color/text_input_layout_stroke_color"
                 app:endIconMode="none"
                 app:hintAnimationEnabled="true"
-                app:startIconDrawable="@drawable/network_node_24">
+                app:startIconDrawable="@drawable/ic_round_network_node_24">
 
                 <AutoCompleteTextView
                     android:id="@+id/proxyPort"
@@ -155,7 +155,7 @@
             app:boxStrokeColor="@color/text_input_layout_stroke_color"
             app:endIconMode="password_toggle"
             app:hintAnimationEnabled="true"
-            app:startIconDrawable="@drawable/vpn_key_24">
+            app:startIconDrawable="@drawable/ic_round_vpn_key_outline_24">
 
             <AutoCompleteTextView
                 android:id="@+id/proxyPassword"

@@ -240,14 +240,14 @@ class ExtensionTestItem(
         if (code == 200) {
             binding.pingResultText.text = context.getString(R.string.ping_success, time.toString())
             binding.pingResultText.setCompoundDrawablesWithIntrinsicBounds(
-                R.drawable.ic_circle_check, 0, 0, 0
+                R.drawable.ic_round_check_circle_outline_24, 0, 0, 0
             )
             return
         }
         binding.pingResultText.text =
             context.getString(R.string.ping_error, code.toString(), message)
         binding.pingResultText.setCompoundDrawablesWithIntrinsicBounds(
-            R.drawable.ic_circle_cancel, 0, 0, 0
+            R.drawable.ic_round_cancel_outline_24, 0, 0, 0
         )
         binding.pingResultText.setTextColor(
             context.getThemeColor(androidx.appcompat.R.attr.colorError)
@@ -272,7 +272,7 @@ class ExtensionTestItem(
             )
             binding.searchResultText.text = text
             binding.searchResultText.setCompoundDrawablesWithIntrinsicBounds(
-                R.drawable.ic_circle_cancel, 0, 0, 0
+                R.drawable.ic_round_cancel_outline_24, 0, 0, 0
             )
             binding.searchResultText.setTextColor(
                 context.getThemeColor(androidx.appcompat.R.attr.colorError)
@@ -285,7 +285,7 @@ class ExtensionTestItem(
         )
         binding.searchResultText.text = text + "\n${searchResultData.time}ms"
         binding.searchResultText.setCompoundDrawablesWithIntrinsicBounds(
-            R.drawable.ic_circle_check, 0, 0, 0
+            R.drawable.ic_round_check_circle_outline_24, 0, 0, 0
         )
     }
 
@@ -319,7 +319,7 @@ class ExtensionTestItem(
             }
             binding.episodeResultText.text = text
             binding.episodeResultText.setCompoundDrawablesWithIntrinsicBounds(
-                R.drawable.ic_circle_cancel, 0, 0, 0
+                R.drawable.ic_round_cancel_outline_24, 0, 0, 0
             )
             binding.episodeResultText.setTextColor(
                 context.getThemeColor(androidx.appcompat.R.attr.colorError)
@@ -344,7 +344,7 @@ class ExtensionTestItem(
         }
         binding.episodeResultText.text = text + "\n${episodeResultData.time}ms"
         binding.episodeResultText.setCompoundDrawablesWithIntrinsicBounds(
-            R.drawable.ic_circle_check, 0, 0, 0
+            R.drawable.ic_round_check_circle_outline_24, 0, 0, 0
         )
     }
 
@@ -386,7 +386,7 @@ class ExtensionTestItem(
             }
             binding.serverResultText.text = text + "\n${serverResultData.time}ms"
             binding.serverResultText.setCompoundDrawablesWithIntrinsicBounds(
-                R.drawable.ic_circle_cancel, 0, 0, 0
+                R.drawable.ic_round_cancel_outline_24, 0, 0, 0
             )
             binding.serverResultText.setTextColor(
                 context.getThemeColor(androidx.appcompat.R.attr.colorError)
@@ -411,7 +411,7 @@ class ExtensionTestItem(
         }
         binding.serverResultText.text = text
         binding.serverResultText.setCompoundDrawablesWithIntrinsicBounds(
-            R.drawable.ic_circle_check, 0, 0, 0
+            R.drawable.ic_round_check_circle_outline_24, 0, 0, 0
         )
     }
 

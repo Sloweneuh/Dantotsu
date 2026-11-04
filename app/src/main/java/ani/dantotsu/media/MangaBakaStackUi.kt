@@ -93,7 +93,7 @@ object MangaBakaStackUi {
             } else {
                 bind.itemRecycler.visibility = View.GONE
                 if (knownEmpty) {
-                    bind.itemEmptyIcon.setImageResource(R.drawable.ic_round_mangabaka_stacks_24)
+                    bind.itemEmptyIcon.setImageResource(R.drawable.ic_mangabaka_stacks)
                     bind.itemEmpty.setText(R.string.stack_none_for_series)
                     bind.itemEmptyContainer.visibility = View.VISIBLE
                 }

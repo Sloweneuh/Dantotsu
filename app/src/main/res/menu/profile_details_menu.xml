@@ -5,7 +5,7 @@
 
     <item
         android:id="@+id/commentCopy"
-        android:icon="@drawable/ic_round_content_copy_24"
+        android:icon="@drawable/ic_round_content_copy_outline_24"
         android:title="@string/comment_copy_text" />
     <item
         android:id="@+id/commentProfile"
@@ -21,6 +21,6 @@
         android:title="@string/report" />
     <item
         android:id="@+id/commentBanUser"
-        android:icon="@drawable/ic_round_comment_24"
+        android:icon="@drawable/ic_round_forum_outline_24"
         android:title="@string/ban" />
 </menu>

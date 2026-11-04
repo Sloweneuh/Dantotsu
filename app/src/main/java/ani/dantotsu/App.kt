@@ -399,6 +399,7 @@ class App : MultiDexApplication() {
 
         override fun onActivityResumed(p0: Activity) {
             currentActivity = p0
+            ani.dantotsu.util.InAppMessages.onResumed(p0)
             resumeCount++
             if (isSettingsScreen(p0)) ani.dantotsu.connections.sync.CloudSync.settingsUiOpen = true
             // In-app notices are raised by background work with no screen of its own, so they're
@@ -469,6 +470,7 @@ class App : MultiDexApplication() {
         }
 
         override fun onActivityPaused(p0: Activity) {
+            ani.dantotsu.util.InAppMessages.onPaused(p0)
             if (isSettingsScreen(p0)) ani.dantotsu.connections.sync.CloudSync.settingsUiOpen = false
         }
         override fun onActivityStopped(p0: Activity) {

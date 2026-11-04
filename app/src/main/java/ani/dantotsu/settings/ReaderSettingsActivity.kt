@@ -180,7 +180,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 defaultSettings.cropBorders = it
                 PrefManager.setVal(PrefName.CropBorders, it)
             },
-            row(R.string.hide_scroll_bar, R.drawable.ic_round_no_scroll_bar, defaultSettings.hideScrollBar) {
+            row(R.string.hide_scroll_bar, R.drawable.ic_no_scroll_bar, defaultSettings.hideScrollBar) {
                 defaultSettings.hideScrollBar = it
                 PrefManager.setVal(PrefName.HideScrollBar, it)
             },
@@ -188,22 +188,22 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 defaultSettings.hidePageNumbers = it
                 PrefManager.setVal(PrefName.HidePageNumbers, it)
             },
-            row(R.string.horizontal_scroll_bar, R.drawable.ic_round_straighten_24,
+            row(R.string.horizontal_scroll_bar, R.drawable.ic_round_straighten_outline_24,
                 defaultSettings.horizontalScrollBar) {
                 defaultSettings.horizontalScrollBar = it
                 PrefManager.setVal(PrefName.HorizontalScrollBar, it)
             },
-            row(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
+            row(R.string.keep_screen_on, R.drawable.ic_round_screen_lock_portrait_24,
                 defaultSettings.keepScreenOn) {
                 defaultSettings.keepScreenOn = it
                 PrefManager.setVal(PrefName.KeepScreenOn, it)
             },
-            row(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
+            row(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_outline_24,
                 defaultSettings.lockRotation) {
                 defaultSettings.lockRotation = it
                 PrefManager.setVal(PrefName.LockRotation, it)
             },
-            stepper(R.string.preload_amount, R.drawable.ic_round_art_track_24, R.string.preload_amount_info,
+            stepper(R.string.preload_amount, R.drawable.ic_round_art_track_outline_24, R.string.preload_amount_info,
                 StepperConfig(defaultSettings.preloadAmount.toFloat(), step = 1f, min = 4f, max = 20f) {
                     defaultSettings.preloadAmount = it.toInt()
                     PrefManager.setVal(PrefName.PreloadAmount, it.toInt())
@@ -253,7 +253,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.theme),
                 desc = defaultSettingsLN.currentThemeName,
-                icon = R.drawable.ic_palette,
+                icon = R.drawable.ic_round_palette_outline_24,
                 onClick = {
                     val names = NovelReaderActivity.THEME_NAMES.toTypedArray()
                     val current = names.indexOfFirst { it.equals(defaultSettingsLN.currentThemeName, true) }
@@ -295,36 +295,36 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 PrefManager.setVal(PrefName.NovelFontKey, font)
                 refresh()
             },
-            stepper(R.string.novel_text_size, R.drawable.ic_round_format_text_24, R.string.novel_text_size_desc,
+            stepper(R.string.novel_text_size, R.drawable.ic_round_title_white_24, R.string.novel_text_size_desc,
                 StepperConfig(defaultSettingsLN.effectiveTextSize.toFloat(), step = 10f, min = 50f, max = 300f) {
                     defaultSettingsLN.textSize = it.toInt()
                     PrefManager.setVal(PrefName.NovelTextSize, it.toInt())
                 }),
-            stepper(R.string.novel_line_height, R.drawable.ic_format_line_spacing_24, null,
+            stepper(R.string.novel_line_height, R.drawable.ic_round_format_line_spacing_24, null,
                 StepperConfig(defaultSettingsLN.lineHeight, step = 0.1f, decimals = 1) {
                     defaultSettingsLN.lineHeight = it
                     PrefManager.setVal(PrefName.LineHeight, it)
                 }),
-            stepper(R.string.novel_margin, R.drawable.ic_margin_24, null,
+            stepper(R.string.novel_margin, R.drawable.ic_round_margin_outline_24, null,
                 StepperConfig(defaultSettingsLN.margin, step = 0.01f, decimals = 2) {
                     defaultSettingsLN.margin = it
                     PrefManager.setVal(PrefName.Margin, it)
                 }),
-            stepper(R.string.novel_max_inline_size, R.drawable.ic_width_24, R.string.novel_max_inline_size_desc,
+            stepper(R.string.novel_max_inline_size, R.drawable.ic_round_width_24, R.string.novel_max_inline_size_desc,
                 StepperConfig(defaultSettingsLN.maxInlineSize.toFloat(), step = 10f) {
                     defaultSettingsLN.maxInlineSize = it.toInt()
                     PrefManager.setVal(PrefName.MaxInlineSize, it.toInt())
                 }),
-            stepper(R.string.novel_max_block_size, R.drawable.ic_height_24, R.string.novel_max_block_size_desc,
+            stepper(R.string.novel_max_block_size, R.drawable.ic_round_height_24, R.string.novel_max_block_size_desc,
                 StepperConfig(defaultSettingsLN.maxBlockSize.toFloat(), step = 10f) {
                     defaultSettingsLN.maxBlockSize = it.toInt()
                     PrefManager.setVal(PrefName.MaxBlockSize, it.toInt())
                 }),
-            row(R.string.justify_text, R.drawable.format_align_center_24, defaultSettingsLN.justify) {
+            row(R.string.justify_text, R.drawable.ic_round_format_align_center_24, defaultSettingsLN.justify) {
                 defaultSettingsLN.justify = it
                 PrefManager.setVal(PrefName.Justify, it)
             },
-            row(R.string.hyphenation, R.drawable.ic_round_format_text_24, defaultSettingsLN.hyphenation) {
+            row(R.string.hyphenation, R.drawable.ic_round_title_white_24, defaultSettingsLN.hyphenation) {
                 defaultSettingsLN.hyphenation = it
                 PrefManager.setVal(PrefName.Hyphenation, it)
             },
@@ -343,12 +343,12 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 defaultSettingsLN.hidePageNumbers = it
                 PrefManager.setVal(PrefName.HidePageNumbersNovel, it)
             },
-            row(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
+            row(R.string.keep_screen_on, R.drawable.ic_round_screen_lock_portrait_24,
                 defaultSettingsLN.keepScreenOn) {
                 defaultSettingsLN.keepScreenOn = it
                 PrefManager.setVal(PrefName.KeepScreenOnNovel, it)
             },
-            row(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
+            row(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_outline_24,
                 defaultSettingsLN.lockRotation) {
                 defaultSettingsLN.lockRotation = it
                 PrefManager.setVal(PrefName.LockRotationNovel, it)
@@ -431,7 +431,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                     type = 2,
                     name = getString(R.string.include_list),
                     desc = getString(R.string.include_list_desc),
-                    icon = R.drawable.view_list_24,
+                    icon = R.drawable.ic_round_view_list_outline_24,
                     anchorKey = "include_manga_list",
                     isChecked = PrefManager.getVal(PrefName.IncludeMangaList),
                     switch = { isChecked, _ ->
@@ -452,7 +452,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                     choice = ChoiceConfig(
                         options = listOf(
                             ChoiceOption(R.drawable.ic_round_view_list_24, getString(R.string.list)),
-                            ChoiceOption(R.drawable.ic_round_view_comfy_24, getString(R.string.compact)),
+                            ChoiceOption(R.drawable.ic_round_grid_on_24, getString(R.string.compact)),
                         ),
                         selected = PrefManager.getVal(PrefName.MangaDefaultView),
                         onSelect = { PrefManager.setVal(PrefName.MangaDefaultView, it) },
@@ -499,7 +499,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.ocr_spike),
                 desc = getString(R.string.ocr_spike_desc),
-                icon = R.drawable.ic_round_science_24,
+                icon = R.drawable.ic_round_science_outline_24,
                 onClick = { startActivity(Intent(this, MangaOcrSpikeActivity::class.java)) },
             ),
             Settings(
@@ -530,7 +530,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 MtlChoices.targetLabel(settings)) {
                 MtlChoices.pickTarget(this, MtlSettings.fromPrefs(), ::save)
             },
-            pick(R.string.ocr_source_script, R.drawable.ic_round_format_text_24,
+            pick(R.string.ocr_source_script, R.drawable.ic_round_title_white_24,
                 MtlChoices.scriptLabel(this, settings)) {
                 MtlChoices.pickScript(this, MtlSettings.fromPrefs(), onChanged = ::save)
             },
@@ -556,7 +556,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
             type = 1,
             name = getString(name),
             desc = getString(if (stored) R.string.ocr_key_set else R.string.ocr_key_not_set),
-            icon = R.drawable.vpn_key_24,
+            icon = R.drawable.ic_round_vpn_key_outline_24,
             onClick = {
                 if (engine.storedKey().isNotBlank()) {
                     customAlertDialog().apply {

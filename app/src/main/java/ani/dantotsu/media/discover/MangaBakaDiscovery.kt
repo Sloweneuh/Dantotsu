@@ -30,7 +30,7 @@ object MangaBakaDiscovery : DiscoverySource {
     private const val JITTER_PAGES = 3
 
     override val store = DiscoveryQueueStore(id)
-    override val icon = R.drawable.ic_manga_discover_24
+    override val icon = R.drawable.ic_manga_discover
     override val addLabel = R.string.discover_add
     override val needsLoginMessage = R.string.discover_needs_login
     override val helpBody = R.string.discover_reason_help_body

@@ -22,7 +22,10 @@ class MediaInfoFragment : Fragment() {
     private val binding
         get() = _binding!!
 
-    private data class TabInfo(val type: String, val fragment: Fragment, val iconRes: Int)
+    private data class TabInfo(val entry: InfoTabEntry, val fragment: Fragment) {
+        val iconRes get() = entry.iconRes
+        val type get() = (entry as? InfoTabEntry.Builtin)?.type
+    }
     private var tabs: List<TabInfo> = emptyList()
 
     override fun onCreateView(
@@ -66,14 +69,17 @@ class MediaInfoFragment : Fragment() {
                 // anything, so show only the AniList tab, whose info is stored with the download.
                 val offline = PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
                         !isOnline(requireContext())
-                val orderedTabs = tabContext.visibleOrderedTabs().let { ordered ->
-                    if (offline) ordered.filter { it == InfoTabType.ANILIST }
-                        .ifEmpty { listOf(InfoTabType.ANILIST) }
+                fun isAniList(entry: InfoTabEntry) =
+                    (entry as? InfoTabEntry.Builtin)?.type == InfoTabType.ANILIST
+                val orderedTabs = tabContext.visibleEntries().let { ordered ->
+                    if (offline) ordered.filter { isAniList(it) }
+                        .ifEmpty { tabContext.orderedEntries().filter { isAniList(it) } }
                     else ordered
                 }
-                tabs = orderedTabs.map { type ->
-                    TabInfo(type.key, createTabFragment(type), type.iconRes)
+                tabs = orderedTabs.map { entry ->
+                    TabInfo(entry, tabContext.createTabFragment(entry))
                 }
+                childFragmentManager.applyInfoTabRules(tabContext)
 
                 val adapter = object : androidx.viewpager2.adapter.FragmentStateAdapter(childFragmentManager, viewLifecycleOwner.lifecycle) {
                     override fun getItemCount(): Int = tabs.size
@@ -192,24 +198,18 @@ class MediaInfoFragment : Fragment() {
         updateTabStates(model, media)
     }
 
-    private fun createTabFragment(type: InfoTabType): Fragment = when (type) {
-        InfoTabType.ANILIST -> AniListInfoFragment()
-        InfoTabType.MAL -> MALInfoFragment()
-        InfoTabType.COMICK -> ComickInfoFragment()
-        InfoTabType.MANGAUPDATES -> MangaUpdatesInfoFragment()
-        InfoTabType.MANGABAKA -> MangaBakaInfoFragment()
-        InfoTabType.KITSU -> KitsuInfoFragment()
-        InfoTabType.SIMKL -> SimklInfoFragment()
-    }
-
     private fun handleTabLongClick(
             position: Int,
             model: MediaDetailsViewModel,
             media: Media
     ): Boolean {
         val isAnime = media.anime != null
-        val tabContext = InfoTabContext.forAniList(media)
-        val type = tabContext.visibleOrderedTabs().getOrNull(position) ?: return false
+        val info = tabs.getOrNull(position) ?: return false
+        val custom = (info.entry as? InfoTabEntry.Custom)?.tab
+        if (custom != null && custom.longPressSource == null) {
+            return runCustomTabLongPress(InfoTabContext.forAniList(media), custom)
+        }
+        val type = custom?.longPressSource ?: info.type ?: return false
 
         val url = when (type) {
             InfoTabType.ANILIST -> "https://anilist.co/${if (isAnime) "anime" else "manga"}/${media.id}"
@@ -270,16 +270,12 @@ class MediaInfoFragment : Fragment() {
     }
 
     private fun updateTabStates(model: MediaDetailsViewModel, media: Media) {
-        val isAnime = media.anime != null
-
-        // Tab types in current display order to compute alpha states. The MangaUpdates/MangaBaka
-        // branches below are unreachable for anime, which has no such tabs.
-        val tabTypes = InfoTabContext.forAniList(media).visibleOrderedTabs()
-
+        // Alpha states follow the display order. The MangaUpdates/MangaBaka branches below are
+        // unreachable for anime, which has no such tabs.
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
-            val type = tabTypes.getOrNull(i)
-            val alpha = when (type) {
+            val info = tabs.getOrNull(i)
+            val alpha = if (info?.entry is InfoTabEntry.Custom) 1.0f else when (info?.type) {
                 InfoTabType.ANILIST -> 1.0f
                 InfoTabType.MAL -> if (media.idMAL != null) 1.0f else 0.4f
                 InfoTabType.COMICK -> if (model.comickSlug.value != null) 1.0f else 0.4f

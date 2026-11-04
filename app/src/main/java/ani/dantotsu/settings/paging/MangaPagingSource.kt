@@ -182,7 +182,7 @@ class MangaExtensionAdapter(private val clickListener: OnMangaInstallClickListen
                 val extension = getItem(bindingAdapterPosition)
                 if (extension != null) {
                     clickListener.onInstallClick(extension)
-                    binding.closeTextView.setImageResource(R.drawable.ic_sync)
+                    binding.closeTextView.setImageResource(R.drawable.ic_round_sync_24)
                     scope.launch {
                         while (isActive) {
                             withContext(Dispatchers.Main) {

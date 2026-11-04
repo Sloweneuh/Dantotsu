@@ -66,7 +66,7 @@ enum class LibraryCheck(
         R.string.missed_sequels_source, R.plurals.missed_sequels_summary, R.string.missed_sequels_none,
     ),
     ANIME_ADAPTATIONS(
-        R.string.anime_adaptations, R.drawable.ic_round_movie_edit_24,
+        R.string.anime_adaptations, R.drawable.ic_round_movie_edit_outline_24,
         sourcesFromAnime = false, MediaRelation.ADAPTATION, MediaType.ANIME, PrefName.IgnoredAdaptations,
         R.string.anime_adaptations_source, R.plurals.anime_adaptations_summary, R.string.anime_adaptations_none,
     );

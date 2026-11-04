@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.updateLayoutParams
@@ -203,7 +202,7 @@ class MangaBakaMediaActivity : AppCompatActivity() {
             if (generation != loadGeneration) return@launch
             if (series == null) {
                 binding.mangaBakaMediaProgress.visibility = View.GONE
-                Toast.makeText(this@MangaBakaMediaActivity, getString(R.string.mangabaka_no_data_title), Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast(getString(R.string.mangabaka_no_data_title))
                 // In the queue the bar stays usable to skip past a series that won't load.
                 if (!isQueueItem) finish()
                 return@launch
@@ -298,7 +297,10 @@ class MangaBakaMediaActivity : AppCompatActivity() {
             scope = lifecycleScope,
             isAlive = { !isDestroyed && generation == loadGeneration },
             info = info,
-            contentHost = binding.mangaBakaMediaContent,
+            contentHost = (
+                    if (series.type?.contains("novel", ignoreCase = true) == true) InfoTabContext.ANILIST_NOVEL
+                    else InfoTabContext.ANILIST_MANGA
+                    ).standaloneContent(info, InfoTabType.MANGABAKA, binding.mangaBakaMediaContent),
             series = series,
             seriesId = series.id,
             nameInStats = false,

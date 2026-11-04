@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:layout_margin="4dp"
+    android:background="@drawable/fg_info_tab_icon_tile"
+    android:clickable="true"
+    android:focusable="true">
+
+    <ImageView
+        android:id="@+id/infoTabIconImage"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_gravity="center"
+        android:contentDescription="@null"
+        app:tint="?attr/colorOnBackground" />
+</FrameLayout>

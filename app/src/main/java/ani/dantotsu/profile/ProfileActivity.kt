@@ -151,9 +151,9 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
             statsStatType = ChartBuilder.Companion.StatType.entries.find { it.name == name }
         }
 
-        val feedTab = navBar.createTab(R.drawable.ic_round_filter_24, "Feed")
+        val feedTab = navBar.createTab(R.drawable.ic_round_menu_24, "Feed")
         val profileTab = navBar.createTab(R.drawable.ic_round_person_24, "Profile")
-        val statsTab = navBar.createTab(R.drawable.ic_stats_24, "Stats")
+        val statsTab = navBar.createTab(R.drawable.ic_round_bar_chart_24, "Stats")
         navBar.addTab(profileTab)
         navBar.addTab(feedTab)
         navBar.addTab(statsTab)

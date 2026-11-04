@@ -960,18 +960,15 @@ fun getAppString(res: Int, vararg args: Any?): String {
     return currContext()?.getString(res, *args) ?: ""
 }
 
+/** A short message, shown inside the app; see [ani.dantotsu.util.InAppMessages]. */
 fun toast(string: String?, duration: Int = Toast.LENGTH_SHORT) {
-    if (string != null) {
-        Logger.log(string)
-        MainScope().launch {
-            Toast.makeText(currActivity()?.application ?: return@launch, string, duration)
-                .show()
-        }
-    }
+    if (string == null) return
+    Logger.log(string)
+    ani.dantotsu.util.InAppMessages.post(string, long = duration == Toast.LENGTH_LONG)
 }
 
-fun toast(res: Int) {
-    toast(getAppString(res))
+fun toast(res: Int, duration: Int = Toast.LENGTH_SHORT) {
+    toast(getAppString(res), duration)
 }
 
 /** Human-readable byte size, e.g. "12.3 MB". */
@@ -1009,48 +1006,17 @@ fun formatEta(millis: Long): String {
     else String.format(java.util.Locale.US, "%d:%02d", m, s)
 }
 
-fun snackString(s: String?, activity: Activity? = null, clipboard: String? = null): Snackbar? {
-    try { //I have no idea why this sometimes crashes for some people...
-        if (s != null) {
-            (activity ?: currActivity())?.apply {
-                val snackBar = Snackbar.make(
-                    window.decorView.findViewById(android.R.id.content),
-                    s,
-                    Snackbar.LENGTH_SHORT
-                )
-                runOnUiThread {
-                    snackBar.view.apply {
-                        updateLayoutParams<FrameLayout.LayoutParams> {
-                            gravity = (Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM)
-                            width = WRAP_CONTENT
-                        }
-                        translationY = -(navBarHeight.dp + 32f)
-                        translationZ = 32f
-                        updatePadding(16f.px, right = 16f.px)
-                        setOnClickListener {
-                            snackBar.dismiss()
-                        }
-                        setOnLongClickListener {
-                            copyToClipboard(clipboard ?: s, false)
-                            toast(getString(R.string.copied_to_clipboard))
-                            true
-                        }
-                    }
-                    snackBar.show()
-                }
-                return snackBar
-            }
-            Logger.log(s)
-        }
-    } catch (e: Exception) {
-        Logger.log(e)
-        Injekt.get<CrashlyticsInterface>().logException(e)
-    }
-    return null
+/**
+ * The same, with [clipboard] as what a long press copies rather than the message itself. It shows
+ * on whichever screen is in front, so [activity] no longer decides anything.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun snackString(s: String?, activity: Activity? = null, clipboard: String? = null) {
+    if (s != null) ani.dantotsu.util.InAppMessages.post(s, clipboard)
 }
 
-fun snackString(r: Int, activity: Activity? = null, clipboard: String? = null): Snackbar? {
-    return snackString(getAppString(r), activity, clipboard)
+fun snackString(r: Int, activity: Activity? = null, clipboard: String? = null) {
+    snackString(getAppString(r), activity, clipboard)
 }
 
 /**
@@ -1206,7 +1172,7 @@ fun incognitoNotification(context: Context) {
             PendingIntent.FLAG_IMMUTABLE
         )
         val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_INCOGNITO_MODE)
-            .setSmallIcon(R.drawable.ic_incognito_24)
+            .setSmallIcon(R.drawable.ic_incognito)
             .setContentTitle(context.getString(R.string.incognito_mode))
             .setContentText(context.getString(R.string.disable_incognito))
             .setPriority(NotificationCompat.PRIORITY_HIGH)

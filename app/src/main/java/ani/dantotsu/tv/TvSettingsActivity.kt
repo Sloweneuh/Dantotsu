@@ -445,7 +445,7 @@ private fun CustomAnimeLists() {
             onClick = { adding = true },
             headlineContent = { Text(stringResource(R.string.tv_anilist_add_list)) },
             leadingContent = {
-                androidx.tv.material3.Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_round_add_24), contentDescription = null)
+                androidx.tv.material3.Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_round_add_tinted_24), contentDescription = null)
             },
             modifier = Modifier.pointerClick { adding = true },
         )

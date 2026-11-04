@@ -104,7 +104,7 @@
         android:layout_gravity="center_vertical"
         android:layout_marginEnd="10dp"
         android:layout_weight="0"
-        android:src="@drawable/ic_round_dots_vertical_24"
+        android:src="@drawable/ic_round_more_vert_24"
         app:tint="?attr/colorOnBackground"
         tools:ignore="ContentDescription" />
 

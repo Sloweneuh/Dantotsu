@@ -93,7 +93,7 @@
                 android:id="@+id/activityReplies"
                 android:layout_width="18dp"
                 android:layout_height="18dp"
-                android:src="@drawable/ic_round_comment_24"
+                android:src="@drawable/ic_round_forum_outline_24"
                 tools:ignore="ContentDescription" />
 
             <TextView

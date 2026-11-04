@@ -20,7 +20,7 @@
         android:layout_gravity="center"
         android:layout_marginVertical="24dp"
         android:layout_marginEnd="24dp"
-        app:srcCompat="@drawable/ic_circle_add"
+        app:srcCompat="@drawable/ic_round_add_circle_outline_24"
         app:tint="?attr/colorPrimary"
         tools:ignore="ContentDescription" />
 

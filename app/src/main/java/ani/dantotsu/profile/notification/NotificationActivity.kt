@@ -66,10 +66,10 @@ class NotificationActivity : AppCompatActivity() {
             Pair(R.drawable.ic_round_person_24, "User"),
             Pair(R.drawable.ic_round_movie_filter_24, "Media"),
             Pair(R.drawable.ic_round_notifications_active_24, "Subs"),
-            Pair(R.drawable.ic_round_malsync_notifications_24, "MalSync")
+            Pair(R.drawable.ic_malsync_notifications, "MalSync")
         )
         if (CommentsEnabled) {
-            tabs.add(Pair(R.drawable.ic_round_comment_24, "Comments"))
+            tabs.add(Pair(R.drawable.ic_round_forum_outline_24, "Comments"))
         }
 
         tabs.forEach { (icon, title) -> navBar.addTab(navBar.createTab(icon, title)) }

@@ -177,14 +177,14 @@ class ListSyncDiffAdapter(
 
     /** Which source this row is pushing from — MangaUpdates entries are the ones carrying a MU id. */
     private fun sourceIcon(entry: ListCompare.DiffEntry): Int =
-        if (entry.muSeriesId != null) R.drawable.ic_round_mangaupdates_24 else R.drawable.ic_anilist
+        if (entry.muSeriesId != null) R.drawable.ic_mangaupdates else R.drawable.ic_anilist
 
     private fun destIcon(entry: ListCompare.DiffEntry): Int = when (entry.tracker) {
         ListCompare.Tracker.MAL -> R.drawable.ic_myanimelist
         ListCompare.Tracker.KITSU -> R.drawable.ic_kitsu
         ListCompare.Tracker.SIMKL -> R.drawable.ic_simkl
-        ListCompare.Tracker.MANGABAKA -> R.drawable.ic_round_mangabaka_24
-        ListCompare.Tracker.COMICK -> R.drawable.ic_round_comick_24
+        ListCompare.Tracker.MANGABAKA -> R.drawable.ic_mangabaka
+        ListCompare.Tracker.COMICK -> R.drawable.ic_comick
     }
 
     private fun trackerNameRes(tracker: ListCompare.Tracker): Int = when (tracker) {

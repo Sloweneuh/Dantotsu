@@ -42,7 +42,7 @@ object AnilistOutageNotice {
         val announced = AnilistApiStatus.kind == AnilistApiStatus.Kind.DISABLED
         return TopBanner.Spec(
             id = ID,
-            iconRes = R.drawable.ic_round_anilist_alert_24,
+            iconRes = R.drawable.ic_anilist_alert,
             title = AnilistApiStatus.title(),
             subtitle = AnilistApiStatus.detail(),
             actionLabel = activity.getString(

@@ -64,7 +64,7 @@
             android:layout_marginTop="12dp"
             android:orientation="vertical"
             app:cardInset="false"
-            app:icon="@drawable/ic_round_format_text_24"
+            app:icon="@drawable/ic_round_title_white_24"
             app:isExpanded="false"
             app:title="@string/reader_section_text">
 

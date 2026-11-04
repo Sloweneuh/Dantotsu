@@ -32,7 +32,7 @@ class FAQActivity : AppCompatActivity() {
                 currContext()?.getString(R.string.answer_17) ?: ""
             ),
             Triple(
-                R.drawable.ic_download_24,
+                R.drawable.ic_round_download_24,
                 currContext()?.getString(R.string.question_3) ?: "",
                 currContext()?.getString(R.string.answer_3) ?: ""
             ),
@@ -47,7 +47,7 @@ class FAQActivity : AppCompatActivity() {
                 currContext()?.getString(R.string.answer_4) ?: ""
             ),
             Triple(
-                R.drawable.ic_baseline_screen_lock_portrait_24,
+                R.drawable.ic_round_screen_lock_portrait_24,
                 currContext()?.getString(R.string.question_5) ?: "",
                 currContext()?.getString(R.string.answer_5) ?: ""
             ),
@@ -67,12 +67,12 @@ class FAQActivity : AppCompatActivity() {
                 currContext()?.getString(R.string.answer_7) ?: ""
             ),
             Triple(
-                R.drawable.ic_round_magnet_24,
+                R.drawable.ic_magnet,
                 currContext()?.getString(R.string.question_19) ?: "",
                 currContext()?.getString(R.string.answer_19) ?: ""
             ),
             Triple(
-                R.drawable.ic_round_lock_open_24,
+                R.drawable.ic_round_lock_open_outline_24,
                 currContext()?.getString(R.string.question_9) ?: "",
                 currContext()?.getString(R.string.answer_9) ?: ""
             ),
@@ -97,7 +97,7 @@ class FAQActivity : AppCompatActivity() {
                 currContext()?.getString(R.string.answer_13) ?: ""
             ),
             Triple(
-                R.drawable.ic_round_art_track_24,
+                R.drawable.ic_round_art_track_outline_24,
                 currContext()?.getString(R.string.question_14) ?: "",
                 currContext()?.getString(R.string.answer_14) ?: ""
             ),

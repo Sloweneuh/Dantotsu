@@ -30,7 +30,7 @@
             android:layout_gravity="center"
             app:tint="?attr/colorPrimary"
             tools:ignore="ContentDescription"
-            tools:srcCompat="@drawable/ic_round_notifications_none_24" />
+            tools:srcCompat="@drawable/ic_round_notifications_outline_24" />
     </FrameLayout>
 
     <LinearLayout

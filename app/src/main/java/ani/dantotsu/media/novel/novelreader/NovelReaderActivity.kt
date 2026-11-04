@@ -23,7 +23,6 @@ import android.webkit.WebView
 import android.widget.AdapterView
 import android.widget.CheckBox
 import android.widget.PopupMenu
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
@@ -269,7 +268,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             } else {
                 "Please update WebView from PlayStore"
             }
-            Toast.makeText(this, text, Toast.LENGTH_LONG).show()
+            ani.dantotsu.toast(text, android.widget.Toast.LENGTH_LONG)
             //open playstore
             val intent = Intent(Intent.ACTION_VIEW)
             intent.data =
@@ -456,7 +455,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
 
     private fun showBookmarked(bookmarked: Boolean) {
         binding.novelReaderBookmark.setImageResource(
-            if (bookmarked) R.drawable.ic_round_bookmark_24 else R.drawable.ic_round_bookmark_border_24
+            if (bookmarked) R.drawable.ic_round_bookmark_24 else R.drawable.ic_round_bookmark_outline_24
         )
         binding.novelReaderBookmark.contentDescription = getString(
             if (bookmarked) R.string.novel_bookmark_remove else R.string.novel_bookmark_add

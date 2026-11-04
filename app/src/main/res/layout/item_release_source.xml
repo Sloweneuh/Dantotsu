@@ -15,7 +15,7 @@
         android:layout_height="24dp"
         android:importantForAccessibility="no"
         app:tint="?attr/colorPrimary"
-        tools:src="@drawable/ic_round_mangaupdates_24" />
+        tools:src="@drawable/ic_mangaupdates" />
 
     <LinearLayout
         android:id="@+id/releaseSourceText"

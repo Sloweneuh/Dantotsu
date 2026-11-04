@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.BottomSheetDialogFragment
@@ -93,11 +92,7 @@ class ReaderMtlSettingsDialogFragment : BottomSheetDialogFragment() {
             changed(current().copy(auto = isChecked))
             // Said out loud because switching it on spends an API quota with nobody pressing
             // anything afterwards, and switching it off leaves pages looking untranslated.
-            Toast.makeText(
-                requireContext(),
-                if (isChecked) R.string.mtl_auto_on else R.string.mtl_auto_off,
-                Toast.LENGTH_SHORT,
-            ).show()
+            ani.dantotsu.toast(if (isChecked) R.string.mtl_auto_on else R.string.mtl_auto_off)
         }
 
         binding.readerMtlStitch.isChecked = current().stitch

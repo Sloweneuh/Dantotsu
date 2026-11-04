@@ -121,7 +121,7 @@
         android:layout_gravity="bottom"
         android:layout_margin="8dp"
         android:visibility="gone"
-        app:srcCompat="@drawable/ic_round_remove_red_eye_24"
+        app:srcCompat="@drawable/ic_round_visibility_24"
         app:tint="?attr/colorOnBackground"
         tools:ignore="ContentDescription" />
 
@@ -133,7 +133,7 @@
         android:layout_gravity="bottom|start"
         android:layout_margin="8dp"
         android:background="?android:attr/selectableItemBackground"
-        app:srcCompat="@drawable/ic_open_24"
+        app:srcCompat="@drawable/ic_round_open_in_browser_24"
         app:tint="?attr/colorOnBackground"
         android:visibility="gone"
         tools:ignore="ContentDescription" />

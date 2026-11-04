@@ -67,7 +67,7 @@ class FeedActivity : AppCompatActivity() {
         // Repurposed from the notification screen's settings icon (this layout is shared with it) into
         // a toggle for hiding the signed-in account's own posts from the Following tab — there is
         // nothing else this screen needs a settings icon for.
-        binding.notificationSettings.setImageResource(R.drawable.ic_round_visibility_off_24)
+        binding.notificationSettings.setImageResource(R.drawable.ic_round_visibility_off_outline_white_24)
         fun updateHideOwnIcon() {
             binding.notificationSettings.alpha =
                 if (PrefManager.getVal<Boolean>(PrefName.HideOwnActivityFromFeed)) 1f else 0.33f
@@ -82,7 +82,7 @@ class FeedActivity : AppCompatActivity() {
         navBar = binding.notificationNavBar
         val tabs = listOf(
             Pair(R.drawable.ic_round_person_24, "Following"),
-            Pair(R.drawable.ic_globe_24, "Global"),
+            Pair(R.drawable.ic_round_language_24, "Global"),
         )
         tabs.forEach { (icon, title) -> navBar.addTab(navBar.createTab(icon, title)) }
 

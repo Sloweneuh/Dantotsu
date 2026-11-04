@@ -542,7 +542,7 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
             when (get()) {
                 Filter.TriState.STATE_INCLUDE -> {
                     b.filterTriStateBox.setImageResource(
-                        ani.dantotsu.R.drawable.ic_filter_tristate_include_24
+                        ani.dantotsu.R.drawable.ic_round_check_box_24
                     )
                     b.filterTriStateBox.imageTintList =
                         android.content.res.ColorStateList.valueOf(
@@ -554,7 +554,7 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                 }
                 Filter.TriState.STATE_EXCLUDE -> {
                     b.filterTriStateBox.setImageResource(
-                        ani.dantotsu.R.drawable.ic_filter_tristate_exclude_24
+                        ani.dantotsu.R.drawable.ic_round_disabled_by_default_24
                     )
                     b.filterTriStateBox.imageTintList =
                         android.content.res.ColorStateList.valueOf(
@@ -566,7 +566,7 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                 }
                 else -> {
                     b.filterTriStateBox.setImageResource(
-                        ani.dantotsu.R.drawable.ic_filter_tristate_empty_24
+                        ani.dantotsu.R.drawable.ic_round_check_box_outline_blank_24
                     )
                     b.filterTriStateBox.imageTintList =
                         android.content.res.ColorStateList.valueOf(

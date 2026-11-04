@@ -330,7 +330,7 @@ object AnimeThemeDownloader {
         runCatching {
             val notification =
                 NotificationCompat.Builder(context, Notifications.CHANNEL_DOWNLOADER_PROGRESS)
-                    .setSmallIcon(R.drawable.ic_download_24)
+                    .setSmallIcon(R.drawable.ic_round_download_24)
                     .setContentTitle(context.getString(R.string.theme_converting))
                     .setContentText(fileName)
                     .setProgress(100, percent, percent <= 0)

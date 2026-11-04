@@ -62,7 +62,7 @@ class DownloadActivity : AppCompatActivity() {
         val bar = binding.downloadBottomBar
         bar.addTab(
             bar.createTab(
-                R.drawable.ic_round_cloud_download_24, R.string.download_queue, R.id.downloadQueueTab
+                R.drawable.ic_round_cloud_download_outline_24, R.string.download_queue, R.id.downloadQueueTab
             )
         )
         bar.addTab(

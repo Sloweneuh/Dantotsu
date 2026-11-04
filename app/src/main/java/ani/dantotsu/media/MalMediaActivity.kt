@@ -2,11 +2,9 @@ package ani.dantotsu.media
 
 import ani.dantotsu.connections.discord.PresenceSources
 import ani.dantotsu.connections.discord.BrowsingPresence
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.updateLayoutParams
@@ -15,8 +13,6 @@ import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
 import ani.dantotsu.connections.anilist.Anilist
-import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
-import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mal.MALAlternativeTitles
 import ani.dantotsu.connections.mal.MALAnimeResponse
@@ -146,7 +142,7 @@ class MalMediaActivity : AppCompatActivity() {
             val manga = mangaDeferred?.await()
             if (anime == null && manga == null) {
                 binding.malMediaProgress.visibility = View.GONE
-                Toast.makeText(this@MalMediaActivity, getString(R.string.mal_no_data_title), Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast(getString(R.string.mal_no_data_title))
                 finish()
                 return@launch
             }
@@ -173,24 +169,26 @@ class MalMediaActivity : AppCompatActivity() {
             }
 
             val info = FragmentMediaInfoBinding.inflate(layoutInflater)
+            val tabContext = when {
+                anime != null -> InfoTabContext.ANILIST_ANIME
+                manga?.mediaType?.contains("novel", ignoreCase = true) == true -> InfoTabContext.ANILIST_NOVEL
+                else -> InfoTabContext.ANILIST_MANGA
+            }
+            val content = tabContext.standaloneContent(info, InfoTabType.MAL, binding.malMediaContent)
             if (anime != null) {
                 MalMediaRenderer.renderAnime(
                     activity = this@MalMediaActivity,
                     info = info,
-                    contentHost = binding.malMediaContent,
+                    contentHost = content,
                     full = anime,
-                    onGenreClick = { name -> startMalSearch(name) },
-                    onRelationClick = { relMalId, relIsAnime -> openMedia(relMalId, relIsAnime) },
                     anilistRecs = anilistRecs,
                 )
             } else if (manga != null) {
                 MalMediaRenderer.renderManga(
                     activity = this@MalMediaActivity,
                     info = info,
-                    contentHost = binding.malMediaContent,
+                    contentHost = content,
                     full = manga,
-                    onGenreClick = { name -> startMalSearch(name) },
-                    onRelationClick = { relMalId, relIsAnime -> openMedia(relMalId, relIsAnime) },
                     anilistRecs = anilistRecs,
                 )
             }
@@ -200,18 +198,10 @@ class MalMediaActivity : AppCompatActivity() {
             launch {
                 val stacks = stacksDeferred.await()
                 if (!isDestroyed && !isFinishing && stacks.isNotEmpty()) {
-                    MalMediaRenderer.addStacks(this@MalMediaActivity, binding.malMediaContent, stacks, isAnime)
+                    MalMediaRenderer.addStacks(this@MalMediaActivity, content, stacks, isAnime)
                 }
             }
         }
-    }
-
-    private fun openMedia(malId: Int, relIsAnime: Boolean) {
-        startActivity(
-            Intent(this, MalMediaActivity::class.java)
-                .putExtra(EXTRA_MEDIA_ID, malId)
-                .putExtra(EXTRA_IS_ANIME, relIsAnime)
-        )
     }
 
     /** Opt-in Discord presence for this page — see [BrowsingPresence]. */
@@ -302,18 +292,5 @@ class MalMediaActivity : AppCompatActivity() {
         altTitles?.ja?.takeIf { it.isNotBlank() }?.let { out.add(it) }
         altTitles?.synonyms?.forEach { t -> t.takeIf { it.isNotBlank() }?.let { out.add(it) } }
         return out.toList()
-    }
-
-    /**
-     * Genre chips have no id-based filter to seed anymore (the official search API takes only
-     * free text) — search by the genre's own name instead.
-     */
-    private fun startMalSearch(genreName: String) {
-        startActivity(
-            Intent(this, SearchActivity::class.java)
-                .putExtra("type", (if (isAnime) SearchType.MAL_ANIME else SearchType.MAL).toAnilistString())
-                .putExtra("query", genreName)
-                .putExtra("search", true)
-        )
     }
 }

@@ -255,24 +255,24 @@
     <string name="no_news">No news yet</string>
 
 
-    <string name="anilist_settings">Anilist Settings</string>
+    <string name="anilist_settings">AniList Settings</string>
     <string name="mangaupdates_account_help">How does MangaUpdates work\?</string>
     <string name="full_mangaupdates_account_help">
-        Anilist doesn\'t have an entry for every manga out there, and that\'s where MangaUpdates comes in. By logging in with your MangaUpdates account, Dantotsu can fetch additional manga details and reading lists from MangaUpdates to complement the data from Anilist.
+        AniList doesn\'t have an entry for every manga out there, and that\'s where MangaUpdates comes in. By logging in with your MangaUpdates account, Dantotsu can fetch additional manga details and reading lists from MangaUpdates to complement the data from AniList.
         \n\n Logging in with your MangaUpdates account adds the following features:
         \n - Search for manga on MangaUpdates and add them to your MangaUpdates lists
-        \n - MangaUpdates lists are shown alongside Anilist lists
-        \n - Reading progress is tracked to MangaUpdates (separately from Anilist progress)
-        \n - MangaUpdates info tab for Anilist manga with additional manga details
-        \n\n The MangaUpdates API is far more limited than Anilist\'s, so some features might be slow or more limited compared to the MangaUpdates website.
+        \n - MangaUpdates lists are shown alongside AniList lists
+        \n - Reading progress is tracked to MangaUpdates (separately from AniList progress)
+        \n - MangaUpdates info tab for AniList manga with additional manga details
+        \n\n The MangaUpdates API is far more limited than AniList\'s, so some features might be slow or more limited compared to the MangaUpdates website.
         \n\n *Note that MangaUpdates integration is optional and only adds additional features for manga. Dantotsu will continue to work perfectly fine without logging in to MangaUpdates.*
     </string>
     <string name="mangabaka_account_help">How does MangaBaka work\?</string>
     <string name="full_mangabaka_account_help">
-        MangaBaka is a cross-source database that links titles across Anilist, MangaUpdates and MyAnimeList. Logging in with your MangaBaka account adds the following features:
-        \n - Push your Anilist and MangaUpdates list updates to your MangaBaka library — configure this in **MangaBaka list sync**, under **List Sync** settings
+        MangaBaka is a cross-source database that links titles across AniList, MangaUpdates and MyAnimeList. Logging in with your MangaBaka account adds the following features:
+        \n - Push your AniList and MangaUpdates list updates to your MangaBaka library — configure this in **MangaBaka list sync**, under **List Sync** settings
         \n - Compare your lists across services and spot entries that are out of date
-        \n\n Logging in isn\'t required for the MangaBaka info tab or for cross-source id linking between Anilist, MangaUpdates and MyAnimeList — those work from the public MangaBaka API regardless of login (see the **MangaBaka** toggle in **Connections** settings).
+        \n\n Logging in isn\'t required for the MangaBaka info tab or for cross-source id linking between AniList, MangaUpdates and MyAnimeList — those work from the public MangaBaka API regardless of login (see the **MangaBaka** toggle in **Connections** settings).
         \n\n *Note that MangaBaka login is optional and only adds list syncing and comparison. Dantotsu will continue to work perfectly fine without logging in to MangaBaka.*
     </string>
     <string name="connections_settings">Connections</string>
@@ -288,7 +288,7 @@
     <string name="full_mal_connections_help">
         Enabling MAL adds a **MAL tab** — an extra info tab in media details with MAL-specific data (scores, genres, staff, recommendations, reviews, etc.), fetched anonymously from MyAnimeList.
         \n\n No MAL account is required for this tab. **Disabling MAL stops those requests and removes MAL from the info tab picker (Accounts \> ⋮ \> Info tab order). It does NOT disable progress syncing.**
-        \n\n Progress syncing to your MAL account is controlled separately — connect your MAL account on its card in **Accounts**, then enable **MAL list sync** on the same card to push your Anilist list updates to MAL.
+        \n\n Progress syncing to your MAL account is controlled separately — connect your MAL account on its card in **Accounts**, then enable **MAL list sync** on the same card to push your AniList list updates to MAL.
     </string>
     <string name="disable_mangaupdates">Show MangaUpdates info</string>
     <string name="disable_mangaupdates_desc">Toggle fetching MangaUpdates data and tab</string>
@@ -337,14 +337,14 @@
         \n\n *Disabling MangaBaka hides the MangaBaka tab, stops all related lookups and cross-source linking, removes it from the info tab picker (Accounts \> ⋮ \> Info tab order), and disables the AniList match alert on MangaUpdates media.*
     </string>
         <string name="switch_to_anilist_title">AniList media found</string>
-        <string name="switch_to_anilist_message">This MangaUpdates media has an Anilist counterpart. Would you like to open the AniList media instead?</string>
+        <string name="switch_to_anilist_message">This MangaUpdates media has an AniList counterpart. Would you like to open the AniList media instead?</string>
     <string name="convert_to_anilist">Convert</string>
     <string name="converted_to_anilist">Moved to your AniList list</string>
     <string name="malsync_connections_help">How does MALSync work\?</string>
     <string name="full_malsync_connections_help">
-        MALSync is a community-maintained mapping database that connects titles across different anime and manga tracking sites (Anilist, MAL, Comick, MangaUpdates, etc.).
+        MALSync is a community-maintained mapping database that connects titles across different anime and manga tracking sites (AniList, MAL, Comick, MangaUpdates, etc.).
         \n\n Enabling MALSync adds the following features:
-        \n - **Improved linking** — Dantotsu uses MALSync to accurately match Anilist titles with their counterparts on Comick and MangaUpdates
+        \n - **Improved linking** — Dantotsu uses MALSync to accurately match AniList titles with their counterparts on Comick and MangaUpdates
         \n - **Release progress tracking** — MALSync provides up-to-date release information for anime episodes and manga chapters, which can be used for features like unread chapter tracking and release notifications
         \n\n You can configure whether MALSync is used for **Manga**, **Anime**, or **Both** using the settings icon next to the toggle.
         \n\n No account is required. MALSync data is fetched anonymously from the public API.
@@ -360,9 +360,111 @@
     <string name="unread_sort_option_recent">Most recently updated</string>
     <string name="unread_sort_desc">How the home Unread Chapters row is ordered</string>
     <string name="malsync_preferred_track_label">Anime release track</string>
-    <string name="customize_info_tabs">Info Tab Order</string>
+    <string name="customize_info_tabs">Customize Info Tabs</string>
     <string name="info_tab_fetch_disabled">connection off</string>
-    <string name="customize_info_tabs_desc">Reorder and show/hide info tabs for AniList anime, AniList manga and MangaUpdates manga</string>
+    <string name="customize_info_tabs_desc">Reorder, hide and edit info tabs, or build your own from several sources</string>
+    <string name="info_tabs_add_custom">New custom tab</string>
+    <string name="info_tab_custom_note">custom</string>
+    <string name="info_tab_default_name">Custom tab %1$d</string>
+    <string name="info_tab_name">Tab name</string>
+    <string name="info_tab_icon">Icon</string>
+    <string name="info_tab_icons_genres">Genres and moods</string>
+    <string name="info_tab_icons_media">Stories and media</string>
+    <string name="info_tab_icons_rankings">Scores and rankings</string>
+    <string name="info_tab_icons_community">Community and news</string>
+    <string name="info_tab_icons_discovery">Discovery and links</string>
+    <string name="info_tab_icons_organisation">Organisation</string>
+    <string name="info_tab_icons_sources">Sources</string>
+    <string name="info_tab_show_sources">Show source names</string>
+    <string name="info_tab_sections">Sections</string>
+    <string name="info_tab_custom_hint">Tap a section to change its source, or to merge several.</string>
+    <string name="info_tab_long_press_title">Long press on the tab</string>
+    <string name="info_tab_long_press_name">Show the tab\'s name</string>
+    <string name="info_tab_long_press_edit">Edit this tab</string>
+    <string name="info_tab_long_press_none">Do nothing</string>
+    <string name="info_tab_long_press_open">Open on %1$s</string>
+    <string name="info_tab_merge_sources">Merge several sources</string>
+    <string name="info_tab_merge_hint_stack">Shown one after another, each labelled with its source.</string>
+    <string name="info_tab_merge_hint_chips">One row of chips, without duplicates.</string>
+    <string name="info_tab_merge_hint_media">One row without duplicates; titles suggested by more sources come first.</string>
+    <string name="info_tab_merge_hint_fields">One table; a value repeats only where sources disagree.</string>
+    <string name="info_tab_merge_hint_row">One scrolling row with the cards of each source.</string>
+    <plurals name="info_tab_section_count">
+        <item quantity="one">%1$d section to add</item>
+        <item quantity="other">%1$d sections to add</item>
+    </plurals>
+    <string name="info_tab_section_used">Already on this tab</string>
+    <string name="info_tab_section_blocked">Needs a connection or a login</string>
+    <string name="info_tab_login_required">login required</string>
+    <string name="info_tab_section_unavailable">Not available for %1$s</string>
+    <string name="info_tab_builtin_hint">Drag to reorder, switch off to hide.</string>
+    <string name="info_tab_add_section">Add section</string>
+    <string name="info_tab_copy_from">Copy a tab\'s sections</string>
+    <string name="info_tab_all_sections_added">Every section is already on this tab</string>
+    <string name="info_tab_reset">Reset this tab</string>
+    <string name="info_tab_delete">Delete this tab</string>
+    <string name="info_tab_delete_confirm">Delete “%1$s”?</string>
+    <string name="info_tab_nothing_to_show">Nothing to show here. Check that this tab\'s sources are connected and have this title.</string>
+    <string name="info_tab_visible_details">Visible details</string>
+    <string name="info_tab_merged">merged</string>
+    <string name="info_tab_hidden_count">%1$d hidden</string>
+    <string name="info_tab_remove_section">Remove section</string>
+    <string name="info_section_countdown">Next episode countdown</string>
+    <string name="info_section_details">Details</string>
+    <string name="info_section_titles">Titles</string>
+    <string name="info_section_detailed_status">Detailed status</string>
+    <string name="info_section_social">Friends</string>
+    <string name="info_section_themes">Theme songs</string>
+    <string name="info_section_quels">Prequel and sequel</string>
+    <string name="info_section_background">Background</string>
+    <string name="scored_by">Scored by</string>
+    <string name="info_section_publishers">Publishers</string>
+    <string name="info_section_pictures">Pictures</string>
+    <string name="info_section_desc_background">Production history and trivia about this title, from MyAnimeList.</string>
+    <string name="info_section_desc_publishers">Who publishes this title, and the magazines it runs in.</string>
+    <string name="info_tab_fields_hint">Drag to reorder, switch off to hide.</string>
+    <string name="info_tab_fields_hint_merged">Drag to reorder, switch off to hide. Tap an icon to choose which source fills that line.</string>
+    <string name="info_tab_field_auto">Automatic</string>
+    <string name="info_tab_field_provider">Choose the source for this line</string>
+    <string name="info_section_stacks_lists">Stacks and lists</string>
+    <string name="info_tab_section_about">About this section</string>
+    <string name="info_section_desc_countdown">Time left until the next episode airs.</string>
+    <string name="info_section_desc_details">The stats table: score, status, format, dates, popularity and so on.</string>
+    <string name="info_section_desc_titles">The title and its romanized version.</string>
+    <string name="info_section_desc_description">What this title is about.</string>
+    <string name="info_section_desc_detailed_status">MangaUpdates\' release status in full, such as chapter counts per volume or language.</string>
+    <string name="info_section_desc_broadcast">The season it airs in and its weekly broadcast slot.</string>
+    <string name="info_section_desc_external_links">Links to official sites, streaming services and reference sites.</string>
+    <string name="info_section_desc_quicklinks">Other sites where this title can be found, from MALSync.</string>
+    <string name="info_section_desc_synonyms">Other names this title is known by.</string>
+    <string name="info_section_desc_social">Your AniList friends who have this on their list, with their status and score.</string>
+    <string name="info_section_desc_episodes">A preview of the latest episodes.</string>
+    <string name="info_section_desc_latest_chapter">The most recent chapter released.</string>
+    <string name="info_section_desc_covers">A gallery of covers and pictures.</string>
+    <string name="info_section_desc_anime_adaptation">Where this manga\'s anime adaptation starts and ends in the story.</string>
+    <string name="info_section_desc_studios">The studios that made this anime.</string>
+    <string name="info_section_desc_trailer">The promotional video.</string>
+    <string name="info_section_desc_themes">Opening, ending and insert songs from AnimeThemes, playable in the app.</string>
+    <string name="info_section_desc_genres">The genres this title belongs to.</string>
+    <string name="info_section_desc_tags">Detailed themes and traits; spoilers stay hidden until tapped.</string>
+    <string name="info_section_desc_authors">Everyone credited as author or artist.</string>
+    <string name="info_section_desc_watch_order">A button that opens the order to watch this franchise in, from Chiaki.</string>
+    <string name="info_section_desc_news">A button that opens news about this title, from Kuroiru for anime and MangaBaka for manga and novels.</string>
+    <string name="info_provider_animethemes" translatable="false">AnimeThemes</string>
+    <string name="info_provider_chiaki" translatable="false">Chiaki</string>
+    <string name="info_provider_kuroiru" translatable="false">Kuroiru</string>
+    <string name="info_section_desc_quels">Direct links to the prequel and sequel.</string>
+    <string name="info_section_desc_relations">Related entries such as adaptations, spin-offs and side stories.</string>
+    <string name="info_section_desc_recommendations">Similar titles suggested by the source.</string>
+    <string name="info_section_desc_category_recommendations">Titles MangaUpdates suggests because they share categories with this one.</string>
+    <string name="info_section_desc_stacks">Collections made by users that include this title: stacks on MyAnimeList and MangaBaka, lists on Comick.</string>
+    <string name="info_section_desc_reviews">Reviews written by users.</string>
+    <string name="info_section_desc_characters">The cast of characters.</string>
+    <string name="info_section_desc_staff">The people who worked on this title.</string>
+    <string name="info_section_desc_comments">What Comick users are saying about this entry.</string>
+    <string name="info_field_score_mal">MyAnimeList score</string>
+    <string name="info_field_score_imdb">IMDb score</string>
+    <string name="info_field_total">Total episodes or chapters</string>
     <string name="anilist_equivalent_found_title">AniList Match Found</string>
     <string name="anilist_equivalent_found_desc">This manga also has a matching entry on AniList. Would you like to view it there instead?</string>
     <string name="extension_settings">Extensions</string>
@@ -555,8 +657,8 @@
          preference governs episodes. -->
     <string name="ask_update_progress_chapter_zero">Update Progress for Chapter 0</string>
     <string name="ask_update_progress_episode_zero">Update Progress for Episode 0</string>
-    <string name="ask_update_progress_info_zero">Turning on will add newly started items to Anilist with progress set to chapter 0.</string>
-    <string name="ask_update_progress_info_zero_ep">Turning on will add newly started items to Anilist with progress set to episode 0.</string>
+    <string name="ask_update_progress_info_zero">Turning on will add newly started items to AniList with progress set to chapter 0.</string>
+    <string name="ask_update_progress_info_zero_ep">Turning on will add newly started items to AniList with progress set to episode 0.</string>
     <string name="ask_update_progress_hentai_anime">Update Progress for Hentai Anime</string>
     <string name="ask_update_progress_hentai_manga">Update Progress for Hentai Manga</string>
     <string name="track_progress">Track Progress</string>
@@ -564,7 +666,7 @@
     <string name="track_progress_disabled">Progress tracking disabled for this manga</string>
     <string name="very_bold">very bold of you sar</string>
     <string name="watch_complete_percentage">Watch Update Percentage</string>
-    <string name="watch_complete_percentage_info">The percentage at which your Anilist progress should be updated after watching an episode. \nThis also sets the %% for when to preload links for the next episode.</string>
+    <string name="watch_complete_percentage_info">The percentage at which your AniList progress should be updated after watching an episode. \nThis also sets the %% for when to preload links for the next episode.</string>
 
     <string name="behaviour">Behaviour</string>
     <string name="always_continue">Always Continue from where you left off</string>
@@ -924,21 +1026,21 @@
     <string name="categories">Categories</string>
     <string name="authors">Authors</string>
     <string name="search_all">Search All</string>
-    <string name="login_with_anilist">Login with Anilist!</string>
-    <string name="anilist">Anilist</string>
+    <string name="login_with_anilist">Login with AniList!</string>
+    <string name="anilist">AniList</string>
     <string name="account_help">How does this work\?</string>
     <string name="full_account_help">
-        Dantotsu is an Anilist based app, so connecting a MAL account requires an Anilist account to be logged in first.
-        \n\nOnce logged in with both accounts, enable **MyAnimeList list sync** in **List Sync** settings to push your Anilist list changes (additions, edits, removals) to your MAL account going forward.
+        Dantotsu is an AniList based app, so connecting a MAL account requires an AniList account to be logged in first.
+        \n\nOnce logged in with both accounts, enable **MyAnimeList list sync** in **List Sync** settings to push your AniList list changes (additions, edits, removals) to your MAL account going forward.
 
-        \n\nNote: This only pushes new changes — it will not sync your existing Anilist list history to MAL. It\'s recommended to sync that manually first.
+        \n\nNote: This only pushes new changes — it will not sync your existing AniList list history to MAL. It\'s recommended to sync that manually first.
         \n- Check __FAQs__ for _Easy Method_
 
         \n\nAnd for _Intermediates_ :
-        \n- [How to sync Anilist data with MAL](https://anilist.co/forum/thread/2654)
-        \n- [How to sync MAL data with Anilist](https://anilist.co/forum/thread/3393)
+        \n- [How to sync AniList data with MAL](https://anilist.co/forum/thread/2654)
+        \n- [How to sync MAL data with AniList](https://anilist.co/forum/thread/3393)
 
-        \n\n_Connecting a MAL account is entirely optional — the MAL info tab works without it, and it is not required to sync both MAL and Anilist accounts._
+        \n\n_Connecting a MAL account is entirely optional — the MAL info tab works without it, and it is not required to sync both MAL and AniList accounts._
     </string>
 
     <string name="anilist_account_help">How does AniList work\?</string>
@@ -1046,7 +1148,7 @@
     <string name="back_online">Back online</string>
     <string name="go_online">Go online</string>
     <string name="back_online_hint">Offline mode is still on</string>
-    <string name="anilist_not_found">Seems like that wasn\'t found on Anilist.</string>
+    <string name="anilist_not_found">Seems like that wasn\'t found on AniList.</string>
     <string name="disabled_auto_skip">Disabled Auto Skipping OP &amp; ED</string>
     <string name="auto_skip">Auto Skipping OP &amp; ED</string>
     <string name="show_skip_time_stamp_button">Show Skip Time Stamp Button</string>
@@ -1067,7 +1169,7 @@
     <string name="getting_user_data">Getting User Data</string>
     <string name="no_next_episode">No next episode found!</string>
     <string name="enable_banner_animations">Try enabling "Banner Animations" in settings</string>
-    <string name="please_login_anilist">Please Login with Anilist!</string>
+    <string name="please_login_anilist">Please Login with AniList!</string>
     <string name="auto_update_reset">Auto Update progress has now been reset-ed</string>
     <string name="cant_wait">Can\'t wait, huh? fine X(</string>
     <string name="downloading">Downloading…</string>
@@ -1081,9 +1183,9 @@
     <string name="chapter_gap_warning_message">%1$d chapters are missing before this one. Continue anyway?</string>
     <string name="adult_stuff">Adult Stuff?&#40; &#865;&#176; &#860;&#662; &#865;&#176; &#41;</string>
     <string name="what_did_you_open">What did you even open?</string>
-    <string name="error_getting_data">Error getting data from Anilist.</string>
+    <string name="error_getting_data">Error getting data from AniList.</string>
     <string name="error_loading_mal_user_data">Error loading MAL user data</string>
-    <string name="error_loading_anilist_user_data">Error loading Anilist user data</string>
+    <string name="error_loading_anilist_user_data">Error loading AniList user data</string>
     <string name="episode_not_found">Couldn\'t find episode : %1$s</string>
     <string name="list_updated">List Updated</string>
     <string name="list_update_failed">List update failed</string>
@@ -1118,7 +1220,7 @@
     <string name="error_getting_image_data">Error getting image data</string>
     <string name="loading_image_failed">Loading Image Failed</string>
     <string name="copied_device_info">Copied device info</string>
-    <string name="anilist_down">Seems like Anilist is down, maybe try using a VPN or you can wait for it to come back.</string>
+    <string name="anilist_down">Seems like AniList is down, maybe try using a VPN or you can wait for it to come back.</string>
     <string name="anilist_not_responding">AniList isn\'t responding</string>
     <string name="anilist_api_unavailable">AniList API is unavailable</string>
     <string name="anilist_api_unavailable_info">AniList has temporarily disabled its API. Check the official AniList Discord for updates.</string>
@@ -1248,7 +1350,7 @@
     <string name="close">Close</string>
     <string name="no_chapter">No Chapter</string>
     <string name="no_episode">No Episode</string>
-    <string name="content_18">Turn on 18+ content from your Anilist settings</string>
+    <string name="content_18">Turn on 18+ content from your AniList settings</string>
     <string name="available">Available</string>
     <string name="lets_go">Let\'s Go</string>
     <string name="cope">Cope</string>
@@ -1293,7 +1395,7 @@
     <string name="female">Female</string>
 
     <string name="question_1">What is Dantotsu?</string>
-    <string name="answer_1">Dantotsu is crafted from the ashes of Saikou and based on simplistic yet state-of-the-art elegance. It is an Anilist only client, which also lets you stream &amp; download Anime / Manga through extensions. \n>Dantotsu (断トツ; Dan-totsu) literally means the best of the best in Japanese. Well, we would like to say this is the best open source app for anime and manga on Android, but hey, Try it out yourself &amp; judge!</string>
+    <string name="answer_1">Dantotsu is crafted from the ashes of Saikou and based on simplistic yet state-of-the-art elegance. It is an AniList only client, which also lets you stream &amp; download Anime / Manga through extensions. \n>Dantotsu (断トツ; Dan-totsu) literally means the best of the best in Japanese. Well, we would like to say this is the best open source app for anime and manga on Android, but hey, Try it out yourself &amp; judge!</string>
 
     <string name="question_2">What are some features of Dantotsu?</string>
     <string name="answer_2">Some mentionable features of Dantotsu are\n\n- Easy and functional way to both, watch anime and read manga and light novels, Ad Free.\n- A completely open source app with a nice UI &amp; Animations\n- 3rd party plugin support \n- Synchronize anime and manga real-time with AniList. Easily categorize anime and manga based on your current status. (Powered by AniList)\n- Find all shows using thoroughly and frequently updated list of all trending, popular and ongoing anime based on scores.\n- View extensive details about anime shows, movies and manga titles. It also features ability to countdown to the next episode of airing anime. (Powered by AniList &amp; MyAnimeList)</string>
@@ -1308,7 +1410,7 @@
     <string name="answer_5">No, best we can do is carve Dantotsu on an apple.</string>
 
     <string name="question_6">Why are my stats not updating?</string>
-    <string name="answer_6">This is because it updates every 48 hours automatically (by Anilist). If you really need to update your stats, you can force update your stats after going to this [link](https://anilist.co/settings/lists).</string>
+    <string name="answer_6">This is because it updates every 48 hours automatically (by AniList). If you really need to update your stats, you can force update your stats after going to this [link](https://anilist.co/settings/lists).</string>
 
     <string name="question_7">How to download Anime?</string>
     <string name="answer_7">There are two methods of downloading. Internal and external. If you download internally, then it can be viewed within the app and tracking will work normally for it. The other option is to use external downloader. It requires a download manager to download and a separate video player to watch. External downloads cannot be viewed within the Dantotsu app.\n\n•To download internally:\n\n1. Tap the download button.\n2. For the first time, it will ask you to set a download location. All your downloads will be stored there.\n3. Pick the server and the video quality.\n4. Profit.\n\n•To download externally:\n\n 1. Download 1DM or ADM from Google Play Store.\n2. Enter the app, give storage access and set your preferences (downloading speed, downloading path etc(optional))\n3. Now go to \`Dantotsu > Settings > Common > Download Managers\` and choose the download manager you just set up.\n4. Go to your desired episode and press on the download icon of any server. There may be a popup to set your preferences again, just press on "Download" and it will be saved in the directed path.\n\nNote: External downloads are also possible without a manager but it\'s not recommended.\n\nNerd Note: Internally downloaded episodes are stored in \`{your set location}/Dantotsu/Anime/*`\nYou can change your download location in settings but your previous downloaded episodes will not show up in the app anymore.</string>
@@ -1316,14 +1418,14 @@
     <string name="question_9">How to enable NSFW content?</string>
     <string name="answer_9">You can enable NSFW content by enabling 18+ contents from this [link](https://anilist.co/settings/media). You also have to enable NSFW extensions in \`Settings > Extensions > NSFW extensions\` </string>
 
-    <string name="question_10">How to import my MAL/Kitsu lists to Anilist?</string>
+    <string name="question_10">How to import my MAL/Kitsu lists to AniList?</string>
     <string name="answer_10">Here is how you do it,\n\nExport:\n\n1. Go to this [link](https://malscraper.azurewebsites.net).\n2. Give your Kitsu/MAL username and download both anime and manga list. (They will be in XML format)\nNote: You have to write the username of the tracker you selected\n\nImport:\n\n1. After exporting your anime and manga list from Kitsu/MAL, now go [here](https://anilist.co/settings/import) \n2. Select/drop the anime XML file on the box above.\n|→Select/drop the manga XML file on the box below.</string>
 
-    <string name="question_11">How to import my Anilist/Kitsu lists to MAL?</string>
-    <string name="answer_11">Here is how you do it,\n\nExport:\n\n1. Go to this [link](https://malscraper.azurewebsites.net/). \n2. Give your Anilist username/Kitsu ID in the \'Username/Kitsu User ID\' box. \n3. Select list type and enable \'update_on_import\'. \n4. Download the file; it will be in .xml format. Be sure to download both Anime and Manga lists.\n\nImport:\n1. To import it in your MAL account, go to this [link](https://myanimelist.net/import.php) and choose \'MyAnimeList Import\' as import type. \n2. Press on \'Choose File\'and select the downloaded anime/manga list XML file. \n3. Press on \'Import Data\'. \nCongratulations, you just imported the selected list to your MAL account.</string>
+    <string name="question_11">How to import my AniList/Kitsu lists to MAL?</string>
+    <string name="answer_11">Here is how you do it,\n\nExport:\n\n1. Go to this [link](https://malscraper.azurewebsites.net/). \n2. Give your AniList username/Kitsu ID in the \'Username/Kitsu User ID\' box. \n3. Select list type and enable \'update_on_import\'. \n4. Download the file; it will be in .xml format. Be sure to download both Anime and Manga lists.\n\nImport:\n1. To import it in your MAL account, go to this [link](https://myanimelist.net/import.php) and choose \'MyAnimeList Import\' as import type. \n2. Press on \'Choose File\'and select the downloaded anime/manga list XML file. \n3. Press on \'Import Data\'. \nCongratulations, you just imported the selected list to your MAL account.</string>
 
     <string name="question_12">Why can\'t I find a specific anime/manga title?</string>
-    <string name="answer_12">Let\'s say you are looking for Castlevania in Dantotsu. But Anilist doesn\'t have it, so Dantotsu doesn\'t either.\nA solution to the above problem is as follows:\n1) Go to any anime that\'s not in your list.\n2) Go to the watch section.\n3) Select any source and press on the \'Wrong Title?\'.\n4) Now search for Castlevania (The anime you were looking for) and select it.\n5) ENJOY!\n\nIf you can\'t find the anime even through these steps, then that\'s bad luck for you, bud. Even that source doesn\'t have it. Try a different source.</string>
+    <string name="answer_12">Let\'s say you are looking for Castlevania in Dantotsu. But AniList doesn\'t have it, so Dantotsu doesn\'t either.\nA solution to the above problem is as follows:\n1) Go to any anime that\'s not in your list.\n2) Go to the watch section.\n3) Select any source and press on the \'Wrong Title?\'.\n4) Now search for Castlevania (The anime you were looking for) and select it.\n5) ENJOY!\n\nIf you can\'t find the anime even through these steps, then that\'s bad luck for you, bud. Even that source doesn\'t have it. Try a different source.</string>
 
     <string name="question_13">How to fix sources selecting a completely wrong title?</string>
     <string name="answer_13">Dantotsu itself doesn\'t host anything but relies on other sources. When showing the episodes, it chooses the 1st result given by the source after searching for the title. Dantotsu has no way of detecting if that\'s legit or not. So, for this, we have the \'Wrong Title?\' just below the source name(above layouts). You can choose the correct result/title by pressing on it and enjoy its episodes.</string>
@@ -1340,8 +1442,8 @@
     <string name="question_17">Some useful tips and tricks</string>
     <string name="answer_17">The following presents some tips and tricks you may or may not know about - \n \n \n - By hold pressing the Dantotsu logo in settings, you can check if there are any new updates manually. \n \n - Hold pressing an error message/tag/synonym or title will copy it. \n \n - You can open an episode with other apps by hold pressing any server for that episode. This helps in streaming the episode using other video players or download the episode using download managers. \n \n - You can set up custom lists using this [link](https://anilist.co/settings/lists). (you need to be signed in) \n \n - If your episode/chapter is not being progressed automatically after you finish watching/reading it, then hold press the status bar(planning/repeating/watching button) of that anime/manga. The next time you start a chapter/finish an episode, you will stumble upon a popup. Press yes there. </string>
 
-    <string name="question_18">I can\'t login to Anilist.</string>
-    <string name="answer_18">The reason this happens is probably because you\'re not using the default browser.\n\n>You have to set Chrome as your default browser to login to Anilist.\n\n>It takes a few seconds for the login button to display changes.\n\nIf it doesn\'t work then you could possibly be IP banned from Anilist or your ISP banned Anilist themselves. We believe that this is highly unlikely so open [Anilist](https://anilist.co) in your browser to see if that\`s the case.</string>
+    <string name="question_18">I can\'t login to AniList.</string>
+    <string name="answer_18">The reason this happens is probably because you\'re not using the default browser.\n\n>You have to set Chrome as your default browser to login to AniList.\n\n>It takes a few seconds for the login button to display changes.\n\nIf it doesn\'t work then you could possibly be IP banned from AniList or your ISP banned AniList themselves. We believe that this is highly unlikely so open [AniList](https://anilist.co) in your browser to see if that\`s the case.</string>
 
     <string name="question_19">What is torrent? How do I use it?</string>
     <string name="answer_19" formatted="false">Torrent or formally known as BitTorrent is an internet communication protocol for peer\-to\-peer file sharing. A torrent network doesn\'t use a centralised server to host files. It shares files in a decentralised manner. A torrent network has two types of peers. Seeders &amp; Leachers.\n\n• Seeders : These are peers who completed downloading and has the full file. And now they are sharing this file to other peers which is called seeding. A torrent cannot work without at least one seeder. The more seeder a torrent has, the better.\n\n• Leachers : These are peers who are currently downloading the file. If they currently have 40&#37; downloaded then they will share the 40&#37; to any other peers who requests it.\n\nUnlike a centralised server, torrents have no bandwidth limit. You can get your files from hundreds of seeders at the highest possible speed your internet can offer. But many ISP throttle torrent to slow them down because it\'s demanding on their infrastructure. Use a VPN to circumvent this.\n\n• How to use torrents :\n\n1. Install the Torrent Add-on from \`Dantotsu &gt; Settings &gt; Add-ons &gt; Torrent Add-on.\` \n2. Get a source that provides torrents.\n3. USE A VPN. Using VPN while torrenting only has upsides. Without a VPN your IP address will be exposed, your ISP will throttle your network and you could possibly be fined if you live in a country first world country. DO NOT USE IT WITHOUT A VPN IF YOU DON\'T KNOW WHAT YOU\'RE DOING.\n4. Now use that source to start torrenting.</string>
@@ -1379,7 +1481,7 @@
     <string name="similarity_text">Similarity: %1$s %%</string>
     <string name="time_range">From %1$s to %2$s</string>
     <string name="invalid_url">Invalid URL</string>
-    <string name="no_anilist_id_found">No Anilist ID found</string>
+    <string name="no_anilist_id_found">No AniList ID found</string>
     <string name="error_loading_image">Error loading image</string>
     <string name="discord_logout_success">Successfully Logged Out</string>
     <string name="discord_warning"><![CDATA[By logging in, your discord will now show what you are watching & reading on Dantotsu\n\nIf you are on invisible mode, logging in will make you online, when you open Dantotsu.\n\nThis does break the Discord TOS. \nAlthough Discord has never banned anyone for using Custom Rich Presence(what Dantotsu uses), You have still been warned.\n\nDantotsu is not responsible for anything that happens to your account.]]></string>
@@ -1482,12 +1584,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="stats_update_requested">AniList is recalculating your stats, this can take a moment</string>
     <string name="stats_update_failed">Couldn\'t request a stats update</string>
     <string name="anilist_notification_filters">Filter Notifications</string>
-    <string name="anilist_notifications_checking_time">Anilist notifications update frequency : %1$s</string>
+    <string name="anilist_notifications_checking_time">AniList notifications update frequency : %1$s</string>
     <string name="comment_notification_checking_time">Comment notifications update frequency : %1$s</string>
     <string name="unread_chapter_notification_checking_time">Notification check interval : %1$s</string>
     <!-- Value-less forms of the three above, for the settings search: a row that carries its
          current setting in its title has no fixed string for a search result to show or match on. -->
-    <string name="anilist_notifications_checking_time_label">Anilist notifications update frequency</string>
+    <string name="anilist_notifications_checking_time_label">AniList notifications update frequency</string>
     <string name="comment_notification_checking_time_label">Comment notifications update frequency</string>
     <string name="unread_chapter_notification_checking_time_label">Notification check interval</string>
     <string name="custom">Custom…</string>
@@ -1591,7 +1693,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="audio_tracks">Audio Tracks</string>
     <string name="disabled_track">Disabled</string>
     <string name="unknown_track">\[%1$s\] Unknown</string>
-    <string name="accounts_desc">Anilist, MAL and Discord.\nWhat more could you need?</string>
+    <string name="accounts_desc">AniList, MAL and Discord.\nWhat more could you need?</string>
     <string name="theme_desc">Change the vibe of your app</string>
     <string name="common_desc">UI and other mischievous stuff</string>
     <string name="anime_desc">Choose how you watch</string>
@@ -1667,6 +1769,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="pref_info_tab_visibility_novel">Visible info tabs (Novels)</string>
     <string name="pref_info_tab_order_mangaupdates_novel">Info tab order (MangaUpdates novels)</string>
     <string name="pref_info_tab_visibility_mangaupdates_novel">Visible info tabs (MangaUpdates novels)</string>
+    <string name="pref_info_tabs_config">Custom info tabs and section layouts</string>
     <string name="pref_lang_sort">Extension language order</string>
     <string name="pref_lock_rotation">Reader: lock rotation</string>
     <string name="pref_make_default">Remember the selected source</string>
@@ -1857,7 +1960,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="anilist_notification_options_saved">AniList notification settings updated</string>
     <string name="anilist_notification_options_save_failed">Couldn\'t update AniList notification settings</string>
     <string name="anilist_notification_options_load_failed">Couldn\'t load AniList notification settings</string>
-    <string name="anilist_notifications_checking_time_desc">Set the frequency you want the app to check for Anilist notifications</string>
+    <string name="anilist_notifications_checking_time_desc">Set the frequency you want the app to check for AniList notifications</string>
     <string name="comment_notification_checking_time_desc">Set the frequency you want the app to check for Comment notifications</string>
     <string name="unread_chapter_notification_checking_time_desc">Set how often to check for new unread manga chapters and anime episodes</string>
     <string name="unread_manga_notifications">Manga chapter notifications</string>
@@ -2125,7 +2228,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="external_links">External links</string>
     <string name="quicklinks">Quicklinks</string>
     <string name="mu_search_title">Search on MangaUpdates</string>
-    <string name="mu_no_data_title">Search on MangaUpdates</string>
     <string name="unknown_title">Unknown Title</string>
     <string name="search_on_comick">Search on Comick</string>
     <string name="search_sub_comick">No corresponding media could be found on Comick. \n You can try to search and add it manually.</string>
@@ -2215,8 +2317,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="delete_stored_progress_chapters">This will delete all the locally stored progress for chapters</string>
 
     <!-- MainActivity Strings -->
-    <string name="allow_opening_links_title">Allow Dantotsu to automatically open Anilist &amp; MAL Links?</string>
-    <string name="allow_opening_links_desc">Open settings &amp; click +Add Links &amp; select Anilist &amp; Mal urls</string>
+    <string name="allow_opening_links_title">Allow Dantotsu to automatically open AniList &amp; MAL Links?</string>
+    <string name="allow_opening_links_desc">Open settings &amp; click +Add Links &amp; select AniList &amp; Mal urls</string>
 
     <!-- Comick Info Fragment Strings -->
     <string name="search_on_comick_title">Search on Comick</string>
@@ -2245,12 +2347,9 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="copied_title_toast">Copied: %1$s</string>
 
     <!-- MAL Strings -->
-    <string name="search_on_myanimelist">Search on MyAnimeList</string>
-    <string name="search_sub_myanimelist">No corresponding media exists on MyAnimeList. \n You can try to search on the website.</string>
 
     <!-- MangaUpdates Info Fragment Strings -->
     <string name="question_marks">\?\?</string>
-    <string name="search_sub_mangaupdates">No corresponding media could be found on MangaUpdates. \n You can try to search and add it manually.</string>
 
     <!-- Sort and Layout Strings -->
 
@@ -2258,7 +2357,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="downloading_progress">Downloading: %1$d%%</string>
 
     <!-- Notification Strings (Additional) -->
-    <string name="new_anilist_notification">New Anilist Notification</string>
+    <string name="new_anilist_notification">New AniList Notification</string>
     <string name="update_from_dantotsu">Update from Dantotsu</string>
     <string name="new_feature_available">New feature available</string>
 
@@ -2316,7 +2415,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="comick">Comick</string>
     <string name="mangaupdates_requires_internet">MangaUpdates requires an internet connection</string>
     <string name="comick_requires_internet">Comick data requires an internet connection</string>
-    <string name="linked_mangaupdates_entry">Successfully linked to MangaUpdates entry</string>
     <string name="linked_comick_entry">Successfully linked to Comick entry</string>
     <string name="mangaupdates_entry_unlinked">MangaUpdates entry unlinked</string>
     <string name="comick_entry_unlinked">Comick entry unlinked</string>
@@ -2783,7 +2881,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_disable_mangabaka">mangabaka tab browse info source</string>
     <string name="search_kw_unread_sort_label">unread chapters home sort order sorting recent latest updated malsync mangaupdates</string>
     <string name="search_kw_malsync_checks_dialog_title">malsync checks mode manga anime both what sub dub subbed dubbed track release language</string>
-    <string name="search_kw_customize_info_tabs">anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka</string>
+    <string name="search_kw_customize_info_tabs">anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka kitsu simkl custom merge sections recommendations icon</string>
     <string name="search_kw_compare_lists">compare audit diff differences out of date myanimelist mal kitsu simkl mangabaka anilist mangaupdates sync</string>
     <string name="search_kw_auto_list_sync">automatic auto compare schedule interval frequency background periodic list sync push myanimelist mal mangabaka</string>
     <string name="search_kw_auto_list_sync_removals">automatic auto compare remove removals delete entries tracker list sync</string>
@@ -4077,4 +4175,16 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_offline_pill">Offline</string>
     <string name="tv_offline_row">Downloaded</string>
     <string name="tv_offline_empty">No downloaded anime. While offline, only downloads can be watched.</string>
+    <string name="comick_no_match">No match found on Comick</string>
+    <string name="comick_matched_by_hand">Matched to Comick by hand</string>
+    <string name="unlink">Unlink</string>
+    <string name="mu_not_found_title">Not on MangaUpdates</string>
+    <string name="mu_not_found_desc">No matching MangaUpdates entry was found for this title.</string>
+    <string name="mal_not_found_title">Not on MyAnimeList</string>
+    <string name="mal_not_found_desc">This title has no MyAnimeList entry.</string>
+    <string name="mal_load_failed_title">Couldn\'t load from MyAnimeList</string>
+    <string name="mal_load_failed_desc">You can still open this entry on the website.</string>
+    <string name="chip_search_on">Search on</string>
+    <string name="mal_genre_tap_again">MyAnimeList genres can\'t be searched in the app. Tap again to open this one on the website.</string>
+    <string name="chip_search_opens_website">Opens the website</string>
 </resources>

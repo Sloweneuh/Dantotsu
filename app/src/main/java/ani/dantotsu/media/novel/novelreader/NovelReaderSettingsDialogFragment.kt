@@ -58,7 +58,7 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                     type = 1,
                     name = getString(R.string.theme),
                     desc = settings.currentThemeName,
-                    icon = R.drawable.ic_palette,
+                    icon = R.drawable.ic_round_palette_outline_24,
                     onClick = {
                         val names = activity.themes.map { it.name }.toTypedArray()
                         // A name from another book that this one does not offer matches nothing;
@@ -100,24 +100,24 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                     activity.applySettings()
                     refresh()
                 },
-                SettingsRows.stepper(ctx, R.string.novel_text_size, R.drawable.ic_round_format_text_24,
+                SettingsRows.stepper(ctx, R.string.novel_text_size, R.drawable.ic_round_title_white_24,
                     R.string.novel_text_size_desc,
                     StepperConfig(settings.effectiveTextSize.toFloat(), step = 10f, min = 50f, max = 300f) {
                         settings.textSize = it.toInt()
                         activity.applySettings()
                     }),
-                stepper(R.string.novel_line_height, R.drawable.ic_format_line_spacing_24, null,
+                stepper(R.string.novel_line_height, R.drawable.ic_round_format_line_spacing_24, null,
                     settings.lineHeight, 0.1f, 1) { settings.lineHeight = it },
-                stepper(R.string.novel_margin, R.drawable.ic_margin_24, null,
+                stepper(R.string.novel_margin, R.drawable.ic_round_margin_outline_24, null,
                     settings.margin, 0.01f, 2) { settings.margin = it },
-                stepper(R.string.novel_max_inline_size, R.drawable.ic_width_24, R.string.novel_max_inline_size_desc,
+                stepper(R.string.novel_max_inline_size, R.drawable.ic_round_width_24, R.string.novel_max_inline_size_desc,
                     settings.maxInlineSize.toFloat(), 10f, 0) { settings.maxInlineSize = it.toInt() },
-                stepper(R.string.novel_max_block_size, R.drawable.ic_height_24, R.string.novel_max_block_size_desc,
+                stepper(R.string.novel_max_block_size, R.drawable.ic_round_height_24, R.string.novel_max_block_size_desc,
                     settings.maxBlockSize.toFloat(), 10f, 0) { settings.maxBlockSize = it.toInt() },
-                switch(R.string.justify_text, R.drawable.format_align_center_24, settings.justify) {
+                switch(R.string.justify_text, R.drawable.ic_round_format_align_center_24, settings.justify) {
                     settings.justify = it
                 },
-                switch(R.string.hyphenation, R.drawable.ic_round_format_text_24, settings.hyphenation) {
+                switch(R.string.hyphenation, R.drawable.ic_round_title_white_24, settings.hyphenation) {
                     settings.hyphenation = it
                 },
             )
@@ -133,9 +133,9 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                 },
                 switch(R.string.hide_page_numbers, R.drawable.ic_page_numbering,
                     settings.hidePageNumbers) { settings.hidePageNumbers = it },
-                switch(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
+                switch(R.string.keep_screen_on, R.drawable.ic_round_screen_lock_portrait_24,
                     settings.keepScreenOn) { settings.keepScreenOn = it },
-                switch(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
+                switch(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_outline_24,
                     settings.lockRotation) { settings.lockRotation = it },
             )
         }

@@ -214,6 +214,7 @@ class MALQueries {
             val fields = "id,title,main_picture,alternative_titles,start_date,end_date,synopsis," +
                     "mean,rank,popularity,num_list_users,num_scoring_users," +
                     "media_type,status,genres,num_volumes,num_chapters,authors{first_name,last_name}," +
+                    "pictures,background,related_anime,related_manga," +
                     "recommendations,serialization{name}"
 
             client.get(

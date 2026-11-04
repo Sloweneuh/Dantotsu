@@ -482,7 +482,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                             scope,
                             binding.mediaFav,
                             R.drawable.ic_round_favorite_24,
-                            R.drawable.ic_round_favorite_border_24,
+                            R.drawable.ic_round_favorite_outline_24,
                             R.color.bg_opp,
                             R.color.violet_400,
                             media.isFav
@@ -1231,7 +1231,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     )
                 }
         val commentTab =
-                navBar.createTab(R.drawable.ic_round_comment_24, R.string.comments, R.id.comment)
+                navBar.createTab(R.drawable.ic_round_forum_outline_24, R.string.comments, R.id.comment)
         navBar.addTab(infoTab)
         tabWindows.add(0)
         // Two panes keep the list on screen, so it needs no tab.

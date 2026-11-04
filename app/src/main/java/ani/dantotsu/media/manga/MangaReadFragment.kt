@@ -15,7 +15,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -657,8 +656,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 .commit()
             changeUIVisibility(false)
         } else {
-            Toast.makeText(requireContext(), "Source is not configurable", Toast.LENGTH_SHORT)
-                .show()
+            ani.dantotsu.toast("Source is not configurable")
         }
     }
 
@@ -721,13 +719,13 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
                     startActivity(intent)
                 } catch (e: Exception) {
-                    Toast.makeText(requireContext(), "Failed to open chapter link: ${e.message}", Toast.LENGTH_SHORT).show()
+                    ani.dantotsu.toast("Failed to open chapter link: ${e.message}")
                 }
             } else {
-                Toast.makeText(requireContext(), "Browser view not available for this source", Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast("Browser view not available for this source")
             }
         } else {
-            Toast.makeText(requireContext(), "Browser view not available for this source", Toast.LENGTH_SHORT).show()
+            ani.dantotsu.toast("Browser view not available for this source")
         }
     }
 

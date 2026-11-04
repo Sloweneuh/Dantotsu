@@ -445,20 +445,20 @@ class CommentItem(
         viewBinding.commentDownVote.alpha = 0.7f
         when (comment.userVoteType) {
             1 -> {
-                viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_upvote_active_24)
+                viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_shift_24)
                 viewBinding.commentUpVote.alpha = 1f
-                viewBinding.commentDownVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                viewBinding.commentDownVote.setImageResource(R.drawable.ic_round_shift_outline_24)
             }
 
             -1 -> {
-                viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
-                viewBinding.commentDownVote.setImageResource(R.drawable.ic_round_upvote_active_24)
+                viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_shift_outline_24)
+                viewBinding.commentDownVote.setImageResource(R.drawable.ic_round_shift_24)
                 viewBinding.commentDownVote.alpha = 1f
             }
 
             else -> {
-                viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
-                viewBinding.commentDownVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_shift_outline_24)
+                viewBinding.commentDownVote.setImageResource(R.drawable.ic_round_shift_outline_24)
             }
         }
     }

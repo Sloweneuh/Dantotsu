@@ -28,6 +28,6 @@ fun NotificationCompat.Builder.setDownloadProgress(
             .setProgress(progress.coerceIn(0, max.coerceAtLeast(1)))
             .setProgressIndeterminate(indeterminate)
             .setStyledByProgress(true)
-            .setProgressTrackerIcon(IconCompat.createWithResource(context, R.drawable.ic_download_24))
+            .setProgressTrackerIcon(IconCompat.createWithResource(context, R.drawable.ic_round_download_24))
     )
 }

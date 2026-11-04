@@ -288,7 +288,7 @@ object AppUpdater {
             )
         } else {
             NotificationCompat.Action(
-                R.drawable.ic_download_arrow_24,
+                R.drawable.ic_download_arrow,
                 context.getString(R.string.download_update),
                 // Straight into the download service: a notification action may start one.
                 PendingIntent.getForegroundService(

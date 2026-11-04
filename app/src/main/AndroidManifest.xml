@@ -289,6 +289,12 @@
             android:name=".settings.SettingsBackupSyncActivity"
             android:parentActivityName=".settings.SettingsAccountActivity" />
         <activity
+            android:name=".settings.InfoTabsActivity"
+            android:parentActivityName=".settings.SettingsAccountActivity" />
+        <activity
+            android:name=".settings.InfoTabEditorActivity"
+            android:parentActivityName=".settings.InfoTabsActivity" />
+        <activity
             android:name=".settings.SettingsSourcesActivity"
             android:parentActivityName=".MainActivity"
             android:windowSoftInputMode="adjustPan" />

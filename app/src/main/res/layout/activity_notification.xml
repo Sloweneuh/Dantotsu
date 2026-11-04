@@ -76,7 +76,7 @@
             android:fontFamily="@font/poppins_semi_bold"
             android:text="@string/mark_all_as_read"
             android:textSize="14sp"
-            app:icon="@drawable/ic_circle_check"
+            app:icon="@drawable/ic_round_check_circle_outline_24"
             app:iconSize="18dp" />
 
         <Space
@@ -116,7 +116,7 @@
             android:fontFamily="@font/poppins_semi_bold"
             android:text="@string/composer_new_activity"
             android:visibility="gone"
-            app:icon="@drawable/ic_round_edit_24"
+            app:icon="@drawable/ic_round_edit_outline_24"
             tools:visibility="visible" />
 
     </FrameLayout>

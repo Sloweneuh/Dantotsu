@@ -10,7 +10,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.core.text.HtmlCompat
 import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
@@ -105,7 +104,7 @@ class ComickSearchAdapter(
 
         b.root.setSafeOnClickListener {
             comic.slug?.let { onItemClick(comic, b.itemCompactImage) }
-                ?: Toast.makeText(b.root.context, R.string.error_loading_data, Toast.LENGTH_SHORT).show()
+                ?: ani.dantotsu.toast(R.string.error_loading_data)
         }
         b.itemCompactTitle.setSafeOnClickListener { b.root.performClick() }
         b.itemCompactTitle.setOnLongClickListener {
@@ -173,7 +172,7 @@ class ComickSearchAdapter(
 
         b.itemContainer.setSafeOnClickListener {
             comic.slug?.let { onItemClick(comic, b.itemCompactImage) }
-                ?: Toast.makeText(b.root.context, R.string.error_loading_data, Toast.LENGTH_SHORT).show()
+                ?: ani.dantotsu.toast(R.string.error_loading_data)
         }
         b.itemContainer.setOnLongClickListener { openInBrowser(comic, b.root); true }
     }

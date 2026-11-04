@@ -11,9 +11,15 @@ import ani.dantotsu.R
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
-import ani.dantotsu.media.ComickInfoFragment
 import ani.dantotsu.media.InfoTabContext
+import ani.dantotsu.media.InfoTabEntry
 import ani.dantotsu.media.InfoTabType
+import ani.dantotsu.media.applyInfoTabRules
+import ani.dantotsu.media.createTabFragment
+import ani.dantotsu.media.longPressSource
+import ani.dantotsu.media.runCustomTabLongPress
+import ani.dantotsu.media.orderedEntries
+import ani.dantotsu.media.visibleEntries
 import ani.dantotsu.isOnline
 import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.settings.saving.PrefManager
@@ -29,7 +35,7 @@ import kotlinx.coroutines.withContext
  * Container fragment for the Info bottom tab in [MUMediaDetailsActivity].
  * Mirrors the structure of [ani.dantotsu.media.MediaInfoFragment]:
  *  - First inner tab: MangaUpdates info ([MUMediaInfoFragment]) – always shown
- *  - Second inner tab: Comick info ([ComickInfoFragment]) – only when Comick is enabled
+ *  - Then the other sources and custom tabs the user enabled, in their order
  * If only one tab would appear the TabLayout is hidden.
  */
 class MUMediaInfoContainerFragment : Fragment() {
@@ -51,18 +57,13 @@ class MUMediaInfoContainerFragment : Fragment() {
         _binding = null
     }
 
-    private data class TabInfo(val type: String, val fragment: Fragment, val iconRes: Int)
-    private var tabs: List<TabInfo> = emptyList()
+    private data class TabInfo(val entry: InfoTabEntry, val fragment: Fragment) {
+        val iconRes get() = entry.iconRes
 
-    private fun createTabFragment(type: InfoTabType): Fragment = when (type) {
-        InfoTabType.MANGAUPDATES -> MUMediaInfoFragment()
-        InfoTabType.MAL -> ani.dantotsu.media.MALInfoFragment()
-        InfoTabType.COMICK -> ComickInfoFragment()
-        InfoTabType.MANGABAKA -> ani.dantotsu.media.MangaBakaInfoFragment()
-        InfoTabType.KITSU -> ani.dantotsu.media.KitsuInfoFragment()
-        InfoTabType.ANILIST, InfoTabType.SIMKL ->
-            error("$type is not a MangaUpdates info tab")
+        /** The source's key; a custom tab, having no single source, has none. */
+        val type get() = (entry as? InfoTabEntry.Builtin)?.type?.key
     }
+    private var tabs: List<TabInfo> = emptyList()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val model: MediaDetailsViewModel by activityViewModels()
@@ -74,10 +75,14 @@ class MUMediaInfoContainerFragment : Fragment() {
         // The synthetic media the activity builds carries the format it decided on, which is what
         // picks between the manga and novel tab sets.
         val isNovel = model.getMedia().value?.let { InfoTabContext.isNovel(it) } ?: false
-        tabs = InfoTabContext.forMangaUpdates(isNovel).visibleOrderedTabs()
-            .filter { !offline || it == InfoTabType.MANGAUPDATES }
-            .ifEmpty { listOf(InfoTabType.MANGAUPDATES) }
-            .map { type -> TabInfo(type.key, createTabFragment(type), type.iconRes) }
+        val tabContext = InfoTabContext.forMangaUpdates(isNovel)
+        fun isMangaUpdates(entry: InfoTabEntry) =
+            (entry as? InfoTabEntry.Builtin)?.type == InfoTabType.MANGAUPDATES
+        tabs = tabContext.visibleEntries()
+            .filter { !offline || isMangaUpdates(it) }
+            .ifEmpty { tabContext.orderedEntries().filter { isMangaUpdates(it) } }
+            .map { entry -> TabInfo(entry, tabContext.createTabFragment(entry)) }
+        childFragmentManager.applyInfoTabRules(tabContext)
 
         val adapter = object : androidx.viewpager2.adapter.FragmentStateAdapter(
             childFragmentManager, viewLifecycleOwner.lifecycle
@@ -162,7 +167,11 @@ class MUMediaInfoContainerFragment : Fragment() {
             tab.view.setOnLongClickListener {
                 val media = model.getMedia().value
                 val encoded = java.net.URLEncoder.encode(media?.userPreferredName ?: "", "utf-8").replace("+", "%20")
-                val url = when (tabs.getOrNull(position)?.type) {
+                val custom = (tabs.getOrNull(position)?.entry as? InfoTabEntry.Custom)?.tab
+                if (custom != null && custom.longPressSource == null) {
+                    return@setOnLongClickListener runCustomTabLongPress(tabContext, custom)
+                }
+                val url = when (custom?.longPressSource?.key ?: tabs.getOrNull(position)?.type) {
                     "mangaupdates" -> {
                         val muLink = model.mangaUpdatesLink.value ?: run {
                             media?.externalLinks?.firstOrNull { entry ->

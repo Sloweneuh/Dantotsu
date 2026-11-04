@@ -256,7 +256,7 @@
         android:fontFamily="@font/poppins_bold"
         android:text="@string/screenshot_crop"
         app:cornerRadius="16dp"
-        app:icon="@drawable/ic_crop_24"
+        app:icon="@drawable/ic_round_crop_24"
         app:strokeColor="?attr/colorPrimaryContainer" />
 
 </LinearLayout>

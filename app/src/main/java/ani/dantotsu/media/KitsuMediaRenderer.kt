@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
@@ -183,11 +182,11 @@ object KitsuMediaRenderer {
             contentHost.addView(container)
         }
 
-        addSynonyms(activity, contentHost, media, canonical)
-        addCategories(activity, contentHost, full.categories, onCategoryClick)
-        if (isAnime) addStreamers(activity, contentHost, full.streamers)
-        addRelations(activity, contentHost, full.relations, onRelationClick)
-        addTrailer(activity, contentHost, media.youtubeVideoId)
+        contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, media, canonical) }
+        contentHost.infoSection(InfoSectionKind.GENRES) { addCategories(activity, contentHost, full.categories, onCategoryClick) }
+        if (isAnime) contentHost.infoSection(InfoSectionKind.EXTERNAL_LINKS) { addStreamers(activity, contentHost, full.streamers) }
+        contentHost.infoSection(InfoSectionKind.RELATIONS) { addRelations(activity, contentHost, full.relations, onRelationClick) }
+        contentHost.infoSection(InfoSectionKind.TRAILER) { addTrailer(activity, contentHost, media.youtubeVideoId) }
     }
 
     fun toEpisodeRows(episodes: List<KitsuApi.KitsuEpisode>): List<TrackerEpisodeRenderer.EpisodeRow> =
@@ -219,7 +218,7 @@ object KitsuMediaRenderer {
             chip.text = title
             chip.setOnLongClickListener {
                 copyToClipboard(title)
-                Toast.makeText(activity, activity.getString(R.string.copied_title_toast, title), Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast(activity.getString(R.string.copied_title_toast, title))
                 true
             }
             bind.itemChipGroup.addView(chip)
@@ -256,7 +255,7 @@ object KitsuMediaRenderer {
     ) {
         if (streamers.isEmpty()) return
         val bind = ItemTitleChipgroupBinding.inflate(activity.layoutInflater, parent, false)
-        bind.itemTitle.setText(R.string.comick_resources)
+        bind.itemTitle.setText(R.string.external_links)
         streamers.forEach { (name, url) ->
             val chip = ItemChipBinding.inflate(activity.layoutInflater, bind.itemChipGroup, false).root
             chip.text = name

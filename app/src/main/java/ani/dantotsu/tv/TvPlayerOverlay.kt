@@ -230,7 +230,7 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                                 .padding(horizontal = 12.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(painterResource(R.drawable.ic_round_alarm_24), contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Icon(painterResource(R.drawable.ic_round_alarm_outline_24), contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                             Text(label, style = MaterialTheme.typography.labelMedium, color = Color.White, modifier = Modifier.padding(start = 6.dp))
                         }
                     }
@@ -289,16 +289,16 @@ fun TvPlayerOverlay(controller: TvPlayerController) {
                     ControlButton(R.drawable.ic_round_playlist_play_24, R.string.tv_episodes) {
                         controller.act { episodes() }
                     }
-                    ControlButton(R.drawable.ic_round_audiotrack_24, R.string.audio_tracks, controller.hasAudio) {
+                    ControlButton(R.drawable.ic_round_music_note_24, R.string.audio_tracks, controller.hasAudio) {
                         controller.act { audio() }
                     }
                     ControlButton(R.drawable.ic_round_subtitles_24, R.string.subtitles, controller.hasSubtitles) {
                         controller.act { subtitles() }
                     }
-                    ControlButton(R.drawable.ic_round_cast_24, R.string.tv_cast) {
+                    ControlButton(R.drawable.ic_round_cast_outline_24, R.string.tv_cast) {
                         controller.act { cast() }
                     }
-                    ControlButton(R.drawable.ic_round_devices_24, R.string.continue_on_another_device) {
+                    ControlButton(R.drawable.ic_round_devices_outline_24, R.string.continue_on_another_device) {
                         controller.act { handoff() }
                     }
                     // Speed, sleep timer, subtitle delay and server: a row of fourteen buttons
@@ -517,7 +517,7 @@ private fun SubtitleDelayDialog(delay: Long, controller: TvPlayerController) {
                         )
                     },
                     leadingContent = { Icon(painterResource(R.drawable.ic_round_arrow_back_ios_new_24), contentDescription = null, modifier = Modifier.size(16.dp)) },
-                    trailingContent = { Icon(painterResource(R.drawable.ic_round_arrow_forward_ios_new_24), contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    trailingContent = { Icon(painterResource(R.drawable.ic_round_arrow_forward_ios_24), contentDescription = null, modifier = Modifier.size(16.dp)) },
                     modifier = Modifier
                         .focusRequester(stepper)
                         .onPreviewKeyEvent { event ->

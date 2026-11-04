@@ -47,7 +47,7 @@
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:layout_marginStart="12dp"
-        tools:src="@drawable/ic_add"
+        tools:src="@drawable/ic_round_add_24"
         tools:ignore="ContentDescription" />
 
     <CheckBox

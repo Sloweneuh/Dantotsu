@@ -159,7 +159,7 @@ class NovelReadAdapter(
         }
 
         val downloadIcon = AppCompatResources.getDrawable(
-            fragment.requireContext(), R.drawable.ic_download_24
+            fragment.requireContext(), R.drawable.ic_round_download_24
         )
         val placeholder = novelReadSources.names.map { name ->
             if (name == DOWNLOADED_SOURCE) downloadIcon else iconCache[name]

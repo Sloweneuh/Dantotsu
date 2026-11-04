@@ -223,12 +223,12 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
 
     private val builtIn: List<QuickTile> = listOf(
         prefToggle(
-            "incognito", R.string.incognito_mode, R.drawable.ic_incognito_24,
+            "incognito", R.string.incognito_mode, R.drawable.ic_incognito,
             PrefName.Incognito, QuickTileCategory.MODES,
             after = { host, _ -> incognitoNotification(host.activity) },
         ),
         QuickTile.Toggle(
-            "offline", R.string.offline_mode, R.drawable.ic_signal_wifi_off_24,
+            "offline", R.string.offline_mode, R.drawable.ic_round_signal_wifi_off_outline_24,
             QuickTileCategory.MODES,
             // Lit whenever the app is actually offline. A dropped connection also writes the
             // preference (see MainActivity), but that only happens on the way into the offline
@@ -259,7 +259,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             },
         ),
         prefToggle(
-            "cloud_sync", R.string.cloud_sync, R.drawable.ic_round_cloud_sync_24,
+            "cloud_sync", R.string.cloud_sync, R.drawable.ic_round_cloud_sync_outline_24,
             PrefName.CloudSyncEnabled, QuickTileCategory.CONNECTIONS, needsNetwork = true,
             // Turning it off can otherwise strand a sync banner with nothing to re-evaluate it.
             after = { _, _ -> AppNotices.dismissStale() },
@@ -288,7 +288,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         ),
 
         QuickTile.Action(
-            "activity", R.string.activities, R.drawable.inbox_empty,
+            "activity", R.string.activities, R.drawable.ic_round_inbox_24,
             QuickTileCategory.LIBRARY, needsNetwork = true,
         ) { it.open(FeedActivity::class.java) },
         QuickTile.Action(
@@ -320,7 +320,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         },
         // The TV interface. Leaving it is a button inside it, so this only ever goes one way.
         QuickTile.Action(
-            "big_picture", R.string.tv_big_picture, R.drawable.ic_round_tv_24,
+            "big_picture", R.string.tv_big_picture, R.drawable.ic_round_tv_outline_24,
             QuickTileCategory.MODES,
         ) { host ->
             host.dismiss()
@@ -336,7 +336,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             QuickTileCategory.LIBRARY, needsNetwork = true,
         ) { it.open(CalendarActivity::class.java) },
         QuickTile.Action(
-            "discover_manga", R.string.quick_tile_discover_manga, R.drawable.ic_manga_discover_24,
+            "discover_manga", R.string.quick_tile_discover_manga, R.drawable.ic_manga_discover,
             QuickTileCategory.LIBRARY, needsNetwork = true,
             // The queue is cut from MangaBaka's For-You feed, which is per account.
             isAvailable = { MangaBaka.token != null },
@@ -346,7 +346,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             host.dismiss()
         },
         QuickTile.Action(
-            "discover_anime", R.string.quick_tile_discover_anime, R.drawable.ic_anime_discover_24,
+            "discover_anime", R.string.quick_tile_discover_anime, R.drawable.ic_anime_discover,
             QuickTileCategory.LIBRARY, needsNetwork = true,
             // Built from the AniList account's own list and stats.
             isAvailable = { Anilist.token != null },
@@ -356,12 +356,12 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             host.dismiss()
         },
         QuickTile.Action(
-            "downloads", R.string.downloads, R.drawable.ic_download_24,
+            "downloads", R.string.downloads, R.drawable.ic_round_download_24,
             QuickTileCategory.LIBRARY,
         ) { it.open(DownloadActivity::class.java) },
 
         QuickTile.Action(
-            "handoff", R.string.receive_from_another_device, R.drawable.ic_round_devices_24,
+            "handoff", R.string.receive_from_another_device, R.drawable.ic_round_devices_outline_24,
             QuickTileCategory.CONNECTIONS, needsNetwork = true,
         ) { host ->
             // Show on the activity's manager so the sheet survives this one being dismissed.
@@ -370,7 +370,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             HandoffBottomSheet.receive().show(fm, "handoff")
         },
         QuickTile.Action(
-            "accounts", R.string.accounts, R.drawable.ic_round_manage_accounts_24,
+            "accounts", R.string.accounts, R.drawable.ic_round_manage_accounts_outline_24,
             QuickTileCategory.CONNECTIONS, needsNetwork = true,
         ) { it.open(SettingsAccountActivity::class.java) },
 
@@ -383,7 +383,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             QuickTileCategory.SETTINGS,
         ) { it.open(PlayerSettingsActivity::class.java) },
         QuickTile.Action(
-            "reader_settings", R.string.reader_settings, R.drawable.ic_round_reader_settings,
+            "reader_settings", R.string.reader_settings, R.drawable.ic_reader_settings,
             QuickTileCategory.SETTINGS,
         ) { it.open(ReaderSettingsActivity::class.java) },
         QuickTile.Action(
@@ -448,7 +448,7 @@ enum class QuickTileCategory(
 ) : TileCategory {
     MODES(R.string.quick_tiles_cat_modes, R.drawable.ic_round_tune_24),
     LIBRARY(R.string.quick_tiles_cat_library, R.drawable.ic_round_library_books_24),
-    CONNECTIONS(R.string.quick_tiles_cat_connections, R.drawable.network_node_24),
+    CONNECTIONS(R.string.quick_tiles_cat_connections, R.drawable.ic_round_network_node_24),
     SETTINGS(R.string.quick_tiles_cat_settings, R.drawable.ic_round_settings_24),
     ANIME_EXTENSIONS(
         R.string.quick_tiles_cat_anime_extensions, R.drawable.ic_round_movie_filter_24

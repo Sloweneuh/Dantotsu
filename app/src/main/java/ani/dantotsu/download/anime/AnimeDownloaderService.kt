@@ -11,7 +11,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -97,7 +96,7 @@ class AnimeDownloaderService : Service() {
         builder =
             NotificationCompat.Builder(this, Notifications.CHANNEL_DOWNLOADER_PROGRESS).apply {
                 setContentTitle(ani.dantotsu.getAppString(R.string.anime_download_progress))
-                setSmallIcon(R.drawable.ic_download_24)
+                setSmallIcon(R.drawable.ic_round_download_24)
                 priority = NotificationCompat.PRIORITY_DEFAULT
                 setOnlyAlertOnce(true)
                 setProgress(100, 0, false)
@@ -537,11 +536,7 @@ class AnimeDownloaderService : Service() {
                         }
                     } catch (e: android.system.ErrnoException) {
                         e.printStackTrace()
-                        Toast.makeText(
-                            this@AnimeDownloaderService,
-                            "Error while saving: ${e.localizedMessage}",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        ani.dantotsu.toast("Error while saving: ${e.localizedMessage}", android.widget.Toast.LENGTH_LONG)
                     }
                 }
             }
@@ -586,11 +581,7 @@ class AnimeDownloaderService : Service() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        this@AnimeDownloaderService,
-                        "Exception while saving ${name}: ${e.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    ani.dantotsu.toast("Exception while saving ${name}: ${e.message}", android.widget.Toast.LENGTH_LONG)
                 }
                 null
             } finally {

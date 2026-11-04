@@ -827,9 +827,9 @@ class ListActivity : AppCompatActivity() {
         val prefName = if (anime) PrefName.AnimeListSortOrder else PrefName.MangaListSortOrder
         val currentSort: String = PrefManager.getVal(prefName)
         val iconRes = if (currentSort.endsWith("_asc")) {
-            R.drawable.ic_round_sort_up_24
+            R.drawable.ic_sort_up
         } else {
-            R.drawable.ic_round_sort_24
+            R.drawable.ic_sort
         }
         binding.listSort.setImageResource(iconRes)
     }
@@ -849,7 +849,7 @@ class ListActivity : AppCompatActivity() {
             PrefManager.getVal<Boolean>(PrefName.MangaUpdatesListEnabled)
         
         if (isMuFilter) {
-            chip.chipIcon = ContextCompat.getDrawable(this, R.drawable.ic_round_mangaupdates_24)
+            chip.chipIcon = ContextCompat.getDrawable(this, R.drawable.ic_mangaupdates)
             chip.chipIconTint = android.content.res.ColorStateList.valueOf(
                 getThemeColor(com.google.android.material.R.attr.colorOnSurface)
             )

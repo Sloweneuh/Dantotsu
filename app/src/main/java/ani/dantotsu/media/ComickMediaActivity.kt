@@ -11,7 +11,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.text.HtmlCompat
 import androidx.core.view.doOnPreDraw
@@ -215,7 +214,7 @@ class ComickMediaActivity : AppCompatActivity() {
             val comic = comickData?.comic
             if (comic == null) {
                 binding.comickMediaProgress.visibility = View.GONE
-                Toast.makeText(this@ComickMediaActivity, getString(R.string.failed_fetch_comick), Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast(getString(R.string.failed_fetch_comick))
                 finish()
                 return@launch
             }
@@ -467,7 +466,7 @@ class ComickMediaActivity : AppCompatActivity() {
             val chapterHid = chapter.hid
             b.itemChapterBrowser.isVisible = !chapterHid.isNullOrBlank()
             if (!chapterHid.isNullOrBlank()) {
-                b.itemChapterBrowser.setImageResource(R.drawable.ic_round_comment_24)
+                b.itemChapterBrowser.setImageResource(R.drawable.ic_round_forum_outline_24)
                 b.itemChapterBrowser.contentDescription = getString(R.string.comick_comments)
                 b.itemChapterBrowser.setOnClickListener {
                     ComickCommentsBottomSheet
@@ -712,8 +711,13 @@ class ComickMediaActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun displayInfo(comic: ComickComic) {
         val parent = binding.comickMediaContent
+        val rules = (if (comic.isAnime) InfoTabContext.ANILIST_ANIME else InfoTabContext.ANILIST_MANGA)
+            .standaloneRules(InfoTabType.COMICK)
+        parent.applyRules(rules)
 
-        parent.addView(buildStatsView(comic))
+        parent.addInfoSection(InfoSectionKind.DETAILS, buildStatsView(comic).also {
+            (it as? InfoSectionContainer)?.applyRules(rules)
+        })
 
         val rawDescription = comic.parsed ?: comic.desc ?: getString(R.string.no_description_available)
         val htmlWithMarker = rawDescription.replace(Regex("<hr\\s*/?>", RegexOption.IGNORE_CASE), HR_MARKER.toString())
@@ -758,7 +762,7 @@ class ComickMediaActivity : AppCompatActivity() {
             else android.animation.ObjectAnimator.ofInt(descView, "maxLines", 5).setDuration(400)
             anim.start()
         }
-        parent.addView(descView)
+        parent.addInfoSection(InfoSectionKind.DESCRIPTION, descView)
 
         // Excludes whatever setupHeader already put on screen as the title, so a comic whose header
         // picked an English md_titles entry doesn't show that same text again as its own chip here.
@@ -777,7 +781,7 @@ class ComickMediaActivity : AppCompatActivity() {
                 chip.setOnLongClickListener { copyToClipboard(title); true }
                 bind.itemChipGroup.addView(chip)
             }
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.SYNONYMS, bind.root)
         }
 
         // Latest chapter — shown after synonyms. Anime has no chapters: last_chapter is null and
@@ -811,8 +815,8 @@ class ComickMediaActivity : AppCompatActivity() {
             latestCard.root.isClickable = false
             latestCard.root.isFocusable = false
 
-            parent.addView(latestHeader.root)
-            parent.addView(latestCard.root)
+            parent.addInfoSection(InfoSectionKind.LATEST_CHAPTER, latestHeader.root)
+            parent.addInfoSection(InfoSectionKind.LATEST_CHAPTER, latestCard.root)
 
             val hid = comic.hid
             if (!hid.isNullOrBlank()) {
@@ -851,7 +855,7 @@ class ComickMediaActivity : AppCompatActivity() {
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-            parent.addView(coversPlaceholder)
+            parent.addInfoSection(InfoSectionKind.COVERS, coversPlaceholder)
             lifecycleScope.launch {
                 val covers = withContext(Dispatchers.IO) { ComickApi.getCovers(comickSlug) }
                 if (!covers.isNullOrEmpty()) {
@@ -882,7 +886,7 @@ class ComickMediaActivity : AppCompatActivity() {
                 ItemTitleTextBinding.inflate(LayoutInflater.from(this), parent, false).apply {
                     itemTitle.text = getString(R.string.anime_adaptation)
                     itemText.text = infoText
-                    parent.addView(root)
+                    parent.addInfoSection(InfoSectionKind.ANIME_ADAPTATION, root)
                 }
             }
         }
@@ -912,7 +916,7 @@ class ComickMediaActivity : AppCompatActivity() {
                     chip.setOnLongClickListener { copyToClipboard(name); true }
                     bind.itemChipGroup.addView(chip)
                 }
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.GENRES, bind.root)
             }
         }
 
@@ -937,7 +941,7 @@ class ComickMediaActivity : AppCompatActivity() {
                 chip.setOnLongClickListener { copyToClipboard(title); true }
                 bind.itemChipGroup.addView(chip)
             }
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.TAGS, bind.root)
         }
 
         // Anime entries carry no mu_comics, so their tags come from /comic-tags instead. The
@@ -951,7 +955,7 @@ class ComickMediaActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-            parent.addView(tagsPlaceholder)
+            parent.addInfoSection(InfoSectionKind.TAGS, tagsPlaceholder)
             lifecycleScope.launch {
                 val tags = withContext(Dispatchers.IO) { ComickApi.getComicTags(tagsHid) }
                 if (tags.isEmpty() || tagsPlaceholder.childCount > 0) return@launch
@@ -984,7 +988,7 @@ class ComickMediaActivity : AppCompatActivity() {
 
         // Comments on the entry itself (chapter comments hang off the chapter rows instead).
         comic.hid?.takeIf { it.isNotBlank() }?.let { commentsHid ->
-            ComickCommentViews.addSection(
+            parent.infoSection(InfoSectionKind.COMMENTS) { ComickCommentViews.addSection(
                 context = this,
                 scope = lifecycleScope,
                 fragmentManager = supportFragmentManager,
@@ -992,7 +996,7 @@ class ComickMediaActivity : AppCompatActivity() {
                 hid = commentsHid,
                 heading = comic.title ?: getString(R.string.comick_comments),
                 isAlive = { !isFinishing && !isDestroyed },
-            )
+            ) }
         }
 
         val recommendations = comic.recommendations
@@ -1015,7 +1019,7 @@ class ComickMediaActivity : AppCompatActivity() {
                         this@ComickMediaActivity, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false
                     )
                     itemMore.visibility = View.GONE
-                    parent.addView(root)
+                    parent.addInfoSection(InfoSectionKind.RECOMMENDATIONS, root)
                 }
             }
         }
@@ -1028,7 +1032,7 @@ class ComickMediaActivity : AppCompatActivity() {
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-            parent.addView(customListsPlaceholder)
+            parent.addInfoSection(InfoSectionKind.STACKS, customListsPlaceholder)
             lifecycleScope.launch {
                 val fetched = withContext(Dispatchers.IO) { ComickApi.getComicLists(hid) }
                 // Viewing a list's contents requires a Comick account login for anything above
@@ -1065,7 +1069,7 @@ class ComickMediaActivity : AppCompatActivity() {
                 itemRecycler.adapter = groupAdapter
                 itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this@ComickMediaActivity)
                 itemMore.visibility = View.GONE
-                parent.addView(root)
+                parent.addInfoSection(InfoSectionKind.REVIEWS, root)
             }
         }
     }
@@ -1099,7 +1103,7 @@ class ComickMediaActivity : AppCompatActivity() {
                     itemTitle.text = getString(R.string.comick_broadcast)
                     itemText.text = lines
                     itemText.setOnLongClickListener { copyToClipboard(lines); true }
-                    parent.addView(root)
+                    parent.addInfoSection(InfoSectionKind.BROADCAST, root)
                 }
             }
 
@@ -1132,19 +1136,21 @@ class ComickMediaActivity : AppCompatActivity() {
                     chip.setOnLongClickListener { copyToClipboard(name); true }
                     bind.itemChipGroup.addView(chip)
                 }
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.STUDIOS, bind.root)
             }
         }
 
         val malLinks = comic.links?.mal_external_links
-        addLinkChips(parent, getString(R.string.comick_streaming),
-            malLinks?.streaming_platforms?.filter { it.available != false })
-        addLinkChips(parent, getString(R.string.comick_official_site), malLinks?.available_at)
-        addLinkChips(parent, getString(R.string.comick_resources), malLinks?.resources)
+        addLinkChips(
+            parent, getString(R.string.external_links),
+            (malLinks?.streaming_platforms?.filter { it.available != false }.orEmpty() +
+                    malLinks?.available_at.orEmpty() + malLinks?.resources.orEmpty())
+                .distinctBy { it.url }
+        )
 
         // Trailer, as the same click-to-play card the info screens use.
         comic.trailers?.firstNotNullOfOrNull { it.youtubeId() }?.let { id ->
-            parent.addView(TrailerWebView.create(this, LayoutInflater.from(this), parent, id))
+            parent.addInfoSection(InfoSectionKind.TRAILER, TrailerWebView.create(this, LayoutInflater.from(this), parent, id))
         }
     }
 
@@ -1169,7 +1175,7 @@ class ComickMediaActivity : AppCompatActivity() {
             chip.setOnLongClickListener { copyToClipboard(link.url!!); true }
             bind.itemChipGroup.addView(chip)
         }
-        parent.addView(bind.root)
+        parent.addInfoSection(InfoSectionKind.EXTERNAL_LINKS, bind.root)
     }
 
     /** Which Comick search a chip on this page should open — the two catalogues are separate. */

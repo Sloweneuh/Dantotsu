@@ -168,7 +168,7 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
     private fun receiveHintWithIcon(): CharSequence {
         val text = getString(receiveHintRes())
         val idx = text.indexOf(ICON_TOKEN)
-        val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.ic_round_devices_24)?.mutate()
+        val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.ic_round_devices_outline_24)?.mutate()
         if (idx < 0 || drawable == null) {
             return text.replace(ICON_TOKEN, getString(R.string.handoff_cast_icon))
         }

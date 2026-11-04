@@ -23,9 +23,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.ConcatAdapter
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
 import ani.dantotsu.databinding.ActivitySettingsAppearanceBinding
@@ -123,14 +121,14 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
                 SettingsSection(
                     key = Section.COLORS,
                     title = getString(R.string.colors),
-                    icon = R.drawable.ic_round_color_24,
+                    icon = R.drawable.ic_round_palette_24,
                     summary = { getString(R.string.colors_desc) },
                     rows = { themeRows() },
                 ),
                 SettingsSection(
                     key = Section.TEXT,
                     title = getString(R.string.text_group),
-                    icon = R.drawable.ic_round_format_text_24,
+                    icon = R.drawable.ic_round_title_white_24,
                     summary = { getString(R.string.text_group_desc) },
                     rows = { textRows() },
                 ),
@@ -151,7 +149,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
                 SettingsSection(
                     key = Section.BLUR,
                     title = getString(R.string.blur),
-                    icon = R.drawable.blur_on,
+                    icon = R.drawable.ic_round_blur_on_24,
                     summary = { getString(R.string.blur_desc) },
                     rows = { blurRows() },
                 ),
@@ -312,7 +310,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             type = 2,
             name = getString(R.string.use_unique_theme_for_each_item),
             desc = getString(R.string.use_unique_theme_for_each_item_desc),
-            icon = R.drawable.ic_palette,
+            icon = R.drawable.ic_round_palette_outline_24,
             compact = true,
             anchorKey = "source_theme",
             isChecked = PrefManager.getVal(PrefName.UseSourceTheme),
@@ -323,7 +321,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             type = 2,
             name = getString(R.string.use_custom_theme),
             desc = getString(R.string.use_custom_theme_desc),
-            icon = R.drawable.ic_round_color_24,
+            icon = R.drawable.ic_round_palette_24,
             compact = true,
             anchorKey = "custom_theme",
             isChecked = PrefManager.getVal(PrefName.UseCustomTheme),
@@ -338,7 +336,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             type = 1,
             name = getString(R.string.color_picker),
             desc = getString(R.string.color_picker_desc),
-            icon = R.drawable.ic_round_color_picker_24,
+            icon = R.drawable.ic_round_colorize_24,
             compact = true,
             anchorKey = "color_picker",
             onClick = {
@@ -369,7 +367,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             type = 1,
             name = getString(R.string.app_font),
             desc = currentFontLabel(),
-            icon = R.drawable.ic_round_format_text_24,
+            icon = R.drawable.ic_round_title_white_24,
             compact = true,
             anchorKey = "app_font",
             onClick = { showFontDialog() },
@@ -386,7 +384,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             type = 2,
             name = getString(R.string.hide_notification_dot),
             desc = getString(R.string.hide_notification_dot_desc),
-            icon = R.drawable.ic_round_app_badging_24,
+            icon = R.drawable.ic_round_app_badging_outline_24,
             compact = true,
             anchorKey = "hide_notification_dot",
             // Stored as "show", shown as "hide" — the label is the negation of the preference.
@@ -402,13 +400,13 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             icon = R.drawable.ic_round_grid_view_24,
             compact = true,
             anchorKey = "home_layout",
-            onClick = { showHomeLayoutDialog() },
+            onClick = { HomeLayoutSheet().show(supportFragmentManager, HomeLayoutSheet.TAG) },
         ),
         Settings(
             type = 1,
             name = getString(R.string.home_stats_select),
             desc = getString(R.string.home_stats_select_desc),
-            icon = R.drawable.ic_stats_24,
+            icon = R.drawable.ic_round_bar_chart_24,
             compact = true,
             anchorKey = "home_stats",
             onClick = { showHomeStatsDialog() },
@@ -545,7 +543,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             type = 2,
             name = getString(R.string.blur_banners),
             desc = getString(R.string.blur_banners_desc),
-            icon = R.drawable.blur_on,
+            icon = R.drawable.ic_round_blur_on_24,
             compact = true,
             anchorKey = "blur_banners",
             isChecked = PrefManager.getVal(PrefName.BlurBanners),
@@ -558,7 +556,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             type = 4,
             name = getString(R.string.radius),
             desc = getString(R.string.blur_radius_desc),
-            icon = R.drawable.blur_on,
+            icon = R.drawable.ic_round_blur_on_24,
             compact = true,
             anchorKey = "blur_radius",
             slider = SliderConfig(
@@ -575,7 +573,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             type = 4,
             name = getString(R.string.sampling),
             desc = getString(R.string.blur_sampling_desc),
-            icon = R.drawable.blur_on,
+            icon = R.drawable.ic_round_blur_on_24,
             compact = true,
             anchorKey = "blur_sampling",
             slider = SliderConfig(
@@ -626,66 +624,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
     // Dialogs carried over from the UI settings screen
     // -----------------------------------------------------------------------------------------
 
-    private fun showHomeLayoutDialog() {
-        val views = resources.getStringArray(R.array.home_layouts)
-        val savedLayout = PrefManager.getVal<List<Boolean>>(PrefName.HomeLayout)
-
-        // Older preferences hold fewer entries than there are sections; pad rather than crash.
-        val visibilityList = if (savedLayout.size < views.size) {
-            savedLayout.toMutableList().apply { while (size < views.size) add(true) }
-        } else savedLayout.toMutableList()
-
-        val savedOrder = PrefManager.getVal<List<Int>>(PrefName.HomeLayoutOrder)
-        val order = if (savedOrder.isNullOrEmpty() || savedOrder.size != views.size) {
-            views.indices.toList()
-        } else savedOrder
-
-        val items = order.map { originalIndex ->
-            HomeLayoutItem(
-                originalIndex,
-                views[originalIndex],
-                visibilityList.getOrNull(originalIndex) == true
-            )
-        }.toMutableList()
-
-        val dialogView = layoutInflater.inflate(R.layout.dialog_home_layout_reorder, null)
-        val recycler = dialogView.findViewById<RecyclerView>(R.id.homeLayoutRecycler)
-        val adapter = HomeLayoutAdapter(items)
-        recycler.adapter = adapter
-        recycler.layoutManager = LinearLayoutManager(this)
-
-        val callback = object : ItemTouchHelper.SimpleCallback(
-            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
-        ) {
-            override fun onMove(
-                rv: RecyclerView,
-                vh: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean {
-                adapter.onItemMove(vh.bindingAdapterPosition, target.bindingAdapterPosition)
-                return true
-            }
-
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
-        }
-        ItemTouchHelper(callback).attachToRecyclerView(recycler)
-
-        customAlertDialog().apply {
-            setTitle(getString(R.string.home_layout_show_and_order))
-            setCustomView(dialogView)
-            setPosButton(R.string.ok) {
-                val finalItems = adapter.getItems()
-                PrefManager.setVal(PrefName.HomeLayoutOrder, finalItems.map { it.id })
-                PrefManager.setVal(
-                    PrefName.HomeLayout,
-                    MutableList(views.size) { i -> finalItems.find { it.id == i }?.visible ?: true }
-                )
-                restartKeepingSections()
-            }
-            setNegButton(R.string.cancel, null)
-            show()
-        }
-    }
+    fun onHomeLayoutSaved() = restartKeepingSections()
 
     private fun showHomeStatsDialog() {
         val statOptions = arrayOf(

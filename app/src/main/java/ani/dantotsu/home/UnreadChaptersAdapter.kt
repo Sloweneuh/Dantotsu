@@ -445,7 +445,7 @@ class UnreadChaptersAdapter(
             itemCompactSource.visibility = View.GONE
             val source = malSync?.source?.takeIf { it.isNotBlank() && showLatest }
             if (source != null) {
-                itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_mangaupdates_24)
+                itemCompactLanguageIcon.setImageResource(R.drawable.ic_mangaupdates)
                 itemCompactLanguageIcon.visibility = View.VISIBLE
                 itemCompactLanguageCode.text = source
                 itemCompactLanguageBG.visibility = View.VISIBLE
@@ -542,7 +542,7 @@ class UnreadChaptersAdapter(
             // Badge: MU logo alone, or the MALSync source behind it — see [bindMuCompactView].
             val source = malSync?.source?.takeIf { it.isNotBlank() }
             if (source != null) {
-                itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_mangaupdates_24)
+                itemCompactLanguageIcon.setImageResource(R.drawable.ic_mangaupdates)
                 itemCompactLanguageIcon.visibility = View.VISIBLE
                 itemCompactLanguageCode.text = source
                 itemCompactLanguageBG.visibility = View.VISIBLE
@@ -617,7 +617,7 @@ class UnreadChaptersAdapter(
             bindComickScore(itemCompactScoreBG, itemCompactScore, itemCompactLanguageBG, item)
             itemCompactSource.visibility = View.GONE
             itemCompactSourceBadge.visibility = View.GONE
-            itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_comick_24)
+            itemCompactLanguageIcon.setImageResource(R.drawable.ic_comick)
             itemCompactLanguageIcon.visibility = View.VISIBLE
             itemCompactLanguageCode.text = item.source
             itemCompactLanguageBG.visibility = View.VISIBLE
@@ -646,7 +646,7 @@ class UnreadChaptersAdapter(
             itemTotal.text = " " + root.context.getString(R.string.chapter_plural)
             bindComickScore(itemCompactScoreBG, itemCompactScore, itemCompactLanguageBG, item)
             itemCompactSourceBadge.visibility = View.GONE
-            itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_comick_24)
+            itemCompactLanguageIcon.setImageResource(R.drawable.ic_comick)
             itemCompactLanguageIcon.visibility = View.VISIBLE
             itemCompactLanguageCode.text = item.source
             itemCompactLanguageBG.visibility = View.VISIBLE

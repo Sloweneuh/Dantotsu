@@ -952,7 +952,7 @@ class ComickUnreadNotificationTask : Task {
             }
         )
         return NotificationCompat.Action.Builder(
-            R.drawable.ic_circle_check,
+            R.drawable.ic_round_check_circle_outline_24,
             context.getString(R.string.notification_action_mark_read),
             pendingIntent
         ).build()

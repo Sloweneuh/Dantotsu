@@ -27,7 +27,7 @@
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:layout_marginEnd="10dp"
-            android:src="@drawable/ic_manga_discover_24"
+            android:src="@drawable/ic_manga_discover"
             app:tint="?attr/colorPrimary"
             tools:ignore="ContentDescription" />
 
@@ -83,7 +83,7 @@
             android:paddingEnd="12dp"
             android:text="@string/discover_add"
             android:textSize="13sp"
-            app:icon="@drawable/ic_add"
+            app:icon="@drawable/ic_round_add_24"
             app:iconGravity="textStart"
             app:iconPadding="4dp"
             app:iconSize="18dp" />
@@ -156,7 +156,7 @@
                 android:layout_marginStart="6dp"
                 android:alpha="0.7"
                 android:contentDescription="@string/discover_reason_help_title"
-                android:src="@drawable/ic_round_help_outline"
+                android:src="@drawable/ic_round_help_outline_24"
                 app:tint="?attr/colorOnSurface" />
         </LinearLayout>
 

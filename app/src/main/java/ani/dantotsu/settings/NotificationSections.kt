@@ -7,7 +7,6 @@ import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Spinner
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentActivity
 import ani.dantotsu.BuildConfig
@@ -156,7 +155,7 @@ fun AppCompatActivity.subscriptionRows(onChanged: () -> Unit): List<Settings> {
             type = 1,
             name = getString(R.string.subscriptions_checking_time_s, sItems[currentIndex]),
             desc = getString(R.string.subscriptions_info),
-            icon = R.drawable.ic_round_notif_schedule_24,
+            icon = R.drawable.ic_notif_schedule,
             compact = true,
             anchorKey = "sub_interval",
             onClick = {
@@ -186,7 +185,7 @@ fun AppCompatActivity.subscriptionRows(onChanged: () -> Unit): List<Settings> {
             type = 2,
             name = getString(R.string.notification_for_checking_subscriptions),
             desc = getString(R.string.notification_for_checking_subscriptions_desc),
-            icon = R.drawable.ic_round_notif_progress_24,
+            icon = R.drawable.ic_notif_progress,
             compact = true,
             anchorKey = "sub_checking_notif",
             isChecked = PrefManager.getVal(PrefName.SubscriptionCheckingNotifications),
@@ -199,7 +198,7 @@ fun AppCompatActivity.subscriptionRows(onChanged: () -> Unit): List<Settings> {
             type = 1,
             name = getString(R.string.view_subscriptions),
             desc = getString(R.string.view_subscriptions_desc),
-            icon = R.drawable.ic_round_subscriptions_24,
+            icon = R.drawable.ic_round_subscriptions_outline_24,
             compact = true,
             anchorKey = "sub_view",
             onClick = {
@@ -258,7 +257,7 @@ fun AppCompatActivity.malSyncRows(onChanged: () -> Unit): List<Settings> {
             type = 1,
             name = getString(R.string.unread_chapter_notification_checking_time, uItems[currentIndex]),
             desc = getString(R.string.unread_chapter_notification_checking_time_desc),
-            icon = R.drawable.ic_round_notif_schedule_24,
+            icon = R.drawable.ic_notif_schedule,
             compact = true,
             anchorKey = "malsync_interval",
             onClick = {
@@ -312,7 +311,7 @@ fun AppCompatActivity.malSyncRows(onChanged: () -> Unit): List<Settings> {
             type = 2,
             name = getString(R.string.unread_chapter_check_progress_notification),
             desc = getString(R.string.unread_chapter_check_progress_notification_desc),
-            icon = R.drawable.ic_round_notif_progress_24,
+            icon = R.drawable.ic_notif_progress,
             compact = true,
             anchorKey = "malsync_progress",
             isChecked = PrefManager.getVal(PrefName.UnreadChapterCheckingNotifications),
@@ -325,7 +324,7 @@ fun AppCompatActivity.malSyncRows(onChanged: () -> Unit): List<Settings> {
             type = 1,
             name = getString(R.string.clear_unread_chapter_history),
             desc = getString(R.string.clear_unread_chapter_history_desc),
-            icon = R.drawable.ic_round_delete_sweep_24,
+            icon = R.drawable.ic_round_delete_sweep_outline_24,
             compact = true,
             anchorKey = "malsync_clear",
             onClick = {
@@ -347,9 +346,7 @@ fun AppCompatActivity.malSyncRows(onChanged: () -> Unit): List<Settings> {
                             .edit()
                             .clear()
                             .apply()
-                        Toast.makeText(
-                            context, R.string.clear_unread_chapter_history_success, Toast.LENGTH_SHORT
-                        ).show()
+                        ani.dantotsu.toast(R.string.clear_unread_chapter_history_success)
                     }
                     setNegButton(R.string.cancel)
                     show()
@@ -375,7 +372,7 @@ fun AppCompatActivity.anilistRows(onChanged: () -> Unit): List<Settings> {
                 aItems.getOrElse(PrefManager.getVal(PrefName.AnilistNotificationInterval)) { aItems[0] }
             ),
             desc = getString(R.string.anilist_notifications_checking_time_desc),
-            icon = R.drawable.ic_round_notif_schedule_24,
+            icon = R.drawable.ic_notif_schedule,
             compact = true,
             anchorKey = "anilist_interval",
             onClick = {
@@ -426,7 +423,7 @@ fun AppCompatActivity.commentRows(onChanged: () -> Unit): List<Settings> {
                 cItems.getOrElse(PrefManager.getVal(PrefName.CommentNotificationInterval)) { cItems[0] }
             ),
             desc = getString(R.string.comment_notification_checking_time_desc),
-            icon = R.drawable.ic_round_notif_schedule_24,
+            icon = R.drawable.ic_notif_schedule,
             compact = true,
             anchorKey = "comment_interval",
             onClick = {
@@ -457,7 +454,7 @@ fun AppCompatActivity.mangaUpdatesRows(onChanged: () -> Unit): List<Settings> = 
     enabledPref = PrefName.MangaUpdatesNotificationsEnabled,
     intervalPref = PrefName.MangaUpdatesNotificationInterval,
     enabledDesc = R.string.mu_notifications_enabled_desc,
-    enabledIcon = R.drawable.ic_round_mangaupdates_24,
+    enabledIcon = R.drawable.ic_mangaupdates,
     dialogTitle = R.string.mu_notification_interval_title,
     anchorPrefix = "mu",
     onChanged = onChanged,
@@ -471,7 +468,7 @@ fun AppCompatActivity.comickRows(onChanged: () -> Unit): List<Settings> = linked
     enabledPref = PrefName.ComickNotificationsEnabled,
     intervalPref = PrefName.ComickNotificationInterval,
     enabledDesc = R.string.comick_notifications_enabled_desc,
-    enabledIcon = R.drawable.ic_round_comick_24,
+    enabledIcon = R.drawable.ic_comick,
     dialogTitle = R.string.comick_notification_interval_title,
     anchorPrefix = "comick",
     onChanged = onChanged,
@@ -501,7 +498,7 @@ private fun AppCompatActivity.linkedIntervalRows(
             type = 1,
             name = getString(R.string.mu_notification_interval_linked, formatIntervalMinutes(unreadInterval)),
             desc = getString(R.string.mu_notification_interval_linked_desc),
-            icon = R.drawable.ic_round_notif_schedule_24,
+            icon = R.drawable.ic_notif_schedule,
             compact = true,
             anchorKey = "${anchorPrefix}_interval",
             isEnabled = false,
@@ -525,7 +522,7 @@ private fun AppCompatActivity.linkedIntervalRows(
             type = 1,
             name = getString(R.string.mu_notification_interval, items[currentIndex]),
             desc = getString(R.string.mu_notification_interval_desc),
-            icon = R.drawable.ic_round_notif_schedule_24,
+            icon = R.drawable.ic_notif_schedule,
             compact = true,
             anchorKey = "${anchorPrefix}_interval",
             onClick = {
@@ -636,9 +633,7 @@ private fun AppCompatActivity.showCustomIntervalDialog(
                 onChanged()
             } else {
                 val unit = if (isHours) "hours (max 24)" else "minutes (max 1440)"
-                Toast.makeText(
-                    context, "Please enter a valid value in $unit", Toast.LENGTH_SHORT
-                ).show()
+                ani.dantotsu.toast("Please enter a valid value in $unit")
             }
         }
         setNegButton(R.string.cancel)

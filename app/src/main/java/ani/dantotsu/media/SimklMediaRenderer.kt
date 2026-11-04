@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
@@ -40,6 +39,7 @@ object SimklMediaRenderer {
         info: FragmentMediaInfoBinding,
         contentHost: LinearLayout,
         full: SimklApi.SimklAnimeFull,
+        showMalScore: Boolean = true,
         anilistTags: List<MediaTag>?,
         onGenreClick: (String) -> Unit,
         onSimklMediaClick: (Long) -> Unit,
@@ -65,6 +65,17 @@ object SimklMediaRenderer {
         info.mediaInfoMeanScore.text = simklRating?.takeIf { it > 0 }
             ?.let { String.format(Locale.US, "%.1f", it) }
             ?: activity.getString(R.string.unknown_value)
+
+        // The other sites' scores Simkl carries sit under its own. On the tab, MAL's has a tab of
+        // its own right beside it.
+        if (showMalScore) full.ratings?.mal?.takeIf { (it.rating ?: 0.0) > 0 }?.let { rating ->
+            info.mediaInfoScoreMalContainer.visibility = View.VISIBLE
+            info.mediaInfoScoreMal.text = fmt(rating.rating!!, rating.votes)
+        }
+        full.ratings?.imdb?.takeIf { (it.rating ?: 0.0) > 0 }?.let { rating ->
+            info.mediaInfoScoreImdbContainer.visibility = View.VISIBLE
+            info.mediaInfoScoreImdb.text = fmt(rating.rating!!, rating.votes)
+        }
 
         info.mediaInfoStatus.text = full.status?.let { titleCase(it) } ?: activity.getString(R.string.unknown)
 
@@ -173,14 +184,17 @@ object SimklMediaRenderer {
             contentHost.addView(container)
         }
 
-        addSynonyms(activity, contentHost, full, primary)
-        addRatings(activity, contentHost, full.ratings)
-        addGenres(activity, contentHost, full.genres, onGenreClick)
-        addTags(activity, contentHost, anilistTags)
-        addTrailers(activity, contentHost, full.trailers)
-        addRelations(activity, contentHost, full.relations, onSimklMediaClick)
-        if (anilistRecs != null) addAniListRecommendations(activity, contentHost, anilistRecs, recSource)
-        else addRecommendations(activity, contentHost, full.recommendations, onSimklMediaClick)
+        contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, full, primary) }
+        contentHost.infoSection(InfoSectionKind.GENRES) { addGenres(activity, contentHost, full.genres, onGenreClick) }
+        contentHost.infoSection(InfoSectionKind.TAGS) { addTags(activity, contentHost, anilistTags) }
+        contentHost.infoSection(InfoSectionKind.TRAILER) { addTrailers(activity, contentHost, full.trailers) }
+        contentHost.infoSection(InfoSectionKind.RELATIONS) { addRelations(activity, contentHost, full.relations, onSimklMediaClick) }
+        contentHost.infoSection(InfoSectionKind.RECOMMENDATIONS) {
+            if (anilistRecs != null) {
+                addAniListRecommendations(activity, contentHost, anilistRecs, recSource)
+                contentHost.offerInfoMedia(InfoSectionKind.RECOMMENDATIONS, anilistRecs)
+            } else addRecommendations(activity, contentHost, full.recommendations, onSimklMediaClick)
+        }
     }
 
     private fun addAniListRecommendations(
@@ -257,27 +271,9 @@ object SimklMediaRenderer {
             chip.text = title
             chip.setOnLongClickListener {
                 copyToClipboard(title)
-                Toast.makeText(activity, activity.getString(R.string.copied_title_toast, title), Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast(activity.getString(R.string.copied_title_toast, title))
                 true
             }
-            bind.itemChipGroup.addView(chip)
-        }
-        parent.addView(bind.root)
-    }
-
-    private fun addRatings(activity: AppCompatActivity, parent: ViewGroup, ratings: SimklApi.Ratings?) {
-        ratings ?: return
-        val rows = buildList {
-            ratings.simkl?.rating?.takeIf { it > 0 }?.let { add("Simkl " + fmt(it, ratings.simkl?.votes)) }
-            ratings.mal?.rating?.takeIf { it > 0 }?.let { add("MAL " + fmt(it, ratings.mal?.votes)) }
-            ratings.imdb?.rating?.takeIf { it > 0 }?.let { add("IMDb " + fmt(it, ratings.imdb?.votes)) }
-        }
-        if (rows.isEmpty()) return
-        val bind = ItemTitleChipgroupBinding.inflate(activity.layoutInflater, parent, false)
-        bind.itemTitle.setText(R.string.mean_score)
-        rows.forEach { label ->
-            val chip = ItemChipBinding.inflate(activity.layoutInflater, bind.itemChipGroup, false).root
-            chip.text = label
             bind.itemChipGroup.addView(chip)
         }
         parent.addView(bind.root)

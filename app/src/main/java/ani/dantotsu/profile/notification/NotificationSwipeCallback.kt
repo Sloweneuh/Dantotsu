@@ -148,8 +148,8 @@ class NotificationSwipeCallback : ItemTouchHelper.Callback() {
             val label = if (toRight) binding.notificationSwipeReadText else binding.notificationSwipeDeleteText
             if (toRight) {
                 icon.setImageResource(
-                    if (unread) R.drawable.ic_round_remove_red_eye_24
-                    else R.drawable.ic_round_visibility_off_24
+                    if (unread) R.drawable.ic_round_visibility_24
+                    else R.drawable.ic_round_visibility_off_outline_white_24
                 )
                 label.setText(
                     if (unread) R.string.notification_action_mark_read else R.string.mark_as_unread

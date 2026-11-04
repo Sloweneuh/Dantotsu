@@ -73,6 +73,17 @@ object AnilistTagChips {
             .sortedWith(compareBy({ it.isSpoiler }, { -(it.rank ?: 0) }))
         if (list.isEmpty()) return false
 
+        // For a merged section, which draws its own chips: masked ones wouldn't say what they are.
+        parent.offerInfoChips(InfoSectionKind.TAGS, list.map { tag ->
+            InfoChip(
+                label = tag.name,
+                detail = tag.rank?.let { "$it%" },
+                isSpoiler = tag.isSpoiler,
+                onLongClick = { showDetails(context, tag) },
+                onClick = onClick?.let { open -> { open(tag) } },
+            )
+        })
+
         val inflater = LayoutInflater.from(context)
         val bind = ItemTitleChipgroupBinding.inflate(inflater, parent, false)
         bind.itemTitle.setText(R.string.tags)

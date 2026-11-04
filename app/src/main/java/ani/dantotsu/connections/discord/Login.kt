@@ -11,7 +11,6 @@ import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
@@ -126,12 +125,12 @@ class Login : AppCompatActivity() {
 
             withContext(Dispatchers.Main) {
                 if (loginSuccessful) {
-                    Toast.makeText(this@Login, "Logged in successfully", Toast.LENGTH_SHORT).show()
+                    ani.dantotsu.toast("Logged in successfully")
                     startActivity(Intent(this@Login, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
                     })
                 } else {
-                    Toast.makeText(this@Login, "Login failed. Please try again.", Toast.LENGTH_SHORT).show()
+                    ani.dantotsu.toast("Login failed. Please try again.")
                 }
                 finish()
             }

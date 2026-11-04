@@ -97,14 +97,14 @@ class ToolboxActivity : AppCompatActivity() {
                 add(check(LibraryCheck.ANIME_ADAPTATIONS, R.string.anime_adaptations_desc, R.string.ignored_adaptations))
             }
             if (MangaUpdates.token != null) add(
-                Item.Tool(R.string.search_equivalents, R.string.search_equivalents_desc, R.drawable.ic_anilist_search_24) {
+                Item.Tool(R.string.search_equivalents, R.string.search_equivalents_desc, R.drawable.ic_anilist_search) {
                     startActivity(Intent(this@ToolboxActivity, MediaEquivalentsActivity::class.java))
                 }
             )
         }
         val matching = buildList {
             if (Comick.token != null) add(
-                Item.Tool(R.string.comick_matches_title, R.string.toolbox_comick_desc, R.drawable.ic_round_comick_24) {
+                Item.Tool(R.string.comick_matches_title, R.string.toolbox_comick_desc, R.drawable.ic_comick) {
                     SettingsPageTransitions.open(this@ToolboxActivity, it, Intent(this@ToolboxActivity, ComickMatchesActivity::class.java))
                 }
             )

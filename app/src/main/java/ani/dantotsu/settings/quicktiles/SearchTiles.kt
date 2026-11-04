@@ -95,13 +95,13 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
         get() = listOf(
             search("anime", R.string.anime, R.drawable.ic_round_movie_filter_24, SearchType.ANIME),
             search("manga", R.string.manga, R.drawable.ic_round_menu_book_24, SearchType.MANGA),
-            search("characters", R.string.characters, R.drawable.ic_round_face_24, SearchType.CHARACTER),
-            search("staff", R.string.staff, R.drawable.ic_round_group_24, SearchType.STAFF),
-            search("studios", R.string.studios, R.drawable.ic_round_movie_edit_24, SearchType.STUDIO),
+            search("characters", R.string.characters, R.drawable.ic_round_face_outline_24, SearchType.CHARACTER),
+            search("staff", R.string.staff, R.drawable.ic_round_group_outline_24, SearchType.STAFF),
+            search("studios", R.string.studios, R.drawable.ic_round_movie_edit_outline_24, SearchType.STUDIO),
             search("users", R.string.users, R.drawable.ic_round_person_24, SearchType.USER),
 
             service(
-                "mangaupdates", R.string.mu_series_search, R.drawable.ic_round_mangaupdates_24,
+                "mangaupdates", R.string.mu_series_search, R.drawable.ic_mangaupdates,
                 SearchType.MANGAUPDATES,
                 isAvailable = { MangaUpdates.token != null },
                 unavailableReason = R.string.search_needs_mangaupdates,
@@ -109,19 +109,19 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
             // Comick's two catalogues are separate searches: they take different filters and
             // never return each other's entries, so one tile could not serve both.
             service(
-                "comick", R.string.comick_manga_search, R.drawable.ic_round_comick_manga_24,
+                "comick", R.string.comick_manga_search, R.drawable.ic_comick_manga,
                 SearchType.COMICK,
                 isAvailable = { PrefManager.getVal(PrefName.ComickEnabled) },
                 unavailableReason = R.string.search_needs_connection_enabled,
             ),
             service(
-                "comick_anime", R.string.comick_anime_search, R.drawable.ic_round_comick_anime_24,
+                "comick_anime", R.string.comick_anime_search, R.drawable.ic_comick_anime,
                 SearchType.COMICK_ANIME,
                 isAvailable = { PrefManager.getVal(PrefName.ComickEnabled) },
                 unavailableReason = R.string.search_needs_connection_enabled,
             ),
             service(
-                "mangabaka", R.string.mangabaka, R.drawable.ic_round_mangabaka_24,
+                "mangabaka", R.string.mangabaka, R.drawable.ic_mangabaka,
                 SearchType.MANGABAKA,
                 isAvailable = { PrefManager.getVal(PrefName.MangaBakaInfoEnabled) },
                 unavailableReason = R.string.search_needs_connection_enabled,
@@ -129,7 +129,7 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
             // Stacks have no text search, so this tile opens the stack browser itself rather than
             // a search screen.
             QuickTile.Action(
-                "mangabaka_stacks", R.string.mangabaka_stacks, R.drawable.ic_round_mangabaka_stacks_24,
+                "mangabaka_stacks", R.string.mangabaka_stacks, R.drawable.ic_mangabaka_stacks,
                 SearchTileCategory.SERVICES, needsNetwork = true,
                 isAvailable = { PrefManager.getVal(PrefName.MangaBakaInfoEnabled) },
                 unavailableReason = R.string.search_needs_connection_enabled,

@@ -14,7 +14,6 @@ import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -317,7 +316,7 @@ class AniListInfoFragment : Fragment() {
                                 .setDuration(400).start()
                         }
                     }
-                    displayTimer(media, binding.mediaInfoContainer)
+                    binding.mediaInfoContainer.infoSection(InfoSectionKind.COUNTDOWN) { displayTimer(media, binding.mediaInfoContainer) }
                     val parent = _binding?.mediaInfoContainer!!
                     val screenWidth = resources.displayMetrics.run { widthPixels / density }
 
@@ -383,14 +382,14 @@ class AniListInfoFragment : Fragment() {
                         }
                         // Tag the external links block so quicklinks can be inserted right after it
                         bind.root.tag = "external_links"
-                        parent.addView(bind.root)
+                        parent.addInfoSection(InfoSectionKind.EXTERNAL_LINKS, bind.root)
                     }
 
                         // Fetch MALSync quicklinks and show them under External Links (if enabled)
                         try {
                             val mediaTypeLower = if (media.anime != null) "anime" else "manga"
                             // Show quicklinks whenever MALSync info is enabled (include anime and manga)
-                            if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && !offline) {
+                            if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && !offline && parent.wantsInfoSection(InfoSectionKind.QUICKLINKS)) {
                                 lifecycleScope.launch {
                                     val quicklinks = withContext(Dispatchers.IO) {
                                         try {
@@ -425,13 +424,13 @@ class AniListInfoFragment : Fragment() {
                                             val extIndex = (0 until parent.childCount).firstOrNull { parent.getChildAt(it).tag == "external_links" } ?: -1
                                             bindQuick.root.tag = "quicklinks_chips"
                                             if (extIndex >= 0) {
-                                                parent.addView(bindQuick.root, extIndex + 1)
+                                                parent.addInfoSection(InfoSectionKind.QUICKLINKS, bindQuick.root, extIndex + 1)
                                             } else {
                                                 // Find the synopsis view and insert after it, otherwise append
                                                 val synopsisIndex = (0 until parent.childCount).firstOrNull {
-                                                    parent.getChildAt(it).id == R.id.mediaInfoDescription
+                                                    parent.getChildAt(it).id == R.id.mediaInfoDescriptionSection
                                                 } ?: -1
-                                                if (synopsisIndex >= 0) parent.addView(bindQuick.root, synopsisIndex + 1) else parent.addView(bindQuick.root)
+                                                parent.addInfoSection(InfoSectionKind.QUICKLINKS, bindQuick.root, if (synopsisIndex >= 0) synopsisIndex + 1 else -1)
                                             }
                                         } catch (e: Throwable) { Logger.log(e) }
                                     }
@@ -457,7 +456,7 @@ class AniListInfoFragment : Fragment() {
                             chip.setOnLongClickListener { copyToClipboard(media.synonyms[position]);true }
                             bind.itemChipGroup.addView(chip)
                         }
-                        parent.addView(bind.root)
+                        parent.addInfoSection(InfoSectionKind.SYNONYMS, bind.root)
                     }
                     if (!media.users.isNullOrEmpty() && !offline) {
                         val users: ArrayList<User> = media.users ?: arrayListOf()
@@ -491,11 +490,11 @@ class AniListInfoFragment : Fragment() {
                                 LinearLayoutManager.HORIZONTAL,
                                 false
                             )
-                            parent.addView(root)
+                            parent.addInfoSection(InfoSectionKind.SOCIAL, root)
                         }
                     }
                     if (media.trailer != null && !offline) {
-                        parent.addView(
+                        parent.addInfoSection(InfoSectionKind.TRAILER, 
                             TrailerWebView.create(
                                 requireActivity(), LayoutInflater.from(context), parent, media.trailer!!
                             )
@@ -507,7 +506,7 @@ class AniListInfoFragment : Fragment() {
                     val themesSlot = LinearLayout(requireContext()).apply {
                         orientation = LinearLayout.VERTICAL
                     }
-                    if (media.anime != null && !offline) parent.addView(themesSlot)
+                    if (media.anime != null && !offline) parent.addInfoSection(InfoSectionKind.THEMES, themesSlot)
                     model.getThemes().observe(viewLifecycleOwner) { themes ->
                         if (themes.isNullOrEmpty() || offline || themesSlot.childCount > 0) return@observe
                         fun themeSection(titleRes: Int, tracks: List<AnimeThemeTrack>) {
@@ -559,7 +558,7 @@ class AniListInfoFragment : Fragment() {
                                 chip.setOnLongClickListener { copyToClipboard(genre); true }
                                 bind.itemChipGroup.addView(chip)
                             }
-                            parent.addView(bind.root)
+                            parent.addInfoSection(InfoSectionKind.GENRES, bind.root)
                         } else {
                             val bind = ActivityGenreBinding.inflate(
                                 LayoutInflater.from(context),
@@ -588,7 +587,19 @@ class AniListInfoFragment : Fragment() {
                                     }
                                 }
                             }
-                            parent.addView(bind.root)
+                            parent.addInfoSection(InfoSectionKind.GENRES, bind.root)
+                            // The cards can't join a merged row of chips, so offer what they say.
+                            parent.offerInfoChips(InfoSectionKind.GENRES, media.genres.map { genre ->
+                                InfoChip(genre) {
+                                    startActivity(
+                                        Intent(requireContext(), SearchActivity::class.java)
+                                            .putExtra("type", type)
+                                            .putExtra("genre", genre)
+                                            .putExtra("sortBy", Anilist.sortBy[2])
+                                            .putExtra("search", true)
+                                    )
+                                }
+                            })
                         }
                     }
 
@@ -609,60 +620,61 @@ class AniListInfoFragment : Fragment() {
                                     .putExtra("search", true)
                                     .also {
                                         if (media.isAdult) {
-                                            if (!Anilist.adult) Toast.makeText(
-                                                requireContext(),
-                                                currActivity()?.getString(R.string.content_18),
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                            if (!Anilist.adult) ani.dantotsu.toast(currActivity()?.getString(R.string.content_18))
                                             it.putExtra("hentai", true)
                                         }
                                     },
                                 null
                             )
                         }
-                    AnilistTagChips.render(requireContext(), parent, tagChips, onTagClick)
+                    parent.infoSection(InfoSectionKind.TAGS) {
+                        AnilistTagChips.render(requireContext(), parent, tagChips, onTagClick)
+                    }
 
                     // Watch order (anime only) and news, as button cards laid out like the
                     // prequel/sequel pair below. Neither id is resolved here: the screens themselves
                     // work out the MAL / MangaBaka id they need, so opening one costs no request now.
+                    // Two sections, which share a row only while they sit next to each other.
                     if (!offline && (media.anime != null || media.manga != null)) {
-                        ItemQuelsBinding.inflate(
-                            LayoutInflater.from(context),
-                            parent,
-                            false
+                        val artwork = media.banner ?: media.cover
+                        val titles = ArrayList(media.mainTitleOptions())
+
+                        fun newCardRow() = ItemQuelsBinding.inflate(
+                            LayoutInflater.from(context), parent, false
                         ).apply {
-                            val artwork = media.banner ?: media.cover
                             // These cards are buttons, not covers - leaving them named would give the
                             // shared element transition four views called "mediaCover" to choose from.
                             ViewCompat.setTransitionName(quelStartImage, null)
                             ViewCompat.setTransitionName(quelEndImage, null)
+                        }
 
-                            val titles = ArrayList(media.mainTitleOptions())
-                            if (media.anime != null) {
-                                quelStartCard.visibility = View.VISIBLE
-                                quelStartLabel.setText(R.string.watch_order)
-                                quelStartImage.loadImage(artwork)
-                                quelStartCard.setSafeOnClickListener {
-                                    startActivity(
-                                        Intent(requireContext(), WatchOrderActivity::class.java)
-                                            .putExtra("mediaId", media.id)
-                                            .putExtra("malId", media.idMAL ?: -1)
-                                            .putExtra("startYear", media.startDate?.year ?: -1)
-                                            .putStringArrayListExtra("titles", titles)
-                                    )
-                                }
-                            }
-
-                            // Manga and novels have no watch order, so news takes the start slot and
-                            // balanceQuelRow() centres it rather than leaving the row half empty.
-                            val onStart = media.anime == null
-                            val newsCard = if (onStart) quelStartCard else quelEndCard
-                            val newsLabel = if (onStart) quelStartLabel else quelEndLabel
-                            val newsImage = if (onStart) quelStartImage else quelEndImage
-                            if (onStart) quelStartAccent.setBackgroundColor(
+                        fun ItemQuelsBinding.showWatchOrder(alone: Boolean) {
+                            if (alone) quelStartAccent.setBackgroundColor(
                                 requireContext().getThemeColor(androidx.appcompat.R.attr.colorPrimary)
                             )
+                            quelStartCard.visibility = View.VISIBLE
+                            quelStartLabel.setText(R.string.watch_order)
+                            quelStartImage.loadImage(artwork)
+                            quelStartCard.setSafeOnClickListener {
+                                startActivity(
+                                    Intent(requireContext(), WatchOrderActivity::class.java)
+                                        .putExtra("mediaId", media.id)
+                                        .putExtra("malId", media.idMAL ?: -1)
+                                        .putExtra("startYear", media.startDate?.year ?: -1)
+                                        .putStringArrayListExtra("titles", titles)
+                                )
+                            }
+                        }
 
+                        // On its own, news takes the start slot and balanceQuelRow() centres it
+                        // rather than leaving the row half empty.
+                        fun ItemQuelsBinding.showNews(alone: Boolean) {
+                            val newsCard = if (alone) quelStartCard else quelEndCard
+                            val newsLabel = if (alone) quelStartLabel else quelEndLabel
+                            val newsImage = if (alone) quelStartImage else quelEndImage
+                            if (alone) quelStartAccent.setBackgroundColor(
+                                requireContext().getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+                            )
                             newsCard.visibility = View.VISIBLE
                             newsLabel.setText(R.string.news)
                             newsImage.loadImage(artwork)
@@ -676,8 +688,31 @@ class AniListInfoFragment : Fragment() {
                                         .putStringArrayListExtra("titles", titles)
                                 )
                             }
-                            balanceQuelRow()
-                            parent.addView(root)
+                        }
+
+                        val wantsOrder = media.anime != null &&
+                                parent.wantsInfoSection(InfoSectionKind.WATCH_ORDER)
+                        val wantsNews = parent.wantsInfoSection(InfoSectionKind.NEWS)
+                        if (wantsOrder && wantsNews &&
+                            parent.infoSectionsAdjacent(InfoSectionKind.WATCH_ORDER, InfoSectionKind.NEWS)
+                        ) {
+                            newCardRow().apply {
+                                showWatchOrder(alone = false)
+                                showNews(alone = false)
+                                balanceQuelRow()
+                                parent.addInfoSection(InfoSectionKind.WATCH_ORDER, root)
+                            }
+                        } else {
+                            if (wantsOrder) newCardRow().apply {
+                                showWatchOrder(alone = true)
+                                balanceQuelRow()
+                                parent.addInfoSection(InfoSectionKind.WATCH_ORDER, root)
+                            }
+                            if (wantsNews) newCardRow().apply {
+                                showNews(alone = true)
+                                balanceQuelRow()
+                                parent.addInfoSection(InfoSectionKind.NEWS, root)
+                            }
                         }
                     }
 
@@ -736,7 +771,7 @@ class AniListInfoFragment : Fragment() {
                                     }
                                 }
                                 balanceQuelRow()
-                                parent.addView(root)
+                                parent.addInfoSection(InfoSectionKind.QUELS, root)
                             }
                         }
 
@@ -753,7 +788,7 @@ class AniListInfoFragment : Fragment() {
                                 LinearLayoutManager.HORIZONTAL,
                                 false
                             )
-                            parent.addView(root)
+                            parent.addInfoSection(InfoSectionKind.RELATIONS, root)
                         }
                     }
                     if (!offline) ItemTitleRecyclerBinding.inflate(
@@ -786,7 +821,7 @@ class AniListInfoFragment : Fragment() {
                                 )
                             }
                         }
-                        parent.addView(root)
+                        parent.addInfoSection(InfoSectionKind.REVIEWS, root)
                     }
                     if (!media.characters.isNullOrEmpty() && !offline) {
                         ItemTitleRecyclerBinding.inflate(
@@ -802,7 +837,7 @@ class AniListInfoFragment : Fragment() {
                                 LinearLayoutManager.HORIZONTAL,
                                 false
                             )
-                            parent.addView(root)
+                            parent.addInfoSection(InfoSectionKind.CHARACTERS, root)
                         }
                     }
                     if (!media.staff.isNullOrEmpty() && !offline) {
@@ -819,7 +854,7 @@ class AniListInfoFragment : Fragment() {
                                 LinearLayoutManager.HORIZONTAL,
                                 false
                             )
-                            parent.addView(root)
+                            parent.addInfoSection(InfoSectionKind.STAFF, root)
                         }
                     }
                     if (!media.recommendations.isNullOrEmpty() && !offline) {
@@ -845,7 +880,8 @@ class AniListInfoFragment : Fragment() {
                                         .putExtra("title", getString(R.string.recommended))
                                 )
                             }
-                            parent.addView(root)
+                            parent.addInfoSection(InfoSectionKind.RECOMMENDATIONS, root)
+                            parent.offerInfoMedia(InfoSectionKind.RECOMMENDATIONS, media.recommendations!!)
                         }
                     }
                 }

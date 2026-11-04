@@ -5,7 +5,6 @@ import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.FileUrl
@@ -148,18 +147,10 @@ abstract class SourceAdapter(
             context.startActivity(intent)
         } catch (_: ActivityNotFoundException) {
             // No browser app available
-            Toast.makeText(
-                context,
-                "No browser app found to open the link",
-                Toast.LENGTH_SHORT
-            ).show()
+            ani.dantotsu.toast("No browser app found to open the link")
         } catch (e: Exception) {
             // Handle any other errors
-            Toast.makeText(
-                context,
-                "Failed to open link: ${e.message}",
-                Toast.LENGTH_SHORT
-            ).show()
+            ani.dantotsu.toast("Failed to open link: ${e.message}")
         }
     }
 

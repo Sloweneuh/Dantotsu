@@ -9,7 +9,7 @@
     <ani.dantotsu.others.PatternBackgroundView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:patternIcon="@drawable/ic_download_24"
+        app:patternIcon="@drawable/ic_round_download_24"
         app:patternAnchor="@id/downloadManageEmpty" />
 
     <LinearLayout
@@ -86,7 +86,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/open_folder"
                 android:padding="8dp"
-                app:srcCompat="@drawable/ic_round_folder_24"
+                app:srcCompat="@drawable/ic_round_folder_outline_24"
                 app:tint="?attr/colorOnBackground" />
 
         </LinearLayout>

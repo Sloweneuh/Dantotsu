@@ -7,7 +7,6 @@ import android.text.util.Linkify
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
@@ -222,12 +221,12 @@ class ComickListActivity : AppCompatActivity() {
                 applyFilterAndDisplay()
             } else if (comics == null) {
                 Logger.log("Comick list comics: API call failed for user $userId, list $listSlug")
-                Toast.makeText(this@ComickListActivity, R.string.comick_list_load_failed, Toast.LENGTH_LONG).show()
+                ani.dantotsu.toast(R.string.comick_list_load_failed, android.widget.Toast.LENGTH_LONG)
             } else {
                 val rating = listMeta?.content_rating
                 if (rating != null && rating != "safe") {
                     Logger.log("Comick list comics: empty for user $userId, list $listSlug (content_rating=$rating, likely requires Comick login)")
-                    Toast.makeText(this@ComickListActivity, R.string.comick_list_needs_login, Toast.LENGTH_LONG).show()
+                    ani.dantotsu.toast(R.string.comick_list_needs_login, android.widget.Toast.LENGTH_LONG)
                 } else {
                     Logger.log("Comick list comics: no comics returned for user $userId, list $listSlug")
                 }

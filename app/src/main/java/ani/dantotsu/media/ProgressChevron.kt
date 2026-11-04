@@ -16,7 +16,7 @@ import ani.dantotsu.R
  * Call after each time the line's text is set; it appends to whatever is there.
  */
 fun TextView.addProgressChevron() {
-    val icon = ContextCompat.getDrawable(context, R.drawable.ic_round_arrow_forward_ios_new_24)
+    val icon = ContextCompat.getDrawable(context, R.drawable.ic_round_arrow_forward_ios_24)
         ?.mutate() ?: return
     val size = (textSize * 0.7f).toInt()
     icon.setBounds(0, 0, size, size)

@@ -49,7 +49,7 @@
                 android:layout_height="36dp"
                 android:contentDescription="@string/reply"
                 android:fontFamily="@font/poppins_bold"
-                android:src="@drawable/ic_add"
+                android:src="@drawable/ic_round_add_24"
                 app:tint="?attr/colorPrimary" />
         </LinearLayout>
 
@@ -64,7 +64,7 @@
             <ani.dantotsu.others.PatternBackgroundView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                app:patternIcon="@drawable/ic_round_notifications_none_24"
+                app:patternIcon="@drawable/ic_round_notifications_outline_24"
                 app:patternAnchor="@id/emptyTextView" />
 
             <TextView

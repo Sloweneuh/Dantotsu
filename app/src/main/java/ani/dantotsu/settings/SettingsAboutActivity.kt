@@ -60,7 +60,7 @@ class SettingsAboutActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.faq),
                         desc = getString(R.string.faq_desc),
-                        icon = R.drawable.ic_round_quiz_24,
+                        icon = R.drawable.ic_round_quiz_outline_24,
                         onClick = {
                             SettingsPageTransitions.open(
                                 this@SettingsAboutActivity, it, FAQActivity::class.java
@@ -101,7 +101,7 @@ class SettingsAboutActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.share_username_in_crash_reports),
                         desc = getString(R.string.share_username_in_crash_reports_desc),
-                        icon = R.drawable.ic_round_badge_24,
+                        icon = R.drawable.ic_round_badge_outline_24,
                         isChecked = PrefManager.getVal(PrefName.SharedUserID),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.SharedUserID, isChecked)
@@ -112,7 +112,7 @@ class SettingsAboutActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.disable_crash_reports),
                         desc = getString(R.string.disable_crash_reports_desc),
-                        icon = R.drawable.ic_round_bug_report_24,
+                        icon = R.drawable.ic_round_bug_report_outline_24,
                         isChecked = PrefManager.getVal(PrefName.DisableCrashReports),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.DisableCrashReports, isChecked)
@@ -124,7 +124,7 @@ class SettingsAboutActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.log_to_file),
                         desc = getString(R.string.logging_warning),
-                        icon = R.drawable.ic_round_description_24,
+                        icon = R.drawable.ic_round_description_outline_24,
                         isChecked = PrefManager.getVal(PrefName.LogToFile),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.LogToFile, isChecked)
@@ -145,7 +145,7 @@ class SettingsAboutActivity : AppCompatActivity() {
                         name = getString(R.string.devs),
                         startsGroup = true,
                         desc = getString(R.string.devs_desc),
-                        icon = R.drawable.ic_round_group_24,
+                        icon = R.drawable.ic_round_group_outline_24,
                         onClick = {
                             DevelopersDialogFragment().show(supportFragmentManager, "dialog")
                         }
@@ -173,7 +173,7 @@ class SettingsAboutActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.privacy_policy),
                         desc = getString(R.string.privacy_policy_desc),
-                        icon = R.drawable.ic_shield,
+                        icon = R.drawable.ic_round_shield_outline_24,
                         onClick = {
                             val text = TextView(context)
                             val pPLink =

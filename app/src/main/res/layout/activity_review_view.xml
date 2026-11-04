@@ -130,7 +130,7 @@
                     android:layout_marginEnd="8dp"
                     android:scaleX="-1"
                     android:scaleY="-1"
-                    android:src="@drawable/ic_thumbs"
+                    android:src="@drawable/ic_round_thumb_up_24"
                     tools:ignore="ContentDescription" />
 
                 <TextView
@@ -149,7 +149,7 @@
                     android:layout_width="36dp"
                     android:layout_height="36dp"
                     android:layout_marginStart="8dp"
-                    android:src="@drawable/ic_thumbs"
+                    android:src="@drawable/ic_round_thumb_up_24"
                     tools:ignore="ContentDescription" />
 
             </LinearLayout>

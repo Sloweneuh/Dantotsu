@@ -32,7 +32,7 @@
             <ImageView
                 android:layout_width="22dp"
                 android:layout_height="22dp"
-                app:srcCompat="@drawable/ic_round_anilist_wait_24"
+                app:srcCompat="@drawable/ic_anilist_wait"
                 app:tint="?attr/colorOnSecondaryContainer"
                 tools:ignore="ContentDescription" />
 

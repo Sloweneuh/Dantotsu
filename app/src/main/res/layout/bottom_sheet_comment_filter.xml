@@ -44,7 +44,7 @@
                     android:padding="8dp"
                     android:rotation="180"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_round_reset_star_24"
+                    android:src="@drawable/ic_reset_star"
                     android:tooltipText="@string/comment_filter_reset"
                     app:tint="?attr/colorPrimary" />
 
@@ -69,7 +69,7 @@
                 android:orientation="vertical"
                 android:paddingBottom="8dp"
                 app:cardInset="false"
-                app:icon="@drawable/ic_label_24"
+                app:icon="@drawable/ic_round_label_outline_24"
                 app:isExpanded="true"
                 app:title="@string/comment_filter_chapter">
 

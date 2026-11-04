@@ -22,6 +22,11 @@ import ani.dantotsu.buildMarkwon
 import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
+import ani.dantotsu.media.InfoExtraSections
+import ani.dantotsu.media.InfoSectionKind
+import ani.dantotsu.media.addInfoSection
+import ani.dantotsu.media.offerInfoMedia
+import ani.dantotsu.media.wantsInfoSection
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemQuelsBinding
@@ -183,7 +188,7 @@ class MUMediaInfoFragment : Fragment() {
                 chip.setOnLongClickListener { copyToClipboard(genre); true }
                 bind.itemChipGroup.addView(chip)
             }
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.GENRES, bind.root)
         }
 
         // Categories (stored in Media.tags)
@@ -199,7 +204,7 @@ class MUMediaInfoFragment : Fragment() {
                 chip.setOnLongClickListener { copyToClipboard(category); true }
                 bind.itemChipGroup.addView(chip)
             }
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.TAGS, bind.root)
         }
 
         // Associated / alternative titles
@@ -214,7 +219,7 @@ class MUMediaInfoFragment : Fragment() {
                 chip.setOnLongClickListener { copyToClipboard(syn); true }
                 bind.itemChipGroup.addView(chip)
             }
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.SYNONYMS, bind.root)
         }
     }
 
@@ -334,7 +339,7 @@ class MUMediaInfoFragment : Fragment() {
                     ).setDuration(400).start()
                 }
                 bind.root.tag = "dynamic_mu_section"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.DETAILED_STATUS, bind.root)
             }
         }
 
@@ -351,7 +356,7 @@ class MUMediaInfoFragment : Fragment() {
                     }
                 }
                 bind.root.tag = "dynamic_mu_section"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.ANIME_ADAPTATION, bind.root)
             }
         }
 
@@ -370,7 +375,7 @@ class MUMediaInfoFragment : Fragment() {
                 }
             }
             bind.root.tag = "dynamic_mu_section"
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.SYNONYMS, bind.root)
         }
 
         // Invisible anchors — the latest release card and the MALSync quicklinks are inserted here
@@ -423,7 +428,7 @@ class MUMediaInfoFragment : Fragment() {
                 }
             }
             bind.root.tag = "dynamic_mu_section"
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.GENRES, bind.root)
         }
 
         // Categories
@@ -451,7 +456,7 @@ class MUMediaInfoFragment : Fragment() {
                 }
             }
             bind.root.tag = "dynamic_mu_section"
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.TAGS, bind.root)
         }
 
         // Full author / artist list
@@ -465,7 +470,7 @@ class MUMediaInfoFragment : Fragment() {
                 }
             }
             bind.root.tag = "dynamic_mu_section"
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.AUTHORS, bind.root)
         }
 
         // News. MangaBaka carries a feed for MangaUpdates series too, keyed by the MangaUpdates
@@ -492,8 +497,10 @@ class MUMediaInfoFragment : Fragment() {
             }
             balanceQuelRow()
             root.tag = "dynamic_mu_section"
-            parent.addView(root)
+            parent.addInfoSection(InfoSectionKind.NEWS, root)
         }
+
+        InfoExtraSections.addMangaUpdatesExtras(requireContext(), parent, series)
 
         // Direct recommendations
         val directRecs = series.recommendations
@@ -522,7 +529,8 @@ class MUMediaInfoFragment : Fragment() {
                 )
                 bind.itemMore.visibility = View.GONE
                 bind.root.tag = "dynamic_mu_section"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.RECOMMENDATIONS, bind.root)
+                parent.offerInfoMedia(InfoSectionKind.RECOMMENDATIONS, items.map { it.asFallbackMedia() })
             }
         }
 
@@ -553,14 +561,15 @@ class MUMediaInfoFragment : Fragment() {
                 )
                 bind.itemMore.visibility = View.GONE
                 bind.root.tag = "dynamic_mu_section"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.CATEGORY_RECOMMENDATIONS, bind.root)
+                parent.offerInfoMedia(InfoSectionKind.CATEGORY_RECOMMENDATIONS, items.map { it.asFallbackMedia() })
             }
         }
 
         // MALSync quicklinks — where else this series can be read. Only the ones MangaUpdates can be
         // linked to a MAL entry have any (see [MalSyncMu]); for the rest the anchor just stays an
         // empty view, as it does while the lookup is in flight.
-        if (MalSyncMu.enabledForManga()) viewLifecycleOwner.lifecycleScope.launch {
+        if (MalSyncMu.enabledForManga() && parent.wantsInfoSection(InfoSectionKind.QUICKLINKS)) viewLifecycleOwner.lifecycleScope.launch {
             val titles = listOfNotNull(series.title) +
                     series.associated.orEmpty().mapNotNull { it.title }
             val sites = withContext(Dispatchers.IO) {
@@ -589,11 +598,11 @@ class MUMediaInfoFragment : Fragment() {
             val insertIndex = parent.indexOfChild(anchor)
             bindQuick.root.tag = "dynamic_mu_section"
             parent.removeView(anchor)
-            parent.addView(bindQuick.root, insertIndex)
+            parent.addInfoSection(InfoSectionKind.QUICKLINKS, bindQuick.root, insertIndex)
         }
 
         // Latest release card — async fetch from /v1/series/{id}/groups
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+        if (parent.wantsInfoSection(InfoSectionKind.LATEST_CHAPTER)) viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val latest = MangaUpdates.getSeriesGroups(series.seriesId)?.releaseList?.firstOrNull()
                 ?: return@launch
             withContext(Dispatchers.Main) {
@@ -640,11 +649,25 @@ class MUMediaInfoFragment : Fragment() {
                 b.root.tag = "dynamic_mu_section"
 
                 parent.removeView(anchor)
-                parent.addView(titleBind.root, insertIndex)
-                parent.addView(b.root, insertIndex + 1)
+                parent.addInfoSection(InfoSectionKind.LATEST_CHAPTER, titleBind.root, insertIndex)
+                parent.addInfoSection(InfoSectionKind.LATEST_CHAPTER, b.root, insertIndex + 1)
             }
         }
     }
+
+    /** The same stand-in the other tabs use for a series known only to MangaUpdates. */
+    private fun MUMedia.asFallbackMedia() = ani.dantotsu.media.Media(
+        id = (id and 0x7FFFFFFF).toInt(),
+        name = title,
+        nameRomaji = title ?: "",
+        userPreferredName = title ?: "",
+        cover = coverUrl,
+        banner = coverUrl,
+        isAdult = false,
+        manga = ani.dantotsu.media.manga.Manga(),
+        format = "MANGA",
+        muSeriesId = id,
+    )
 
     private fun formatReleaseDate(dateStr: String): String {
         return try {

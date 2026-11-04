@@ -220,7 +220,7 @@ class AppUpdateService : Service() {
 
     private fun baseNotification() =
         NotificationCompat.Builder(this, Notifications.CHANNEL_APP_UPDATE)
-            .setSmallIcon(R.drawable.ic_download_24)
+            .setSmallIcon(R.drawable.ic_round_download_24)
             .setContentIntent(activityIntent())
 
     private fun progressNotification(
@@ -267,7 +267,7 @@ class AppUpdateService : Service() {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .addAction(
-                R.drawable.ic_download_24,
+                R.drawable.ic_round_download_24,
                 getString(R.string.install_update),
                 PendingIntent.getActivity(
                     this, 1,

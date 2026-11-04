@@ -97,7 +97,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             type = 5,
                             name = getString(R.string.tv_big_picture),
                             desc = getString(R.string.tv_big_picture_desc),
-                            icon = R.drawable.ic_round_tv_24,
+                            icon = R.drawable.ic_round_tv_outline_24,
                             anchorKey = "big_picture_mode",
                             choice = ChoiceConfig(
                                 options = listOf(
@@ -126,7 +126,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             type = 1,
                             name = getString(R.string.app_lock),
                             desc = getString(R.string.app_lock_desc),
-                            icon = R.drawable.ic_baseline_screen_lock_portrait_24,
+                            icon = R.drawable.ic_round_screen_lock_portrait_24,
                             onClick = {
                                 customAlertDialog().apply {
                                     val view = DialogSetPasswordBinding.inflate(layoutInflater)
@@ -197,7 +197,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             name = getString(R.string.always_continue_content),
                             startsGroup = true,
                             desc = getString(R.string.always_continue_content_desc),
-                            icon = R.drawable.ic_round_resume_24,
+                            icon = R.drawable.ic_round_resume_outline_24,
                             isChecked = PrefManager.getVal(PrefName.ContinueMedia),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.ContinueMedia, isChecked)
@@ -207,7 +207,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             type = 2,
                             name = getString(R.string.comments_button),
                             desc = getString(R.string.comments_button_desc),
-                            icon = R.drawable.ic_round_comment_24,
+                            icon = R.drawable.ic_round_forum_outline_24,
                             isChecked = PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1,
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.CommentsEnabled, if (isChecked) 1 else 2)
@@ -218,7 +218,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             type = 2,
                             name = getString(R.string.handoff_discovery_setting),
                             desc = getString(R.string.handoff_discovery_setting_desc),
-                            icon = R.drawable.ic_round_devices_24,
+                            icon = R.drawable.ic_round_devices_outline_24,
                             isChecked = PrefManager.getVal(PrefName.HandoffDiscoveryEnabled),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.HandoffDiscoveryEnabled, isChecked)
@@ -240,7 +240,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             name = getString(R.string.hide_private),
                             startsGroup = true,
                             desc = getString(R.string.hide_private_desc),
-                            icon = R.drawable.ic_round_visibility_off_24,
+                            icon = R.drawable.ic_round_visibility_off_outline_white_24,
                             isChecked = PrefManager.getVal(PrefName.HidePrivate),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.HidePrivate, isChecked)
@@ -271,7 +271,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             type = 2,
                             name = getString(R.string.adult_only_content),
                             desc = getString(R.string.adult_only_content_desc),
-                            icon = R.drawable.ic_round_nsfw_24,
+                            icon = R.drawable.ic_round_18_up_rating_24,
                             isChecked = PrefManager.getVal(PrefName.AdultOnly),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.AdultOnly, isChecked)

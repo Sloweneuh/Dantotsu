@@ -8,7 +8,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.text.HtmlCompat
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
@@ -38,7 +38,9 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.showComickPickSheet
 import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.snackString
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.materialDialog
@@ -333,32 +335,56 @@ class ComickInfoFragment : Fragment() {
             }
             it.addView(errorView)
         }
-        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+        ani.dantotsu.toast(message, android.widget.Toast.LENGTH_LONG)
+    }
+
+    /** The names to look for this media by, for the user to choose from: none is filtered out. */
+    private suspend fun searchTitles(media: Media): List<String> {
+        val titles = ArrayList<String>()
+        titles.add(media.userPreferredName)
+        if (media.nameRomaji != media.userPreferredName) titles.add(media.nameRomaji)
+
+        media.synonyms.forEach { if (it.isNotBlank() && !titles.contains(it)) titles.add(it) }
+
+        // If this media is linked to a MangaUpdates series, try to include MU associated titles
+        val muId = media.muSeriesId
+        if (muId != null) {
+            // Try cache first
+            val cached = MangaUpdates.synonymsCache[muId]
+            val muTitles = if (!cached.isNullOrEmpty()) cached else withContext(kotlinx.coroutines.Dispatchers.IO) {
+                MangaUpdates.getSeriesDetails(muId)?.associated?.mapNotNull { it.title } ?: emptyList()
+            }
+            muTitles.forEach { t ->
+                if (t.isNotBlank() && !titles.contains(t)) titles.add(t)
+            }
+        }
+        return titles
+    }
+
+    /**
+     * Matching by hand from a custom tab. This fragment's own views are out of sight there, so the
+     * search opens in a sheet, and the tab runs its sources again to show the entry picked.
+     */
+    private fun pickFromCustomTab(media: Media) {
+        val model: MediaDetailsViewModel by activityViewModels()
+        val host = activity as? AppCompatActivity ?: return
+        val container = binding.mediaInfoContainer
+        val anime = isAnimeMode
+        viewLifecycleOwner.lifecycleScope.launch {
+            host.showComickPickSheet(searchTitles(media), anime) { slug, _, _ ->
+                PrefManager.setCustomVal(slugKey(media.id), slug)
+                if (!anime) media.muSeriesId?.let { ComickMatches.recordMuPick(media.id, it) }
+                model.comickSlug.value = slug
+                snackString(R.string.linked_comick_entry)
+                container.reloadSources()
+            }
+        }
     }
 
     private fun showQuickSearchModal(media: Media) {
         val context = requireContext()
-        // Build titles list, and include MU alternate titles if available.
         viewLifecycleOwner.lifecycleScope.launch {
-            val titles = ArrayList<String>()
-            titles.add(media.userPreferredName)
-            if (media.nameRomaji != media.userPreferredName) titles.add(media.nameRomaji)
-
-            // Every synonym: a picker is for the user to choose from, so none is filtered out.
-            media.synonyms.forEach { if (it.isNotBlank() && !titles.contains(it)) titles.add(it) }
-
-            // If this media is linked to a MangaUpdates series, try to include MU associated titles
-            val muId = media.muSeriesId
-            if (muId != null) {
-                // Try cache first
-                val cached = MangaUpdates.synonymsCache[muId]
-                val muTitles = if (!cached.isNullOrEmpty()) cached else withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    MangaUpdates.getSeriesDetails(muId)?.associated?.mapNotNull { it.title } ?: emptyList()
-                }
-                muTitles.forEach { t ->
-                    if (t.isNotBlank() && !titles.contains(t)) titles.add(t)
-                }
-            }
+            val titles = searchTitles(media)
 
             val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
                 setTitleText(context.getString(R.string.search_on_comick_title))
@@ -500,12 +526,7 @@ class ComickInfoFragment : Fragment() {
                             emptyMessage.visibility = View.VISIBLE
                             emptyMessage.text =
                                     fragmentContext.getString(R.string.error_loading_data)
-                            Toast.makeText(
-                                            fragmentContext,
-                                            getString(R.string.error_message, e.message ?: ""),
-                                            Toast.LENGTH_SHORT
-                                    )
-                                    .show()
+                            ani.dantotsu.toast(getString(R.string.error_message, e.message ?: ""))
                         }
                     }
                 }
@@ -603,12 +624,7 @@ class ComickInfoFragment : Fragment() {
                     if (_binding == null) return@withContext
                     if (comickData == null) {
                         binding.mediaInfoProgressBar.visibility = View.GONE
-                        Toast.makeText(
-                                        requireContext(),
-                                        getString(R.string.failed_fetch_comick),
-                                        Toast.LENGTH_SHORT
-                                )
-                                .show()
+                        ani.dantotsu.toast(getString(R.string.failed_fetch_comick))
                         return@withContext
                     }
 
@@ -651,24 +667,14 @@ class ComickInfoFragment : Fragment() {
                     binding.mediaInfoContainer.visibility = View.VISIBLE
                     displayComickInfo(comickData)
 
-                    Toast.makeText(
-                                    requireContext(),
-                                    getString(R.string.linked_comick_entry),
-                                    Toast.LENGTH_SHORT
-                            )
-                            .show()
+                    ani.dantotsu.toast(getString(R.string.linked_comick_entry))
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
                     binding.mediaInfoProgressBar.visibility = View.GONE
-                    Toast.makeText(
-                                    requireContext(),
-                                    getString(R.string.error_message, e.message ?: ""),
-                                    Toast.LENGTH_SHORT
-                            )
-                            .show()
+                    ani.dantotsu.toast(getString(R.string.error_message, e.message ?: ""))
                 }
             }
         }
@@ -687,24 +693,32 @@ class ComickInfoFragment : Fragment() {
         if (isAnimeMode) ComickEpisodes.clearAutoSlug(media.id)
 
         // Clear ViewModel
-        model.comickSlug.postValue(null)
+        model.comickSlug.value = null
+
+        if (binding.mediaInfoContainer.forwardsSections) {
+            snackString(R.string.comick_entry_unlinked)
+            binding.mediaInfoContainer.reloadSources()
+            return
+        }
 
         // Reset loaded flag and show quick search
         loaded = false
         showNoDataWithSearch(media)
 
-        Toast.makeText(
-                        requireContext(),
-                        getString(R.string.comick_entry_unlinked),
-                        Toast.LENGTH_SHORT
-                )
-                .show()
+        ani.dantotsu.toast(getString(R.string.comick_entry_unlinked))
     }
 
     private fun showNoDataWithSearch(media: Media) {
         if (_binding == null) return
         binding.mediaInfoProgressBar.visibility = View.GONE
         binding.mediaInfoContainer.visibility = View.GONE
+
+        if (binding.mediaInfoContainer.forwardsSections) {
+            binding.mediaInfoContainer.offerMatchAction(
+                InfoMatchAction(R.string.comick_no_match, R.string.search) { pickFromCustomTab(media) }
+            )
+            return
+        }
 
         val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
 
@@ -719,7 +733,7 @@ class ComickInfoFragment : Fragment() {
 
             // Set logo
             pageView.findViewById<android.widget.ImageView>(ani.dantotsu.R.id.logo)
-                    ?.setImageResource(ani.dantotsu.R.drawable.ic_round_comick_24)
+                    ?.setImageResource(ani.dantotsu.R.drawable.ic_comick)
 
             // Set title for Comick
             pageView.findViewById<android.widget.TextView>(ani.dantotsu.R.id.title)
@@ -813,7 +827,7 @@ class ComickInfoFragment : Fragment() {
         val isManualSelection =
                 media?.let {
                     PrefManager.getNullableCustomVal<String>(
-                            "comick_slug_${it.id}",
+                            slugKey(it.id),
                             null,
                             String::class.java
                     ) != null
@@ -1204,19 +1218,14 @@ class ComickInfoFragment : Fragment() {
                     chip.text = title
                     chip.setOnLongClickListener {
                         copyToClipboard(title)
-                        Toast.makeText(
-                                        requireContext(),
-                                        getString(R.string.copied_title_toast, title),
-                                        Toast.LENGTH_SHORT
-                                )
-                                .show()
+                        ani.dantotsu.toast(getString(R.string.copied_title_toast, title))
                         true
                     }
                     bind.itemChipGroup.addView(chip)
                 }
 
                 bind.root.tag = "synonyms_comick"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.SYNONYMS, bind.root)
             }
         }
 
@@ -1226,7 +1235,7 @@ class ComickInfoFragment : Fragment() {
         }
 
         // Latest chapter — shown after synonyms
-        if (!isAnimeMode && !shouldHideLatestChapter && lastChapter != null &&
+        if (parent.wantsInfoSection(InfoSectionKind.LATEST_CHAPTER) && !isAnimeMode && !shouldHideLatestChapter && lastChapter != null &&
                 parent.findViewWithTag<View>("latest_chapter_comick") == null) {
             val chapText = "Ch." + if (lastChapter % 1.0 == 0.0) lastChapter.toInt().toString() else lastChapter.toString()
             val hid = comic.hid
@@ -1260,8 +1269,8 @@ class ComickInfoFragment : Fragment() {
             }
             cb.root.isClickable = false
 
-            parent.addView(header.root)
-            parent.addView(cb.root)
+            parent.addInfoSection(InfoSectionKind.LATEST_CHAPTER, header.root)
+            parent.addInfoSection(InfoSectionKind.LATEST_CHAPTER, cb.root)
 
             if (!hid.isNullOrBlank()) {
                 viewLifecycleOwner.lifecycleScope.launch {
@@ -1291,7 +1300,7 @@ class ComickInfoFragment : Fragment() {
                     // The chapter is only known once this lands, so its comments button waits too.
                     latest.hid?.takeIf { it.isNotBlank() }?.let { chapterHid ->
                         cb.itemChapterBrowser.visibility = View.VISIBLE
-                        cb.itemChapterBrowser.setImageResource(R.drawable.ic_round_comment_24)
+                        cb.itemChapterBrowser.setImageResource(R.drawable.ic_round_forum_outline_24)
                         cb.itemChapterBrowser.contentDescription = getString(R.string.comick_comments)
                         cb.itemChapterBrowser.setSafeOnClickListener {
                             ComickCommentsBottomSheet
@@ -1306,7 +1315,7 @@ class ComickInfoFragment : Fragment() {
         // Add Covers section — placeholder is added synchronously so the position is reserved,
         // then the coroutine fills it in once the network fetch completes. Anime entries have a
         // single poster and no /cover page (it 404s), so there is no gallery to show.
-        if (!isAnimeMode && !comickSlug.isNullOrBlank() &&
+        if (parent.wantsInfoSection(InfoSectionKind.COVERS) && !isAnimeMode && !comickSlug.isNullOrBlank() &&
                 parent.findViewWithTag<View>("covers_comick_placeholder") == null
         ) {
             val coversPlaceholder = android.widget.FrameLayout(requireContext()).apply {
@@ -1316,7 +1325,7 @@ class ComickInfoFragment : Fragment() {
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-            parent.addView(coversPlaceholder)
+            parent.addInfoSection(InfoSectionKind.COVERS, coversPlaceholder)
 
             viewLifecycleOwner.lifecycleScope.launch {
                 val covers = withContext(Dispatchers.IO) {
@@ -1387,12 +1396,12 @@ class ComickInfoFragment : Fragment() {
 
                 bind.itemText.setOnLongClickListener {
                     copyToClipboard(infoText)
-                    Toast.makeText(requireContext(), "Copied anime info", Toast.LENGTH_SHORT).show()
+                    ani.dantotsu.toast("Copied anime info")
                     true
                 }
 
                 bind.root.tag = "anime_info_comick"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.ANIME_ADAPTATION, bind.root)
             }
         }
 
@@ -1462,12 +1471,7 @@ class ComickInfoFragment : Fragment() {
                     // Long tap: copy genre/tag name
                     chip.setOnLongClickListener {
                         copyToClipboard(genreName)
-                        android.widget.Toast.makeText(
-                                        requireContext(),
-                                        "Copied: $genreName",
-                                        android.widget.Toast.LENGTH_SHORT
-                                )
-                                .show()
+                        ani.dantotsu.toast("Copied: $genreName")
                         true
                     }
 
@@ -1476,7 +1480,7 @@ class ComickInfoFragment : Fragment() {
                 }
 
                 bind.root.tag = "genres_${groupType}_comick"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.GENRES, bind.root)
             }
         }
 
@@ -1493,7 +1497,7 @@ class ComickInfoFragment : Fragment() {
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-            parent.addView(tagsPlaceholder)
+            parent.addInfoSection(InfoSectionKind.TAGS, tagsPlaceholder)
 
             viewLifecycleOwner.lifecycleScope.launch {
                 val tags = withContext(Dispatchers.IO) { ComickApi.getComicTags(comicHid) }
@@ -1516,7 +1520,7 @@ class ComickInfoFragment : Fragment() {
                     }
                     chip.setOnLongClickListener {
                         copyToClipboard(title)
-                        Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
+                        ani.dantotsu.toast("Copied: $title")
                         true
                     }
                     bind.itemChipGroup.addView(chip)
@@ -1562,8 +1566,7 @@ class ComickInfoFragment : Fragment() {
                     // Long tap: copy tag name
                     chip.setOnLongClickListener {
                         copyToClipboard(title)
-                        Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT)
-                                .show()
+                        ani.dantotsu.toast("Copied: $title")
                         true
                     }
 
@@ -1571,7 +1574,7 @@ class ComickInfoFragment : Fragment() {
                 }
 
                 bind.root.tag = "tags_comick"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.TAGS, bind.root)
             }
         }
 
@@ -1591,9 +1594,10 @@ class ComickInfoFragment : Fragment() {
                     android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )
-            }.also { parent.addView(it) }
+            }.also { parent.addInfoSection(InfoSectionKind.RECOMMENDATIONS, it) }
         } else null
         if (!recommendations.isNullOrEmpty() && recommendationsPlaceholder != null &&
+                        parent.wantsInfoSection(InfoSectionKind.RECOMMENDATIONS) &&
                         parent.findViewWithTag<View>("recommendations_comick") == null
         ) {
             viewLifecycleOwner.lifecycleScope.launch {
@@ -1736,6 +1740,7 @@ class ComickInfoFragment : Fragment() {
                                         }
                                         root.tag = "recommendations_comick"
                                         recommendationsPlaceholder.addView(root)
+                                        parent.offerInfoMedia(InfoSectionKind.RECOMMENDATIONS, recommendedMedia)
                                 }
                     }
                 }
@@ -1747,7 +1752,7 @@ class ComickInfoFragment : Fragment() {
         if (comickHid.isNullOrBlank()) {
             Logger.log("Comick custom lists: skipped, comic.hid is blank")
         }
-        val customListsPlaceholder = if (!comickHid.isNullOrBlank() &&
+        val customListsPlaceholder = if (parent.wantsInfoSection(InfoSectionKind.STACKS) && !comickHid.isNullOrBlank() &&
                 parent.findViewWithTag<View>("custom_lists_comick_placeholder") == null) {
             android.widget.FrameLayout(requireContext()).apply {
                 tag = "custom_lists_comick_placeholder"
@@ -1755,7 +1760,7 @@ class ComickInfoFragment : Fragment() {
                     android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )
-            }.also { parent.addView(it) }
+            }.also { parent.addInfoSection(InfoSectionKind.STACKS, it) }
         } else null
 
         // Add Comick reviews
@@ -1767,7 +1772,7 @@ class ComickInfoFragment : Fragment() {
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-            parent.addView(reviewsPlaceholder)
+            parent.addInfoSection(InfoSectionKind.REVIEWS, reviewsPlaceholder)
 
             viewLifecycleOwner.lifecycleScope.launch {
                 val embedded = comic.reviews
@@ -1849,8 +1854,8 @@ class ComickInfoFragment : Fragment() {
         }
 
         // Comments on the entry, last of the sections: after recommendations, lists and reviews.
-        comic.hid?.takeIf { it.isNotBlank() }?.let { commentsHid ->
-            ComickCommentViews.addSection(
+        comic.hid?.takeIf { it.isNotBlank() && parent.wantsInfoSection(InfoSectionKind.COMMENTS) }?.let { commentsHid ->
+            parent.infoSection(InfoSectionKind.COMMENTS) { ComickCommentViews.addSection(
                 context = requireContext(),
                 scope = viewLifecycleOwner.lifecycleScope,
                 fragmentManager = parentFragmentManager,
@@ -1858,13 +1863,22 @@ class ComickInfoFragment : Fragment() {
                 hid = commentsHid,
                 heading = comic.title ?: getString(R.string.comick_comments),
                 isAlive = { _binding != null },
-            )
+            ) }
         }
 
         // Defer unlink button placement to the end to guarantee it's the last child.
         // If an unlink button already exists, move it to the end; otherwise add it now.
         val existingUnlink = parent.findViewWithTag<View>("unlink_comick_button")
-        if (existingUnlink != null) {
+        if (parent.forwardsSections) {
+            // A button here would stay out of sight with this fragment: the custom tab shows it.
+            if (isManualSelection && media != null) {
+                parent.offerMatchAction(
+                    InfoMatchAction(R.string.comick_matched_by_hand, R.string.unlink) {
+                        unlinkComickSelection(media)
+                    }
+                )
+            }
+        } else if (existingUnlink != null) {
             parent.removeView(existingUnlink)
             parent.addView(existingUnlink)
         } else if (isManualSelection && media != null) {
@@ -1932,14 +1946,14 @@ class ComickInfoFragment : Fragment() {
                 bind.itemText.text = lines
                 bind.itemText.setOnLongClickListener { copyToClipboard(lines); true }
                 bind.root.tag = "broadcast_comick"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.BROADCAST, bind.root)
             }
         }
 
         // --- Episodes -----------------------------------------------------------------------
         // Reserve the slot synchronously so it keeps its position, then fill it once the fetch
         // returns.
-        if (!slug.isNullOrBlank() && !hid.isNullOrBlank() && parent.findViewWithTag<View>("episodes_comick") == null) {
+        if (parent.wantsInfoSection(InfoSectionKind.EPISODES) && !slug.isNullOrBlank() && !hid.isNullOrBlank() && parent.findViewWithTag<View>("episodes_comick") == null) {
             val placeholder = android.widget.LinearLayout(requireContext()).apply {
                 orientation = android.widget.LinearLayout.VERTICAL
                 tag = "episodes_comick"
@@ -1948,7 +1962,7 @@ class ComickInfoFragment : Fragment() {
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-            parent.addView(placeholder)
+            parent.addInfoSection(InfoSectionKind.EPISODES, placeholder)
 
             viewLifecycleOwner.lifecycleScope.launch {
                 val episodes = withContext(Dispatchers.IO) { ComickApi.getEpisodes(hid) }
@@ -2003,7 +2017,7 @@ class ComickInfoFragment : Fragment() {
                     cb.itemChapterBrowser.visibility =
                         if (episodeHid.isNullOrBlank()) View.GONE else View.VISIBLE
                     if (!episodeHid.isNullOrBlank()) {
-                        cb.itemChapterBrowser.setImageResource(R.drawable.ic_round_comment_24)
+                        cb.itemChapterBrowser.setImageResource(R.drawable.ic_round_forum_outline_24)
                         cb.itemChapterBrowser.contentDescription = getString(R.string.comick_comments)
                         cb.itemChapterBrowser.setSafeOnClickListener {
                             ComickCommentsBottomSheet
@@ -2083,24 +2097,20 @@ class ComickInfoFragment : Fragment() {
                     bind.itemChipGroup.addView(chip)
                 }
                 bind.root.tag = "studios_comick"
-                parent.addView(bind.root)
+                parent.addInfoSection(InfoSectionKind.STUDIOS, bind.root)
             }
         }
 
         // --- Streaming platforms, official sites and encyclopedia links ---------------------
         val malLinks = comic.links?.mal_external_links
-        addLinkChips(
-            parent, "streaming_comick", getString(R.string.comick_streaming),
-            malLinks?.streaming_platforms?.filter { it.available != false }
-        )
-        addLinkChips(
-            parent, "official_comick", getString(R.string.comick_official_site),
-            malLinks?.available_at
-        )
-        addLinkChips(
-            parent, "resources_comick", getString(R.string.comick_resources),
-            malLinks?.resources
-        )
+        parent.infoSection(InfoSectionKind.EXTERNAL_LINKS) {
+            addLinkChips(
+                parent, "external_links_comick", getString(R.string.external_links),
+                (malLinks?.streaming_platforms?.filter { it.available != false }.orEmpty() +
+                        malLinks?.available_at.orEmpty() + malLinks?.resources.orEmpty())
+                    .distinctBy { it.url }
+            )
+        }
 
         // --- Trailer ------------------------------------------------------------------------
         // The same click-to-play card the AniList tab uses, rather than a link out to YouTube.
@@ -2110,7 +2120,7 @@ class ComickInfoFragment : Fragment() {
                 requireActivity(), LayoutInflater.from(context), parent, trailerId
             )
             card.tag = "trailer_comick"
-            parent.addView(card)
+            parent.addInfoSection(InfoSectionKind.TRAILER, card)
         }
     }
 
@@ -2146,7 +2156,7 @@ class ComickInfoFragment : Fragment() {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
         } catch (e: Exception) {
-            Toast.makeText(requireContext(), getString(R.string.error_message, e.message ?: ""), Toast.LENGTH_SHORT).show()
+            ani.dantotsu.toast(getString(R.string.error_message, e.message ?: ""))
         }
     }
 

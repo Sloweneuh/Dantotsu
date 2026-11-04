@@ -311,9 +311,9 @@ private fun TriStateDialog(
                                         androidx.tv.material3.Icon(
                                             androidx.compose.ui.res.painterResource(
                                                 when (state) {
-                                                    true -> R.drawable.ic_filter_tristate_include_24
-                                                    false -> R.drawable.ic_filter_tristate_exclude_24
-                                                    null -> R.drawable.ic_filter_tristate_empty_24
+                                                    true -> R.drawable.ic_round_check_box_24
+                                                    false -> R.drawable.ic_round_disabled_by_default_24
+                                                    null -> R.drawable.ic_round_check_box_outline_blank_24
                                                 }
                                             ),
                                             contentDescription = null,

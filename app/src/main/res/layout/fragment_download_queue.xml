@@ -49,7 +49,7 @@
         <ani.dantotsu.others.PatternBackgroundView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:patternIcon="@drawable/ic_download_24"
+            app:patternIcon="@drawable/ic_round_download_24"
             app:patternAnchor="@id/downloadQueueEmpty" />
 
         <TextView

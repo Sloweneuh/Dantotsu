@@ -97,7 +97,7 @@ class TorrentServerService : Service() {
             setOngoing(true)
             setUsesChronometer(true)
             addAction(
-                R.drawable.ic_circle_cancel,
+                R.drawable.ic_round_cancel_outline_24,
                 "Stop",
                 exitPendingIntent,
             )

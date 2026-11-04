@@ -68,7 +68,7 @@
             android:contentDescription="@string/open_in_browser"
             android:padding="12dp"
             android:visibility="gone"
-            app:srcCompat="@drawable/ic_open_24"
+            app:srcCompat="@drawable/ic_round_open_in_browser_24"
             app:tint="?attr/colorOnBackground"
             tools:visibility="visible" />
     </LinearLayout>

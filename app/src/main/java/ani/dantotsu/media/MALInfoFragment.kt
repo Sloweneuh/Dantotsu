@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import android.content.Intent
 import android.net.Uri
 import androidx.core.text.HtmlCompat
@@ -33,7 +32,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import ani.dantotsu.setSafeOnClickListener
 import kotlinx.coroutines.withContext
-import java.net.URLEncoder
 import ani.dantotsu.connections.mal.MALStack
 import ani.dantotsu.media.StackAdapter
 import ani.dantotsu.others.MalScraper
@@ -130,21 +128,29 @@ class MALInfoFragment : Fragment() {
         val media = model.getMedia().value
 
         // A MangaUpdates series whose MAL id is still being resolved: nothing can be decided yet,
-        // not even the "search on MAL" fallback — this renders once, so a premature fallback would
-        // stick around after the id arrives.
+        // not even the no-match page — this renders once, so a premature page would stick around
+        // after the id arrives.
         if (media?.muSeriesId != null && media.idMAL == null && model.muMalLoaded.value != true) return
         val malId = media?.idMAL ?: model.muMalId.value
 
         if (!isLoggedIn) {
             loaded = true
+            // A custom tab has no room for a login page, and can still show what is public.
+            val container = _binding?.mediaInfoContainer
+            if (container?.forwardsSections == true) {
+                if (malId != null && media != null) {
+                    addStacks(container, malId, media.anime != null, offline)
+                    addReviews(container, malId, media.anime != null, offline)
+                }
+                return
+            }
             showNotLoggedIn(media, malId)
             return
         }
 
         val m = media ?: return
         if (malId == null) {
-            // No MAL ID, show search option
-            showNoDataWithSearch(m, null)
+            showNoData(m, null)
             loaded = true
             return
         }
@@ -168,7 +174,7 @@ class MALInfoFragment : Fragment() {
                 }
 
                 if (malData == null) {
-                    showNoDataWithSearch(m, malId)
+                    showNoData(m, malId)
                     return@launch
                 }
 
@@ -186,7 +192,7 @@ class MALInfoFragment : Fragment() {
                 }
 
             } catch (e: Exception) {
-                showNoDataWithSearch(m, malId)
+                showNoData(m, malId)
             }
         }
     }
@@ -226,10 +232,9 @@ class MALInfoFragment : Fragment() {
                 MAL.loginIntent(requireContext())
             }
 
-            // Show either Quick Search OR Open on MAL button (never both)
+            notLoggedInView.findViewById<View>(R.id.quickSearchButton)?.visibility = View.GONE
             if (hasData) {
                 // Show "Open on MAL" button
-                notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.quickSearchButton)?.visibility = View.GONE
                 notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.openButton)?.text = getString(R.string.open_on_mal)
                 notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.openButton)?.apply {
                     visibility = View.VISIBLE
@@ -239,59 +244,11 @@ class MALInfoFragment : Fragment() {
                     }
                 }
             } else {
-                // Show "Quick Search" button
-                notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.openButton)?.visibility = View.GONE
-                notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.quickSearchButton)?.apply {
-                    visibility = View.VISIBLE
-                    setOnClickListener {
-                        showQuickSearchModal(media)
-                    }
-                }
+                notLoggedInView.findViewById<View>(R.id.openButton)?.visibility = View.GONE
             }
 
             container.addView(notLoggedInView)
         }
-    }
-
-    private fun showQuickSearchModal(media: ani.dantotsu.media.Media) {
-        val context = requireContext()
-        val mediaType = if (media.anime != null) "anime" else "manga"
-        val titles = ArrayList<String>()
-        titles.add(media.userPreferredName)
-        if (media.nameRomaji != media.userPreferredName) {
-            titles.add(media.nameRomaji)
-        }
-        media.synonyms.forEach { if (!titles.contains(it)) titles.add(it) }
-
-        val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
-            setTitleText(getString(R.string.search_on_myanimelist))
-
-            // Add each title as a clickable TextView
-            titles.forEach { title ->
-                val textView = android.widget.TextView(context).apply {
-                    text = title
-                    textSize = 16f
-                    val padding = 16f.px
-                    setPadding(padding, padding, padding, padding)
-                    setTextColor(androidx.core.content.ContextCompat.getColor(context, ani.dantotsu.R.color.bg_opp))
-                    // Use a simple rounded background with ripple effect
-                    val outValue = android.util.TypedValue()
-                    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
-                    setBackgroundResource(outValue.resourceId)
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener {
-                        val url = "https://myanimelist.net/${mediaType}.php?q=${
-                            URLEncoder.encode(title, "utf-8")
-                        }&cat=$mediaType"
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        dismiss()
-                    }
-                }
-                addView(textView)
-            }
-        }
-        modal.show(parentFragmentManager, "mal_quick_search")
     }
 
     private fun showError(message: String) {
@@ -300,61 +257,39 @@ class MALInfoFragment : Fragment() {
             b.mediaInfoProgressBar.visibility = View.GONE
             b.mediaInfoContainer.visibility = View.VISIBLE
         }
-        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+        ani.dantotsu.toast(message, android.widget.Toast.LENGTH_LONG)
     }
 
-    private fun showNoDataWithSearch(media: ani.dantotsu.media.Media, malId: Int?) {
+    /** No MAL entry for this title ([malId] null), or one that couldn't be loaded. */
+    private fun showNoData(media: ani.dantotsu.media.Media, malId: Int?) {
         // Use local nullable binding to avoid NPE if view is destroyed while coroutine resumes
         val b = _binding ?: return
         b.mediaInfoProgressBar.visibility = View.GONE
         b.mediaInfoContainer.visibility = View.GONE
 
-        val hasData = malId != null
-        val frameLayout = b.mediaInfoContainer.parent as? ViewGroup
-
-        frameLayout?.let { container ->
-            // Use fragment_mangaupdates_page.xml (logged in, no login button)
-            val pageView = layoutInflater.inflate(
-                R.layout.fragment_nodata_page,
-                container,
-                false
-            )
-
-            // set logo
-            pageView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageResource(R.drawable.ic_myanimelist)
-
-            // Set title text
-            pageView.findViewById<android.widget.TextView>(R.id.title)?.text = getString(R.string.search_on_myanimelist)
-
-            // Set small subtitle message (lookup id dynamically to avoid lint/resource variant issues)
-            val subtitleId = resources.getIdentifier("subtitle", "id", requireContext().packageName)
-            if (subtitleId != 0) {
-                pageView.findViewById<android.widget.TextView>(subtitleId)?.text = getString(R.string.search_sub_myanimelist)
-            }
-
-            // Single button: either "Go to Site" OR "Quick Search"
-            pageView.findViewById<com.google.android.material.button.MaterialButton>(R.id.quickSearchButton)?.apply {
+        val container = b.mediaInfoContainer.parent as? ViewGroup ?: return
+        val pageView = layoutInflater.inflate(R.layout.fragment_nodata_page, container, false)
+        pageView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageResource(R.drawable.ic_myanimelist)
+        pageView.findViewById<android.widget.TextView>(R.id.title)?.setText(
+            if (malId != null) R.string.mal_load_failed_title else R.string.mal_not_found_title
+        )
+        pageView.findViewById<android.widget.TextView>(R.id.subtitle)?.setText(
+            if (malId != null) R.string.mal_load_failed_desc else R.string.mal_not_found_desc
+        )
+        pageView.findViewById<com.google.android.material.button.MaterialButton>(R.id.quickSearchButton)?.apply {
+            if (malId != null) {
                 val mediaType = if (media.anime != null) "anime" else "manga"
-                if (hasData) {
-                    // Show "Open on MAL" button
-                    text = getString(R.string.open_on_mal)
-                    icon = context.getDrawable(R.drawable.ic_open_24)
-                    setOnClickListener {
-                        val url = "https://myanimelist.net/${mediaType}/$malId"
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    }
-                } else {
-                    // Show "Quick Search" button
-                    text = getString(R.string.quick_search)
-                    icon = context.getDrawable(R.drawable.ic_round_search_24)
-                    setOnClickListener {
-                        showQuickSearchModal(media)
-                    }
+                text = getString(R.string.open_on_mal)
+                icon = context.getDrawable(R.drawable.ic_round_open_in_browser_24)
+                setOnClickListener {
+                    val url = "https://myanimelist.net/${mediaType}/$malId"
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                 }
+            } else {
+                visibility = View.GONE
             }
-
-            container.addView(pageView)
         }
+        container.addView(pageView)
     }
 
     @Suppress("SetTextI18n")
@@ -403,7 +338,9 @@ class MALInfoFragment : Fragment() {
         // Popularity
         binding.mediaInfoPopularity.text = malData.numListUsers?.toString() ?: "??"
 
-        // Favorites (using num_scoring_users as proxy)
+        // MAL has no favourites count in its API; this is how many people scored it, and says so.
+        ((binding.mediaInfoFavorites.parent as? ViewGroup)?.getChildAt(0) as? android.widget.TextView)
+            ?.setText(R.string.scored_by)
         binding.mediaInfoFavorites.text = malData.numScoringUsers?.toString() ?: "??"
 
         // Episode Duration
@@ -481,7 +418,7 @@ class MALInfoFragment : Fragment() {
                 chip.setOnLongClickListener { copyToClipboard(synonym); true }
                 bind.itemChipGroup.addView(chip)
             }
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.SYNONYMS, bind.root)
         }
 
         // Genres
@@ -499,10 +436,15 @@ class MALInfoFragment : Fragment() {
                     false
                 ).root
                 chip.text = genre.name
+                val tap = MalGenreLinks.confirmingTap { MalGenreLinks.open(genre.id, true) }
+                chip.setOnClickListener { tap() }
                 chip.setOnLongClickListener { copyToClipboard(genre.name); true }
                 bind.itemChipGroup.addView(chip)
             }
-            parent.addView(bind.root)
+            parent.offerInfoChips(InfoSectionKind.GENRES, malData.genres.map { genre ->
+                InfoChip(genre.name, opensWebsite = true) { MalGenreLinks.open(genre.id, true) }
+            })
+            parent.addInfoSection(InfoSectionKind.GENRES, bind.root)
         }
 
         // Placeholder to anchor stacks/recommendations ordering
@@ -515,8 +457,12 @@ class MALInfoFragment : Fragment() {
         }
         parent.addView(stacksPlaceholder)
 
+        if (!offline) InfoExtraSections.addMalExtras(
+            parent, malData.background, malData.pictures, malData.relatedAnime, malData.relatedManga,
+        )
+
         // Recommendations - Show MAL's recommendations but reuse AniList data for matches
-        if (malData.recommendations.isNotEmpty() && !offline) {
+        if (malData.recommendations.isNotEmpty() && !offline && parent.wantsInfoSection(InfoSectionKind.RECOMMENDATIONS)) {
             lifecycleScope.launch {
                 val model: MediaDetailsViewModel by activityViewModels()
                 val anilistRecommendations = model.getMedia().value?.recommendations
@@ -579,104 +525,17 @@ class MALInfoFragment : Fragment() {
                     val placeholder = parent.findViewWithTag<View>("stacks_mal_placeholder")
                     if (placeholder != null) {
                         val idx = parent.indexOfChild(placeholder)
-                        parent.addView(bind.root, idx)
+                        parent.addInfoSection(InfoSectionKind.RECOMMENDATIONS, bind.root, idx)
                     } else {
-                        parent.addView(bind.root)
+                        parent.addInfoSection(InfoSectionKind.RECOMMENDATIONS, bind.root)
                     }
+                    parent.offerInfoMedia(InfoSectionKind.RECOMMENDATIONS, recommendations)
                 }
             }
         }
 
-        // Stacks (interest stacks) - scraped from MAL page since API doesn't expose them
-        if (!offline) {
-            lifecycleScope.launch {
-                val stacks = withContext(Dispatchers.IO) {
-                    try {
-                        MAL.query.getStacks(malId, true)
-                    } catch (e: Exception) { emptyList<MALStack>() }
-                }
-                val ctx = context ?: return@launch
-                if (_binding == null) return@launch
-                if (stacks.isNotEmpty()) {
-                    val bind = ItemTitleRecyclerBinding.inflate(
-                        LayoutInflater.from(ctx),
-                        parent,
-                        false
-                    )
-                    bind.itemTitle.setText(R.string.interest_stacks)
-                    bind.itemRecycler.adapter = StackAdapter(stacks, true)
-                    bind.itemRecycler.layoutManager = LinearLayoutManager(
-                        ctx,
-                        LinearLayoutManager.HORIZONTAL,
-                        false
-                    )
-                    bind.itemMore.visibility = View.VISIBLE
-                    bind.itemMore.setSafeOnClickListener {
-                        StackListViewActivity.passedStacks = ArrayList(stacks)
-                        startActivity(
-                            Intent(ctx, StackListViewActivity::class.java)
-                                .putExtra("title", getString(R.string.interest_stacks))
-                                .putExtra("isAnime", true)
-                        )
-                    }
-                    // If recommendations exist, insert stacks after recommendations; otherwise insert before placeholder.
-                    val recView = parent.findViewWithTag<View>("recommendations_mal")
-                    if (recView != null) {
-                        val recIdx = parent.indexOfChild(recView)
-                        parent.addView(bind.root, recIdx + 1)
-                    } else {
-                        val placeholder = parent.findViewWithTag<View>("stacks_mal_placeholder")
-                        if (placeholder != null) {
-                            val idx = parent.indexOfChild(placeholder)
-                            parent.addView(bind.root, idx)
-                        } else {
-                            parent.addView(bind.root)
-                        }
-                    }
-                }
-            }
-        }
-
-        // Reviews scraped from MAL
-        if (!offline) {
-            lifecycleScope.launch {
-                val reviews = withContext(Dispatchers.IO) {
-                    try {
-                        val response = MalScraper.getAnimeReviews(malId)
-                        Logger.log("MAL Reviews (anime): malId=$malId response=${response != null} dataSize=${response?.reviews?.size}")
-                        response?.reviews ?: emptyList()
-                    } catch (e: Exception) {
-                        Logger.log("MAL Reviews (anime) error: ${e.message}")
-                        emptyList<MALReview>()
-                    }
-                }
-                val ctx = context ?: return@launch
-                if (_binding == null) return@launch
-                Logger.log("MAL Reviews (anime): showing ${reviews.size} reviews")
-                if (reviews.isNotEmpty()) {
-                    val bind = ItemTitleRecyclerBinding.inflate(
-                        LayoutInflater.from(ctx),
-                        parent,
-                        false
-                    )
-                    bind.itemTitle.setText(R.string.reviews)
-                    val groupAdapter = GroupieAdapter()
-                    reviews.take(3).forEach { groupAdapter.add(MALReviewAdapter(it)) }
-                    bind.itemRecycler.adapter = groupAdapter
-                    bind.itemRecycler.layoutManager = LinearLayoutManager(ctx)
-                    bind.itemMore.visibility = View.VISIBLE
-                    bind.itemMore.setSafeOnClickListener {
-                        ctx.startActivity(
-                            android.content.Intent(ctx, MALReviewActivity::class.java)
-                                .putExtra("malId", malId)
-                                .putExtra("isAnime", true)
-                        )
-                    }
-                    parent.addView(bind.root)
-                }
-            }
-        }
-
+        addStacks(parent, malId, isAnime = true, offline)
+        addReviews(parent, malId, isAnime = true, offline)
     }
 
     @Suppress("SetTextI18n")
@@ -725,7 +584,9 @@ class MALInfoFragment : Fragment() {
         // Popularity
         binding.mediaInfoPopularity.text = malData.numListUsers?.toString() ?: "??"
 
-        // Favorites (using num_scoring_users as proxy)
+        // MAL has no favourites count in its API; this is how many people scored it, and says so.
+        ((binding.mediaInfoFavorites.parent as? ViewGroup)?.getChildAt(0) as? android.widget.TextView)
+            ?.setText(R.string.scored_by)
         binding.mediaInfoFavorites.text = malData.numScoringUsers?.toString() ?: "??"
 
         // Author - prefer the one with "Story" in their role
@@ -776,7 +637,7 @@ class MALInfoFragment : Fragment() {
                 chip.setOnLongClickListener { copyToClipboard(synonym); true }
                 bind.itemChipGroup.addView(chip)
             }
-            parent.addView(bind.root)
+            parent.addInfoSection(InfoSectionKind.SYNONYMS, bind.root)
         }
 
         // Genres
@@ -794,14 +655,24 @@ class MALInfoFragment : Fragment() {
                     false
                 ).root
                 chip.text = genre.name
+                val tap = MalGenreLinks.confirmingTap { MalGenreLinks.open(genre.id, false) }
+                chip.setOnClickListener { tap() }
                 chip.setOnLongClickListener { copyToClipboard(genre.name); true }
                 bind.itemChipGroup.addView(chip)
             }
-            parent.addView(bind.root)
+            parent.offerInfoChips(InfoSectionKind.GENRES, malData.genres.map { genre ->
+                InfoChip(genre.name, opensWebsite = true) { MalGenreLinks.open(genre.id, false) }
+            })
+            parent.addInfoSection(InfoSectionKind.GENRES, bind.root)
         }
 
+        if (!offline) InfoExtraSections.addMalExtras(
+            parent, malData.background, malData.pictures, malData.relatedAnime, malData.relatedManga,
+            malData.serialization,
+        )
+
         // Recommendations - Show MAL's recommendations but reuse AniList data for matches
-        if (malData.recommendations.isNotEmpty() && !offline) {
+        if (malData.recommendations.isNotEmpty() && !offline && parent.wantsInfoSection(InfoSectionKind.RECOMMENDATIONS)) {
             lifecycleScope.launch {
                 val model: MediaDetailsViewModel by activityViewModels()
                 val anilistRecommendations = model.getMedia().value?.recommendations
@@ -864,21 +735,28 @@ class MALInfoFragment : Fragment() {
                     val placeholder = parent.findViewWithTag<View>("stacks_mal_placeholder")
                     if (placeholder != null) {
                         val idx = parent.indexOfChild(placeholder)
-                        parent.addView(bind.root, idx)
+                        parent.addInfoSection(InfoSectionKind.RECOMMENDATIONS, bind.root, idx)
                     } else {
-                        parent.addView(bind.root)
+                        parent.addInfoSection(InfoSectionKind.RECOMMENDATIONS, bind.root)
                     }
+                    parent.offerInfoMedia(InfoSectionKind.RECOMMENDATIONS, recommendations)
                 }
             }
         }
 
         
+        addStacks(parent, malId, isAnime = false, offline)
+        addReviews(parent, malId, isAnime = false, offline)
+    }
+
+    /** Scraped from public pages, so this needs no login, unlike the rest of the tab. */
+    private fun addStacks(parent: ViewGroup, malId: Int, isAnime: Boolean, offline: Boolean) {
         // Stacks (interest stacks) - scraped from MAL page since API doesn't expose them
-        if (!offline) {
+        if (!offline && parent.wantsInfoSection(InfoSectionKind.STACKS)) {
             lifecycleScope.launch {
                 val stacks = withContext(Dispatchers.IO) {
                     try {
-                        MAL.query.getStacks(malId, false)
+                        MAL.query.getStacks(malId, isAnime)
                     } catch (e: Exception) { emptyList<MALStack>() }
                 }
                 val ctx = context ?: return@launch
@@ -890,7 +768,7 @@ class MALInfoFragment : Fragment() {
                         false
                     )
                     bind.itemTitle.setText(R.string.interest_stacks)
-                    bind.itemRecycler.adapter = StackAdapter(stacks, false)
+                    bind.itemRecycler.adapter = StackAdapter(stacks, isAnime)
                     bind.itemRecycler.layoutManager = LinearLayoutManager(
                         ctx,
                         LinearLayoutManager.HORIZONTAL,
@@ -902,30 +780,46 @@ class MALInfoFragment : Fragment() {
                         startActivity(
                             Intent(ctx, StackListViewActivity::class.java)
                                 .putExtra("title", getString(R.string.interest_stacks))
-                                .putExtra("isAnime", false)
+                                .putExtra("isAnime", isAnime)
                         )
                     }
-                    parent.addView(bind.root)
+                    // If recommendations exist, insert stacks after recommendations; otherwise insert before placeholder.
+                    val recView = parent.findViewWithTag<View>("recommendations_mal")
+                    if (recView != null) {
+                        val recIdx = parent.indexOfChild(recView)
+                        parent.addInfoSection(InfoSectionKind.STACKS, bind.root, recIdx + 1)
+                    } else {
+                        val placeholder = parent.findViewWithTag<View>("stacks_mal_placeholder")
+                        if (placeholder != null) {
+                            val idx = parent.indexOfChild(placeholder)
+                            parent.addInfoSection(InfoSectionKind.STACKS, bind.root, idx)
+                        } else {
+                            parent.addInfoSection(InfoSectionKind.STACKS, bind.root)
+                        }
+                    }
                 }
             }
         }
+    }
 
+    /** Scraped from public pages, so this needs no login, unlike the rest of the tab. */
+    private fun addReviews(parent: ViewGroup, malId: Int, isAnime: Boolean, offline: Boolean) {
         // Reviews scraped from MAL
-        if (!offline) {
+        if (!offline && parent.wantsInfoSection(InfoSectionKind.REVIEWS)) {
             lifecycleScope.launch {
                 val reviews = withContext(Dispatchers.IO) {
                     try {
-                        val response = MalScraper.getMangaReviews(malId)
-                        Logger.log("MAL Reviews (manga): malId=$malId response=${response != null} dataSize=${response?.reviews?.size}")
+                        val response = if (isAnime) MalScraper.getAnimeReviews(malId) else MalScraper.getMangaReviews(malId)
+                        Logger.log("MAL Reviews: malId=$malId response=${response != null} dataSize=${response?.reviews?.size}")
                         response?.reviews ?: emptyList()
                     } catch (e: Exception) {
-                        Logger.log("MAL Reviews (manga) error: ${e.message}")
+                        Logger.log("MAL Reviews error: ${e.message}")
                         emptyList<MALReview>()
                     }
                 }
                 val ctx = context ?: return@launch
                 if (_binding == null) return@launch
-                Logger.log("MAL Reviews (manga): showing ${reviews.size} reviews")
+                Logger.log("MAL Reviews: showing ${reviews.size} reviews")
                 if (reviews.isNotEmpty()) {
                     val bind = ItemTitleRecyclerBinding.inflate(
                         LayoutInflater.from(ctx),
@@ -942,10 +836,10 @@ class MALInfoFragment : Fragment() {
                         ctx.startActivity(
                             android.content.Intent(ctx, MALReviewActivity::class.java)
                                 .putExtra("malId", malId)
-                                .putExtra("isAnime", false)
+                                .putExtra("isAnime", isAnime)
                         )
                     }
-                    parent.addView(bind.root)
+                    parent.addInfoSection(InfoSectionKind.REVIEWS, bind.root)
                 }
             }
         }

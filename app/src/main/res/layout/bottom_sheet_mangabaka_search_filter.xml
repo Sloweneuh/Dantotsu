@@ -48,7 +48,7 @@
                         android:contentDescription="@string/reset"
                         android:rotation="180"
                         android:scaleType="centerInside"
-                        android:src="@drawable/ic_round_reset_star_24"
+                        android:src="@drawable/ic_reset_star"
                         app:tint="?attr/colorPrimary" />
     
                     <ImageButton
@@ -61,7 +61,7 @@
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/saved_filters"
                         android:scaleType="centerInside"
-                        android:src="@drawable/ic_round_bookmarks_24"
+                        android:src="@drawable/ic_round_bookmarks_outline_24"
                         app:tint="?attr/colorPrimary" />
     
                     <FrameLayout
@@ -78,7 +78,7 @@
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="@string/manage_filters"
                             android:scaleType="centerInside"
-                            android:src="@drawable/format_list_bulleted_24"
+                            android:src="@drawable/ic_round_format_list_bulleted_24"
                             android:visibility="gone"
                             app:tint="?attr/colorPrimary"
                             tools:visibility="visible" />
@@ -114,7 +114,7 @@
                         android:background="?android:attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/sort_by"
                         android:scaleType="centerInside"
-                        android:src="@drawable/ic_round_sort_24"
+                        android:src="@drawable/ic_sort"
                         app:tint="?attr/colorPrimary" />
                 </LinearLayout>
 
@@ -378,7 +378,7 @@
                 android:paddingBottom="8dp"
                 app:accordion="true"
                 app:cardInset="false"
-                app:icon="@drawable/ic_round_bookmark_border_24"
+                app:icon="@drawable/ic_round_bookmark_outline_24"
                 app:isExpanded="false"
                 app:title="@string/tags">
 

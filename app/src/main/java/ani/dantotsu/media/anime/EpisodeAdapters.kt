@@ -542,7 +542,7 @@ class EpisodeAdapter(
             if (downloadedEpisodes.contains(episodeNumber)) {
                 if (justDownloaded.remove(episodeNumber)) {
                     // A download that just completed: pop in a check, then settle on delete.
-                    binding.itemDownload.setImageResource(R.drawable.ic_circle_check)
+                    binding.itemDownload.setImageResource(R.drawable.ic_round_check_circle_outline_24)
                     binding.itemDownload.popIn()
                     binding.itemDownload.postDelayed({
                         // The row may have been recycled for another episode meanwhile.
@@ -555,7 +555,7 @@ class EpisodeAdapter(
                     binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
                 }
             } else {
-                binding.itemDownload.setImageResource(R.drawable.ic_download_24)
+                binding.itemDownload.setImageResource(R.drawable.ic_round_download_24)
             }
         }
     }

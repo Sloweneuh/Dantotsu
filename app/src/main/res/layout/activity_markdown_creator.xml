@@ -37,7 +37,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/poppins_semi_bold"
                 android:text="@string/composer_write"
-                app:icon="@drawable/ic_round_edit_24" />
+                app:icon="@drawable/ic_round_edit_outline_24" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/markdownModePreview"
@@ -46,7 +46,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/poppins_semi_bold"
                 android:text="@string/preview"
-                app:icon="@drawable/ic_round_remove_red_eye_24" />
+                app:icon="@drawable/ic_round_visibility_24" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <Space

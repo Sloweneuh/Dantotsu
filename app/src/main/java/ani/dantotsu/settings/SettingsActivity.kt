@@ -11,13 +11,12 @@ import android.os.Build.VERSION.RELEASE
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
-import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
@@ -75,10 +74,11 @@ class SettingsActivity : AppCompatActivity() {
                     return@setOnLongClickListener true
                 }
             }
-            settingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                topMargin = statusBarHeight
-                bottomMargin = navBarHeight
-            }
+            // Padding, not margins: NestedScrollView hands its child's vertical margins down as the
+            // height hint of an UNSPECIFIED measure, and a list given a non-zero hint lays out only
+            // that many pixels of rows. The content then measured short of the screen, fillViewport
+            // pinned it to the screen's height, and the page couldn't scroll.
+            settingsContainer.updatePadding(top = statusBarHeight, bottom = navBarHeight)
 
             onBackPressedDispatcher.addCallback(context) {
                 if (!searchOnly && PrefManager.getCustomVal("reload", false)) {
@@ -103,7 +103,7 @@ class SettingsActivity : AppCompatActivity() {
                             type = 1,
                             name = getString(R.string.accounts_and_sync),
                             desc = getString(R.string.accounts_and_sync_desc),
-                            icon = R.drawable.ic_round_manage_accounts_24,
+                            icon = R.drawable.ic_round_manage_accounts_outline_24,
                             onClick = {
                                 openPage(it, SettingsAccountActivity::class.java)
                             },
@@ -114,7 +114,7 @@ class SettingsActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.appearance),
                         desc = getString(R.string.appearance_desc),
-                        icon = R.drawable.ic_palette,
+                        icon = R.drawable.ic_round_palette_outline_24,
                         onClick = {
                             openPage(it, SettingsAppearanceActivity::class.java)
                         },
@@ -166,7 +166,7 @@ class SettingsActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.notifications),
                         desc = getString(R.string.notifications_desc),
-                        icon = R.drawable.ic_round_notifications_none_24,
+                        icon = R.drawable.ic_round_notifications_outline_24,
                         onClick = {
                             openPage(it, SettingsNotificationActivity::class.java)
                         },
@@ -191,7 +191,7 @@ class SettingsActivity : AppCompatActivity() {
                             type = 1,
                             name = "Firebase Test Console",
                             desc = "Debug: test notifications and background tasks",
-                            icon = R.drawable.ic_round_bug_report_24,
+                            icon = R.drawable.ic_round_bug_report_outline_24,
                             onClick = {
                                 startActivity(
                                     Intent(

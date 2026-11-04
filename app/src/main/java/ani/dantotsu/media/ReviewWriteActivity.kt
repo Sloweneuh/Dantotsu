@@ -42,7 +42,7 @@ class ReviewWriteActivity : AppCompatActivity() {
         binding.reviewWriteToolbar.formBarTitle.setText(R.string.review_write_title)
         binding.reviewWriteToolbar.formBarPrimary.apply {
             setText(R.string.form_action_post)
-            setIconResource(R.drawable.ic_round_send_24)
+            setIconResource(R.drawable.ic_round_send_outline_24)
         }
 
         mediaId = intent.getIntExtra("mediaId", -1)

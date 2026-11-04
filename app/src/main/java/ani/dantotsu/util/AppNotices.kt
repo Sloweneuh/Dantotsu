@@ -108,16 +108,16 @@ object AppNotices {
 
     val CHOICES = listOf(
         Choice(BackOnlineNotice.ID, R.string.notice_back_online, R.drawable.ic_round_wifi_24),
-        Choice(SyncLinkNotice.ID, R.string.notice_sync_link, R.drawable.ic_round_cloud_sync_24,
+        Choice(SyncLinkNotice.ID, R.string.notice_sync_link, R.drawable.ic_round_cloud_sync_outline_24,
             R.string.notice_unsaid_sync),
-        Choice(SyncConflictNotice.ID, R.string.notice_sync_conflict, R.drawable.ic_round_cloud_alert_24,
+        Choice(SyncConflictNotice.ID, R.string.notice_sync_conflict, R.drawable.ic_round_cloud_alert_outline_24,
             R.string.notice_unsaid_sync),
-        Choice(AnilistOutageNotice.ID, R.string.notice_anilist_outage, R.drawable.ic_round_cloud_off_24),
+        Choice(AnilistOutageNotice.ID, R.string.notice_anilist_outage, R.drawable.ic_round_cloud_off_outline_24),
         Choice(SyncReloadNotice.ID, R.string.notice_sync_reload, R.drawable.ic_round_refresh_24),
-        Choice(ExtensionSyncNotice.ID, R.string.notice_extension_sync, R.drawable.ic_round_extension_sync_24),
+        Choice(ExtensionSyncNotice.ID, R.string.notice_extension_sync, R.drawable.ic_extension_sync),
         Choice(AppUpdateNotice.ID, R.string.notice_app_update, R.drawable.ic_round_system_update_24),
         Choice(ExtensionUpdateNotice.ID, R.string.notice_extension_update,
-            R.drawable.ic_round_extension_settings_24),
+            R.drawable.ic_extension_settings),
         Choice(ExtensionObsoleteNotice.ID, R.string.notice_extension_obsolete,
             R.drawable.ic_round_error_outline_24),
     )

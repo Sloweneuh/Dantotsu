@@ -206,11 +206,11 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
     private fun setSortByFilterImage() {
         val filterDrawable = when (activity.aniMangaResult.sort) {
             Anilist.sortBy[0] -> R.drawable.ic_round_area_chart_24
-            Anilist.sortBy[1] -> R.drawable.ic_round_filter_peak_24
-            Anilist.sortBy[2] -> R.drawable.ic_round_star_graph_24
+            Anilist.sortBy[1] -> R.drawable.ic_round_landscape_24
+            Anilist.sortBy[2] -> R.drawable.ic_round_insights_24
             Anilist.sortBy[3] -> R.drawable.ic_round_new_releases_24
             Anilist.sortBy[4] -> R.drawable.ic_round_filter_list_24
-            Anilist.sortBy[5] -> R.drawable.ic_round_filter_list_24_reverse
+            Anilist.sortBy[5] -> R.drawable.ic_filter_list_reverse
             Anilist.sortBy[6] -> R.drawable.ic_round_assist_walker_24
             else -> R.drawable.ic_round_filter_alt_24
         }
@@ -220,7 +220,7 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
     private fun setCountryButton(country: String?) {
         if (country == null) {
             val drawable = ContextCompat.getDrawable(
-                requireContext(), R.drawable.ic_round_globe_search_googlefonts
+                requireContext(), R.drawable.ic_round_travel_explore_24
             )!!.mutate()
             DrawableCompat.setTint(
                 DrawableCompat.wrap(drawable),
@@ -406,13 +406,13 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
 
                     R.id.sort_by_popular -> {
                         activity.aniMangaResult.sort = Anilist.sortBy[1]
-                        binding.sortByFilter.setImageResource(R.drawable.ic_round_filter_peak_24)
+                        binding.sortByFilter.setImageResource(R.drawable.ic_round_landscape_24)
                         startBounceZoomAnimation()
                     }
 
                     R.id.sort_by_trending -> {
                         activity.aniMangaResult.sort = Anilist.sortBy[2]
-                        binding.sortByFilter.setImageResource(R.drawable.ic_round_star_graph_24)
+                        binding.sortByFilter.setImageResource(R.drawable.ic_round_insights_24)
                         startBounceZoomAnimation()
                     }
 
@@ -430,7 +430,7 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
 
                     R.id.sort_by_z_a -> {
                         activity.aniMangaResult.sort = Anilist.sortBy[5]
-                        binding.sortByFilter.setImageResource(R.drawable.ic_round_filter_list_24_reverse)
+                        binding.sortByFilter.setImageResource(R.drawable.ic_filter_list_reverse)
                         startBounceZoomAnimation()
                     }
 

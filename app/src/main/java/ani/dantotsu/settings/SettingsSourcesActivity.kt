@@ -124,14 +124,14 @@ class SettingsSourcesActivity : AppCompatActivity() {
                 SettingsSection(
                     key = Section.ADDONS,
                     title = getString(R.string.addons),
-                    icon = R.drawable.ic_round_widgets_24,
+                    icon = R.drawable.ic_round_widgets_outline_24,
                     summary = { getString(R.string.addons_desc) },
                     rows = { addonRows() },
                 ),
                 SettingsSection(
                     key = Section.DOWNLOADS,
                     title = getString(R.string.downloads),
-                    icon = R.drawable.ic_download_24,
+                    icon = R.drawable.ic_round_download_24,
                     summary = { getString(R.string.downloads_settings_desc) },
                     rows = {
                         downloadSettingsRows(compact = true, onRebuild = {
@@ -142,7 +142,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
                 SettingsSection(
                     key = Section.NETWORK,
                     title = getString(R.string.network),
-                    icon = R.drawable.ic_globe_24,
+                    icon = R.drawable.ic_round_language_24,
                     summary = { getString(R.string.network_desc) },
                     rows = { networkRows() },
                 ),
@@ -226,21 +226,21 @@ class SettingsSourcesActivity : AppCompatActivity() {
     private fun repositoryRows(): List<Settings> = listOf(
         repoRow(
             MediaType.ANIME, R.string.anime_add_repository, R.string.anime_add_repository_desc,
-            R.drawable.ic_round_github_anime_24, PrefName.AnimeExtensionRepos, "anime_repo",
+            R.drawable.ic_github_anime, PrefName.AnimeExtensionRepos, "anime_repo",
         ),
         repoRow(
             MediaType.MANGA, R.string.manga_add_repository, R.string.manga_add_repository_desc,
-            R.drawable.ic_round_github_manga_24, PrefName.MangaExtensionRepos, "manga_repo",
+            R.drawable.ic_github_manga, PrefName.MangaExtensionRepos, "manga_repo",
         ),
         repoRow(
             MediaType.NOVEL, R.string.novel_add_repository, R.string.novel_add_repository_desc,
-            R.drawable.ic_round_github_novel_24, PrefName.NovelExtensionRepos, "novel_repo",
+            R.drawable.ic_github_novel, PrefName.NovelExtensionRepos, "novel_repo",
         ),
         Settings(
             type = 1,
             name = getString(R.string.extension_test),
             desc = getString(R.string.extension_test_desc),
-            icon = R.drawable.ic_round_science_24,
+            icon = R.drawable.ic_round_science_outline_24,
             compact = true,
             anchorKey = "extension_test",
             isActivity = true,
@@ -301,7 +301,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
             type = 1,
             name = getString(R.string.default_browse_sort),
             desc = browseSortDesc(),
-            icon = R.drawable.ic_round_sort_24,
+            icon = R.drawable.ic_sort,
             compact = true,
             anchorKey = "default_browse_sort",
             attach = {
@@ -378,7 +378,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
             type = 1,
             name = getString(R.string.auto_update_extensions_interval),
             desc = autoUpdateIntervalDesc(),
-            icon = R.drawable.ic_round_schedule_24,
+            icon = R.drawable.ic_round_schedule_outline_24,
             compact = true,
             anchorKey = "auto_update_extensions_interval",
             attach = {
@@ -421,7 +421,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
             type = 2,
             name = getString(R.string.skip_loading_extension_icons),
             desc = getString(R.string.skip_loading_extension_icons_desc),
-            icon = R.drawable.ic_round_no_icon_24,
+            icon = R.drawable.ic_round_hide_image_outline_24,
             compact = true,
             anchorKey = "skip_extension_icons",
             isChecked = PrefManager.getVal(PrefName.SkipExtensionIcons),
@@ -431,7 +431,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
             type = 2,
             name = getString(R.string.NSFWExtention),
             desc = getString(R.string.NSFWExtention_desc),
-            icon = R.drawable.ic_round_nsfw_24,
+            icon = R.drawable.ic_round_18_up_rating_24,
             compact = true,
             anchorKey = "nsfw_extensions",
             isChecked = PrefManager.getVal(PrefName.NSFWExtension),
@@ -452,7 +452,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
             // on episode rows, notifications and the downloads screen.
             name = getString(R.string.anime_downloader_addon),
             desc = getString(R.string.not_installed),
-            icon = R.drawable.ic_round_addon_download_24,
+            icon = R.drawable.ic_addon_download,
             compact = true,
             anchorKey = "downloader_addon",
             isActivity = true,
@@ -468,7 +468,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
                     if (it.settingsDesc.text == getString(R.string.installed)) {
                         downloadAddonManager.uninstall()
                     } else {
-                        it.settingsIconRight.setImageResource(R.drawable.ic_sync)
+                        it.settingsIconRight.setImageResource(R.drawable.ic_round_sync_24)
                         it.settingsIconRight.setSpinning(true)
                         snackString(getString(R.string.downloading))
                         lifecycleScope.launchIO {
@@ -487,7 +487,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
             type = 1,
             name = getString(R.string.torrent_addon),
             desc = getString(R.string.not_installed),
-            icon = R.drawable.ic_round_magnet_24,
+            icon = R.drawable.ic_magnet,
             compact = true,
             anchorKey = "torrent_addon",
             isActivity = true,
@@ -504,7 +504,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
                         TorrentServerService.stop()
                         torrentAddonManager.uninstall()
                     } else {
-                        it.settingsIconRight.setImageResource(R.drawable.ic_sync)
+                        it.settingsIconRight.setImageResource(R.drawable.ic_round_sync_24)
                         it.settingsIconRight.setSpinning(true)
                         snackString(getString(R.string.downloading))
                         lifecycleScope.launchIO {
@@ -567,7 +567,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
                 }
 
                 null -> {
-                    view.settingsIconRight.setImageResource(R.drawable.ic_download_24)
+                    view.settingsIconRight.setImageResource(R.drawable.ic_round_download_24)
                     view.settingsDesc.text = context.getString(R.string.not_installed)
                 }
 
@@ -602,7 +602,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.user_agent),
                 desc = getString(R.string.user_agent_desc),
-                icon = R.drawable.ic_globe_24,
+                icon = R.drawable.ic_round_language_24,
                 compact = true,
                 anchorKey = "user_agent",
                 onClick = {
@@ -653,7 +653,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
                 type = 2,
                 name = getString(R.string.proxy),
                 desc = getString(R.string.proxy_desc),
-                icon = R.drawable.vpn_key_24,
+                icon = R.drawable.ic_round_vpn_key_outline_24,
                 compact = true,
                 anchorKey = "proxy",
                 isChecked = PrefManager.getVal(PrefName.EnableSocks5Proxy),
@@ -666,7 +666,7 @@ class SettingsSourcesActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.proxy_setup),
                 desc = getString(R.string.proxy_setup_desc),
-                icon = R.drawable.lan_24,
+                icon = R.drawable.ic_round_lan_outline_24,
                 compact = true,
                 anchorKey = "proxy_setup",
                 onClick = { ProxyDialogFragment().show(supportFragmentManager, "dialog") }

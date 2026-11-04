@@ -81,7 +81,7 @@ internal fun TvOfflineHome(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        painterResource(R.drawable.ic_signal_wifi_off_24),
+                        painterResource(R.drawable.ic_round_signal_wifi_off_outline_24),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -98,7 +98,7 @@ internal fun TvOfflineHome(
                     TopButton(R.drawable.ic_round_wifi_24, stringResource(R.string.go_online), onGoOnline, highlight = true)
                     Spacer(Modifier.width(12.dp))
                 }
-                TopButton(R.drawable.ic_download_24, stringResource(R.string.tv_downloads), onDownloads)
+                TopButton(R.drawable.ic_round_download_24, stringResource(R.string.tv_downloads), onDownloads)
                 Spacer(Modifier.width(12.dp))
                 TopButton(R.drawable.ic_round_settings_24, stringResource(R.string.settings), onSettings)
                 if (onExit != null) {

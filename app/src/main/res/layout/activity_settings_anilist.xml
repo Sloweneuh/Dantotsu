@@ -296,7 +296,7 @@
                 android:contentDescription="@string/custom_anime_list"
                 android:layout_marginHorizontal="36dp"
                 android:layout_marginVertical="12dp"
-                android:src="@drawable/ic_circle_add"
+                android:src="@drawable/ic_round_add_circle_outline_24"
                 android:background="?android:attr/selectableItemBackground"
                 app:tint="?attr/colorPrimary"/>
 
@@ -322,7 +322,7 @@
                 android:contentDescription="@string/custom_manga_list"
                 android:layout_marginHorizontal="36dp"
                 android:layout_marginVertical="12dp"
-                android:src="@drawable/ic_circle_add"
+                android:src="@drawable/ic_round_add_circle_outline_24"
                 android:background="?android:attr/selectableItemBackground"
                 app:tint="?attr/colorPrimary"/>
 

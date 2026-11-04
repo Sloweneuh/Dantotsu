@@ -109,7 +109,7 @@
                         android:layout_width="16dp"
                         android:layout_height="16dp"
                         android:layout_gravity="center_vertical"
-                        app:srcCompat="@drawable/ic_round_mangaupdates_24"
+                        app:srcCompat="@drawable/ic_mangaupdates"
                         app:tint="?attr/colorOnPrimary"
                         tools:ignore="ContentDescription" />
 
@@ -136,7 +136,7 @@
                         android:layout_height="13dp"
                         android:layout_gravity="center_vertical"
                         android:layout_marginEnd="3dp"
-                        app:srcCompat="@drawable/ic_anime_sub_24"
+                        app:srcCompat="@drawable/ic_round_subtitles_outline_24"
                         app:tint="?attr/colorOnPrimary"
                         tools:ignore="ContentDescription" />
 

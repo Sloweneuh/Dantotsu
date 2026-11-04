@@ -13,7 +13,7 @@
         android:layout_height="24dp"
         android:layout_marginEnd="16dp"
         android:contentDescription="@string/language_icon"
-        tools:src="@drawable/ic_anime_dub_24" />
+        tools:src="@drawable/ic_round_record_voice_over_outline_24" />
 
     <TextView
         android:id="@+id/languageText"

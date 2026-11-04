@@ -39,7 +39,7 @@
             android:layout_marginStart="-48dp"
             android:contentDescription="@string/reply"
             android:fontFamily="@font/poppins_bold"
-            android:src="@drawable/ic_add"
+            android:src="@drawable/ic_round_add_24"
             app:tint="?attr/colorPrimary" />
     </LinearLayout>
 

@@ -34,18 +34,18 @@ class PlayerBottomBar(playerView: PlayerView) {
 
     /** Most needed first: these are the last to move behind "more". */
     private val items = listOf(
-        item(R.id.exo_source, R.string.source, R.drawable.ic_round_source_24),
+        item(R.id.exo_source, R.string.source, R.drawable.ic_source),
         item(R.id.exo_sub, R.string.subtitles, R.drawable.ic_round_subtitles_24),
-        item(R.id.exo_audio, R.string.audio_tracks, R.drawable.ic_round_audiotrack_24),
+        item(R.id.exo_audio, R.string.audio_tracks, R.drawable.ic_round_music_note_24),
         item(R.id.exo_screen, R.string.player_resize, R.drawable.ic_round_fullscreen_24),
         item(R.id.exo_settings, R.string.settings, R.drawable.ic_round_video_settings_24),
-        item(R.id.exo_pip, R.string.picture_in_picture, R.drawable.ic_round_picture_in_picture_alt_24),
-        item(R.id.exo_cast, R.string.player_cast, R.drawable.ic_round_cast_24),
+        item(R.id.exo_pip, R.string.picture_in_picture, R.drawable.ic_round_picture_in_picture_alt_outline_24),
+        item(R.id.exo_cast, R.string.player_cast, R.drawable.ic_round_cast_outline_24),
         item(R.id.exo_skip_op_ed, R.string.auto_skip, R.drawable.ic_round_play_disabled_24),
         item(R.id.exo_rotate, R.string.player_rotate, R.drawable.ic_round_screen_rotation_alt_24),
-        item(R.id.exo_clip, R.string.clip, R.drawable.ic_round_movie_edit_24),
+        item(R.id.exo_clip, R.string.clip, R.drawable.ic_round_movie_edit_outline_24),
         item(R.id.exo_screenshot, R.string.screenshot, R.drawable.ic_round_screenshot_frame_2_24),
-        item(R.id.exo_handoff, R.string.continue_on_another_device, R.drawable.ic_round_devices_24),
+        item(R.id.exo_handoff, R.string.continue_on_another_device, R.drawable.ic_round_devices_outline_24),
     )
 
     private var overflow: List<Item> = emptyList()

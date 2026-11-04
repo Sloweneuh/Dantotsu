@@ -650,7 +650,7 @@ class UnreadChapterNotificationTask : Task {
             if (isAnime) R.string.notification_action_mark_watched
             else R.string.notification_action_mark_read
         )
-        return NotificationCompat.Action.Builder(R.drawable.ic_circle_check, label, pendingIntent).build()
+        return NotificationCompat.Action.Builder(R.drawable.ic_round_check_circle_outline_24, label, pendingIntent).build()
     }
 
     /**

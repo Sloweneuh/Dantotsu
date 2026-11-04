@@ -285,7 +285,7 @@ private fun ActiveRow(item: DownloadItem, modifier: Modifier, onClick: () -> Uni
                 }
             }
         },
-        leadingContent = { Icon(painterResource(R.drawable.ic_download_24), contentDescription = null, modifier = Modifier.size(28.dp)) },
+        leadingContent = { Icon(painterResource(R.drawable.ic_round_download_24), contentDescription = null, modifier = Modifier.size(28.dp)) },
         modifier = modifier.pointerClick(onClick = onClick),
     )
 }

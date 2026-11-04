@@ -3,7 +3,6 @@ package ani.dantotsu.download
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
-import android.widget.Toast
 import ani.dantotsu.R
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.currActivity
@@ -237,10 +236,9 @@ class DownloadCompat {
                 val deleted = directory.deleteRecursively()
                 if (toast) {
                     if (deleted) {
-                        Toast.makeText(context, context.getString(R.string.successfully_deleted), Toast.LENGTH_SHORT).show()
+                        ani.dantotsu.toast(context.getString(R.string.successfully_deleted))
                     } else {
-                        Toast.makeText(context, context.getString(R.string.failed_to_delete_directory), Toast.LENGTH_SHORT)
-                            .show()
+                        ani.dantotsu.toast(context.getString(R.string.failed_to_delete_directory))
                     }
                 }
             }

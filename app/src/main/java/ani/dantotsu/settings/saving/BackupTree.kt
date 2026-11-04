@@ -195,6 +195,7 @@ object BackupTree {
                         BackupItem(PrefName.InfoTabVisibilityMangaUpdates, R.string.pref_info_tab_visibility_mangaupdates),
                         BackupItem(PrefName.InfoTabOrderMangaUpdatesNovel, R.string.pref_info_tab_order_mangaupdates_novel),
                         BackupItem(PrefName.InfoTabVisibilityMangaUpdatesNovel, R.string.pref_info_tab_visibility_mangaupdates_novel),
+                        BackupItem(PrefName.InfoTabsConfig, R.string.pref_info_tabs_config),
                     )
                 ),
             )

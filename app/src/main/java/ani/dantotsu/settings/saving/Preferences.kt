@@ -243,6 +243,8 @@ enum class PrefName(val data: Pref) {
     InfoTabVisibilityAnilistNovel(Pref(Location.UI, List::class, listOf(true, true, true, true))),
     InfoTabOrderMangaUpdatesNovel(Pref(Location.UI, List::class, listOf(0, 1, 2))),
     InfoTabVisibilityMangaUpdatesNovel(Pref(Location.UI, List::class, listOf(true, true, true))),
+    // Custom tabs and per-tab section arrangements, as JSON; see InfoTabStore.
+    InfoTabsConfig(Pref(Location.UI, String::class, "")),
 
     //User Interface
     UseOLED(Pref(Location.UI, Boolean::class, false)),

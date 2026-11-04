@@ -92,7 +92,7 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/mark_as_read"
                 android:tooltipText="@string/mark_as_read"
-                app:icon="@drawable/ic_circle_check" />
+                app:icon="@drawable/ic_round_check_circle_outline_24" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/chapterSelectionDownload"
@@ -101,7 +101,7 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/download"
                 android:tooltipText="@string/download"
-                app:icon="@drawable/ic_download_24" />
+                app:icon="@drawable/ic_round_download_24" />
 
             <!-- Anime only, and for one episode at a time: casting plays one. -->
             <com.google.android.material.button.MaterialButton
@@ -112,7 +112,7 @@
                 android:contentDescription="@string/player_cast"
                 android:tooltipText="@string/player_cast"
                 android:visibility="gone"
-                app:icon="@drawable/ic_round_cast_24" />
+                app:icon="@drawable/ic_round_cast_outline_24" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/chapterSelectionDelete"

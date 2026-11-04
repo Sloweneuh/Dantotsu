@@ -57,7 +57,7 @@
                 android:layout_height="48dp"
                 android:layout_marginStart="24dp"
                 android:transitionName="settingsPageIcon"
-                app:srcCompat="@drawable/view_list_24"
+                app:srcCompat="@drawable/ic_round_view_list_outline_24"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ContentDescription" />
 
@@ -90,7 +90,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 app:patternAnchor="@id/muCustomMappingEmpty"
-                app:patternIcon="@drawable/view_list_24" />
+                app:patternIcon="@drawable/ic_round_view_list_outline_24" />
 
             <TextView
                 android:id="@+id/muCustomMappingEmpty"
@@ -105,7 +105,7 @@
                 android:drawablePadding="12dp"
                 android:paddingHorizontal="24dp"
                 android:paddingVertical="48dp"
-                app:drawableTopCompat="@drawable/view_list_24"
+                app:drawableTopCompat="@drawable/ic_round_view_list_outline_24"
                 app:drawableTint="?attr/colorOnBackground" />
         </FrameLayout>
 

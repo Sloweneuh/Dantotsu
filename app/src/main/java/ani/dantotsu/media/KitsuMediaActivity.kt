@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.updateLayoutParams
@@ -151,7 +150,7 @@ class KitsuMediaActivity : AppCompatActivity() {
             val full = withContext(Dispatchers.IO) { KitsuApi.getMediaFull(isAnime, mediaId) }
             if (full == null) {
                 binding.kitsuMediaProgress.visibility = View.GONE
-                Toast.makeText(this@KitsuMediaActivity, getString(R.string.kitsu_no_data_title), Toast.LENGTH_SHORT).show()
+                ani.dantotsu.toast(getString(R.string.kitsu_no_data_title))
                 finish()
                 return@launch
             }
@@ -164,7 +163,8 @@ class KitsuMediaActivity : AppCompatActivity() {
             KitsuMediaRenderer.render(
                 activity = this@KitsuMediaActivity,
                 info = info,
-                contentHost = binding.kitsuMediaContent,
+                contentHost = (if (isAnime) InfoTabContext.ANILIST_ANIME else InfoTabContext.ANILIST_MANGA)
+                    .standaloneContent(info, InfoTabType.KITSU, binding.kitsuMediaContent),
                 full = full,
                 isAnime = isAnime,
                 onCategoryClick = { slug, name -> startKitsuSearch(slug, name) },

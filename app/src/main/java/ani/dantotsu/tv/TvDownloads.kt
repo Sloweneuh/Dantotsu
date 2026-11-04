@@ -72,7 +72,7 @@ fun EpisodeActions(
                 )
                 Action(R.drawable.ic_round_play_arrow_24, stringResource(R.string.tv_play), onPlay, Modifier.focusRequester(first))
                 when (state) {
-                    EpisodeDownload.None -> Action(R.drawable.ic_download_24, stringResource(R.string.download), onDownload)
+                    EpisodeDownload.None -> Action(R.drawable.ic_round_download_24, stringResource(R.string.download), onDownload)
                     EpisodeDownload.Queued, is EpisodeDownload.Running ->
                         Action(R.drawable.ic_round_close_24, stringResource(R.string.tv_stop_download), onCancel)
                     EpisodeDownload.Done -> Action(R.drawable.ic_round_delete_24, stringResource(R.string.tv_delete_download), onDelete)
@@ -127,10 +127,10 @@ fun DownloadSetupDialog(
                     modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
                 )
                 if (setup == DownloadSetup.STORAGE) {
-                    Action(R.drawable.ic_round_tv_24, stringResource(R.string.tv_download_app_storage), onAppStorage, Modifier.focusRequester(first))
-                    if (canPickFolder) Action(R.drawable.ic_round_folder_24, stringResource(R.string.tv_download_pick_folder), onPickFolder)
+                    Action(R.drawable.ic_round_tv_outline_24, stringResource(R.string.tv_download_app_storage), onAppStorage, Modifier.focusRequester(first))
+                    if (canPickFolder) Action(R.drawable.ic_round_folder_outline_24, stringResource(R.string.tv_download_pick_folder), onPickFolder)
                 } else {
-                    Action(R.drawable.ic_download_24, stringResource(R.string.tv_download_install_addon), onInstallAddon, Modifier.focusRequester(first))
+                    Action(R.drawable.ic_round_download_24, stringResource(R.string.tv_download_install_addon), onInstallAddon, Modifier.focusRequester(first))
                 }
                 Action(R.drawable.ic_round_close_24, stringResource(R.string.cancel), onDismiss)
             }
@@ -205,7 +205,7 @@ private fun BatchChoice(label: String, numbers: List<String>, onDownload: (List<
         supportingContent = {
             Text(androidx.compose.ui.res.pluralStringResource(R.plurals.tv_episode_count, numbers.size, numbers.size))
         },
-        leadingContent = { Icon(painterResource(R.drawable.ic_download_24), contentDescription = null, modifier = Modifier.size(24.dp)) },
+        leadingContent = { Icon(painterResource(R.drawable.ic_round_download_24), contentDescription = null, modifier = Modifier.size(24.dp)) },
         modifier = modifier.pointerClick(onClick = pick),
     )
 }
@@ -219,7 +219,7 @@ private fun Stepper(label: String, value: String, onStep: (Int) -> Unit, modifie
         headlineContent = { Text(stringResource(R.string.tv_episode_n, value)) },
         overlineContent = { Text(label) },
         leadingContent = { Icon(painterResource(R.drawable.ic_round_arrow_back_ios_new_24), contentDescription = null, modifier = Modifier.size(16.dp)) },
-        trailingContent = { Icon(painterResource(R.drawable.ic_round_arrow_forward_ios_new_24), contentDescription = null, modifier = Modifier.size(16.dp)) },
+        trailingContent = { Icon(painterResource(R.drawable.ic_round_arrow_forward_ios_24), contentDescription = null, modifier = Modifier.size(16.dp)) },
         modifier = modifier.onPreviewKeyEvent { event ->
             val step = when (event.key) {
                 androidx.compose.ui.input.key.Key.DirectionLeft -> -1
@@ -246,7 +246,7 @@ fun BoxScope.EpisodeDownloadMarks(state: EpisodeDownload) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painterResource(if (state == EpisodeDownload.Done) R.drawable.ic_round_check_24 else R.drawable.ic_download_24),
+                painterResource(if (state == EpisodeDownload.Done) R.drawable.ic_round_check_24 else R.drawable.ic_round_download_24),
                 contentDescription = stringResource(if (state == EpisodeDownload.Done) R.string.tv_downloaded else R.string.tv_download_queued),
                 tint = if (state == EpisodeDownload.Done) MaterialTheme.colorScheme.onPrimary else Color.White,
                 modifier = Modifier.size(18.dp),

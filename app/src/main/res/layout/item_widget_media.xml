@@ -95,7 +95,7 @@
                 android:layout_height="11dp"
                 android:layout_marginStart="4dp"
                 android:contentDescription="@null"
-                android:src="@drawable/ic_anime_sub_24"
+                android:src="@drawable/ic_round_subtitles_outline_24"
                 android:visibility="gone" />
 
             <TextView

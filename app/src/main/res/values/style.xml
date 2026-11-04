@@ -92,6 +92,15 @@
     <!-- Material 3 alert dialogs, in the app's type and colours. Used for every AlertDialog the
          app builds (see AlertDialogBuilder / materialDialog). MyPopup stays for the plain
          Dialogs, popup menus and cast dialogs that lean on its window attributes. -->
+    <style name="Widget.Dantotsu.InfoPopup" parent="Widget.AppCompat.PopupMenu">
+        <item name="android:popupBackground">@drawable/bg_info_popup</item>
+        <item name="overlapAnchor">false</item>
+    </style>
+
+    <style name="ThemeOverlay.Dantotsu.InfoPopup" parent="">
+        <item name="popupMenuStyle">@style/Widget.Dantotsu.InfoPopup</item>
+    </style>
+
     <style name="ThemeOverlay.Dantotsu.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="android:fontFamily">@font/poppins_semi_bold</item>
         <item name="alertDialogStyle">@style/Dantotsu.Dialog</item>

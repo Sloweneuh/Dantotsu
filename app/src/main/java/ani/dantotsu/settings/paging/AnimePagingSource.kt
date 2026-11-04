@@ -190,7 +190,7 @@ class AnimeExtensionAdapter(private val clickListener: OnAnimeInstallClickListen
 
         /** Spins the install button; only once the install really starts, which may wait on a prompt. */
         private fun showInstalling() {
-            binding.closeTextView.setImageResource(R.drawable.ic_sync)
+            binding.closeTextView.setImageResource(R.drawable.ic_round_sync_24)
             scope.launch {
                 while (isActive) {
                     withContext(Dispatchers.Main) {

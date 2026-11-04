@@ -149,7 +149,7 @@
                     android:layout_height="48dp"
                     android:layout_marginStart="8dp"
                     android:contentDescription="@string/list_editor_increase"
-                    app:icon="@drawable/ic_round_add_24" />
+                    app:icon="@drawable/ic_round_add_tinted_24" />
             </LinearLayout>
 
             <LinearLayout
@@ -207,7 +207,7 @@
                     android:layout_height="48dp"
                     android:layout_marginStart="8dp"
                     android:contentDescription="@string/list_editor_increase"
-                    app:icon="@drawable/ic_round_add_24" />
+                    app:icon="@drawable/ic_round_add_tinted_24" />
             </LinearLayout>
 
             <!-- Score: typed in the field, or dragged on the slider under it; see ScoreSlider. Two

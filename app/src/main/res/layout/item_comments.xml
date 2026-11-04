@@ -74,7 +74,7 @@
             android:layout_width="16dp"
             android:layout_height="16dp"
             android:layout_marginStart="4dp"
-            android:src="@drawable/ic_crown"
+            android:src="@drawable/ic_round_crown_outline_24"
             tools:ignore="ContentDescription" />
 
         <ImageView
@@ -82,7 +82,7 @@
             android:layout_width="16dp"
             android:layout_height="16dp"
             android:layout_marginStart="4dp"
-            android:src="@drawable/ic_shield"
+            android:src="@drawable/ic_round_shield_outline_24"
             tools:ignore="ContentDescription" />
 
         <TextView
@@ -113,7 +113,7 @@
             <ImageView
                 android:layout_width="12dp"
                 android:layout_height="12dp"
-                android:src="@drawable/ic_label_24"
+                android:src="@drawable/ic_round_label_outline_24"
                 app:tint="?attr/colorOnSecondaryContainer"
                 tools:ignore="ContentDescription" />
 
@@ -180,7 +180,7 @@
                 android:contentDescription="@string/upvote"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="8dp"
-                app:srcCompat="@drawable/ic_round_upvote_inactive_24" />
+                app:srcCompat="@drawable/ic_round_shift_outline_24" />
 
             <TextView
                 android:id="@+id/commentTotalVotes"
@@ -201,7 +201,7 @@
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="8dp"
                 android:rotation="180"
-                app:srcCompat="@drawable/ic_round_upvote_inactive_24" />
+                app:srcCompat="@drawable/ic_round_shift_outline_24" />
         </LinearLayout>
 
         <TextView
@@ -233,7 +233,7 @@
             android:paddingEnd="14dp"
             android:text="@string/edit"
             android:textSize="12sp"
-            app:drawableStartCompat="@drawable/ic_round_edit_24"
+            app:drawableStartCompat="@drawable/ic_round_edit_outline_24"
             app:drawableTint="?attr/colorOnBackground" />
 
         <Space
@@ -249,7 +249,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/more"
             android:padding="7dp"
-            app:srcCompat="@drawable/ic_round_dots_vertical_24" />
+            app:srcCompat="@drawable/ic_round_more_vert_24" />
     </LinearLayout>
 
     <!-- "View 3 replies", under the actions rather than squeezed into them. -->

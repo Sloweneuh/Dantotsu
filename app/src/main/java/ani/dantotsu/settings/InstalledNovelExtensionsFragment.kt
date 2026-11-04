@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -75,8 +74,7 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
             }
         },
         onSettingsClicked = {
-            Toast.makeText(requireContext(), "Source is not configurable", Toast.LENGTH_SHORT)
-                .show()
+            ani.dantotsu.toast("Source is not configurable")
         },
         onUninstallClicked = { item ->
             if (!isAdded) return@NovelSourcesAdapter

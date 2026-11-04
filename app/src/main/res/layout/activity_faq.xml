@@ -53,7 +53,7 @@
             android:layout_marginStart="24dp"
             android:layout_marginEnd="24dp"
             android:transitionName="settingsPageIcon"
-            app:srcCompat="@drawable/ic_round_quiz_24"
+            app:srcCompat="@drawable/ic_round_quiz_outline_24"
             app:tint="?attr/colorOnBackground"
             tools:ignore="ContentDescription" />
     </LinearLayout>

@@ -21,11 +21,9 @@ import ani.dantotsu.profile.notification.NotificationFragment.Companion.Notifica
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.SUBSCRIPTION
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.UNREAD_CHAPTER
 import ani.dantotsu.setAnimation
-import ani.dantotsu.snackString
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.toPx
-import com.google.android.material.snackbar.Snackbar
 import com.xwray.groupie.GroupieAdapter
 import com.xwray.groupie.viewbinding.BindableItem
 
@@ -193,9 +191,12 @@ class NotificationItem(
     }
 
     private fun offerUndo(messageRes: Int, undo: () -> Unit) {
-        snackString(binding.root.context.getString(messageRes))
-            ?.setDuration(Snackbar.LENGTH_LONG)
-            ?.setAction(R.string.undo) { undo() }
+        ani.dantotsu.util.InAppMessages.post(
+            binding.root.context.getString(messageRes),
+            long = true,
+            actionRes = R.string.undo,
+            onAction = undo,
+        )
     }
 
     override fun getLayout(): Int {

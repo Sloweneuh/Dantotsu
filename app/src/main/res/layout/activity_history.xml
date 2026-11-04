@@ -51,7 +51,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/clear_history"
-            app:icon="@drawable/ic_round_delete_sweep_24" />
+            app:icon="@drawable/ic_round_delete_sweep_outline_24" />
     </LinearLayout>
 
     <!-- Empty state: the message over its drifting pattern, filling the rest of the screen. -->

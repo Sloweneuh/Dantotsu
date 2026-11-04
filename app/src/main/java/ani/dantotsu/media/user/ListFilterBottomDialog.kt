@@ -210,7 +210,7 @@ class ListFilterBottomDialog(
             resolveChipIcon = { label ->
                 when {
                     label.startsWith("MU ") -> ContextCompat.getDrawable(
-                        requireContext(), R.drawable.ic_round_mangaupdates_24
+                        requireContext(), R.drawable.ic_mangaupdates
                     )!! to ColorStateList.valueOf(
                         requireContext().getResourceColor(com.google.android.material.R.attr.colorOnSurface)
                     )
@@ -841,7 +841,7 @@ class ListFilterBottomDialog(
     private fun updateCountryIcon() {
         if (selectedCountry == null) {
             val drawable = ContextCompat.getDrawable(
-                requireContext(), R.drawable.ic_round_globe_search_googlefonts
+                requireContext(), R.drawable.ic_round_travel_explore_24
             )!!.mutate()
             DrawableCompat.setTint(
                 DrawableCompat.wrap(drawable),

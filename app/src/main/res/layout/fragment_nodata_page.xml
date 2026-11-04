@@ -24,7 +24,7 @@
             android:layout_height="96dp"
             android:layout_marginBottom="16dp"
             android:contentDescription="@string/mangaupdates"
-            app:srcCompat="@drawable/ic_round_mangaupdates_24"
+            app:srcCompat="@drawable/ic_mangaupdates"
             app:tint="?attr/colorPrimary"/>
 
         <TextView

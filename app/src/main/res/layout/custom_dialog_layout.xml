@@ -42,7 +42,7 @@
             android:layout_gravity="bottom|end"
             android:layout_marginEnd="5dp"
             android:background="@null"
-            android:src="@drawable/untick_all_boxes"
+            android:src="@drawable/ic_untick_all_boxes"
             app:tint="?attr/colorPrimary"
             tools:ignore="ContentDescription" />
     </FrameLayout>

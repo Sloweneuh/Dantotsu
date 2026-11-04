@@ -68,7 +68,7 @@
                 android:layout_height="48dp"
                 android:background="?android:attr/selectableItemBackground"
                 android:contentDescription="@string/sort_by"
-                app:srcCompat="@drawable/ic_round_search_sources_24"
+                app:srcCompat="@drawable/ic_round_blind_24"
                 app:tint="?attr/colorOnBackground" />
 
             <ImageButton

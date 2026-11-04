@@ -6,7 +6,7 @@
         android:title="@string/sort_by_score" />
     <item
         android:id="@+id/title"
-        android:icon="@drawable/format_title_24"
+        android:icon="@drawable/ic_round_title_24"
         android:title="@string/sort_by_title" />
     <item
         android:id="@+id/release"

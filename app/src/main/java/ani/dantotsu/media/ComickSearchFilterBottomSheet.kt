@@ -432,9 +432,9 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
             "created_at" -> R.drawable.ic_round_calendar_today_24
             "uploaded" -> R.drawable.ic_round_new_releases_24
             "rating" -> R.drawable.ic_round_star_24
-            "average_rating" -> R.drawable.ic_round_star_graph_24
-            "user_follow_count" -> R.drawable.ic_round_group_24
-            else -> R.drawable.ic_round_sort_24
+            "average_rating" -> R.drawable.ic_round_insights_24
+            "user_follow_count" -> R.drawable.ic_round_group_outline_24
+            else -> R.drawable.ic_sort
         }
         binding.comickFilterSortButton.setImageResource(iconRes)
     }

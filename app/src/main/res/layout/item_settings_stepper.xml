@@ -16,7 +16,7 @@
         android:layout_height="24dp"
         app:tint="?attr/colorPrimary"
         tools:ignore="ContentDescription"
-        tools:srcCompat="@drawable/ic_round_art_track_24" />
+        tools:srcCompat="@drawable/ic_round_art_track_outline_24" />
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -96,7 +96,7 @@
             android:insetTop="0dp"
             android:insetRight="0dp"
             android:insetBottom="0dp"
-            app:icon="@drawable/ic_round_add_24"
+            app:icon="@drawable/ic_round_add_tinted_24"
             app:iconSize="18dp" />
     </LinearLayout>
 </ani.dantotsu.others.ControlRowLayout>

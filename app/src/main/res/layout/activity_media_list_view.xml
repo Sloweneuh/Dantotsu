@@ -81,7 +81,7 @@
                     android:background="?android:attr/selectableItemBackground"
                     android:contentDescription="@string/stack_actions"
                     android:visibility="gone"
-                    app:srcCompat="@drawable/ic_round_dots_vertical_24"
+                    app:srcCompat="@drawable/ic_round_more_vert_24"
                     app:tint="?attr/colorOnBackground"
                     tools:ignore="ImageContrastCheck" />
 
