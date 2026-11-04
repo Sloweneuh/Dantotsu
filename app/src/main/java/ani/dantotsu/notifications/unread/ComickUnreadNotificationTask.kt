@@ -33,7 +33,6 @@ import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.hasOtherActiveGroupMembers
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.data.notification.Notifications
 import kotlinx.coroutines.Dispatchers
@@ -60,8 +59,8 @@ import kotlin.math.floor
  * along than Comick's saved chapter, that tracker wins: Comick is brought up to it (when list sync
  * is on) and only chapters past it count as new. Its status wins too: Comick's is set to match
  * (under the same switch), and a title that tracker doesn't have as reading (or rereading) isn't
- * announced. Titles on the unread-chapter exclusion list —
- * under their AniList id, MangaUpdates key, or [ComickUnreadEntry.excludeId] — are never announced.
+ * announced. Titles Comick is ignored for — under their AniList id, MangaUpdates key or Comick HID
+ * ([ReleaseSourceIgnores]) — are never announced.
  *
  * Runs inside [UnreadChapterNotificationTask], after the AniList and MangaUpdates checks — or on its
  * own schedule while that one is off ([execute], with nothing known from them). A title
@@ -79,7 +78,8 @@ import kotlin.math.floor
  * else Comick's own; it opens the AniList page when they use AniList (or MangaUpdates isn't an
  * option), else the MangaUpdates page, else Comick's own. Its
  * "Mark as read" records the chapter on Comick (given write access) and on the AniList or
- * MangaUpdates entry when the title is on one of those lists; "Mute" adds it to the exclusion list.
+ * MangaUpdates entry when the title is on one of those lists; "Mute" ignores every release source
+ * for it.
  *
  * Every title found behind, announced or not, is also kept for the home screen's unread row
  * ([UnreadCache.saveComick]).
@@ -138,14 +138,11 @@ class ComickUnreadNotificationTask : Task {
     ) {
         val onAnilistList: Boolean get() = anilistMedia?.userStatus != null
 
-        /** The exclusion-list entry "Mute" adds: "id||cover||title", as the list editors write. */
-        val excludeEntry: String
-            get() {
-                val id = anilistMedia?.id?.toString()
-                    ?: muSeriesId?.let { muMediaKey(it).toString() }
-                    ?: ComickUnreadEntry.excludeId(entry.hid)
-                return "$id||${coverUrl.orEmpty()}||$title"
-            }
+        /** The page "Mute" ignores the release sources on: what the title is shown as. */
+        val muteTarget: String
+            get() = anilistMedia?.id?.let(ReleaseSourceIgnores::anilist)
+                ?: muSeriesId?.let(ReleaseSourceIgnores::mu)
+                ?: ReleaseSourceIgnores.comick(entry.hid)
 
         fun toEntry() = ComickUnreadEntry(
             hid = entry.hid,
@@ -525,7 +522,6 @@ class ComickUnreadNotificationTask : Task {
         }
         val muEntries = if (needMu) muLists() else emptyMap()
 
-        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         val candidates = linked.mapNotNull { (entry, links) ->
             val media = links.anilistId?.let { anilistMedia[it] }
             val muEntry = links.mangaUpdatesIds.firstNotNullOfOrNull { muEntries[it] }
@@ -566,10 +562,6 @@ class ComickUnreadNotificationTask : Task {
                 Logger.log("ComickUnreadNotificationTask: ${entry.hid} is $trackerStatus on $trackerName, skipping")
                 return@mapNotNull null
             }
-            // The same exclusions as the AniList and MangaUpdates checks, under any of its ids.
-            if (links.anilistId != null && excludeList.containsMediaId(links.anilistId.toString())) return@mapNotNull null
-            if (links.mangaUpdatesIds.any { excludeList.containsMediaId(muMediaKey(it).toString()) }) return@mapNotNull null
-            if (excludeList.containsMediaId(ComickUnreadEntry.excludeId(entry.hid))) return@mapNotNull null
             Candidate(entry, links, floor(saved).toInt(), media, muEntry)
         }
 
@@ -860,6 +852,7 @@ class ComickUnreadNotificationTask : Task {
             ReleaseSourceIgnores.comickIgnored(
                 item.anilistMedia?.id ?: item.anilistId,
                 item.muSeriesIds + listOfNotNull(item.muListEntry?.id, item.muSeriesId),
+                item.seriesHids,
             )
         }
         if (items.isEmpty()) return
@@ -965,11 +958,14 @@ class ComickUnreadNotificationTask : Task {
         ).build()
     }
 
-    /** "Mute": adds the title to the unread exclusion list, the way the list editors do. */
+    /** "Mute": ignores every release source for the title. */
     private fun muteAction(context: Context, item: UnreadItem): NotificationCompat.Action {
         val intent = Intent(context, MarkReadNotificationReceiver::class.java).apply {
             action = MarkReadNotificationReceiver.ACTION_MUTE
-            putExtra(MarkReadNotificationReceiver.EXTRA_EXCLUDE_ENTRY, item.excludeEntry)
+            putExtra(MarkReadNotificationReceiver.EXTRA_MUTE_TARGET, item.muteTarget)
+            putExtra(MarkReadNotificationReceiver.EXTRA_MUTE_TITLE, item.title)
+            putExtra(MarkReadNotificationReceiver.EXTRA_MUTE_COVER, item.coverUrl)
+            item.muSeriesId?.let { putExtra(MarkReadNotificationReceiver.EXTRA_MUTE_MU_ID, it) }
             putExtra(MarkReadNotificationReceiver.EXTRA_NOTIFICATION_ID, item.notifId)
         }
         val pendingIntent = PendingIntent.getBroadcast(

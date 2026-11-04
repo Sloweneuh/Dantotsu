@@ -64,8 +64,6 @@
     <string name="unread_sort_option_recent">Mis à jour le plus récemment</string>
     <string name="unread_sort_desc">Ordre d\'affichage des chapitres non lus sur l\'accueil</string>
     <string name="malsync_preferred_track_label">Version diffusée de l\'anime</string>
-    <string name="malsync_exclude_manage">Gérer les exclusions MALSync</string>
-    <string name="malsync_exclude_manage_desc">Médias exclus des vérifications de chapitres / épisodes non lus</string>
     <string name="customize_info_tabs">Ordre des onglets d\'infos</string>
     <string name="info_tab_fetch_disabled">connexion désactivée</string>
     <string name="customize_info_tabs_desc">Réorganiser et afficher/masquer les onglets d\'infos pour AniList anime, AniList manga et MangaUpdates manga</string>
@@ -1218,8 +1216,6 @@
     <string name="copy_report">Copier le rapport</string>
     <string name="share_as_file">Partager en fichier</string>
     <string name="hide_in_home_screen">Masquer sur l\'écran d\'accueil</string>
-    <string name="exclude_from_unwatched_episodes">Exclure des vérifications d\'épisodes non regardés</string>
-    <string name="exclude_from_unread_chapters">Exclure des vérifications de chapitres non lus</string>
     <string name="hidden">Masqué</string>
     <string name="no_hidden_items">Aucun élément masqué</string>
     <string name="hidden_from_lists_manage">Gérer les médias masqués</string>
@@ -2644,7 +2640,6 @@
     <string name="search_kw_disable_kitsu">kitsu onglet parcourir explorer info informations source</string>
     <string name="search_kw_disable_simkl">simkl onglet parcourir explorer info informations source</string>
     <string name="search_kw_disable_mangabaka">mangabaka onglet parcourir explorer info informations source</string>
-    <string name="search_kw_malsync_exclude_manage">exclure filtre filtrer non lus chapitre épisode notifications malsync</string>
     <string name="search_kw_unread_sort_label">non lus chapitres accueil tri trier ordre récent dernier mis à jour malsync mangaupdates</string>
     <string name="search_kw_malsync_checks_dialog_title">malsync vérifications mode manga anime les deux quoi vostfr vf sous-titré doublé version langue</string>
     <string name="search_kw_customize_info_tabs">anilist anime animé manga mangaupdates info informations onglet ordre réordonner visibilité mal comick mangabaka</string>
@@ -2673,6 +2668,7 @@
     <string name="search_kw_recentlyListOnly">récemment regardé vu lire lu historique liste</string>
     <string name="search_kw_adult_only_content">nsfw 18 adulte</string>
     <string name="search_kw_hidden_from_lists_manage">masquer cacher caché masqué supprimer retirer filtre filtrer continuer reprendre en cours regarder lecture liste accueil</string>
+    <string name="search_kw_release_sources_manage">source sources progression sortie ignorer ignoré exclure exclusions filtre non lus chapitre épisode notifications malsync mangaupdates comick</string>
     <string name="search_kw_selected_dns">doh dns sur https cloudflare google</string>
     <string name="search_kw_startUpTab">défaut démarrage accueil anime animé manga onglet</string>
     <string name="search_kw_download_manager_select">téléchargement télécharger gestionnaire aria idm</string>
@@ -3452,6 +3448,10 @@
     <string name="release_source_ignored_value">Ignorée · %1$s</string>
     <string name="release_source_ignore">Ignorer</string>
     <string name="release_source_track">Suivre à nouveau</string>
+    <string name="release_sources_manage">Gérer les sources de progression ignorées</string>
+    <string name="release_sources_manage_desc">Séries dont une source de progression est ignorée, sur n\'importe quelle page</string>
+    <string name="release_sources_manage_empty">Aucune source de progression n\'est ignorée</string>
+    <string name="release_sources_unknown_series">Série %1$s</string>
     <!-- Continue widget -->
     <string name="widget_continue">Reprendre</string>
     <string name="widget_continue_empty">Rien à reprendre pour l\'instant</string>

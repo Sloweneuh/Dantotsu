@@ -306,16 +306,6 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
         binding.mediaListShow.setOnCheckedChangeListener { _, checked ->
             remove = checked
         }
-        val malSyncExcludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
-        var malSyncExclude: Boolean? = null
-        binding.mediaListMalSyncExclude.setText(
-            if (media.anime != null) R.string.exclude_from_unwatched_episodes
-            else R.string.exclude_from_unread_chapters
-        )
-        binding.mediaListMalSyncExclude.isChecked = malSyncExcludeList.containsMediaId(media.id.toString())
-        binding.mediaListMalSyncExclude.setOnCheckedChangeListener { _, checked ->
-            malSyncExclude = checked
-        }
         val initialProgress = media.userProgress
         val initialVolume = media.userVolume
         val initialStatus = statuses[statusStrings.indexOf(userStatus)]
@@ -441,12 +431,6 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                     PrefManager.setVal(PrefName.HiddenFromLists, removeList.removeMediaId(media.id.toString()).plus(entry))
                 } else if (remove == false) {
                     PrefManager.setVal(PrefName.HiddenFromLists, removeList.removeMediaId(media.id.toString()))
-                }
-                if (malSyncExclude == true) {
-                    val entry = "${media.id}||${media.cover.orEmpty()}||${media.userPreferredName}"
-                    PrefManager.setVal(PrefName.MalSyncExcludeList, malSyncExcludeList.removeMediaId(media.id.toString()).plus(entry))
-                } else if (malSyncExclude == false) {
-                    PrefManager.setVal(PrefName.MalSyncExcludeList, malSyncExcludeList.removeMediaId(media.id.toString()))
                 }
                 Refresh.all()
                 if (anilistChangedLocal && !anilistOk) {

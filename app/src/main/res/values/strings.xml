@@ -360,8 +360,6 @@
     <string name="unread_sort_option_recent">Most recently updated</string>
     <string name="unread_sort_desc">How the home Unread Chapters row is ordered</string>
     <string name="malsync_preferred_track_label">Anime release track</string>
-    <string name="malsync_exclude_manage">Manage MALSync Exclusions</string>
-    <string name="malsync_exclude_manage_desc">Media excluded from unread chapter / episode checks</string>
     <string name="customize_info_tabs">Info Tab Order</string>
     <string name="info_tab_fetch_disabled">connection off</string>
     <string name="customize_info_tabs_desc">Reorder and show/hide info tabs for AniList anime, AniList manga and MangaUpdates manga</string>
@@ -1914,8 +1912,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="copy_report">Copy Report</string>
     <string name="share_as_file">Share as file</string>
     <string name="hide_in_home_screen">Hide in Home Screen</string>
-    <string name="exclude_from_unwatched_episodes">Exclude from Unwatched Episodes checks</string>
-    <string name="exclude_from_unread_chapters">Exclude from Unread Chapters checks</string>
     <string name="hidden">Hidden</string>
     <string name="no_hidden_items">No Hidden Items</string>
     <string name="hidden_from_lists_manage">Manage Hidden Media</string>
@@ -2785,7 +2781,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_disable_kitsu">kitsu tab browse info source</string>
     <string name="search_kw_disable_simkl">simkl tab browse info source</string>
     <string name="search_kw_disable_mangabaka">mangabaka tab browse info source</string>
-    <string name="search_kw_malsync_exclude_manage">exclude filter unread chapter episode notifications malsync</string>
     <string name="search_kw_unread_sort_label">unread chapters home sort order sorting recent latest updated malsync mangaupdates</string>
     <string name="search_kw_malsync_checks_dialog_title">malsync checks mode manga anime both what sub dub subbed dubbed track release language</string>
     <string name="search_kw_customize_info_tabs">anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka</string>
@@ -2814,6 +2809,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_recentlyListOnly">recently watched read history list</string>
     <string name="search_kw_adult_only_content">nsfw 18</string>
     <string name="search_kw_hidden_from_lists_manage">hide hidden remove filter continue watching reading list homepage</string>
+    <string name="search_kw_release_sources_manage">release progress source sources ignore ignored exclude exclusions filter unread chapter episode notifications mute malsync mangaupdates comick</string>
     <string name="search_kw_selected_dns">doh dns over https cloudflare google</string>
     <string name="search_kw_startUpTab">default startup home anime manga tab</string>
     <string name="search_kw_download_manager_select">download manager aria idm</string>
@@ -3576,6 +3572,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="release_source_ignored_value">Ignored · %1$s</string>
     <string name="release_source_ignore">Ignore</string>
     <string name="release_source_track">Track again</string>
+    <string name="release_sources_manage">Manage Ignored Release Sources</string>
+    <string name="release_sources_manage_desc">Series with a release progress source ignored, on any page</string>
+    <string name="release_sources_manage_empty">No release source is ignored for any series</string>
+    <string name="release_sources_unknown_series">Series %1$s</string>
     <!-- Continue widget -->
     <string name="widget_continue">Continue</string>
     <string name="widget_continue_empty">Nothing to continue yet</string>

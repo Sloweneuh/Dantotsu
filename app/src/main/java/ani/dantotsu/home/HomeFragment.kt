@@ -54,7 +54,6 @@ import ani.dantotsu.settings.SettingsDialogFragment
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefManager.asLiveBool
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.util.Logger
@@ -228,9 +227,7 @@ class HomeFragment : Fragment() {
 
     /** MangaUpdates entries with chapters the user hasn't reached. Ordered by [UnreadOrder]. */
     private fun muUnread(): List<ani.dantotsu.connections.mangaupdates.MUMedia> {
-        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         return model.getMuHomeLists().value?.get("Reading")
-            ?.filter { !excludeList.containsMediaId(muMediaKey(it.id).toString()) }
             ?.filter {
                 val latest = MalSyncMu.latestChapter(
                     ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(it.id, it.latestChapter),
@@ -262,17 +259,11 @@ class HomeFragment : Fragment() {
         if (cached.isEmpty()) return emptyList()
         val continueById = model.getMangaContinue().value?.associateBy { it.id }
         val muById = model.getMuHomeLists().value?.values?.flatten()?.associateBy { it.id }
-        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
 
         val items = ArrayList<Pair<Any, UnreadChapterInfo>>()
         cached.forEach { entry ->
             val al = entry.anilistMedia
             val mu = entry.muMedia
-            if (excludeList.containsMediaId(entry.rowKey.toString()) ||
-                excludeList.containsMediaId(
-                    ani.dantotsu.notifications.unread.ComickUnreadEntry.excludeId(entry.hid)
-                )
-            ) return@forEach
             val progress = maxOf(
                 entry.progress,
                 (al?.id ?: entry.anilistId)?.let { continueById?.get(it)?.userProgress } ?: 0,
@@ -617,7 +608,6 @@ class HomeFragment : Fragment() {
         info: Map<Int, UnreadChapterInfo>,
     ): Pair<List<Media>, Map<Int, UnreadChapterInfo>> {
         val currentById = model.getMangaContinue().value?.associateBy { it.id }
-        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
 
         // The adapter falls back to the media's own progress when it has no info for it, so bring
         // that up to date too rather than leaving the two to disagree.
@@ -632,7 +622,9 @@ class HomeFragment : Fragment() {
         }.toMap()
 
         val visible = candidates.filter { media ->
-            if (excludeList.containsMediaId(media.id.toString())) return@filter false
+            // With every source ignored, the fallback to the media's own chapter count below
+            // mustn't put it back on the row.
+            if (ani.dantotsu.connections.ReleaseSourceIgnores.anilistSilenced(media.id)) return@filter false
             // Only once the reading list has loaded, though. It starts null and is filled by
             // initHomePage, while the cached path runs off a broadcast from the background unread
             // check that can land at any time — and treating "not on a list that hasn't loaded" as
@@ -1106,9 +1098,9 @@ class HomeFragment : Fragment() {
                         if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode != "manga") {
                             withContext(Dispatchers.IO) {
                                 // Collect pairs of (anilistId, malId)
-                                val animeIds = continueWatchingList.map { anime ->
-                                    Pair(anime.id, anime.idMAL)
-                                }
+                                val animeIds = continueWatchingList
+                                    .filterNot { ani.dantotsu.connections.ReleaseSourceIgnores.malSyncIgnoredForAniList(it.id) }
+                                    .map { anime -> Pair(anime.id, anime.idMAL) }
                                 val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchAnimeEpisodes(animeIds)
 
                                 // Map results back to anime IDs - always include language info
@@ -1243,9 +1235,9 @@ class HomeFragment : Fragment() {
                         if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode2 != "manga") {
                             withContext(Dispatchers.IO) {
                                 // Collect pairs of (anilistId, malId)
-                                val animeIds = plannedList.map { anime ->
-                                    Pair(anime.id, anime.idMAL)
-                                }
+                                val animeIds = plannedList
+                                    .filterNot { ani.dantotsu.connections.ReleaseSourceIgnores.malSyncIgnoredForAniList(it.id) }
+                                    .map { anime -> Pair(anime.id, anime.idMAL) }
                                 val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchAnimeEpisodes(animeIds)
 
                                 // Map results back to anime IDs - always include language info

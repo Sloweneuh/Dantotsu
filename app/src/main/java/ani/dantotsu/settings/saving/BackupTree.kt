@@ -148,7 +148,7 @@ object BackupTree {
                         BackupItem(PrefName.MalSyncInfoEnabled, R.string.disable_malsync),
                         BackupItem(PrefName.MalSyncCheckMode, R.string.malsync_checks_dialog_title),
                         BackupItem(PrefName.MalSyncPreferredTrack, R.string.malsync_preferred_track_label),
-                        BackupItem(PrefName.MalSyncExcludeList, R.string.malsync_exclude_manage),
+                        BackupItem(PrefName.IgnoredReleaseSources, R.string.release_sources_manage),
                         BackupItem(PrefName.UnreadChaptersSort, R.string.unread_sort_label),
                     )
                 ),

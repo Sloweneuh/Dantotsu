@@ -247,7 +247,8 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 comickBest?.second,
             ),
         )
-        ani.dantotsu.media.ReleaseSourcesSheet.show(this, ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id), false, rows) {
+        val series = ani.dantotsu.connections.ReleaseSourceIgnores.Series(target, muMedia.title, muMedia.coverUrl, muMedia.id)
+        ani.dantotsu.media.ReleaseSourcesSheet.show(this, series, false, rows) {
             // Worked out again from what is still believed: the caches read without what is
             // ignored, and the unread row's passed-in chapter dropped, as it may be the one.
             intent.removeExtra("lastChapter")

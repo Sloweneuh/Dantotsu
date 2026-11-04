@@ -1139,7 +1139,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, answer?.latest, answer?.source)
                 }
             }
-            ReleaseSourcesSheet.show(this, target, anime, rows) {
+            val series = ani.dantotsu.connections.ReleaseSourceIgnores.Series(target, media.userPreferredName, media.cover)
+            ReleaseSourcesSheet.show(this, series, anime, rows) {
                 // What the unread row passed in may have come from the source just changed.
                 intent.removeExtra("lastChapter")
                 intent.removeExtra("source")

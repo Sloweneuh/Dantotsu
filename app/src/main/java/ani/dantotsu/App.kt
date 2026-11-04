@@ -196,6 +196,7 @@ class App : MultiDexApplication() {
         // Settings pages move on a shared X axis between each other.
         registerActivityLifecycleCallbacks(ani.dantotsu.settings.SettingsPageTransitions)
         runCatching { ani.dantotsu.notifications.NotificationReadState.migrateLegacyCounter() }
+        runCatching { ani.dantotsu.connections.ReleaseSourceIgnores.migrateLegacyExclusions() }
 
         if (!disableCrashReports) {
             (PrefManager.getVal(PrefName.SharedUserID) as Boolean).let {

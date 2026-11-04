@@ -15,7 +15,7 @@ class MediaExcludeBottomDialog : BottomSheetDialogFragment() {
     private var _binding: BottomSheetRecyclerBinding? = null
     private val binding get() = _binding!!
     private val adapter: GroupieAdapter = GroupieAdapter()
-    private var prefName: PrefName = PrefName.MalSyncExcludeList
+    private var prefName: PrefName = PrefName.HiddenFromLists
     private var title: String = ""
 
     /** Told when the sheet closes, for a screen that shows how many entries the list holds. */

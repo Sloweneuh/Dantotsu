@@ -27,7 +27,6 @@ import ani.dantotsu.hasNotificationPermission
 import eu.kanade.tachiyomi.data.notification.Notifications
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -297,14 +296,12 @@ class MuUnreadNotificationTask : Task {
         }
         // Only from a reading list that actually came back.
         settledIds = if (allLists.containsKey("Reading")) settled.toSet() else emptySet()
-        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         readingListLatest = readingList.mapNotNull { muMedia ->
             val info = malSyncInfo[muMediaKey(muMedia.id)]
             MalSyncMu.latestChapter(ReleaseSourceIgnores.muLatest(muMedia.id, muMedia.latestChapter), info?.lastChapter)?.let { muMedia.id to it }
         }.toMap()
 
         return readingList.mapNotNull { muMedia ->
-            if (excludeList.containsMediaId(muMediaKey(muMedia.id).toString())) return@mapNotNull null
             val info = malSyncInfo[muMediaKey(muMedia.id)]
             val latest = MalSyncMu.latestChapter(ReleaseSourceIgnores.muLatest(muMedia.id, muMedia.latestChapter), info?.lastChapter)
                 ?: return@mapNotNull null

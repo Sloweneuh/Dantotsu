@@ -582,19 +582,6 @@ class SettingsAccountActivity : AppCompatActivity() {
             },
             onClick = { b -> showMalSyncChecksDialog(b.settingsDesc) },
         ),
-        Settings(
-            type = 1,
-            name = getString(R.string.malsync_exclude_manage),
-            desc = getString(R.string.malsync_exclude_manage_desc),
-            icon = R.drawable.ic_round_playlist_remove_24,
-            compact = true,
-            anchorKey = "malsyncExclude",
-            onClick = {
-                MediaExcludeBottomDialog.newInstance(
-                    PrefName.MalSyncExcludeList, getString(R.string.malsync_exclude_manage)
-                ).show(supportFragmentManager, "malSyncExclude")
-            },
-        ),
         header(R.string.account_group_notifications),
         Settings(
             type = 1,

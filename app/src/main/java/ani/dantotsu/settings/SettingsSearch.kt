@@ -207,8 +207,6 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync_checks_dialog_title, R.string.accounts_and_sync, R.drawable.ic_round_malsync_settings_24, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "malsyncChecks", keywordsRes = R.string.search_kw_malsync_checks_dialog_title)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync_exclude_manage, R.string.accounts_and_sync, R.drawable.ic_round_malsync_exclude_24, R.string.malsync_exclude_manage_desc, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "malsyncExclude", keywordsRes = R.string.search_kw_malsync_exclude_manage)
-
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.customize_info_tabs, R.string.accounts_and_sync, R.drawable.ic_round_view_array_24, R.string.customize_info_tabs_desc, keywordsRes = R.string.search_kw_customize_info_tabs)
 
 
@@ -271,6 +269,8 @@ object SettingsSearch {
         l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.adult_only_content, R.string.general, R.drawable.ic_round_nsfw_24, R.string.adult_only_content_desc, keywordsRes = R.string.search_kw_adult_only_content)
 
         l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.hidden_from_lists_manage, R.string.general, R.drawable.ic_round_playlist_remove_24, R.string.hidden_from_lists_manage_desc, keywordsRes = R.string.search_kw_hidden_from_lists_manage)
+
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.release_sources_manage, R.string.general, R.drawable.ic_round_playlist_remove_24, R.string.release_sources_manage_desc, keywordsRes = R.string.search_kw_release_sources_manage)
 
         l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.selected_dns, R.string.sources_and_downloads, R.drawable.ic_round_dns_24, R.string.selected_dns_desc, keywordsRes = R.string.search_kw_selected_dns, anchorSection = SettingsSourcesActivity.Section.NETWORK, anchorRowKey = "selected_dns")
 

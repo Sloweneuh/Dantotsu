@@ -62,11 +62,5 @@ data class ComickUnreadEntry(
     companion object {
         // Pinned: see UnreadChapterStore.
         private const val serialVersionUID = 1L
-
-        /**
-         * The exclusion-list id of a title known only to Comick. Other titles go by their AniList
-         * id or MangaUpdates key, as everywhere else.
-         */
-        fun excludeId(hid: String) = "comick:$hid"
     }
 }

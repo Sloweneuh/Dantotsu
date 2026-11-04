@@ -7,8 +7,10 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.ReleaseSourceIgnores
 import ani.dantotsu.connections.ReleaseSourceIgnores.Provider
 import ani.dantotsu.databinding.ItemReleaseSourceBinding
+import ani.dantotsu.getThemeColor
 import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.px
+import ani.dantotsu.settings.ReleaseSourceIgnoresSheet
 
 /**
  * The sheet behind a media page's progress line: each provider the newest chapter (or episode) is
@@ -22,12 +24,13 @@ object ReleaseSourcesSheet {
 
     fun show(
         activity: FragmentActivity,
-        /** The page's series, as [ReleaseSourceIgnores.anilist] or [ReleaseSourceIgnores.mu] names it. */
-        target: String,
+        /** The page's series, its target as [ReleaseSourceIgnores.anilist] or [ReleaseSourceIgnores.mu] names it. */
+        series: ReleaseSourceIgnores.Series,
         anime: Boolean,
         rows: List<Row>,
         onChanged: () -> Unit,
     ) {
+        val target = series.target
         val dialog = CustomBottomDialog.newInstance()
         dialog.setTitleText(activity.getString(R.string.release_sources))
         val inflater = LayoutInflater.from(activity)
@@ -61,13 +64,24 @@ object ReleaseSourcesSheet {
             bind()
             b.releaseSourceToggle.setOnClickListener {
                 ReleaseSourceIgnores.setIgnored(
-                    row.provider, target, !ReleaseSourceIgnores.isIgnored(row.provider, target)
+                    row.provider, target, !ReleaseSourceIgnores.isIgnored(row.provider, target), series
                 )
                 bind()
                 onChanged()
             }
             dialog.addView(b.root)
         }
+        dialog.addView(TextView(activity).apply {
+            setText(R.string.release_sources_manage)
+            setTextColor(activity.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
+            textSize = 14f
+            setPadding(24f.px, 16f.px, 24f.px, 16f.px)
+            setOnClickListener {
+                dialog.dismiss()
+                ReleaseSourceIgnoresSheet().apply { onDismissed = onChanged }
+                    .show(activity.supportFragmentManager, "release_sources_manage")
+            }
+        })
         dialog.show(activity.supportFragmentManager, "release_sources")
     }
 

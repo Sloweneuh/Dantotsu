@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
 import ani.dantotsu.App
+import ani.dantotsu.connections.ReleaseSourceIgnores
 import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.comick.ComickSync
@@ -16,7 +17,6 @@ import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.settings.saving.removeMediaId
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.data.notification.Notifications
 import kotlinx.coroutines.CoroutineScope
@@ -47,11 +47,14 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
         const val EXTRA_PROGRESS = "progress"
         const val EXTRA_NOTIFICATION_ID = "notificationId"
 
-        /** "Mute" on a Comick notification: [EXTRA_EXCLUDE_ENTRY] joins the exclusion list. */
+        /** "Mute" on a Comick notification: every release source is ignored for [EXTRA_MUTE_TARGET]. */
         const val ACTION_MUTE = "ani.dantotsu.notifications.MUTE"
 
-        /** An exclusion-list entry, "id||cover||title". */
-        const val EXTRA_EXCLUDE_ENTRY = "excludeEntry"
+        /** The series, as [ReleaseSourceIgnores] names it, and what its management sheet shows. */
+        const val EXTRA_MUTE_TARGET = "muteTarget"
+        const val EXTRA_MUTE_TITLE = "muteTitle"
+        const val EXTRA_MUTE_COVER = "muteCover"
+        const val EXTRA_MUTE_MU_ID = "muteMuId"
 
         /**
          * A Comick title HID: the progress is recorded in the Comick library — besides the
@@ -160,11 +163,11 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
     }
 
     /**
-     * "Mute": adds the entry to the unread exclusion list — replacing any older entry for the same
-     * id — then clears the notification and everything stored for that title.
+     * "Mute": ignores every release source for the title, then clears the notification and
+     * everything stored for it.
      */
     private fun mute(appContext: Context, intent: Intent) {
-        val entry = intent.getStringExtra(EXTRA_EXCLUDE_ENTRY) ?: return
+        val target = intent.getStringExtra(EXTRA_MUTE_TARGET) ?: return
         val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1)
         if (notificationId != -1) {
             runCatching { NotificationManagerCompat.from(appContext).cancel(notificationId) }
@@ -172,9 +175,14 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
         clearGroupSummaryIfEmpty(appContext)
         try {
             PrefManager.init(appContext)
-            val id = entry.substringBefore("||")
-            val current = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
-            PrefManager.setVal(PrefName.MalSyncExcludeList, current.removeMediaId(id) + entry)
+            ReleaseSourceIgnores.ignoreAll(
+                ReleaseSourceIgnores.Series(
+                    target = target,
+                    title = intent.getStringExtra(EXTRA_MUTE_TITLE),
+                    cover = intent.getStringExtra(EXTRA_MUTE_COVER),
+                    muSeriesId = intent.getLongExtra(EXTRA_MUTE_MU_ID, -1L).takeIf { it != -1L },
+                )
+            )
             removeStoredNotification(notificationId, Int.MAX_VALUE)
             UnreadCache.removeEntry(appContext, notificationId)
         } catch (e: Exception) {

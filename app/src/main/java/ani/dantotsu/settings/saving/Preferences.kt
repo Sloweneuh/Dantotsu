@@ -180,8 +180,9 @@ enum class PrefName(val data: Pref) {
     AutoBackupInterval(Pref(Location.Irrelevant, Int::class, 0)),
     // In-app notices (TopBanner): all of them, and the ones turned off by id. See AppNotices.
     AppNoticesEnabled(Pref(Location.UI, Boolean::class, true)),
-    // Release-progress providers ignored per series: `provider|al:<id>` / `provider|mu:<key>`. See
-    // ReleaseSourceIgnores. General, so they back up and sync like the user's other choices.
+    // Release-progress providers ignored per series: `provider|al:<id>` / `provider|mu:<key>` /
+    // `provider|ck:<hid>`, and `info|…` naming each series. See ReleaseSourceIgnores. General, so they
+    // back up and sync like the user's other choices.
     IgnoredReleaseSources(Pref(Location.General, Set::class, setOf<String>())),
     DisabledAppNotices(Pref(Location.UI, Set::class, setOf<String>())),
     AutoListSyncLastSynced(Pref(Location.Irrelevant, Int::class, 0)),
@@ -220,6 +221,8 @@ enum class PrefName(val data: Pref) {
 
     /** How the home Unread Chapters row is ordered: "unread" (fewest unread first) or "recent". */
     UnreadChaptersSort(Pref(Location.General, String::class, "unread")),
+    // Retired: only read to move into IgnoredReleaseSources (ReleaseSourceIgnores.migrateLegacyExclusions),
+    // as older builds and old backups can still hand it to this one.
     MalSyncExcludeList(Pref(Location.General, Set::class, setOf<String>())),
     // Titles the toolbox's checks were told to stop suggesting, "id||cover||title" like the list
     // above so the same manager edits them. General, so they follow the user to every device.

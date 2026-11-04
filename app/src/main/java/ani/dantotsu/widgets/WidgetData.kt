@@ -10,12 +10,10 @@ import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.media.Media
-import ani.dantotsu.notifications.unread.ComickUnreadEntry
 import ani.dantotsu.notifications.unread.UnreadCache
 import ani.dantotsu.notifications.unread.UnreadDedup
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.util.Logger
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -514,11 +512,7 @@ object WidgetData {
      * behind the newest chapter.
      */
     private fun unreadComick(context: Context): List<WidgetItem> {
-        val excluded = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         return UnreadCache.cachedComick().mapNotNull { entry ->
-            if (excluded.containsMediaId(entry.rowKey.toString()) ||
-                excluded.containsMediaId(ComickUnreadEntry.excludeId(entry.hid))
-            ) return@mapNotNull null
             val progress = progressOf(context, entry.rowKey, entry.progress)
             if (entry.latestChapter <= progress) return@mapNotNull null
             val al = entry.anilistMedia
@@ -555,7 +549,6 @@ object WidgetData {
         networkAllowed: Boolean
     ): List<WidgetItem> {
         val info = UnreadCache.cachedMuInfo()
-        val excluded = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         // MangaUpdates.token is a plain in-memory var, loaded from disk only when getSavedToken() runs
         // — normally done once by the home screen at startup. A widget refresh can run in a process
         // that never went through that path (a fresh process spun up for a broadcast or WorkManager
@@ -573,12 +566,14 @@ object WidgetData {
 
         // Falls back to this widget's own copy of the list, then to whatever the home screen resolved —
         // so a refresh with no network, or before the first list request, still shows these series.
-        val series = (live ?: MuListCache.load(context).ifEmpty { UnreadCache.cachedMuMedia() })
-            .filterNot { excluded.containsMediaId(muMediaKey(it.id).toString()) }
+        val series = live ?: MuListCache.load(context).ifEmpty { UnreadCache.cachedMuMedia() }
 
         val unread = series.mapNotNull { mu ->
             val key = muMediaKey(mu.id)
-            val latest = maxOf(mu.latestChapter ?: 0, info[key]?.lastChapter ?: 0)
+            val latest = maxOf(
+                ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(mu.id, mu.latestChapter) ?: 0,
+                info[key]?.lastChapter ?: 0,
+            )
             val progress = progressOf(context, key, mu.userChapter ?: 0)
             if (latest <= progress) null else Triple(mu, key, latest to progress)
         }
@@ -634,6 +629,7 @@ object WidgetData {
         if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)) return emptyList()
         if ((PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both") == "manga") return emptyList()
         val watching = Anilist.query.getWatchingAnime(userId)
+            .filterNot { ani.dantotsu.connections.ReleaseSourceIgnores.malSyncIgnoredForAniList(it.id) }
         if (watching.isEmpty()) return emptyList()
         val progress = MalSyncApi.getBatchAnimeEpisodes(watching.map { it.id to it.idMAL })
         return watching.mapNotNull { media ->

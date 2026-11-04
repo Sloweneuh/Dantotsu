@@ -286,6 +286,15 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             icon = R.drawable.ic_round_playlist_remove_24,
                             onClick = { showHiddenFromListsDialog() },
                         ),
+                        Settings(
+                            type = 1,
+                            name = getString(R.string.release_sources_manage),
+                            desc = getString(R.string.release_sources_manage_desc),
+                            icon = R.drawable.ic_round_playlist_remove_24,
+                            onClick = {
+                                ReleaseSourceIgnoresSheet().show(supportFragmentManager, "releaseSourceIgnores")
+                            },
+                        ),
                     ),
                     tiled = true,
                 )

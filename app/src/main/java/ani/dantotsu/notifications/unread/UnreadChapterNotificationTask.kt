@@ -28,7 +28,6 @@ import ani.dantotsu.hasNotificationPermission
 import eu.kanade.tachiyomi.data.notification.Notifications
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -404,15 +403,14 @@ class UnreadChapterNotificationTask : Task {
          */
         knownLatest: Map<Int, Int> = emptyMap(),
     ) {
-        // The map passed in may have come from another device via UnreadSync (a cached result
-        // computed under that device's exclude list at that time), so re-filter against this
-        // device's current MalSync exclude list rather than trusting it was already applied.
-        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
-        val filteredUnreadInfo = unreadInfo.filterKeys { !excludeList.containsMediaId(it.toString()) }
+        // Nothing is announced for a series MALSync is ignored on, and it isn't marked announced
+        // either, so it announces itself if the source is counted again. The cache keeps it: its
+        // readers filter, and a source counted again is back on the row at once.
+        val filteredUnreadInfo = ReleaseSourceIgnores.filterAniList(unreadInfo)
 
         if (!isAnime) {
             try {
-                UnreadCache.save(context, filteredUnreadInfo, mediaList, answeredIds)
+                UnreadCache.save(context, unreadInfo, mediaList, answeredIds)
                 UnreadCache.broadcastUpdate(context)
             } catch (e: Exception) {
                 Logger.log("UnreadChapterNotificationTask: Failed to cache/broadcast unread results: ${e.message}")
