@@ -126,6 +126,17 @@ class ChoiceToggleButton @JvmOverloads constructor(
         super.setAlpha(1f)
     }
 
+    /**
+     * The choice in the protocol's own values, not the 1 this draws at. Fades read a view's alpha
+     * and write it back when they end, and with every button reading 1, a page's enter transition
+     * ended by telling all of them they were the chosen one.
+     */
+    override fun getAlpha(): Float = when {
+        !ready -> super.getAlpha()
+        isChecked -> 1f
+        else -> NOT_CHOSEN
+    }
+
     private var settingFromAlpha = false
 
     /**
@@ -142,5 +153,6 @@ class ChoiceToggleButton @JvmOverloads constructor(
     private companion object {
         /** Alpha from which the code means "chosen"; it uses 1 and 0.33. */
         const val CHOSEN_FROM = 0.5f
+        const val NOT_CHOSEN = 0.33f
     }
 }
