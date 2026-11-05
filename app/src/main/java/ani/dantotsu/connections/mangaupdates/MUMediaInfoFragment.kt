@@ -680,7 +680,7 @@ class MUMediaInfoFragment : Fragment() {
                 days < 7L -> "$days days ago"
                 days < 30L -> "${days / 7} week${if (days / 7 > 1) "s" else ""} ago"
                 days < 365L -> "${days / 30} month${if (days / 30 > 1) "s" else ""} ago"
-                else -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(date)
+                else -> SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(date)
             }
         } catch (e: Exception) {
             dateStr

@@ -1708,7 +1708,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="restrict_messages">Restrict messages to following</string>
     <string name="restrict_messages_desc">Allow only users I follow to message me</string>
 
-    <string name="notifications_desc">Customise your news and updates</string>
+    <string name="notifications_desc">Customize your news and updates</string>
     <string name="about_desc">Learn more about Dantotsu</string>
     <string name="faq_desc">General questions about Dantotsu</string>
     <string name="check_app_updates_desc">Check Github for app updates</string>
@@ -4209,4 +4209,5 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="stats_format_music">Music</string>
     <string name="stats_format_novel">Novel</string>
     <string name="stats_format_one_shot">One-shot</string>
+    <string name="language_system_default">System Default (%1$s)</string>
 </resources>

@@ -3,10 +3,12 @@ package ani.dantotsu.util
 import android.app.LocaleManager
 import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.os.Build
 import android.os.LocaleList
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import ani.dantotsu.R
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import java.util.Locale
@@ -17,11 +19,19 @@ object LanguageHelper {
     const val ENGLISH = "en"
     const val FRENCH = "fr"
 
-    fun getSupportedLanguages(): List<LanguageOption> {
+    /**
+     * What a language code runs as. The app's text comes from its strings either way, so this only
+     * decides dates and times: plain "en" formats the American way, with 12-hour clocks and the
+     * month first, where English here is read with 24-hour clocks and the day first.
+     */
+    private fun localeOf(languageCode: String): Locale =
+        if (languageCode == ENGLISH) Locale.UK else Locale(languageCode)
+
+    fun getSupportedLanguages(context: Context): List<LanguageOption> {
         return listOf(
-            LanguageOption(SYSTEM_DEFAULT, "System Default", "Langue du système"),
-            LanguageOption(ENGLISH, "English", "Anglais"),
-            LanguageOption(FRENCH, "Français", "French")
+            LanguageOption(SYSTEM_DEFAULT, getLanguageDisplayName(context, SYSTEM_DEFAULT)),
+            LanguageOption(ENGLISH, "English"),
+            LanguageOption(FRENCH, "Français")
         )
     }
 
@@ -44,7 +54,7 @@ object LanguageHelper {
      * the open activity under the "restart to apply" dialog.
      */
     fun applyAppLocales(context: Context, languageCode: String = getCurrentLanguageCode()) {
-        val tags = if (languageCode == SYSTEM_DEFAULT) "" else languageCode
+        val tags = if (languageCode == SYSTEM_DEFAULT) "" else localeOf(languageCode).toLanguageTag()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val manager = context.getSystemService(LocaleManager::class.java) ?: return
             val locales = LocaleList.forLanguageTags(tags)
@@ -75,7 +85,7 @@ object LanguageHelper {
                     Locale.getDefault()
                 }
             }
-            else -> Locale(languageCode)
+            else -> localeOf(languageCode)
         }
 
         Locale.setDefault(locale)
@@ -108,7 +118,7 @@ object LanguageHelper {
                     Locale.getDefault()
                 }
             }
-            else -> Locale(languageCode)
+            else -> localeOf(languageCode)
         }
 
         Locale.setDefault(locale)
@@ -128,23 +138,36 @@ object LanguageHelper {
         context.resources.updateConfiguration(config, context.resources.displayMetrics)
     }
 
-    fun getLanguageDisplayName(languageCode: String): String {
+    /**
+     * The app's language when it follows the device: the first in the device's list the app has,
+     * as Android itself picks, and English if it has none of them. The device's list is read rather
+     * than the app's current locale, which a language picked in the app has replaced.
+     */
+    private fun systemLanguageCode(context: Context): String {
+        val system = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.getSystemService(LocaleManager::class.java)?.systemLocales
+        } else null
+        val locales = system ?: Resources.getSystem().configuration.locales
+        return (0 until locales.size()).map { locales[it].language }
+            .firstOrNull { it == ENGLISH || it == FRENCH } ?: ENGLISH
+    }
+
+    fun getLanguageDisplayName(context: Context, languageCode: String): String {
         return when (languageCode) {
-            SYSTEM_DEFAULT -> "System Default"
+            SYSTEM_DEFAULT -> context.getString(
+                R.string.language_system_default,
+                getLanguageDisplayName(context, systemLanguageCode(context)),
+            )
+
             ENGLISH -> "English"
             FRENCH -> "Français"
             else -> languageCode
         }
     }
 
-    data class LanguageOption(
-        val code: String,
-        val englishName: String,
-        val nativeName: String
-    ) {
-        fun getDisplayName(): String {
-            return if (code == SYSTEM_DEFAULT) englishName else "$nativeName ($englishName)"
-        }
+    /** [name] is the language's own name, the same whichever language the app is in. */
+    data class LanguageOption(val code: String, val name: String) {
+        fun getDisplayName(): String = name
     }
 }
 

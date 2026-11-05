@@ -1007,7 +1007,7 @@ private fun TvModeChoice() {
 @Composable
 private fun AppLanguageChoice() {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val languages = remember { LanguageHelper.getSupportedLanguages() }
+    val languages = remember { LanguageHelper.getSupportedLanguages(context) }
     val current = LanguageHelper.getCurrentLanguageCode()
     ChoiceRow(
         title = stringResource(R.string.language_setting),

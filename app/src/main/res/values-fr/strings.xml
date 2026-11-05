@@ -4087,4 +4087,5 @@
     <string name="stats_format_music">Musique</string>
     <string name="stats_format_novel">Roman</string>
     <string name="stats_format_one_shot">One-shot</string>
+    <string name="language_system_default">Langue du système (%1$s)</string>
 </resources>

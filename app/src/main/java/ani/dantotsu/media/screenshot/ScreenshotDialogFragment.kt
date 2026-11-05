@@ -114,7 +114,7 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
                 .joinToString("  •  ")
         binding.screenshotStage.screenshotSubtitle.isVisible = binding.screenshotStage.screenshotSubtitle.text.isNotBlank()
         binding.screenshotStage.screenshotDate.text =
-            SimpleDateFormat("MMM d, yyyy · HH:mm", Locale.getDefault()).format(Date())
+            SimpleDateFormat("d MMM yyyy · HH:mm", Locale.getDefault()).format(Date())
         binding.screenshotStage.screenshotSource.text = sourceLabel.orEmpty()
         binding.screenshotStage.screenshotUsername.text = Anilist.username.orEmpty()
 

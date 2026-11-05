@@ -66,11 +66,12 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             type = 1,
                             name = getString(R.string.language_setting),
                             desc = ani.dantotsu.util.LanguageHelper.getLanguageDisplayName(
+                                context,
                                 ani.dantotsu.util.LanguageHelper.getCurrentLanguageCode()
                             ),
                             icon = R.drawable.ic_round_language_24,
                             onClick = {
-                                val languages = ani.dantotsu.util.LanguageHelper.getSupportedLanguages()
+                                val languages = ani.dantotsu.util.LanguageHelper.getSupportedLanguages(context)
                                 val languageNames = languages.map { it.getDisplayName() }
                                 val currentLanguage = ani.dantotsu.util.LanguageHelper.getCurrentLanguageCode()
                                 val currentIndex = languages.indexOfFirst { it.code == currentLanguage }

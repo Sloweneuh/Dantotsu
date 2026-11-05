@@ -161,7 +161,7 @@ class ClipDialogFragment : CaptureSheetFragment() {
 
         stage.clipTitle.text = selectedTitle
         stage.clipDate.text =
-            SimpleDateFormat("MMM d, yyyy · HH:mm", Locale.getDefault()).format(Date())
+            SimpleDateFormat("d MMM yyyy · HH:mm", Locale.getDefault()).format(Date())
         stage.clipSource.text = sourceLabel.orEmpty()
         stage.clipUsername.text = Anilist.username.orEmpty()
 
