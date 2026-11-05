@@ -12,30 +12,6 @@ class ColorEditor {
             return adjustColorForContrast(Color.HSVToColor(hsv), color)
         }
 
-        fun generateColorPalette(
-            baseColor: Int,
-            size: Int,
-            hueDelta: Float = 8f,
-            saturationDelta: Float = 2.02f,
-            valueDelta: Float = 2.02f
-        ): List<Int> {
-            val palette = mutableListOf<Int>()
-            val hsv = FloatArray(3)
-            Color.colorToHSV(baseColor, hsv)
-
-            for (i in 0 until size) {
-                val newHue =
-                    (hsv[0] + hueDelta * i) % 360 // Ensure hue stays within the 0-360 range
-                val newSaturation = (hsv[1] + saturationDelta * i).coerceIn(0f, 1f)
-                val newValue = (hsv[2] + valueDelta * i).coerceIn(0f, 1f)
-
-                val newHsv = floatArrayOf(newHue, newSaturation, newValue)
-                palette.add(Color.HSVToColor(newHsv))
-            }
-
-            return palette
-        }
-
         fun getLuminance(color: Int): Double {
             val r = Color.red(color) / 255.0
             val g = Color.green(color) / 255.0

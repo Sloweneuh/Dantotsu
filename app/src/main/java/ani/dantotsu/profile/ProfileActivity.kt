@@ -31,7 +31,6 @@ import ani.dantotsu.media.user.ListActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openImage
 import ani.dantotsu.openLinkInBrowser
-import ani.dantotsu.profile.ChartBuilder
 import ani.dantotsu.profile.activity.ActivityFragment
 import ani.dantotsu.profile.activity.ActivityFragment.Companion.ActivityType
 import ani.dantotsu.settings.bindQuickSettings
@@ -56,8 +55,8 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
     lateinit var binding: ActivityProfileBinding
     private lateinit var bindingProfileAppBar: ItemProfileAppBarBinding
     private var selected: Int = 0
-    private var statsMediaType: ChartBuilder.Companion.MediaType? = null
-    private var statsStatType: ChartBuilder.Companion.StatType? = null
+    private var statsMediaType: StatsMediaType? = null
+    private var statsStatType: StatsMeasure? = null
     lateinit var navBar: AnimatedBottomBar
 
     /**
@@ -145,10 +144,10 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
         binding.profileBottomInset.visibility = if (showBottomInset) View.VISIBLE else View.GONE
         selected = intent.getIntExtra("selectedTab", 0)
         intent.getStringExtra("statsMediaType")?.let { name ->
-            statsMediaType = ChartBuilder.Companion.MediaType.entries.find { it.name == name }
+            statsMediaType = StatsMediaType.entries.find { it.name == name }
         }
         intent.getStringExtra("statsStatType")?.let { name ->
-            statsStatType = ChartBuilder.Companion.StatType.entries.find { it.name == name }
+            statsStatType = StatsMeasure.entries.find { it.name == name }
         }
 
         val feedTab = navBar.createTab(R.drawable.ic_round_menu_24, "Feed")
@@ -227,7 +226,9 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
                         }
                     }
                     profileAppBar.visibility = View.VISIBLE
-                    quickSettings.bindQuickSettings(context, useAvatar = false)
+                    // On one's own profile the header already shows it; on another's, this is the
+                    // only thing here that's the viewer's.
+                    quickSettings.bindQuickSettings(context, useAvatar = user.id != Anilist.userid)
                     profileMenuButton.setOnClickListener {
                         val popup = PopupMenu(context, profileMenuButton)
                         popup.menuInflater.inflate(R.menu.menu_profile, popup.menu)

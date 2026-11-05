@@ -3906,7 +3906,6 @@
     <string name="failed_delete">Impossible de supprimer</string>
     <string name="failed_load_replies">Impossible de charger les réponses</string>
     <string name="user_not_found">Utilisateur introuvable</string>
-    <string name="no_chart_data">Aucune donnée pour ce graphique</string>
     <string name="no_browser_found">Aucun navigateur trouvé</string>
     <string name="delete_episode_progress_msg">Cela supprimera toute la progression enregistrée sur cet appareil pour chaque épisode</string>
     <string name="deleted_episode_progress">Progression des épisodes supprimée pour %1$s</string>
@@ -3946,7 +3945,6 @@
     <string name="failed_save_custom_lists">Impossible d\'enregistrer les listes personnalisées</string>
     <string name="copied_to_clipboard_value">Copié dans le presse-papiers : %1$s</string>
     <string name="cloudflare_bypass">Contournement de Cloudflare</string>
-    <string name="stats_type">Type</string>
     <string name="open_label">Ouvrir</string>
     <string name="discord_current_activity">Activité actuelle</string>
     <string name="country_global">Tous les pays</string>
@@ -4069,4 +4067,24 @@
         <item quantity="many">%1$d de téléchargements ont échoué</item>
         <item quantity="other">%1$d téléchargements ont échoué</item>
     </plurals>
+    <string name="stats_count">Nombre</string>
+    <string name="stats_hours">Heures</string>
+    <string name="stats_chapters">Chapitres</string>
+    <string name="stats_episodes">Épisodes</string>
+    <string name="stats_volumes">Tomes</string>
+    <string name="stats_titles">Titres</string>
+    <string name="stats_release_year">Année de sortie</string>
+    <string name="stats_start_year">Année de début</string>
+    <string name="stats_length">Longueur</string>
+    <string name="stats_country">Pays</string>
+    <string name="stats_show_all">Tout afficher (%1$d)</string>
+    <string name="stats_show_less">Afficher moins</string>
+    <string name="stats_load_failed">Impossible de charger ces statistiques</string>
+    <string name="stats_empty">Aucune statistique pour le moment</string>
+    <string name="stats_format_tv_short">TV court</string>
+    <string name="stats_format_movie">Film</string>
+    <string name="stats_format_special">Spécial</string>
+    <string name="stats_format_music">Musique</string>
+    <string name="stats_format_novel">Roman</string>
+    <string name="stats_format_one_shot">One-shot</string>
 </resources>

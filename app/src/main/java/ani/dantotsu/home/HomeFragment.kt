@@ -44,8 +44,9 @@ import ani.dantotsu.media.MediaAdaptor
 import ani.dantotsu.media.MediaListViewActivity
 import ani.dantotsu.media.user.ListActivity
 import ani.dantotsu.navBarHeight
-import ani.dantotsu.profile.ChartBuilder
 import ani.dantotsu.profile.ProfileActivity
+import ani.dantotsu.profile.StatsMeasure
+import ani.dantotsu.profile.StatsMediaType
 import ani.dantotsu.util.customAlertDialog
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.setSlideIn
@@ -769,16 +770,16 @@ class HomeFragment : Fragment() {
                 val stat2 = PrefManager.getVal<Int>(PrefName.HomeStat2)
                 val result1 = getStatLabelAndValue(stat1)
                 val result2 = getStatLabelAndValue(stat2)
-                fun statIndexToProfileArgs(statIndex: Int): Pair<ChartBuilder.Companion.MediaType, ChartBuilder.Companion.StatType>? {
+                fun statIndexToProfileArgs(statIndex: Int): Pair<StatsMediaType, StatsMeasure>? {
                     return when (statIndex) {
-                        1 -> ChartBuilder.Companion.MediaType.ANIME to ChartBuilder.Companion.StatType.TIME
-                        2 -> ChartBuilder.Companion.MediaType.MANGA to ChartBuilder.Companion.StatType.TIME
-                        3 -> ChartBuilder.Companion.MediaType.ANIME to ChartBuilder.Companion.StatType.COUNT
-                        4 -> ChartBuilder.Companion.MediaType.ANIME to ChartBuilder.Companion.StatType.TIME
-                        5 -> ChartBuilder.Companion.MediaType.MANGA to ChartBuilder.Companion.StatType.COUNT
-                        6 -> ChartBuilder.Companion.MediaType.MANGA to ChartBuilder.Companion.StatType.COUNT
-                        7 -> ChartBuilder.Companion.MediaType.ANIME to ChartBuilder.Companion.StatType.AVG_SCORE
-                        8 -> ChartBuilder.Companion.MediaType.MANGA to ChartBuilder.Companion.StatType.AVG_SCORE
+                        1 -> StatsMediaType.ANIME to StatsMeasure.TIME
+                        2 -> StatsMediaType.MANGA to StatsMeasure.TIME
+                        3 -> StatsMediaType.ANIME to StatsMeasure.COUNT
+                        4 -> StatsMediaType.ANIME to StatsMeasure.TIME
+                        5 -> StatsMediaType.MANGA to StatsMeasure.COUNT
+                        6 -> StatsMediaType.MANGA to StatsMeasure.COUNT
+                        7 -> StatsMediaType.ANIME to StatsMeasure.AVG_SCORE
+                        8 -> StatsMediaType.MANGA to StatsMeasure.AVG_SCORE
                         else -> null
                     }
                 }

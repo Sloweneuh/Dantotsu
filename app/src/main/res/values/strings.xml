@@ -4031,7 +4031,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="failed_delete">Couldn\'t delete</string>
     <string name="failed_load_replies">Couldn\'t load the replies</string>
     <string name="user_not_found">User not found</string>
-    <string name="no_chart_data">No chart data</string>
     <string name="no_browser_found">No browser found</string>
     <string name="delete_episode_progress_msg">This will delete all the locally stored progress for every episode</string>
     <string name="deleted_episode_progress">Deleted the episode progress for %1$s</string>
@@ -4071,7 +4070,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="failed_save_custom_lists">Couldn\'t save the custom lists</string>
     <string name="copied_to_clipboard_value">Copied to clipboard: %1$s</string>
     <string name="cloudflare_bypass">Cloudflare bypass</string>
-    <string name="stats_type">Type</string>
     <string name="open_label">Open</string>
     <string name="discord_current_activity">Current activity</string>
     <string name="country_global">Global</string>
@@ -4191,4 +4189,24 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
         <item quantity="one">%1$d download failed</item>
         <item quantity="other">%1$d downloads failed</item>
     </plurals>
+    <string name="stats_count">Count</string>
+    <string name="stats_hours">Hours</string>
+    <string name="stats_chapters">Chapters</string>
+    <string name="stats_episodes">Episodes</string>
+    <string name="stats_volumes">Volumes</string>
+    <string name="stats_titles">Titles</string>
+    <string name="stats_release_year">Release year</string>
+    <string name="stats_start_year">Year started</string>
+    <string name="stats_length">Length</string>
+    <string name="stats_country">Country</string>
+    <string name="stats_show_all">Show all (%1$d)</string>
+    <string name="stats_show_less">Show less</string>
+    <string name="stats_load_failed">Couldn\'t load these stats</string>
+    <string name="stats_empty">No stats yet</string>
+    <string name="stats_format_tv_short">TV short</string>
+    <string name="stats_format_movie">Movie</string>
+    <string name="stats_format_special">Special</string>
+    <string name="stats_format_music">Music</string>
+    <string name="stats_format_novel">Novel</string>
+    <string name="stats_format_one_shot">One-shot</string>
 </resources>

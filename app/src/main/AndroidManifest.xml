@@ -523,9 +523,6 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".profile.SingleStatActivity"
-            android:parentActivityName=".profile.ProfileActivity" />
-        <activity
             android:name=".media.manga.mangareader.MangaReaderActivity"
             android:configChanges="uiMode|density|fontScale|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|locale|layoutDirection"
             android:excludeFromRecents="true"

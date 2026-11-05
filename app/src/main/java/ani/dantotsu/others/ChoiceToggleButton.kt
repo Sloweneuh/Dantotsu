@@ -116,11 +116,11 @@ class ChoiceToggleButton @JvmOverloads constructor(
         }
         val chosen = alpha >= CHOSEN_FROM
         if (chosen != isChecked) {
-            settingFromAlpha = true
+            stateFromAlpha = chosen
             try {
                 isChecked = chosen
             } finally {
-                settingFromAlpha = false
+                stateFromAlpha = null
             }
         }
         super.setAlpha(1f)
@@ -137,16 +137,19 @@ class ChoiceToggleButton @JvmOverloads constructor(
         else -> NOT_CHOSEN
     }
 
-    private var settingFromAlpha = false
+    /** The state [setAlpha] is applying right now, if it is. */
+    private var stateFromAlpha: Boolean? = null
 
     /**
      * Only [setAlpha] — the code saying which option is chosen — may change this once built. The
      * tap's own toggle and the toggle group's single-selection bookkeeping are both ignored: the
      * group kept its own idea of the choice, so the previous segment stayed lit beside the new
-     * one, and a tap on the chosen segment cleared the row.
+     * one, and a tap on the chosen segment cleared the row. That includes the group answering from
+     * inside [setAlpha]: unchecking the old segment before the new one is lit leaves a required
+     * selection empty, and the group checks it straight back.
      */
     override fun setChecked(checked: Boolean) {
-        if (ready && !settingFromAlpha) return
+        if (ready && stateFromAlpha != checked) return
         super.setChecked(checked)
     }
 
