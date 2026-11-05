@@ -228,6 +228,10 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         (slots[source to InfoSectionKind.RELATIONS] as? RelationSlot)?.offer(source, cards)
     }
 
+    override fun offerFeed(source: InfoTabType, kind: InfoSectionKind, feed: MergedFeed) {
+        (slots[source to kind] as? RowSlot)?.offerFeed(source, feed)
+    }
+
     override fun offerMatchAction(source: InfoTabType, action: InfoMatchAction) {
         val content = _binding?.customInfoContent ?: return
         matchRows.remove(source)?.let { content.removeView(it) }
@@ -1127,6 +1131,9 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         private val more = LinkedHashMap<InfoTabType, View>()
         private val limitedRow = entry.itemLimit?.let { LimitAdapter(row, it) }
 
+        /** Reviews and stacks: the sources that have some, for a page of everyone's. */
+        private val feeds = HashMap<InfoTabType, MergedFeed>()
+
         init {
             bind.itemTitle.text = entry.title ?: kind.label(requireContext(), null)
             if (showSources) bind.itemTitle.addSourceIcons(sources)
@@ -1142,12 +1149,34 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             if (entry.startCollapsed) startCollapsed(bind.root)
         }
 
+        fun offerFeed(source: InfoTabType, feed: MergedFeed) {
+            feeds[source] = feed
+            updateMore()
+        }
+
+        /** Sources whose own page the arrow can open; a source with no feed has nothing to add. */
+        private fun pages() = sources.filter { it in more && (feeds.isEmpty() || it in feeds) }
+
         private fun updateMore() {
-            bind.itemMore.isVisible = more.isNotEmpty() || (limitedRow?.hiddenCount ?: 0) > 0
+            bind.itemMore.isVisible =
+                feeds.size > 1 || pages().isNotEmpty() || (limitedRow?.hiddenCount ?: 0) > 0
         }
 
         private fun openMore() {
-            val options = sources.filter { it in more }
+            if (feeds.size > 1) {
+                val ordered = sources.mapNotNull { feeds[it] }
+                val stacks = ordered.filterIsInstance<StackFeed>()
+                startActivity(
+                    if (stacks.isNotEmpty()) StackListViewActivity.mergedIntent(
+                        requireContext(), entry.title ?: getString(R.string.info_section_stacks_lists), stacks,
+                    ) else Intent(requireContext(), MergedReviewActivity::class.java).putExtra(
+                        MergedReviewActivity.EXTRA_FEEDS,
+                        ArrayList(ordered.filterIsInstance<ReviewFeed>()),
+                    )
+                )
+                return
+            }
+            val options = pages()
             // Where no source has a page of its own for the rest, they come here.
             if (options.isEmpty()) {
                 limitedRow?.expand()
@@ -1212,6 +1241,7 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             root.removeView(view)
             placed.remove(source)?.let { row.removeAdapter(it) }
             more.remove(source)
+            feeds.remove(source)
             updateMore()
         }
     }

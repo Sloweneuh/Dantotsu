@@ -100,3 +100,4 @@
 # Native code looks these up by name.
 -keep class io.github.peerless2012.** { *; }
 -keep class io.github.anilbeesetti.nextlib.** { *; }
+-keep class com.squareup.zstd.** { *; }

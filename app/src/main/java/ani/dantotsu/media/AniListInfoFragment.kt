@@ -841,6 +841,9 @@ class AniListInfoFragment : Fragment() {
                                 )
                             }
                         }
+                        if (!media.review.isNullOrEmpty()) {
+                            parent.offerInfoFeed(InfoSectionKind.REVIEWS, ReviewFeed.AniList(media.id))
+                        }
                         parent.addInfoSection(InfoSectionKind.REVIEWS, root)
                     }
                     if (!media.characters.isNullOrEmpty() && !offline) {

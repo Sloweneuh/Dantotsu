@@ -4246,10 +4246,14 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="info_tabs_default_title">Tab to open on</string>
     <string name="info_tabs_default_first">First tab</string>
     <string name="info_tab_presets">Presets</string>
-    <string name="info_tab_preset_essentials">The essentials, merged</string>
-    <string name="info_tab_preset_best">The essentials, best source only</string>
+    <string name="info_tab_preset_essentials">Essentials</string>
+    <string name="info_tab_preset_essentials_desc">The main info, merged from every source</string>
+    <string name="info_tab_preset_best">Best source</string>
+    <string name="info_tab_preset_best_desc">The main info, from the first source that has it</string>
     <string name="info_tab_preset_community">Community</string>
+    <string name="info_tab_preset_community_desc">Reviews, lists, news, comments and recommendations</string>
     <string name="info_tab_preset_everything">Everything</string>
+    <string name="info_tab_preset_everything_desc">Every section from every source</string>
     <string name="info_section_name">Name</string>
     <string name="info_section_start_collapsed">Start collapsed</string>
     <string name="info_section_start_collapsed_hint">Tap its title to open it</string>

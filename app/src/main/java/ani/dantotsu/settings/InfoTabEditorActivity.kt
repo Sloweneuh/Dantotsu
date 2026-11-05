@@ -609,6 +609,10 @@ class InfoTabEditorActivity : AppCompatActivity() {
         @param:DrawableRes val iconRes: Int,
         val rows: List<SectionRow>,
         @param:StringRes val emptyReason: Int?,
+        /** A preset's: says what it is, where another tab has only its name and size. */
+        val description: String? = null,
+        /** A preset's: what an empty tab takes on along with its name. */
+        val iconKey: String? = null,
     )
 
     /** The sections a tab shows, as rows, whichever kind of tab it is and wherever it lives. */
@@ -669,18 +673,30 @@ class InfoTabEditorActivity : AppCompatActivity() {
         }.filter { (_, tabs) -> tabs.isNotEmpty() }
 
     fun copyFrom(source: CopySource) {
+        val wasEmpty = rows.isEmpty()
         val before = rows.size
         rows.addAll(source.rows)
         adapter.notifyItemRangeInserted(before, rows.size - before)
         changed()
+        // A preset on an empty tab names it too, short of overwriting what the user chose.
+        val presetIcon = source.iconKey
+        if (wasEmpty && presetIcon != null) {
+            if (hasUsualName()) header.infoTabEditorName.setText(source.name)
+            if (icon == null || icon == InfoTabIcons.DEFAULT_CUSTOM) onIconPicked(presetIcon)
+        }
     }
+
+    /** Nothing, or the numbered name a new tab starts with. */
+    private fun hasUsualName() = name.isBlank() ||
+            (1..InfoTabStore.get(tabContext).customTabs.size + 1).any { getString(R.string.info_tab_default_name, it) == name }
 
     /** Ready-made sets of sections, from what this kind of page can show and this tab doesn't have. */
     fun presets(): List<CopySource> {
         fun preset(
-            @StringRes nameRes: Int, @DrawableRes iconRes: Int, kinds: List<InfoSectionKind>, mode: InfoSourceMode,
+            @StringRes nameRes: Int, @StringRes descriptionRes: Int, iconKey: String,
+            kinds: List<InfoSectionKind>, mode: InfoSourceMode,
         ) = CopySource(
-            getString(nameRes), iconRes,
+            getString(nameRes), InfoTabIcons.res(iconKey) ?: R.drawable.ic_round_star_24,
             kinds.mapNotNull { kind ->
                 val free = freeSources(kind)
                 if (free.isEmpty()) return@mapNotNull null
@@ -688,23 +704,33 @@ class InfoTabEditorActivity : AppCompatActivity() {
                 SectionRow(kind, free, mode = if (cantMerge) InfoSourceMode.LIST else mode)
             },
             R.string.info_tab_section_used,
+            getString(descriptionRes), iconKey,
         )
         val essentials = listOf(
             InfoSectionKind.DETAILS, InfoSectionKind.DESCRIPTION, InfoSectionKind.GENRES, InfoSectionKind.TAGS,
             InfoSectionKind.RELATIONS, InfoSectionKind.RECOMMENDATIONS,
         )
         return listOf(
-            preset(R.string.info_tab_preset_essentials, R.drawable.ic_round_short_text_24, essentials, InfoSourceMode.MERGE),
-            preset(R.string.info_tab_preset_best, R.drawable.ic_round_emoji_events_24, essentials, InfoSourceMode.FALLBACK),
             preset(
-                R.string.info_tab_preset_community, R.drawable.ic_round_groups_24,
+                R.string.info_tab_preset_essentials, R.string.info_tab_preset_essentials_desc, "notes",
+                essentials, InfoSourceMode.MERGE,
+            ),
+            preset(
+                R.string.info_tab_preset_best, R.string.info_tab_preset_best_desc, "emoji_events",
+                essentials, InfoSourceMode.FALLBACK,
+            ),
+            preset(
+                R.string.info_tab_preset_community, R.string.info_tab_preset_community_desc, "groups",
                 listOf(
                     InfoSectionKind.REVIEWS, InfoSectionKind.STACKS, InfoSectionKind.NEWS,
                     InfoSectionKind.COMMENTS, InfoSectionKind.RECOMMENDATIONS,
                 ),
                 InfoSourceMode.MERGE,
             ),
-            preset(R.string.info_tab_preset_everything, R.drawable.ic_round_view_list_24, InfoSectionKind.entries, InfoSourceMode.MERGE),
+            preset(
+                R.string.info_tab_preset_everything, R.string.info_tab_preset_everything_desc, "list",
+                InfoSectionKind.entries, InfoSourceMode.MERGE,
+            ),
         )
     }
 

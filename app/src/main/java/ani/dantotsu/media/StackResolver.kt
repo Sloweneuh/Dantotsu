@@ -51,6 +51,10 @@ object StackResolver {
 
     /** Opens the list screen for whichever kind of stack [stack] is. */
     fun open(context: Context, stack: InterestStack, isAnime: Boolean) {
+        if (stack is ComickListStack) {
+            stack.open(context)
+            return
+        }
         val mbId = stack.mangaBakaId
         if (mbId != null) {
             openMangaBaka(

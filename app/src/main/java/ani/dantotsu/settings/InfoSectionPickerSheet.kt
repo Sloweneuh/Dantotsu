@@ -430,8 +430,8 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
                 bind.infoPickerDetail.setText(source.emptyReason ?: R.string.info_tab_section_used)
                 bind.root.alpha = 0.5f
             } else {
-                bind.infoPickerDetail.text =
-                    resources.getQuantityString(R.plurals.info_tab_section_count, count, count)
+                bind.infoPickerDetail.text = source.description
+                    ?: resources.getQuantityString(R.plurals.info_tab_section_count, count, count)
                 bind.root.setOnClickListener {
                     host.copyFrom(source)
                     dismiss()

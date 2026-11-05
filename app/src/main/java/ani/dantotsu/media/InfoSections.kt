@@ -433,6 +433,11 @@ fun ViewGroup.offerInfoRelations(cards: List<InfoExtraSections.RelationCard>) {
     (this as? InfoSectionContainer)?.offerRelations(cards)
 }
 
+/** Says where a source's reviews or stacks come from, for a custom tab that merges them with another's. */
+fun ViewGroup.offerInfoFeed(kind: InfoSectionKind, feed: MergedFeed) {
+    (this as? InfoSectionContainer)?.offerFeed(kind, feed)
+}
+
 /** Hands over chips for a section whose own view is not a chip row (AniList's genre cards). */
 fun ViewGroup.offerInfoChips(kind: InfoSectionKind, chips: List<InfoChip>) {
     (this as? InfoSectionContainer)?.offerChips(kind, chips)

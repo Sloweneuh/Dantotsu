@@ -109,6 +109,9 @@ object MangaBakaStackUi {
                 }
                 bind.itemAdd.setSafeOnClickListener { showAddToStack(activity, seriesId, seriesTitle, coverUrl) }
             }
+            if (stacks.isNotEmpty()) {
+                parent.offerInfoFeed(InfoSectionKind.STACKS, StackFeed.MangaBaka(seriesId, seriesTitle, coverUrl))
+            }
             placeholder.addView(bind.root)
         }
     }

@@ -1755,6 +1755,7 @@ class ComickInfoFragment : Fragment() {
                             itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
                             itemMore.visibility = View.GONE
                             root.tag = "reviews_comick"
+                            parent.offerInfoFeed(InfoSectionKind.REVIEWS, ReviewFeed.Comick(comickSlug, mediaType))
                             reviewsPlaceholder.addView(root)
                         }
                     }
@@ -1802,6 +1803,7 @@ class ComickInfoFragment : Fragment() {
                         )
                         itemMore.visibility = View.GONE
                         root.tag = "custom_lists_comick"
+                        parent.offerInfoFeed(InfoSectionKind.STACKS, StackFeed.Loaded(lists.map { ComickListStack(it) }))
                         customListsPlaceholder.addView(root)
                     }
                 }

@@ -786,6 +786,7 @@ class MALInfoFragment : Fragment() {
                                 .putExtra("isAnime", isAnime)
                         )
                     }
+                    parent.offerInfoFeed(InfoSectionKind.STACKS, StackFeed.Loaded(stacks, isAnime))
                     // If recommendations exist, insert stacks after recommendations; otherwise insert before placeholder.
                     val recView = parent.findViewWithTag<View>("recommendations_mal")
                     if (recView != null) {
@@ -842,6 +843,7 @@ class MALInfoFragment : Fragment() {
                                 .putExtra("isAnime", isAnime)
                         )
                     }
+                    parent.offerInfoFeed(InfoSectionKind.REVIEWS, ReviewFeed.Mal(malId, isAnime))
                     parent.addInfoSection(InfoSectionKind.REVIEWS, bind.root)
                 }
             }

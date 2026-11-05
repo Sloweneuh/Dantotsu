@@ -4124,10 +4124,14 @@
     <string name="info_tabs_default_title">Onglet d’ouverture</string>
     <string name="info_tabs_default_first">Premier onglet</string>
     <string name="info_tab_presets">Préréglages</string>
-    <string name="info_tab_preset_essentials">L’essentiel, fusionné</string>
-    <string name="info_tab_preset_best">L’essentiel, meilleure source seulement</string>
+    <string name="info_tab_preset_essentials">L’essentiel</string>
+    <string name="info_tab_preset_essentials_desc">Les infos principales, fusionnées depuis chaque source</string>
+    <string name="info_tab_preset_best">Meilleure source</string>
+    <string name="info_tab_preset_best_desc">Les infos principales, depuis la première source qui les a</string>
     <string name="info_tab_preset_community">Communauté</string>
+    <string name="info_tab_preset_community_desc">Critiques, listes, actualités, commentaires et recommandations</string>
     <string name="info_tab_preset_everything">Tout</string>
+    <string name="info_tab_preset_everything_desc">Chaque section de chaque source</string>
     <string name="info_section_name">Nom</string>
     <string name="info_section_start_collapsed">Replié au départ</string>
     <string name="info_section_start_collapsed_hint">Appuyez sur son titre pour l’ouvrir</string>

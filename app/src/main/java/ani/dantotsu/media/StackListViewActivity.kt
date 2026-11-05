@@ -29,11 +29,21 @@ import com.google.android.material.chip.Chip
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
+/** Where one source's stacks come from, for a page that shows several sources' together. */
+sealed interface StackFeed : MergedFeed {
+    /** Every stack is known already. */
+    class Loaded(val stacks: List<InterestStack>, val isAnime: Boolean = false) : StackFeed
+
+    /** One series' stacks, which are paged in. */
+    class MangaBaka(val seriesId: Long, val seriesTitle: String?, val coverUrl: String?) : StackFeed
+}
+
 /**
  * A full list of interest stacks. MAL stacks arrive ready-made through [passedStacks]. MangaBaka
  * stacks are paged in here, under a row of tabs: the stacks with one series (when opened from a
  * series page), every public stack, staff picks, and — logged in — the user's own, saved and
- * followed stacks, plus a button to start a new one.
+ * followed stacks, plus a button to start a new one. A custom tab's merged stacks ([mergedIntent])
+ * can be both at once, and skip the tabs and filters, which only apply to MangaBaka's.
  */
 class StackListViewActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMediaListViewBinding
@@ -53,6 +63,11 @@ class StackListViewActivity : AppCompatActivity() {
     private var loadJob: Job? = null
     private var sort = MangaBakaStacks.SeriesSort.VOTES
     private var spoilers = MangaBakaStacks.Spoilers.INCLUDE
+
+    private var merged = false
+
+    /** Merged only: the ready-made stacks of sources listed after MangaBaka, which stay below its pages. */
+    private var loadedAfter = 0
 
     private enum class Tab(val label: Int) {
         SERIES(R.string.stack_tab_series),
@@ -105,12 +120,13 @@ class StackListViewActivity : AppCompatActivity() {
         binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener { finish() }
 
-        if (isMangaBaka) {
-            setUpMangaBaka()
-        } else {
+        merged = intent.getBooleanExtra(EXTRA_MERGED, false)
+        loadedAfter = intent.getIntExtra(EXTRA_LOADED_AFTER, 0)
+        if (merged || !isMangaBaka) {
             stacks.addAll(passedStacks.orEmpty())
             updateTitle()
         }
+        if (isMangaBaka) setUpMangaBaka()
         buildAdapter()
     }
 
@@ -150,10 +166,16 @@ class StackListViewActivity : AppCompatActivity() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 val lm = recyclerView.layoutManager as? GridLayoutManager ?: return
                 if (hasMore && loadJob?.isActive != true &&
-                    lm.findLastVisibleItemPosition() >= stacks.size - 6
+                    lm.findLastVisibleItemPosition() >= stacks.size - loadedAfter - 6
                 ) loadPage()
             }
         })
+        // Reloading for a filter would take the other sources' stacks with it.
+        if (merged) {
+            hasMore = true
+            loadPage()
+            return
+        }
         lifecycleScope.launch {
             TrackerSessions.await()
             val loggedIn = MangaBaka.token != null
@@ -303,8 +325,8 @@ class StackListViewActivity : AppCompatActivity() {
             val rows = result?.data.orEmpty()
             hasMore = result?.pagination?.next != null && rows.isNotEmpty()
             nextPage = page + 1
-            val start = stacks.size
-            stacks.addAll(rows)
+            val start = stacks.size - loadedAfter
+            stacks.addAll(start, rows)
             binding.mediaRecyclerView.adapter?.notifyItemRangeInserted(start, rows.size)
             updateTitle()
             if (stacks.isEmpty()) {
@@ -337,6 +359,30 @@ class StackListViewActivity : AppCompatActivity() {
         private const val EXTRA_SERIES_ID = "seriesId"
         private const val EXTRA_SERIES_TITLE = "seriesTitle"
         private const val EXTRA_SERIES_COVER = "seriesCover"
+        private const val EXTRA_MERGED = "merged"
+        private const val EXTRA_LOADED_AFTER = "loadedAfter"
+
+        /** The stacks of several sources in one list, in the order of [feeds]. */
+        fun mergedIntent(context: Context, title: String, feeds: List<StackFeed>): Intent {
+            val loaded = feeds.filterIsInstance<StackFeed.Loaded>()
+            passedStacks = ArrayList(loaded.flatMap { it.stacks })
+            val intent = Intent(context, StackListViewActivity::class.java)
+                .putExtra("title", title)
+                .putExtra("isAnime", loaded.any { it.isAnime })
+                .putExtra(EXTRA_MERGED, true)
+            val paged = feeds.indexOfFirst { it is StackFeed.MangaBaka }
+            (feeds.getOrNull(paged) as? StackFeed.MangaBaka)?.let { feed ->
+                intent.putExtra(EXTRA_MANGABAKA, true)
+                    .putExtra(EXTRA_SERIES_ID, feed.seriesId)
+                    .putExtra(EXTRA_SERIES_TITLE, feed.seriesTitle)
+                    .putExtra(EXTRA_SERIES_COVER, feed.coverUrl)
+                    .putExtra(
+                        EXTRA_LOADED_AFTER,
+                        feeds.drop(paged + 1).filterIsInstance<StackFeed.Loaded>().sumOf { it.stacks.size },
+                    )
+            }
+            return intent
+        }
 
         /**
          * The MangaBaka stack browser. Without [seriesId] it's the global one (every stack, staff
