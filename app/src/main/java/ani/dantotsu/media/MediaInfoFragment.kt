@@ -22,11 +22,14 @@ class MediaInfoFragment : Fragment() {
     private val binding
         get() = _binding!!
 
-    private data class TabInfo(val entry: InfoTabEntry, val fragment: Fragment) {
+    private data class TabInfo(val entry: InfoTabEntry) {
         val iconRes get() = entry.iconRes
         val type get() = (entry as? InfoTabEntry.Builtin)?.type
     }
     private var tabs: List<TabInfo> = emptyList()
+
+    /** [tabs] with the custom tabs that turned out to have nothing for this title too. */
+    private var allTabs: List<TabInfo> = emptyList()
 
     override fun onCreateView(
             inflater: LayoutInflater,
@@ -64,10 +67,10 @@ class MediaInfoFragment : Fragment() {
                 .ifEmpty { tabContext.orderedEntries().filter { isAniList(it) } }
             else ordered
         }
-        tabs = orderedTabs.map { entry ->
-            TabInfo(entry, tabContext.createTabFragment(entry))
-        }
+        allTabs = orderedTabs.map { TabInfo(it) }
+        tabs = allTabs
         builtFrom = tabContext.layoutSignature()
+        if (InfoTabStore.preview == null) InfoTabPreview.remember(tabContext, media.id.toLong())
     }
 
     /** If only one tab is left, the TabLayout goes and that tab's info shows directly. */
@@ -112,8 +115,10 @@ class MediaInfoFragment : Fragment() {
                 buildTabs(media)
                 childFragmentManager.applyInfoTabRules(InfoTabContext.forAniList(media))
 
+                val tabContext = InfoTabContext.forAniList(media)
                 val adapter = InfoTabsPagerAdapter(
-                    this, { tabs.size }, { position -> tabs[position].fragment }
+                    this, { tabs.size }, { tabs[it].entry.key },
+                    { tabContext.createTabFragment(tabs[it].entry) },
                 )
                 pagerAdapter = adapter
                 binding.mediaInfoViewPager.adapter = adapter
@@ -125,6 +130,12 @@ class MediaInfoFragment : Fragment() {
                 // Disable swipe gestures
                 binding.mediaInfoViewPager.isUserInputEnabled = false
 
+                // Before the tabs are set up, which already leaves out those with nothing to show.
+                if (savedInstanceState == null) {
+                    val start = tabs.indexOfFirst { it.entry.key == tabContext.initialTabKey(this) }
+                    if (start > 0) binding.mediaInfoViewPager.setCurrentItem(start, false)
+                }
+
                 setupTabs(model, media)
             }
         }
@@ -132,6 +143,9 @@ class MediaInfoFragment : Fragment() {
         // Observe data availability changes. Comick now backs an anime tab too, so unlike the
         // MangaUpdates/MangaBaka observers below this one must not skip anime.
         model.comickSlug.observe(viewLifecycleOwner) {
+            currentMedia?.let { media -> updateTabStates(model, media) }
+        }
+        model.comickLoaded.observe(viewLifecycleOwner) {
             currentMedia?.let { media -> updateTabStates(model, media) }
         }
 
@@ -148,6 +162,12 @@ class MediaInfoFragment : Fragment() {
                 if (media.anime == null) {
                     updateTabStates(model, media)
                 }
+            }
+        }
+
+        model.mangaUpdatesLoaded.observe(viewLifecycleOwner) {
+            currentMedia?.let { media ->
+                if (media.anime == null) updateTabStates(model, media)
             }
         }
 
@@ -288,47 +308,72 @@ class MediaInfoFragment : Fragment() {
         return true
     }
 
+    /** How far [type] got with this title. The MangaUpdates/MangaBaka branches never apply to anime, which has no such tabs. */
+    private fun sourceAlpha(type: InfoTabType, model: MediaDetailsViewModel, media: Media): Float = when (type) {
+        InfoTabType.ANILIST -> InfoTabAlpha.READY
+        InfoTabType.MAL -> if (media.idMAL != null) InfoTabAlpha.READY else InfoTabAlpha.EMPTY
+        InfoTabType.COMICK -> when {
+            model.comickSlug.value != null -> InfoTabAlpha.READY
+            model.comickLoaded.value == true -> InfoTabAlpha.EMPTY
+            else -> InfoTabAlpha.LOADING
+        }
+        InfoTabType.MANGAUPDATES -> when {
+            model.mangaUpdatesLink.value != null -> InfoTabAlpha.READY
+            // Not just "not loading": the lookup only starts after Comick's search has been set off.
+            model.mangaUpdatesLoaded.value == true && model.mangaUpdatesLoading.value != true -> InfoTabAlpha.EMPTY
+            else -> InfoTabAlpha.LOADING
+        }
+        InfoTabType.MANGABAKA -> when {
+            (model.mangaBakaId.value ?: 0L) > 0L -> InfoTabAlpha.READY
+            model.mangaBakaLoaded.value == true -> InfoTabAlpha.EMPTY
+            else -> InfoTabAlpha.LOADING
+        }
+        InfoTabType.KITSU -> when {
+            !model.kitsuId.value.isNullOrBlank() -> InfoTabAlpha.READY
+            model.kitsuLoaded.value == true -> InfoTabAlpha.EMPTY
+            else -> InfoTabAlpha.LOADING
+        }
+        InfoTabType.SIMKL -> when {
+            (model.simklId.value ?: 0L) > 0L -> InfoTabAlpha.READY
+            model.simklLoaded.value == true -> InfoTabAlpha.EMPTY
+            else -> InfoTabAlpha.LOADING
+        }
+    }
+
+    /**
+     * Takes out custom tabs all of whose sources came up empty, and puts them back if one of them
+     * comes through after all. Never the tab being looked at, which would pull it from under the
+     * user: it goes once they've moved on. The others keep their pages.
+     */
+    private fun hideEmptyTabs(model: MediaDetailsViewModel, media: Media) {
+        val adapter = pagerAdapter ?: return
+        val context = InfoTabContext.forAniList(media)
+        val shown = tabs.getOrNull(binding.mediaInfoViewPager.currentItem)?.entry?.key
+        val kept = allTabs.filter { info ->
+            val custom = (info.entry as? InfoTabEntry.Custom)?.tab ?: return@filter true
+            info.entry.key == shown || !context.customTabIsEmpty(custom) { sourceAlpha(it, model, media) }
+        }
+        if (kept.map { it.entry.key } == tabs.map { it.entry.key }) return
+        tabs = kept
+        adapter.removed()
+        showTabBar()
+        binding.mediaInfoViewPager.setCurrentItem(
+            tabs.indexOfFirst { it.entry.key == shown }.coerceAtLeast(0), false
+        )
+    }
+
     private fun updateTabStates(model: MediaDetailsViewModel, media: Media) {
-        // Alpha states follow the display order. The MangaUpdates/MangaBaka branches below are
-        // unreachable for anime, which has no such tabs.
+        hideEmptyTabs(model, media)
+        val context = InfoTabContext.forAniList(media)
+        // Alpha states follow the display order.
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
-            val info = tabs.getOrNull(i)
-            val alpha = if (info?.entry is InfoTabEntry.Custom) 1.0f else when (info?.type) {
-                InfoTabType.ANILIST -> 1.0f
-                InfoTabType.MAL -> if (media.idMAL != null) 1.0f else 0.4f
-                InfoTabType.COMICK -> if (model.comickSlug.value != null) 1.0f else 0.4f
-                InfoTabType.MANGAUPDATES -> {
-                    val isLoading = model.mangaUpdatesLoading.value == true
-                    val hasData = model.mangaUpdatesLink.value != null
-                    when {
-                        hasData -> 1.0f
-                        isLoading -> 0.6f
-                        else -> 0.4f
-                    }
-                }
-                InfoTabType.MANGABAKA -> {
-                    val resolved = model.mangaBakaLoaded.value == true
-                    val hasData = (model.mangaBakaId.value ?: 0L) > 0L
-                    when {
-                        hasData -> 1.0f
-                        resolved -> 0.4f
-                        else -> 0.6f
-                    }
-                }
-                InfoTabType.KITSU -> when {
-                    !model.kitsuId.value.isNullOrBlank() -> 1.0f
-                    model.kitsuLoaded.value == true -> 0.4f
-                    else -> 0.6f
-                }
-                InfoTabType.SIMKL -> when {
-                    (model.simklId.value ?: 0L) > 0L -> 1.0f
-                    model.simklLoaded.value == true -> 0.4f
-                    else -> 0.6f
-                }
-                null -> 0.4f
+            val entry = tabs.getOrNull(i)?.entry
+            tab.view.alpha = when (entry) {
+                is InfoTabEntry.Custom -> context.customTabAlpha(entry.tab) { sourceAlpha(it, model, media) }
+                is InfoTabEntry.Builtin -> sourceAlpha(entry.type, model, media)
+                null -> InfoTabAlpha.EMPTY
             }
-            tab.view.alpha = alpha
         }
     }
 

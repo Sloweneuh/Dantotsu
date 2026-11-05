@@ -83,10 +83,45 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="8dp"
-            android:layout_marginBottom="32dp"
             android:fontFamily="@font/poppins_bold"
             android:text="@string/info_tabs_add_custom"
             app:icon="@drawable/ic_round_add_tinted_24"
             app:iconGravity="textStart" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/infoTabsImport"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/info_tabs_import"
+            app:icon="@drawable/ic_round_download_24"
+            app:iconGravity="textStart" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/infoTabsDefault"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_bold"
+            android:maxLines="1"
+            app:icon="@drawable/ic_round_home_24"
+            app:iconGravity="textStart"
+            tools:text="@string/info_tabs_default" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/infoTabsReset"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="32dp"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/info_tabs_reset"
+            android:textColor="?attr/colorError"
+            app:icon="@drawable/ic_round_refresh_24"
+            app:iconGravity="textStart"
+            app:iconTint="?attr/colorError" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

@@ -43,6 +43,7 @@ interface InfoSectionSink {
     fun retractSection(source: InfoTabType, kind: InfoSectionKind, view: View)
     fun offerMedia(source: InfoTabType, kind: InfoSectionKind, media: List<Media>)
     fun offerChips(source: InfoTabType, kind: InfoSectionKind, chips: List<InfoChip>)
+    fun offerRelations(source: InfoTabType, cards: List<InfoExtraSections.RelationCard>)
 
     /** What [source] offers about its match in place of the page it can't show from here. */
     fun offerMatchAction(source: InfoTabType, action: InfoMatchAction)
@@ -143,6 +144,11 @@ class InfoSectionContainer @JvmOverloads constructor(context: Context, attrs: At
     fun offerChips(kind: InfoSectionKind, chips: List<InfoChip>) {
         val src = source ?: return
         sink?.offerChips(src, kind, chips)
+    }
+
+    fun offerRelations(cards: List<InfoExtraSections.RelationCard>) {
+        val src = source ?: return
+        sink?.offerRelations(src, cards)
     }
 
     fun offerMatchAction(action: InfoMatchAction) {

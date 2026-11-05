@@ -794,6 +794,20 @@ class AniListInfoFragment : Fragment() {
                                 LinearLayoutManager.HORIZONTAL,
                                 false
                             )
+                            parent.offerInfoRelations(media.relations!!.map { related ->
+                                InfoExtraSections.RelationCard(
+                                    related.userPreferredName, related.cover, related.relation.orEmpty(),
+                                    isAnime = related.anime != null,
+                                    ids = listOfNotNull("al:${related.id}", related.idMAL?.let { "mal:$it" }),
+                                    altTitles = listOfNotNull(related.name, related.nameRomaji, related.nameMAL),
+                                    format = related.format,
+                                ) {
+                                    startActivity(
+                                        Intent(requireContext(), MediaDetailsActivity::class.java)
+                                            .putExtra("media", related as java.io.Serializable)
+                                    )
+                                }
+                            })
                             parent.addInfoSection(InfoSectionKind.RELATIONS, root)
                         }
                     }

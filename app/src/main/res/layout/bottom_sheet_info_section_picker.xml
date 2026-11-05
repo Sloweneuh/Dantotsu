@@ -58,7 +58,8 @@
     <androidx.core.widget.NestedScrollView
         android:id="@+id/infoPickerScroll"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:overScrollMode="never">
 
         <LinearLayout
@@ -68,4 +69,15 @@
             android:clipToPadding="false"
             android:orientation="vertical" />
     </androidx.core.widget.NestedScrollView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/infoPickerDone"
+        style="@style/Widget.Material3.Button"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
+        android:fontFamily="@font/poppins_bold"
+        android:text="@string/info_tab_done"
+        android:visibility="gone" />
 </LinearLayout>

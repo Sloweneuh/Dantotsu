@@ -26,6 +26,7 @@ import ani.dantotsu.media.InfoTabType
 import ani.dantotsu.media.label
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
+import ani.dantotsu.util.materialDialog
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -62,9 +63,12 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         binding.infoPickerRows.setPadding(0, 0, 0, navBarHeight)
+        binding.infoPickerDone.setOnClickListener { dismiss() }
+        (binding.infoPickerDone.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin += navBarHeight
         val args = requireArguments()
         when (args.getString(ARG_MODE)) {
             MODE_COPY -> showCopy()
+            MODE_OPTIONS -> showOptions(args.getInt(ARG_ROW))
             MODE_LONG_PRESS -> showLongPress()
             MODE_SOURCES -> {
                 val kind = args.getString(ARG_KIND)?.let { InfoSectionKind.forKey(it) }
@@ -75,14 +79,25 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
         }
     }
 
-    private fun startPage(title: String, subtitle: String?, onBack: (() -> Unit)?) {
+    private fun startPage(title: String, subtitle: String?, onBack: (() -> Unit)?, keepScroll: Boolean = false) {
         binding.infoPickerTitle.text = title
         binding.infoPickerSubtitle.text = subtitle
         binding.infoPickerSubtitle.isVisible = subtitle != null
         binding.infoPickerBack.isVisible = onBack != null
         binding.infoPickerBack.setOnClickListener { onBack?.invoke() }
+        // Pages that show it say so afterwards: most end in a button of their own.
+        showDone(false)
+        val scrolled = binding.infoPickerScroll.scrollY
         binding.infoPickerRows.removeAllViews()
-        binding.infoPickerScroll.scrollTo(0, 0)
+        if (keepScroll) binding.infoPickerScroll.post {
+            _binding?.infoPickerScroll?.scrollTo(0, scrolled)
+        } else binding.infoPickerScroll.scrollTo(0, 0)
+    }
+
+    /** A Done kept in sight below the list, with the rows no longer needing room for the nav bar. */
+    private fun showDone(show: Boolean) {
+        binding.infoPickerDone.isVisible = show
+        binding.infoPickerRows.setPadding(0, 0, 0, if (show) 0 else navBarHeight)
     }
 
     private fun addGroupTitle(text: String) {
@@ -108,9 +123,10 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
 
     // ---- sections --------------------------------------------------------------------------------
 
-    private fun showSections() {
+    /** Stays open after each one, as a tab is usually several sections. */
+    private fun showSections(keepScroll: Boolean = false) {
         val host = editor ?: return
-        startPage(getString(R.string.info_tab_add_section), null, null)
+        startPage(getString(R.string.info_tab_add_section), null, null, keepScroll)
         val available = InfoSectionKind.entries.filter { host.freeSources(it).isNotEmpty() }
         val used = InfoSectionKind.entries.filter {
             it !in available && host.usableSources(it).isNotEmpty()
@@ -133,10 +149,11 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
                 if (free.size > 1) showSources(kind, NEW_ROW, canGoBack = true)
                 else {
                     host.applySources(kind, NEW_ROW, free)
-                    dismiss()
+                    showSections(keepScroll = true)
                 }
             }
         }
+        showDone(true)
         // Listed rather than left out: not finding one here reads as the app having lost it.
         if (used.isNotEmpty()) {
             addGroupTitle(getString(R.string.info_tab_section_used))
@@ -294,7 +311,7 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
                 ) {
                     val picked = if (ordering) listed.toList() else choices.filter { it in listed }
                     host.applySources(kind, row, picked, if (multiple) mode else InfoSourceMode.MERGE)
-                    dismiss()
+                    if (canGoBack) showSections() else dismiss()
                 }
             )
         }
@@ -402,27 +419,105 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
     private fun showCopy() {
         val host = editor ?: return
         startPage(getString(R.string.info_tab_copy_from), null, null)
-        host.copyChoices().forEach { (context, tabs) ->
-            addGroupTitle(context.label(requireContext()))
-            tabs.forEach { source ->
-                val count = source.rows.size
-                val bind = addRow()
-                showLogo(bind, source.iconRes)
-                bind.infoPickerTitle.text = source.name
-                bind.infoPickerDetail.isVisible = true
-                if (count == 0) {
-                    bind.infoPickerDetail.setText(source.emptyReason ?: R.string.info_tab_section_used)
-                    bind.root.alpha = 0.5f
-                } else {
-                    bind.infoPickerDetail.text =
-                        resources.getQuantityString(R.plurals.info_tab_section_count, count, count)
-                    bind.root.setOnClickListener {
-                        host.copyFrom(source)
-                        dismiss()
-                    }
+
+        fun choice(source: InfoTabEditorActivity.CopySource) {
+            val count = source.rows.size
+            val bind = addRow()
+            showLogo(bind, source.iconRes)
+            bind.infoPickerTitle.text = source.name
+            bind.infoPickerDetail.isVisible = true
+            if (count == 0) {
+                bind.infoPickerDetail.setText(source.emptyReason ?: R.string.info_tab_section_used)
+                bind.root.alpha = 0.5f
+            } else {
+                bind.infoPickerDetail.text =
+                    resources.getQuantityString(R.plurals.info_tab_section_count, count, count)
+                bind.root.setOnClickListener {
+                    host.copyFrom(source)
+                    dismiss()
                 }
             }
         }
+        addGroupTitle(getString(R.string.info_tab_presets))
+        host.presets().forEach { choice(it) }
+        host.copyChoices().forEach { (context, tabs) ->
+            addGroupTitle(context.label(requireContext()))
+            tabs.forEach { choice(it) }
+        }
+    }
+
+    // ---- a section's options ---------------------------------------------------------------------
+
+    private fun showOptions(index: Int) {
+        val host = editor ?: return
+        val row = host.rowAt(index) ?: return dismiss()
+        val usual = row.kind.label(requireContext(), row.sources.singleOrNull())
+        startPage(row.title ?: usual, getString(row.kind.descriptionRes), null, keepScroll = true)
+
+        val nameRow = addRow()
+        nameRow.infoPickerTitle.setText(R.string.info_section_name)
+        nameRow.infoPickerDetail.isVisible = true
+        nameRow.infoPickerDetail.text = row.title ?: usual
+        nameRow.infoPickerTrailing.isVisible = true
+        nameRow.infoPickerTrailing.setImageResource(R.drawable.ic_round_edit_outline_24)
+        nameRow.root.setOnClickListener { askName(index, usual) }
+
+        toggleRow(
+            R.string.info_section_start_collapsed,
+            detail = R.string.info_section_start_collapsed_hint,
+            checked = row.startCollapsed,
+        ) {
+            host.updateOptions(index, row.title, !row.startCollapsed, row.itemLimit)
+            showOptions(index)
+        }
+
+        if (row.kind.hasItems) {
+            addGroupTitle(getString(R.string.info_section_limit))
+            listOf(null, 3, 5, 10).forEach { limit ->
+                val bind = addRow()
+                val isOn = row.itemLimit == limit
+                bind.infoPickerTitle.text =
+                    limit?.toString() ?: getString(R.string.info_section_limit_all)
+                bind.root.setCardBackgroundColor(SectionCard.fill(bind.root, isOn))
+                val indicator = MaterialRadioButton(requireContext())
+                indicator.isChecked = isOn
+                indicator.isClickable = false
+                indicator.isFocusable = false
+                indicator.minimumWidth = 0
+                indicator.minimumHeight = 0
+                bind.infoPickerIndicator.addView(indicator)
+                bind.root.setOnClickListener {
+                    host.updateOptions(index, row.title, row.startCollapsed, limit)
+                    showOptions(index)
+                }
+            }
+        }
+        showDone(true)
+    }
+
+    private fun askName(index: Int, usual: String) {
+        val host = editor ?: return
+        val row = host.rowAt(index) ?: return
+        val input = com.google.android.material.textfield.TextInputEditText(requireContext()).apply {
+            setText(row.title)
+            hint = usual
+            isSingleLine = true
+        }
+        val frame = android.widget.FrameLayout(requireContext()).apply {
+            setPadding(24f.px, 8f.px, 24f.px, 0)
+            addView(input)
+        }
+        requireContext().materialDialog()
+            .setTitle(R.string.info_section_name)
+            .setView(frame)
+            .setPositiveButton(R.string.save) { _, _ ->
+                // Empty, or the usual name typed back in, is no name of its own.
+                val name = input.text?.toString()?.trim()?.takeIf { it.isNotEmpty() && it != usual }
+                host.updateOptions(index, name, row.startCollapsed, row.itemLimit)
+                if (_binding != null) showOptions(index)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     // ---- long press ------------------------------------------------------------------------------
@@ -470,6 +565,7 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
         private const val MODE_SOURCES = "sources"
         private const val MODE_COPY = "copy"
         private const val MODE_LONG_PRESS = "long_press"
+        private const val MODE_OPTIONS = "options"
 
         /** In place of a row index: the section is being added. */
         const val NEW_ROW = -1
@@ -484,6 +580,7 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
         fun forAdding() = with(MODE_ADD)
         fun forCopying() = with(MODE_COPY)
         fun forLongPress() = with(MODE_LONG_PRESS)
+        fun forOptions(row: Int) = with(MODE_OPTIONS) { putInt(ARG_ROW, row) }
         fun forSources(kind: InfoSectionKind, row: Int) = with(MODE_SOURCES) {
             putString(ARG_KIND, kind.key)
             putInt(ARG_ROW, row)

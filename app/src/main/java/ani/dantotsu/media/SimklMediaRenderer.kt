@@ -234,6 +234,13 @@ object SimklMediaRenderer {
             )
         }
         if (cards.isEmpty()) return
+        parent.offerInfoRelations(relations.orEmpty().filter { it.simklId != null }.map { related ->
+            InfoExtraSections.RelationCard(
+                related.title ?: related.enTitle.orEmpty(), SimklApi.posterUrl(related.poster),
+                related.relationType.orEmpty(), isAnime = true,
+                altTitles = listOfNotNull(related.title, related.enTitle),
+            ) { related.simklId?.let(onSimklMediaClick) }
+        })
         val bind = ItemTitleRecyclerBinding.inflate(activity.layoutInflater, parent, false)
         bind.itemTitle.setText(R.string.relations)
         bind.itemRecycler.adapter = SimklMediaCardAdapter(cards, onSimklMediaClick)

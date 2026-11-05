@@ -263,6 +263,15 @@ object KitsuMediaRenderer {
         onRelationClick: (KitsuApi.Relation) -> Unit,
     ) {
         if (relations.isEmpty()) return
+        parent.offerInfoRelations(relations.map { rel ->
+            val media = rel.media
+            val titles = listOfNotNull(media.canonicalTitle) + media.titles?.values?.filterNotNull().orEmpty()
+            InfoExtraSections.RelationCard(
+                titles.firstOrNull { it.isNotBlank() }.orEmpty(),
+                media.posterImage?.medium ?: media.posterImage?.original,
+                rel.role, rel.isAnime, altTitles = titles, format = media.subtype,
+            ) { onRelationClick(rel) }
+        })
         // Same compact media-card strip AniList's relations section uses.
         val bind = ItemTitleRecyclerBinding.inflate(activity.layoutInflater, parent, false)
         bind.itemTitle.setText(R.string.relations)

@@ -590,6 +590,12 @@ object MangaBakaMediaRenderer {
                     coverUrl = cover,
                     relation = relation.relationType.orEmpty(),
                     isAnime = false,
+                    ids = listOfNotNull(
+                        target.source?.anilist?.id?.takeIf { it > 0 }?.let { "al:$it" },
+                        target.source?.myAnimeList?.id?.takeIf { it > 0 }?.let { "mal:$it" },
+                        target.source?.mangaUpdates?.id?.let { "mu:$it" },
+                    ),
+                    format = target.type,
                 ) {
                     activity.startActivity(
                         Intent(activity, MangaBakaMediaActivity::class.java)
@@ -598,6 +604,7 @@ object MangaBakaMediaRenderer {
                     )
                 }
             }
+            parent.offerInfoRelations(cards)
             if (cards.isNotEmpty()) placeholder.addView(InfoExtraSections.relationCardsView(placeholder, cards))
         }
     }

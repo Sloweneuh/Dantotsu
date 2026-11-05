@@ -45,7 +45,8 @@ internal fun BottomSheetDialogFragment.capSheetHeight() {
 
 /**
  * The details table of one section: its lines' order, which of them show and, with several sources,
- * how each line uses them. Applies as it goes, like the rest of the tab editor.
+ * how each line uses them. Goes into the editor's draft as it goes: Done only closes the sheet, and
+ * the editor's Save or Cancel decides what becomes of it.
  */
 class InfoFieldsSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetInfoFieldsBinding? = null
@@ -82,9 +83,8 @@ class InfoFieldsSheet : BottomSheetDialogFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        // On the list itself, not around it, so its rows scroll all the way to the bottom edge.
-        binding.infoFieldsList.setPadding(0, 0, 0, navBarHeight + 16f.px)
-        binding.infoFieldsList.clipToPadding = false
+        binding.infoFieldsDone.setOnClickListener { dismiss() }
+        (binding.infoFieldsDone.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin += navBarHeight
         val row = editor?.rowAt(rowIndex)
         if (row == null) {
             dismiss()

@@ -43,6 +43,11 @@ data class InfoSectionEntry(
     val mode: InfoSourceMode = InfoSourceMode.MERGE,
     /** For details with several sources, by line. */
     val fieldLines: Map<String, InfoFieldLine> = emptyMap(),
+    /** The user's own name for the section. Null keeps the usual one. */
+    val title: String? = null,
+    val startCollapsed: Boolean = false,
+    /** How many items it shows at most, the rest being behind its arrow where it has one. */
+    val itemLimit: Int? = null,
 ) {
     /** [fieldLines], with what older saves said about a line in [fieldSources]. */
     val resolvedLines: Map<String, InfoFieldLine>
@@ -99,6 +104,8 @@ data class InfoContextConfig(
     val tabOrder: List<String>? = null,
     val customTabs: List<CustomInfoTab> = emptyList(),
     val builtins: Map<String, BuiltinTabOverride> = emptyMap(),
+    /** The key of the tab this context's pages open on. Null, or one not showing, is the first. */
+    val defaultTab: String? = null,
 )
 
 @Serializable
@@ -126,8 +133,15 @@ object InfoTabStore {
         }
     }
 
+    /** Unsaved edits a preview page is showing, and the tab being looked at. */
+    class Preview(val context: InfoTabContext, val config: InfoContextConfig, val tabKey: String)
+
+    /** Only ever read, never written back: the editor clears it on coming back to it. */
+    var preview: Preview? = null
+
     fun get(context: InfoTabContext): InfoContextConfig =
-        load().contexts[context.name] ?: InfoContextConfig()
+        preview?.takeIf { it.context == context }?.config
+            ?: load().contexts[context.name] ?: InfoContextConfig()
 
     fun update(context: InfoTabContext, transform: (InfoContextConfig) -> InfoContextConfig) {
         val all = load()
@@ -136,7 +150,65 @@ object InfoTabStore {
         PrefManager.setVal(PrefName.InfoTabsConfig, json.encodeToString(updated))
     }
 
+    /** Back to how the app ships: custom tabs gone, a source's own tabs as they were. */
+    fun reset(context: InfoTabContext) {
+        val all = load()
+        PrefManager.setVal(
+            PrefName.InfoTabsConfig,
+            json.encodeToString(all.copy(contexts = all.contexts - context.name)),
+        )
+        PrefManager.setVal(context.orderPref, context.tabs.indices.toList())
+        PrefManager.setVal(context.visibilityPref, context.tabs.map { it.defaultVisible })
+    }
+
     fun newTabId(): String = "custom_" + UUID.randomUUID().toString().take(8)
+
+    fun encodeOverride(override: BuiltinTabOverride) = json.encodeToString(override)
+    fun decodeOverride(raw: String) = runCatching { json.decodeFromString<BuiltinTabOverride>(raw) }.getOrNull()
+    fun encodeTab(tab: CustomInfoTab) = json.encodeToString(tab)
+    fun decodeTab(raw: String) = runCatching { json.decodeFromString<CustomInfoTab>(raw) }.getOrNull()
+
+    private const val SHARE_PREFIX = "dantotsu-tab:"
+
+    /** A custom tab as text someone can paste into [importTab]. */
+    fun exportTab(tab: CustomInfoTab): String = SHARE_PREFIX + android.util.Base64.encodeToString(
+        encodeTab(tab).toByteArray(), android.util.Base64.NO_WRAP or android.util.Base64.URL_SAFE,
+    )
+
+    /** The tab in [code] under a new id, or null when it isn't one. Sections that don't fit are dropped when shown. */
+    fun importTab(code: String): CustomInfoTab? {
+        val body = code.trim().takeIf { it.startsWith(SHARE_PREFIX) }?.removePrefix(SHARE_PREFIX) ?: return null
+        val raw = runCatching {
+            String(android.util.Base64.decode(body, android.util.Base64.NO_WRAP or android.util.Base64.URL_SAFE))
+        }.getOrNull() ?: return null
+        return decodeTab(raw)?.copy(id = newTabId())
+    }
+}
+
+/**
+ * What a preview shows: the title last opened on each kind of page, as there is no title to go on
+ * from the settings alone.
+ */
+object InfoTabPreview {
+    /** Which tab a media page opens on, instead of [InfoContextConfig.defaultTab]. */
+    const val EXTRA_TAB = "infoTabToOpen"
+
+    private fun key(context: InfoTabContext) = "info_tab_preview_${context.name}"
+
+    fun remember(context: InfoTabContext, id: Long) {
+        PrefManager.setCustomVal(key(context), id)
+    }
+
+    /** The page to preview [tabKey] on, or null when no title of this kind has been opened yet. */
+    fun intent(activity: Context, context: InfoTabContext, tabKey: String): Intent? {
+        val id = PrefManager.getCustomVal(key(context), -1L).takeIf { it >= 0 } ?: return null
+        val page = if (context == InfoTabContext.MANGAUPDATES_MANGA || context == InfoTabContext.MANGAUPDATES_NOVEL) {
+            ani.dantotsu.inAppIntentForLink(activity, "https://www.mangaupdates.com/series/${id.toString(36)}")
+        } else {
+            Intent(activity, MediaDetailsActivity::class.java).putExtra("mediaId", id.toInt())
+        }
+        return page?.putExtra(EXTRA_TAB, tabKey)
+    }
 }
 
 /** Icons a tab can wear, grouped for the picker. Stored by key, so a renamed drawable cannot corrupt saved settings. */
@@ -414,8 +486,50 @@ fun InfoTabContext.orderedEntries(): List<InfoTabEntry> {
     return all.sortedBy { rank[it.key] ?: Int.MAX_VALUE }
 }
 
-fun InfoTabContext.visibleEntries(): List<InfoTabEntry> =
-    orderedEntries().filter { it.isVisible && it.isFetching }
+fun InfoTabContext.visibleEntries(): List<InfoTabEntry> {
+    // Even one the settings hide: looking at it is the point of a preview.
+    val previewed = InfoTabStore.preview?.takeIf { it.context == this }?.tabKey
+    return orderedEntries().filter {
+        // A custom tab with no sections has nothing it could ever show.
+        (it.isVisible || it.key == previewed) && it.isFetching &&
+                (it as? InfoTabEntry.Custom)?.tab?.entries?.isEmpty() != true
+    }
+}
+
+/** The sources that could fill anything on this custom tab. */
+fun InfoTabContext.usableSources(tab: CustomInfoTab): Set<InfoTabType> =
+    tab.entries.flatMapTo(HashSet()) { entry ->
+        val kind = InfoSectionKind.forKey(entry.kind) ?: return@flatMapTo emptyList()
+        entry.sources.mapNotNull { InfoTabType.forKey(it) }.filter {
+            it in tabs && kind in sectionsOf(it) && unavailableReason(it, kind) == null
+        }
+    }
+
+/** How a tab's icon looks while its source has this title, is still looking, or came up empty. */
+object InfoTabAlpha {
+    const val READY = 1.0f
+    const val LOADING = 0.6f
+    const val EMPTY = 0.4f
+}
+
+/** A custom tab is as lit as the most promising of its sources. */
+fun InfoTabContext.customTabAlpha(tab: CustomInfoTab, alphaOf: (InfoTabType) -> Float): Float =
+    usableSources(tab).maxOfOrNull(alphaOf) ?: InfoTabAlpha.EMPTY
+
+/**
+ * Whether every source of this custom tab has answered that it doesn't have the title, so the page
+ * can leave the tab out. Not with Comick among them: its entry can still be picked by hand, on this
+ * very tab.
+ */
+fun InfoTabContext.customTabIsEmpty(tab: CustomInfoTab, alphaOf: (InfoTabType) -> Float): Boolean {
+    val sources = usableSources(tab)
+    return sources.isNotEmpty() && InfoTabType.COMICK !in sources &&
+            sources.all { alphaOf(it) == InfoTabAlpha.EMPTY }
+}
+
+/** Where a page's tabs start: what [InfoTabPreview] asked for, else the context's chosen tab, else the first. */
+fun InfoTabContext.initialTabKey(fragment: Fragment): String? =
+    fragment.activity?.intent?.getStringExtra(InfoTabPreview.EXTRA_TAB) ?: InfoTabStore.get(this).defaultTab
 
 /**
  * Everything the tabs on this context's pages are built from: when this changes, a page already
@@ -430,30 +544,37 @@ fun InfoTabContext.layoutSignature(): String = listOf(
 ).toString()
 
 /**
- * The pager behind a media page's info tabs. [rebuild] replaces every page: FragmentStateAdapter
- * only drops a fragment once its id is gone, and its default ids are just the positions, which would
- * leave a tab's old content in place, or under another tab.
+ * The pager behind a media page's info tabs. FragmentStateAdapter only drops a fragment once its id
+ * is gone, and its default ids are just the positions, which would leave a tab's old content in
+ * place, or under another tab. So a tab's id comes from its key: [removed] takes one tab away and
+ * leaves the rest as they are, and [rebuild] replaces them all.
  */
 class InfoTabsPagerAdapter(
     fragment: Fragment,
     private val count: () -> Int,
+    private val key: (Int) -> String,
     private val create: (Int) -> Fragment,
 ) : androidx.viewpager2.adapter.FragmentStateAdapter(
     fragment.childFragmentManager, fragment.viewLifecycleOwner.lifecycle
 ) {
     private var revision = 0L
+    private val keyIds = HashMap<String, Long>()
 
     override fun getItemCount() = count()
     override fun createFragment(position: Int) = create(position)
-    override fun getItemId(position: Int) = revision * MAX_TABS + position
-    override fun containsItem(itemId: Long) =
-        itemId / MAX_TABS == revision && itemId % MAX_TABS < count()
+    override fun getItemId(position: Int) =
+        revision * MAX_TABS + keyIds.getOrPut(key(position)) { keyIds.size.toLong() }
+
+    override fun containsItem(itemId: Long) = (0 until count()).any { getItemId(it) == itemId }
 
     @android.annotation.SuppressLint("NotifyDataSetChanged")
     fun rebuild() {
         revision++
         notifyDataSetChanged()
     }
+
+    @android.annotation.SuppressLint("NotifyDataSetChanged")
+    fun removed() = notifyDataSetChanged()
 
     private companion object {
         const val MAX_TABS = 1000L
@@ -479,10 +600,12 @@ fun InfoTabContext.setBuiltinVisible(type: InfoTabType, visible: Boolean) {
  * The arrangement of [type]'s own tab: the user's, or the default for a tab they never touched. There
  * is always one, since it's what keeps sections from landing in the order their requests finish.
  */
-fun InfoTabContext.sectionRules(type: InfoTabType): InfoSectionRules {
+fun InfoTabContext.sectionRules(
+    type: InfoTabType,
+    override: BuiltinTabOverride? = InfoTabStore.get(this).builtins[type.key],
+): InfoSectionRules {
     val defaults = sectionsOf(type)
-    val config = InfoTabStore.get(this).builtins[type.key]
-        ?: return InfoSectionRules(defaults, emptySet(), emptySet(), null)
+    val config = override ?: return InfoSectionRules(defaults, emptySet(), emptySet(), null)
     val saved = config.sectionOrder?.mapNotNull { InfoSectionKind.forKey(it) }
         ?.filter { it in defaults }?.distinct()
     // Sections the app gained after this order was saved go back where they normally sit.

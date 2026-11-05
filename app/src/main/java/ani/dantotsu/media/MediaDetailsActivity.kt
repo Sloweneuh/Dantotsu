@@ -1260,6 +1260,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         if (intent.getStringExtra("FRAGMENT_TO_LOAD") != null) selected = 2
         // A queue pick always opens on Info, where its "why" is — whatever tab the last one was on.
         if (discoverSource != null) selected = 0
+        // A preview is of an info tab, wherever this title was last left.
+        if (intent.hasExtra(InfoTabPreview.EXTRA_TAB)) selected = 0
         if (panes.twoPane && selected == MediaWindow.LIST) selected = MediaWindow.INFO
         val page = pageWindows.indexOf(selected).coerceAtLeast(0)
         if (viewPager.currentItem != page)

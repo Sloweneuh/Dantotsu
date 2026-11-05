@@ -894,7 +894,10 @@ class ComickMediaActivity : AppCompatActivity() {
         val genres = comic.md_comic_md_genres
         if (!genres.isNullOrEmpty()) {
             val genresByGroup = genres.mapNotNull { it.md_genres }.groupBy { it.group?.lowercase() }
-            listOf("genre" to "Genres:", "theme" to "Theme:", "content" to "Content:", "format" to "Format:").forEach { (groupType, label) ->
+            listOf(
+                "genre" to getString(R.string.genres), "theme" to getString(R.string.theme),
+                "content" to getString(R.string.comick_genre_content), "format" to getString(R.string.format),
+            ).forEach { (groupType, label) ->
                 val groupGenres = genresByGroup[groupType]
                 if (groupGenres.isNullOrEmpty()) return@forEach
                 val bind = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(this), parent, false)

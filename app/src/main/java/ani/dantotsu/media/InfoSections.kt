@@ -89,6 +89,15 @@ enum class InfoSectionKind(
     STAFF("staff", R.string.staff),
     COMMENTS("comments", R.string.comick_comments);
 
+    /** Whether it has a title, which is what renaming it and collapsing it work on. */
+    val hasHeader: Boolean get() = this !in setOf(DETAILS, TITLES, COUNTDOWN)
+
+    /** Whether it lists things, of which it could show fewer. */
+    val hasItems: Boolean
+        get() = hasHeader && this !in setOf(
+            DESCRIPTION, DETAILED_STATUS, BACKGROUND, BROADCAST, LATEST_CHAPTER, ANIME_ADAPTATION, TRAILER, SOCIAL,
+        )
+
     /** One line on what this section shows, for the editor. */
     @get:StringRes
     val descriptionRes: Int
@@ -417,6 +426,11 @@ fun ViewGroup.infoSectionsAdjacent(first: InfoSectionKind, second: InfoSectionKi
 /** Hands over a section's media, for a custom tab that merges it with another source's. */
 fun ViewGroup.offerInfoMedia(kind: InfoSectionKind, media: List<Media>) {
     (this as? InfoSectionContainer)?.offerMedia(kind, media)
+}
+
+/** Hands over relations, for a custom tab that merges them with another source's. */
+fun ViewGroup.offerInfoRelations(cards: List<InfoExtraSections.RelationCard>) {
+    (this as? InfoSectionContainer)?.offerRelations(cards)
 }
 
 /** Hands over chips for a section whose own view is not a chip row (AniList's genre cards). */

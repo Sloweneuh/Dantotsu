@@ -1,6 +1,7 @@
 package ani.dantotsu.settings
 
 import android.annotation.SuppressLint
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
@@ -13,6 +14,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
@@ -33,16 +35,24 @@ import ani.dantotsu.media.InfoTabEntry
 import ani.dantotsu.media.InfoTabIcons
 import ani.dantotsu.media.InfoTabStore
 import ani.dantotsu.media.iconsRes
+import ani.dantotsu.media.sectionsOf
+import ani.dantotsu.media.InfoSectionKind
+import ani.dantotsu.media.InfoTabType
 import ani.dantotsu.media.label
 import ani.dantotsu.media.orderedEntries
 import ani.dantotsu.media.saveEntryOrder
 import ani.dantotsu.media.setBuiltinVisible
+import ani.dantotsu.media.visibleEntries
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.px
+import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.capContentWidth
+import ani.dantotsu.util.materialDialog
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.tabs.TabLayout
+import com.google.android.material.textfield.TextInputEditText
 
 /**
  * Every media context's info tabs: drag to reorder, tick to show, tap to edit. Changes apply as they
@@ -98,6 +108,9 @@ class InfoTabsActivity : AppCompatActivity() {
         })
 
         binding.infoTabsAdd.setOnClickListener { addCustomTab() }
+        binding.infoTabsImport.setOnClickListener { importTab() }
+        binding.infoTabsDefault.setOnClickListener { pickDefaultTab() }
+        binding.infoTabsReset.setOnClickListener { confirmReset() }
     }
 
     /** A custom view because a tab's own icon slot is one icon wide, too small to hold a pair. */
@@ -138,16 +151,103 @@ class InfoTabsActivity : AppCompatActivity() {
         outState.putString(STATE_CONTEXT, current.name)
     }
 
+    /** Nothing is stored until the editor saves it, so backing out leaves no empty tab behind. */
     private fun addCustomTab() {
-        val context = current
-        val existing = InfoTabStore.get(context).customTabs.size
-        val tab = CustomInfoTab(
-            id = InfoTabStore.newTabId(),
-            name = getString(R.string.info_tab_default_name, existing + 1),
-            icon = InfoTabIcons.DEFAULT_CUSTOM,
+        val existing = InfoTabStore.get(current).customTabs.size
+        startActivity(
+            Intent(this, InfoTabEditorActivity::class.java)
+                .putExtra(InfoTabEditorActivity.EXTRA_CONTEXT, current.name)
+                .putExtra(InfoTabEditorActivity.EXTRA_TAB, InfoTabStore.newTabId())
+                .putExtra(InfoTabEditorActivity.EXTRA_NEW, true)
+                .putExtra(InfoTabEditorActivity.EXTRA_NAME, getString(R.string.info_tab_default_name, existing + 1))
         )
-        InfoTabStore.update(context) { it.copy(customTabs = it.customTabs + tab) }
-        openEditor(context, tab.id)
+    }
+
+    private fun labelOf(entry: InfoTabEntry) = when (entry) {
+        is InfoTabEntry.Builtin -> getString(entry.type.labelRes)
+        is InfoTabEntry.Custom -> entry.tab.name
+    }
+
+    /** The saved choice, if that tab still shows on this kind of page. */
+    private fun defaultEntry(context: InfoTabContext): InfoTabEntry? {
+        val key = InfoTabStore.get(context).defaultTab ?: return null
+        return context.visibleEntries().find { it.key == key }
+    }
+
+    private fun showDefaultTab() {
+        val first = getString(R.string.info_tabs_default_first)
+        binding.infoTabsDefault.text =
+            getString(R.string.info_tabs_default, defaultEntry(current)?.let { labelOf(it) } ?: first)
+    }
+
+    private fun pickDefaultTab() {
+        val context = current
+        val entries = context.visibleEntries()
+        val labels = listOf(getString(R.string.info_tabs_default_first)) + entries.map { labelOf(it) }
+        val chosen = defaultEntry(context)?.let { entries.indexOf(it) + 1 } ?: 0
+        materialDialog()
+            .setTitle(R.string.info_tabs_default_title)
+            .setSingleChoiceItems(labels.toTypedArray(), chosen) { dialog, which ->
+                InfoTabStore.update(context) { it.copy(defaultTab = entries.getOrNull(which - 1)?.key) }
+                showDefaultTab()
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun importTab() {
+        val context = current
+        val clip = getSystemService(ClipboardManager::class.java)?.primaryClip
+            ?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
+        val input = TextInputEditText(this).apply {
+            // A code just copied is what's most likely being imported.
+            setText(clip?.takeIf { InfoTabStore.importTab(it) != null })
+            hint = getString(R.string.info_tabs_import_hint)
+            isSingleLine = true
+        }
+        val frame = FrameLayout(this).apply {
+            setPadding(24f.px, 8f.px, 24f.px, 0)
+            addView(input)
+        }
+        materialDialog()
+            .setTitle(R.string.info_tabs_import)
+            .setView(frame)
+            .setPositiveButton(R.string.info_tabs_import_action) { _, _ ->
+                val tab = InfoTabStore.importTab(input.text?.toString().orEmpty())
+                when {
+                    tab == null -> snackString(getString(R.string.info_tabs_import_invalid))
+                    // Shared from another kind of page: fine as long as some of it applies here.
+                    tab.entries.none { entry -> fits(context, entry.kind, entry.sources) } ->
+                        snackString(getString(R.string.info_tabs_import_nothing, context.label(this)))
+
+                    else -> {
+                        InfoTabStore.update(context) { it.copy(customTabs = it.customTabs + tab) }
+                        showTabs()
+                        snackString(getString(R.string.info_tabs_imported, tab.name))
+                    }
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun fits(context: InfoTabContext, kindKey: String, sources: List<String>): Boolean {
+        val kind = InfoSectionKind.forKey(kindKey) ?: return false
+        return sources.mapNotNull { InfoTabType.forKey(it) }.any { it in context.tabs && kind in context.sectionsOf(it) }
+    }
+
+    private fun confirmReset() {
+        val context = current
+        materialDialog()
+            .setTitle(getString(R.string.info_tabs_reset_confirm, context.label(this)))
+            .setMessage(R.string.info_tabs_reset_detail)
+            .setPositiveButton(R.string.reset) { _, _ ->
+                InfoTabStore.reset(context)
+                showTabs()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun openEditor(context: InfoTabContext, key: String) {
@@ -160,6 +260,7 @@ class InfoTabsActivity : AppCompatActivity() {
 
     private fun showTabs() {
         val context = current
+        showDefaultTab()
         touchHelper?.attachToRecyclerView(null)
         val entries = context.orderedEntries().sortedBy { !it.isFetching }.toMutableList()
         val adapter = InfoTabRowAdapter(
@@ -175,6 +276,7 @@ class InfoTabsActivity : AppCompatActivity() {
                         })
                     }
                 }
+                showDefaultTab()
             },
         )
         binding.infoTabsRecycler.adapter = adapter

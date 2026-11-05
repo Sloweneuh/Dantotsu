@@ -1084,7 +1084,17 @@ class MangaUpdatesInfoFragment : Fragment() {
                 String::class.java
             ) != null
 
-        if (isManualSelection) {
+        if (isManualSelection && binding.mediaInfoContainer.forwardsSections) {
+            // A button here would stay out of sight with this fragment: the custom tab shows it.
+            binding.mediaInfoContainer.offerMatchAction(
+                ani.dantotsu.media.InfoMatchAction(R.string.mu_matched_by_hand, R.string.unlink) {
+                    loaded = false
+                    model.removeMangaUpdatesLink(media.id)
+                    ani.dantotsu.toast(getString(R.string.mangaupdates_entry_unlinked))
+                    binding.mediaInfoContainer.reloadSources()
+                }
+            )
+        } else if (isManualSelection) {
             // Remove any previous unlink button so we don't duplicate it
             parent.findViewWithTag<View>("unlink_mangaupdates_button")?.let { parent.removeView(it) }
 

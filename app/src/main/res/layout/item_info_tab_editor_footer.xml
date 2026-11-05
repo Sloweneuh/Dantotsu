@@ -29,6 +29,45 @@
         app:iconGravity="textStart" />
 
     <com.google.android.material.button.MaterialButton
+        android:id="@+id/infoTabEditorPreview"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:fontFamily="@font/poppins_bold"
+        android:text="@string/preview"
+        app:icon="@drawable/ic_round_visibility_24"
+        app:iconGravity="textStart" />
+
+    <LinearLayout
+        android:id="@+id/infoTabEditorCustomActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/infoTabEditorDuplicate"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/info_tab_duplicate"
+            app:icon="@drawable/ic_round_content_copy_outline_24"
+            app:iconGravity="textStart" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/infoTabEditorShare"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/info_tab_share"
+            app:icon="@drawable/ic_round_share_24"
+            app:iconGravity="textStart" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/infoTabEditorDestructive"
         style="@style/Widget.Material3.Button.TextButton.Icon"
         android:layout_width="match_parent"

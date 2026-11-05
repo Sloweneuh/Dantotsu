@@ -36,8 +36,83 @@ object InfoExtraSections {
         val coverUrl: String?,
         val relation: String,
         val isAnime: Boolean,
+        /** Ids it goes by elsewhere, as "mal:123", for telling it apart from another source's. */
+        val ids: List<String> = emptyList(),
+        /** Other names it goes by. */
+        val altTitles: List<String> = emptyList(),
+        /** What the source calls its format ("NOVEL", "light_novel"), where it says. */
+        val format: String? = null,
         val onClick: () -> Unit,
-    )
+    ) {
+        val titleKeys: Set<String>
+            get() = (altTitles + title).map { name -> name.lowercase().filter { it.isLetterOrDigit() } }
+                .filter { it.isNotEmpty() }.toSet()
+
+        /** The sources' words for a format reduced to one, as far as telling works apart needs. */
+        val formatKey: String?
+            get() {
+                val word = format?.lowercase()?.filter { it.isLetter() }?.takeIf { it.isNotEmpty() } ?: return null
+                return when {
+                    "novel" in word -> "novel"
+                    "oneshot" in word -> "oneshot"
+                    word.startsWith("tv") -> "tv"
+                    word == "manga" || word == "manhwa" || word == "manhua" -> "comic"
+                    else -> word
+                }
+            }
+    }
+
+    /**
+     * [bySource]'s cards, in order, with each work once. Adaptations often share a title, as can a
+     * series and its one-shot, so when in doubt a card stays: a repeat is better than a missing work.
+     *
+     *  - Only across sources: a source listing two cards of one name means two works.
+     *  - An id both know decides. Differing ids mean different works whatever the titles say.
+     *  - Otherwise the title has to match, with neither format saying otherwise.
+     *  - One card is only ever the same as one card of each later source, so a source listing two
+     *    works of one name against another's single card still shows the second.
+     */
+    fun distinctRelations(bySource: List<List<RelationCard>>): List<RelationCard> {
+        class Work(val card: RelationCard) {
+            val ids = card.ids.toMutableSet()
+            val titles = card.titleKeys.toMutableSet()
+            val formats = listOfNotNull(card.formatKey).toMutableSet()
+            var lastMatchedBy = -1
+
+            fun namespaces() = ids.map { it.substringBefore(':') }.toSet()
+
+            fun absorb(other: RelationCard, source: Int) {
+                lastMatchedBy = source
+                ids += other.ids
+                titles += other.titleKeys
+                other.formatKey?.let { formats += it }
+            }
+        }
+
+        val works = ArrayList<Work>()
+        bySource.forEachIndexed { source, cards ->
+            val earlier = works.toList()
+            fun open(card: RelationCard) = earlier.filter { it.lastMatchedBy != source && it.card.isAnime == card.isAnime }
+
+            // All ids first, so that a title can't take the card an id belongs to.
+            val left = cards.filter { card ->
+                val work = open(card).firstOrNull { work -> card.ids.any { it in work.ids } }
+                work?.absorb(card, source)
+                work == null
+            }
+            val fresh = left.filter { card ->
+                val work = open(card).firstOrNull { work ->
+                    val idsDiffer = card.ids.any { it.substringBefore(':') in work.namespaces() }
+                    val formatsDiffer = card.formatKey != null && work.formats.isNotEmpty() && card.formatKey !in work.formats
+                    !idsDiffer && !formatsDiffer && card.titleKeys.any { it in work.titles }
+                }
+                work?.absorb(card, source)
+                work == null
+            }
+            fresh.forEach { works.add(Work(it)) }
+        }
+        return works.map { it.card }
+    }
 
     fun addChips(parent: ViewGroup, kind: InfoSectionKind, title: String, chips: List<Chip>) {
         if (chips.isEmpty()) return
@@ -83,7 +158,10 @@ object InfoExtraSections {
         val context = parent.context
         fun card(relation: MALRelation, isAnime: Boolean): RelationCard {
             val cover = relation.node.mainPicture?.large ?: relation.node.mainPicture?.medium
-            return RelationCard(relation.node.title, cover, relation.relationTypeFormatted, isAnime) {
+            return RelationCard(
+                relation.node.title, cover, relation.relationTypeFormatted, isAnime,
+                ids = listOf("mal:${relation.node.id}"),
+            ) {
                 context.startActivity(
                     Intent(context, MalMediaActivity::class.java)
                         .putExtra(MalMediaActivity.EXTRA_MEDIA_ID, relation.node.id)
@@ -94,6 +172,7 @@ object InfoExtraSections {
         }
         val cards = relatedAnime.map { card(it, true) } + relatedManga.map { card(it, false) }
         if (cards.isNotEmpty()) {
+            parent.offerInfoRelations(cards)
             parent.addInfoSection(InfoSectionKind.RELATIONS, relationCardsView(parent, cards))
         }
     }
@@ -120,6 +199,13 @@ object InfoExtraSections {
 
     /** MangaUpdates sends these two with every series; no request is spent on them. */
     fun addMangaUpdatesExtras(context: Context, parent: ViewGroup, series: MUSeriesRecord) {
+        parent.offerInfoRelations(series.related_series.orEmpty().mapNotNull { related ->
+            val name = related.relatedSeriesName ?: return@mapNotNull null
+            RelationCard(
+                name, null, related.relationType.orEmpty(), isAnime = false,
+                ids = listOfNotNull(related.relatedSeriesId?.let { "mu:$it" }),
+            ) { related.relatedSeriesUrl?.let { openMangaUpdates(context, it) } }
+        })
         addChips(
             parent, InfoSectionKind.RELATIONS, context.getString(R.string.relations),
             series.related_series.orEmpty().mapNotNull { related ->
@@ -149,7 +235,7 @@ object InfoExtraSections {
         )
     }
 
-    private class RelationCardAdapter(private val cards: List<RelationCard>) :
+    class RelationCardAdapter(private val cards: List<RelationCard>) :
         RecyclerView.Adapter<RelationCardAdapter.Holder>() {
         class Holder(val binding: ItemMediaCompactBinding) : RecyclerView.ViewHolder(binding.root)
 

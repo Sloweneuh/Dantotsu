@@ -11,12 +11,18 @@ import ani.dantotsu.R
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
+import ani.dantotsu.media.InfoTabAlpha
 import ani.dantotsu.media.InfoTabContext
 import ani.dantotsu.media.InfoTabEntry
+import ani.dantotsu.media.InfoTabPreview
+import ani.dantotsu.media.InfoTabStore
 import ani.dantotsu.media.InfoTabType
 import ani.dantotsu.media.InfoTabsPagerAdapter
 import ani.dantotsu.media.applyInfoTabRules
 import ani.dantotsu.media.createTabFragment
+import ani.dantotsu.media.customTabAlpha
+import ani.dantotsu.media.customTabIsEmpty
+import ani.dantotsu.media.initialTabKey
 import ani.dantotsu.media.layoutSignature
 import ani.dantotsu.media.longPressSource
 import ani.dantotsu.media.runCustomTabLongPress
@@ -60,13 +66,16 @@ class MUMediaInfoContainerFragment : Fragment() {
         pagerAdapter = null
     }
 
-    private data class TabInfo(val entry: InfoTabEntry, val fragment: Fragment) {
+    private data class TabInfo(val entry: InfoTabEntry) {
         val iconRes get() = entry.iconRes
 
         /** The source's key; a custom tab, having no single source, has none. */
         val type get() = (entry as? InfoTabEntry.Builtin)?.type?.key
     }
     private var tabs: List<TabInfo> = emptyList()
+
+    /** [tabs] with the custom tabs that turned out to have nothing for this title too. */
+    private var allTabs: List<TabInfo> = emptyList()
     private var tabContext: InfoTabContext? = null
     private var pagerAdapter: InfoTabsPagerAdapter? = null
     private var builtFrom: String? = null
@@ -77,10 +86,11 @@ class MUMediaInfoContainerFragment : Fragment() {
                 !isOnline(requireContext())
         fun isMangaUpdates(entry: InfoTabEntry) =
             (entry as? InfoTabEntry.Builtin)?.type == InfoTabType.MANGAUPDATES
-        tabs = context.visibleEntries()
+        allTabs = context.visibleEntries()
             .filter { !offline || isMangaUpdates(it) }
             .ifEmpty { context.orderedEntries().filter { isMangaUpdates(it) } }
-            .map { entry -> TabInfo(entry, context.createTabFragment(entry)) }
+            .map { TabInfo(it) }
+        tabs = allTabs
         builtFrom = context.layoutSignature()
     }
 
@@ -117,13 +127,22 @@ class MUMediaInfoContainerFragment : Fragment() {
         childFragmentManager.applyInfoTabRules(tabContext)
 
         val adapter = InfoTabsPagerAdapter(
-            this, { tabs.size }, { position -> tabs[position].fragment }
+            this, { tabs.size }, { tabs[it].entry.key },
+            { tabContext.createTabFragment(tabs[it].entry) },
         )
         pagerAdapter = adapter
         binding.mediaInfoViewPager.adapter = adapter
         binding.mediaInfoViewPager.isUserInputEnabled = false
         // Only load adjacent pages to reduce unnecessary API calls
         binding.mediaInfoViewPager.offscreenPageLimit = 1
+        // Before anything else looks at the tabs: the first state leaves out those with nothing to show.
+        if (savedInstanceState == null) {
+            val start = tabs.indexOfFirst { it.entry.key == tabContext.initialTabKey(this) }
+            if (start > 0) binding.mediaInfoViewPager.setCurrentItem(start, false)
+        }
+        if (InfoTabStore.preview == null) model.getMedia().observe(viewLifecycleOwner) { media ->
+            media?.muSeriesId?.let { InfoTabPreview.remember(tabContext, it) }
+        }
 
         // preloadExternalData isn't run in the MangaUpdates activity, so fetch the MangaBaka series
         // here (once, as soon as the media is available). The source route embeds the full object,
@@ -262,31 +281,57 @@ class MUMediaInfoContainerFragment : Fragment() {
         }
     }
 
+    /** How far [type] got with this title. */
+    private fun sourceAlpha(type: InfoTabType, model: MediaDetailsViewModel): Float = when (type) {
+        InfoTabType.COMICK -> when {
+            model.comickSlug.value != null -> InfoTabAlpha.READY
+            model.comickLoaded.value == true -> InfoTabAlpha.EMPTY
+            else -> InfoTabAlpha.LOADING
+        }
+        InfoTabType.MANGABAKA -> when {
+            (model.mangaBakaId.value ?: 0L) > 0L -> InfoTabAlpha.READY
+            model.mangaBakaLoaded.value == true -> InfoTabAlpha.EMPTY
+            else -> InfoTabAlpha.LOADING
+        }
+        InfoTabType.MAL -> when {
+            model.muMalId.value != null -> InfoTabAlpha.READY
+            model.muMalLoaded.value == true -> InfoTabAlpha.EMPTY
+            else -> InfoTabAlpha.LOADING
+        }
+        InfoTabType.KITSU -> when {
+            !model.kitsuId.value.isNullOrBlank() -> InfoTabAlpha.READY
+            model.kitsuLoaded.value == true -> InfoTabAlpha.EMPTY
+            else -> InfoTabAlpha.LOADING
+        }
+        else -> InfoTabAlpha.READY
+    }
+
+    /** See [ani.dantotsu.media.MediaInfoFragment]'s: the same, for this page's sources. */
+    private fun hideEmptyTabs(model: MediaDetailsViewModel) {
+        val adapter = pagerAdapter ?: return
+        val context = tabContext ?: return
+        val shown = tabs.getOrNull(binding.mediaInfoViewPager.currentItem)?.entry?.key
+        val kept = allTabs.filter { info ->
+            val custom = (info.entry as? InfoTabEntry.Custom)?.tab ?: return@filter true
+            info.entry.key == shown || !context.customTabIsEmpty(custom) { sourceAlpha(it, model) }
+        }
+        if (kept.map { it.entry.key } == tabs.map { it.entry.key }) return
+        tabs = kept
+        adapter.removed()
+        binding.mediaInfoTabLayout.visibility = if (tabs.size <= 1) View.GONE else View.VISIBLE
+        binding.mediaInfoViewPager.setCurrentItem(
+            tabs.indexOfFirst { it.entry.key == shown }.coerceAtLeast(0), false
+        )
+    }
+
     private fun applyTabAlpha(model: MediaDetailsViewModel) {
+        hideEmptyTabs(model)
+        val context = tabContext ?: return
         tabs.forEachIndexed { index, info ->
             val tab = binding.mediaInfoTabLayout.getTabAt(index) ?: return@forEachIndexed
-            tab.view.alpha = when (info.type) {
-                "comick" -> when {
-                    model.comickSlug.value != null -> 1.0f
-                    model.comickLoaded.value == true -> 0.4f
-                    else -> 0.6f
-                }
-                "mangabaka" -> when {
-                    (model.mangaBakaId.value ?: 0L) > 0L -> 1.0f
-                    model.mangaBakaLoaded.value == true -> 0.4f
-                    else -> 0.6f
-                }
-                "mal" -> when {
-                    model.muMalId.value != null -> 1.0f
-                    model.muMalLoaded.value == true -> 0.4f
-                    else -> 0.6f
-                }
-                "kitsu" -> when {
-                    !model.kitsuId.value.isNullOrBlank() -> 1.0f
-                    model.kitsuLoaded.value == true -> 0.4f
-                    else -> 0.6f
-                }
-                else -> 1.0f
+            tab.view.alpha = when (val entry = info.entry) {
+                is InfoTabEntry.Custom -> context.customTabAlpha(entry.tab) { sourceAlpha(it, model) }
+                is InfoTabEntry.Builtin -> sourceAlpha(entry.type, model)
             }
         }
     }

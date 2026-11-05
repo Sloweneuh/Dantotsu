@@ -1371,10 +1371,10 @@ class ComickInfoFragment : Fragment() {
             // Order: Genre (Genres), Theme, Format, Content
             val orderedGroups =
                     listOf(
-                            "genre" to "Genres:",
-                            "theme" to "Theme:",
-                            "content" to "Content:",
-                            "format" to "Format:"
+                            "genre" to getString(R.string.genres),
+                            "theme" to getString(R.string.theme),
+                            "content" to getString(R.string.comick_genre_content),
+                            "format" to getString(R.string.format)
                     )
 
             orderedGroups.forEach { (groupType, label) ->

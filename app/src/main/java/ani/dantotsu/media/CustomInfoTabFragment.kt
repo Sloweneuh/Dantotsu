@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
 import android.text.SpannableStringBuilder
@@ -16,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.TextViewCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.activityViewModels
@@ -37,6 +39,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.util.materialDialog
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -144,18 +147,19 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             val free = sources.filter { (it to kind) !in built }
             if (free.isEmpty()) return@forEach
             val slot: Slot = when {
-                free.size == 1 -> StackSlot(kind, free, withCaption = showSources && mixed)
+                free.size == 1 -> StackSlot(entry, kind, free, withCaption = showSources && mixed)
                 kind.merge == InfoSectionMerge.FIELDS -> FieldLinesSlot(entry, free, showSources)
                 entry.mode == InfoSourceMode.FALLBACK ->
-                    FallbackSlot(kind, free, withCaption = showSources && mixed)
+                    FallbackSlot(entry, kind, free, withCaption = showSources && mixed)
 
-                entry.mode == InfoSourceMode.LIST -> StackSlot(kind, free, withCaption = showSources)
-                kind.merge == InfoSectionMerge.MEDIA -> MediaSlot(kind, free, showSources)
-                kind.merge == InfoSectionMerge.CHIPS -> ChipSlot(kind, free, showSources)
-                kind.merge == InfoSectionMerge.ROW -> RowSlot(kind, free, showSources)
-                kind.merge == InfoSectionMerge.LIST -> RowSlot(kind, free, showSources, vertical = true)
-                kind.merge == InfoSectionMerge.LINES -> LinesSlot(free, showSources)
-                else -> StackSlot(kind, free, withCaption = showSources)
+                entry.mode == InfoSourceMode.LIST -> StackSlot(entry, kind, free, withCaption = showSources)
+                kind == InfoSectionKind.RELATIONS -> RelationSlot(entry, kind, free, showSources)
+                kind.merge == InfoSectionMerge.MEDIA -> MediaSlot(entry, kind, free, showSources)
+                kind.merge == InfoSectionMerge.CHIPS -> ChipSlot(entry, kind, free, showSources)
+                kind.merge == InfoSectionMerge.ROW -> RowSlot(entry, kind, free, showSources)
+                kind.merge == InfoSectionMerge.LIST -> RowSlot(entry, kind, free, showSources, vertical = true)
+                kind.merge == InfoSectionMerge.LINES -> LinesSlot(entry, free, showSources)
+                else -> StackSlot(entry, kind, free, withCaption = showSources)
             }
             binding.customInfoContent.addView(slot.root)
             free.forEach { built[it to kind] = slot }
@@ -218,6 +222,10 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
 
     override fun offerChips(source: InfoTabType, kind: InfoSectionKind, chips: List<InfoChip>) {
         (slots[source to kind] as? ChipSlot)?.offer(source, chips)
+    }
+
+    override fun offerRelations(source: InfoTabType, cards: List<InfoExtraSections.RelationCard>) {
+        (slots[source to InfoSectionKind.RELATIONS] as? RelationSlot)?.offer(source, cards)
     }
 
     override fun offerMatchAction(source: InfoTabType, action: InfoMatchAction) {
@@ -328,10 +336,125 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         else -> null
     }
 
-    private fun sectionTitle(view: View): TextView? =
-        listOf(R.id.itemTitle, R.id.tagsTitle, R.id.mediaInfoDescriptionText, R.id.genreSectionTitle)
-            .firstNotNullOfOrNull { view.findViewById<TextView?>(it) }
-            ?.takeIf { it.isVisible }
+    /** A section's titles, of which a source's section of several groups has one each. */
+    private fun sectionTitles(view: View): List<TextView> = when {
+        view.visibility != View.VISIBLE -> emptyList()
+        view is TextView && view.id in TITLE_IDS -> listOf(view)
+        view is ViewGroup -> (0 until view.childCount).flatMap { sectionTitles(view.getChildAt(it)) }
+        else -> emptyList()
+    }
+
+    private fun findChipGroup(view: View): ChipGroup? = when (view) {
+        is ChipGroup -> view
+        is ViewGroup -> (0 until view.childCount)
+            .firstNotNullOfOrNull { findChipGroup(view.getChildAt(it)) }
+
+        else -> null
+    }
+
+    /**
+     * Hides what's under this section's title until the title is tapped. The section is split at the
+     * first level with more than the title's branch in it, so a header row's buttons stay with the
+     * title, and whatever a source's layout puts below goes with the rest.
+     */
+    private fun startCollapsed(view: View) {
+        val title = sectionTitles(view).firstOrNull() ?: return
+        if (title.getTag(R.id.info_section_collapsible) != null) return
+        var group = view as? ViewGroup ?: return
+        while (group.childCount == 1) group = group.getChildAt(0) as? ViewGroup ?: return
+        fun holdsTitle(child: View): Boolean {
+            var at: View? = title
+            while (at != null && at !== group) {
+                if (at === child) return true
+                at = at.parent as? View
+            }
+            return false
+        }
+        val shown = HashMap<View, Int>()
+        var collapsed = false
+        fun apply(collapse: Boolean) {
+            collapsed = collapse
+            (0 until group.childCount).map { group.getChildAt(it) }.filterNot { holdsTitle(it) }.forEach { child ->
+                if (collapse) {
+                    shown[child] = child.visibility
+                    child.visibility = View.GONE
+                } else child.visibility = shown[child] ?: View.VISIBLE
+            }
+            title.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                0, 0, if (collapse) R.drawable.ic_round_arrow_drop_down_24 else R.drawable.ic_round_arrow_drop_up_24, 0,
+            )
+            TextViewCompat.setCompoundDrawableTintList(title, ColorStateList.valueOf(title.currentTextColor))
+        }
+        title.setTag(R.id.info_section_collapsible, true)
+        title.setOnClickListener { apply(!collapsed) }
+        apply(true)
+    }
+
+    /**
+     * Cuts a source's own section down to [limit] items. A section with an arrow of its own keeps
+     * what that opens, which is the rest; one without gets a way to show them here.
+     */
+    private fun limitItems(view: View, limit: Int) {
+        if (view.getTag(R.id.info_section_limited) != null) return
+        val recycler = findRecycler(view)
+        val adapter = recycler?.adapter
+        if (adapter != null) {
+            view.setTag(R.id.info_section_limited, true)
+            val limited = LimitAdapter(adapter, limit)
+            recycler.adapter = limited
+            val more = view.findViewById<ImageView>(R.id.itemMore)
+            when {
+                more?.isVisible == true -> Unit
+                more != null -> expandWith(more, limited)
+                else -> (view as? LinearLayout)?.let { showAllButton(it, limited) }
+            }
+            return
+        }
+        val chips = findChipGroup(view) ?: return
+        view.setTag(R.id.info_section_limited, true)
+        val extra = (limit until chips.childCount).map { chips.getChildAt(it) }
+        if (extra.isEmpty()) return
+        extra.forEach { it.visibility = View.GONE }
+        chips.addView(overflowChip(chips, extra.size) {
+            extra.forEach { it.visibility = View.VISIBLE }
+        })
+    }
+
+    /** The arrow in a section's header, for showing the rest where nothing else does. */
+    private fun expandWith(more: View, limited: LimitAdapter) {
+        fun update() {
+            more.isVisible = limited.hiddenCount > 0
+        }
+        limited.onChanged = { update() }
+        more.setSafeOnClickListener { limited.expand() }
+        update()
+    }
+
+    private fun showAllButton(parent: LinearLayout, limited: LimitAdapter) {
+        val button = MaterialButton(
+            requireContext(), null, androidx.appcompat.R.attr.borderlessButtonStyle
+        ).apply {
+            setText(R.string.info_section_show_all)
+            setOnClickListener { limited.expand() }
+        }
+        fun update() {
+            button.isVisible = limited.hiddenCount > 0
+        }
+        limited.onChanged = { update() }
+        parent.addView(button)
+        update()
+    }
+
+    /** "+12", standing in for the chips a limit leaves out. Tapping it takes itself away with them. */
+    private fun overflowChip(group: ChipGroup, count: Int, onExpand: () -> Unit): View {
+        val chip = ItemChipBinding.inflate(layoutInflater, group, false).root
+        chip.text = getString(R.string.info_section_more_count, count)
+        chip.setOnClickListener {
+            group.removeView(chip)
+            onExpand()
+        }
+        return chip
+    }
 
     /**
      * With a [providerCaption] as [holder]'s first child: moves its logo beside the section's own
@@ -342,13 +465,13 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         val icon = kind.providerIconRes(tabContext, source) ?: return
         val caption = holder.getChildAt(0) ?: return
         val sections = (1 until holder.childCount).map { holder.getChildAt(it) }
-        val title = sections.firstNotNullOfOrNull { sectionTitle(it) }
+        val titles = sections.flatMap { sectionTitles(it) }
         val lines = sections.filter { it.id == R.id.mediaInfoNames || it.id == R.id.mediaInfoTable }
             .filterIsInstance<ViewGroup>()
             .flatMap { lines -> (0 until lines.childCount).mapNotNull { lines.getChildAt(it) as? ViewGroup } }
-        caption.isVisible = title == null && lines.isEmpty()
+        caption.isVisible = titles.isEmpty() && lines.isEmpty()
         val names = listOf(getString(kind.providerLabelRes(tabContext, source)))
-        title?.addSourceIcons(listOf(icon), names)
+        titles.forEach { it.addSourceIcons(listOf(icon), names) }
         lines.forEach { (it.getChildAt(0) as? TextView)?.addSourceIcons(listOf(icon), names) }
     }
 
@@ -367,8 +490,37 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         else -> findRecycler(view)?.adapter?.let { it.itemCount > 0 } ?: true
     }
 
-    private abstract inner class Slot {
+    private abstract inner class Slot(protected val entry: InfoSectionEntry) {
         val root = newColumn().apply { visibility = View.GONE }
+        private val renamed = HashSet<InfoTabType>()
+
+        /**
+         * What the user set on this section, on a view a source drew. Before any source icon goes on
+         * the title, as a new text would take it off. A source can draw several views for one section
+         * (Comick's genre groups): only its first is renamed, as they can't all have that one name.
+         */
+        protected fun applyOptions(source: InfoTabType, view: View) {
+            val titles = sectionTitles(view)
+            entry.title?.let { name ->
+                if (titles.isNotEmpty() && renamed.add(source)) {
+                    titles.first().text = name
+                    view.setTag(R.id.info_section_renamed, true)
+                }
+            }
+            // First, for a button this adds to go under the collapsing too.
+            entry.itemLimit?.let { limitItems(view, it) }
+            if (entry.startCollapsed) startCollapsed(view)
+        }
+
+        /** A source drawing this view again will have to rename its new one. */
+        protected fun forgetOptions(source: InfoTabType, view: View) {
+            if (view.getTag(R.id.info_section_renamed) != null) renamed.remove(source)
+        }
+
+        /** For a merged section's own view, whose title and rows the slot draws itself. */
+        protected fun limited(adapter: RecyclerView.Adapter<*>): RecyclerView.Adapter<*> =
+            entry.itemLimit?.let { LimitAdapter(adapter, it) } ?: adapter
+
 
         protected fun reveal() {
             root.visibility = View.VISIBLE
@@ -383,10 +535,11 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
 
     /** Sections shown as they are, in source order; also what merging means for most kinds. */
     private inner class StackSlot(
+        entry: InfoSectionEntry,
         private val kind: InfoSectionKind,
         sources: List<InfoTabType>,
         private val withCaption: Boolean,
-    ) : Slot() {
+    ) : Slot(entry) {
         private val holders = sources.associateWith { source ->
             newColumn().also { holder ->
                 holder.visibility = View.GONE
@@ -409,16 +562,21 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             if (isPendingSlot(view)) {
                 (view as ViewGroup).setOnHierarchyChangeListener(
                     object : ViewGroup.OnHierarchyChangeListener {
-                        override fun onChildViewAdded(parent: View?, child: View?) = refresh(source, holder)
+                        override fun onChildViewAdded(parent: View?, child: View?) {
+                            child?.let { applyOptions(source, it) }
+                            refresh(source, holder)
+                        }
+
                         override fun onChildViewRemoved(parent: View?, child: View?) = refresh(source, holder)
                     }
                 )
-            }
+            } else applyOptions(source, view)
             refresh(source, holder)
         }
 
         override fun retract(source: InfoTabType, view: View) {
             val holder = holders[source] ?: return
+            forgetOptions(source, view)
             holder.removeView(view)
             refresh(source, holder)
         }
@@ -433,10 +591,11 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
      * that answers even later still takes its place back.
      */
     private inner class FallbackSlot(
+        entry: InfoSectionEntry,
         private val kind: InfoSectionKind,
         private val sources: List<InfoTabType>,
         private val withCaption: Boolean,
-    ) : Slot() {
+    ) : Slot(entry) {
         private val rendered = HashSet<InfoTabType>()
         private var waitOver = false
         private val holders = sources.associateWith { source ->
@@ -488,15 +647,20 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             if (isPendingSlot(view)) {
                 (view as ViewGroup).setOnHierarchyChangeListener(
                     object : ViewGroup.OnHierarchyChangeListener {
-                        override fun onChildViewAdded(parent: View?, child: View?) = update()
+                        override fun onChildViewAdded(parent: View?, child: View?) {
+                            child?.let { applyOptions(source, it) }
+                            update()
+                        }
+
                         override fun onChildViewRemoved(parent: View?, child: View?) = update()
                     }
                 )
-            }
+            } else applyOptions(source, view)
             update()
         }
 
         override fun retract(source: InfoTabType, view: View) {
+            forgetOptions(source, view)
             holders[source]?.removeView(view)
             update()
         }
@@ -508,10 +672,10 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
      * every source's value. When the tab shows its sources, each line wears its source's icon.
      */
     private inner class FieldLinesSlot(
-        private val entry: InfoSectionEntry,
+        entry: InfoSectionEntry,
         private val sources: List<InfoTabType>,
         private val showSources: Boolean,
-    ) : Slot() {
+    ) : Slot(entry) {
         private val lineOrder = orderedInfoFields(entry.fieldOrder).map { it.key }
         private val lines = entry.resolvedLines
 
@@ -600,9 +764,10 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
 
     /** One column of title lines, each once. When the tab shows its sources, each wears its icon. */
     private inner class LinesSlot(
+        entry: InfoSectionEntry,
         private val sources: List<InfoTabType>,
         private val showSources: Boolean,
-    ) : Slot() {
+    ) : Slot(entry) {
         private inner class Line(val source: InfoTabType, val label: String, val value: String)
 
         private val lines = ArrayList<Line>()
@@ -638,10 +803,11 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
 
     /** One row of media cards. Sources recommending the same title push it towards the front. */
     private inner class MediaSlot(
+        entry: InfoSectionEntry,
         private val kind: InfoSectionKind,
         private val sources: List<InfoTabType>,
         showSources: Boolean,
-    ) : Slot() {
+    ) : Slot(entry) {
         private val current = model.getMedia().value
         private val merged = ArrayList<Media>()
         private val offers = HashMap<InfoTabType, List<Media>>()
@@ -649,9 +815,9 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         private val adapter = MediaAdaptor(0, merged, requireActivity(), currentMedia = current)
 
         init {
-            bind.itemTitle.setText(kind.labelRes)
+            bind.itemTitle.text = entry.title ?: getString(kind.labelRes)
             if (showSources) bind.itemTitle.addSourceIcons(sources)
-            bind.itemRecycler.adapter = adapter
+            bind.itemRecycler.adapter = limited(adapter)
             bind.itemRecycler.layoutManager =
                 LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
             bind.itemMore.visibility = View.VISIBLE
@@ -660,10 +826,11 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
                 current?.let { MediaListViewActivity.passedRecommendationSource = it }
                 startActivity(
                     Intent(requireContext(), MediaListViewActivity::class.java)
-                        .putExtra("title", getString(kind.labelRes))
+                        .putExtra("title", entry.title ?: getString(kind.labelRes))
                 )
             }
             root.addView(bind.root)
+            if (entry.startCollapsed) startCollapsed(bind.root)
         }
 
         // Its own card row replaces whatever view each source drew for this section.
@@ -732,15 +899,17 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
      * drew are read ([publish]) and tapping does what those did.
      */
     private inner class ChipSlot(
+        entry: InfoSectionEntry,
         private val kind: InfoSectionKind,
         private val sources: List<InfoTabType>,
         showSources: Boolean,
-    ) : Slot() {
+    ) : Slot(entry) {
         private val bind = ItemTagsSectionBinding.inflate(layoutInflater, root, false)
         private val entries = LinkedHashMap<String, Entry>()
         private val described = HashSet<InfoTabType>()
         private var spoilersShown = false
         private var minWeight = 0
+        private var expanded = false
 
         private inner class Entry(val name: String, var sourceRank: Int) {
             val chip = ItemChipBinding.inflate(layoutInflater, bind.tagsChipGroup, false).root
@@ -803,7 +972,7 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         }
 
         init {
-            bind.tagsTitle.text = kind.label(requireContext(), sources.singleOrNull())
+            bind.tagsTitle.text = entry.title ?: kind.label(requireContext(), sources.singleOrNull())
             if (showSources) {
                 bind.tagsTitle.addSourceIcons(sources)
                 moveActionsBelowTitle()
@@ -822,6 +991,7 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
                     render()
                 }
             }
+            if (entry.startCollapsed) startCollapsed(bind.root)
         }
 
         /** The source icons need the title's row to themselves, or they push the title onto a second line. */
@@ -882,21 +1052,20 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
                 )
             )
             bind.tagsChipGroup.removeAllViews()
-            shown.forEach { entry ->
-                entry.showText()
-                bind.tagsChipGroup.addView(entry.chip)
+            val limit = entry.itemLimit?.takeUnless { expanded }
+            (limit?.let { shown.take(it) } ?: shown).forEach { chipEntry ->
+                chipEntry.showText()
+                bind.tagsChipGroup.addView(chipEntry.chip)
+            }
+            if (limit != null && shown.size > limit) {
+                bind.tagsChipGroup.addView(overflowChip(bind.tagsChipGroup, shown.size - limit) {
+                    expanded = true
+                    render()
+                })
             }
             bind.tagsSpoilerAction.isVisible = shown.any { it.spoiler }
             bind.tagsFilterButton.isVisible = entries.values.any { it.weightLevel != null }
             if (entries.isNotEmpty()) reveal()
-        }
-
-        private fun findChipGroup(view: View): ChipGroup? = when (view) {
-            is ChipGroup -> view
-            is ViewGroup -> (0 until view.childCount)
-                .firstNotNullOfOrNull { findChipGroup(view.getChildAt(it)) }
-
-            else -> null
         }
 
         /** Takes a source's drawn chips at face value: "Time Skip : 80%" is a name and a detail. */
@@ -946,20 +1115,23 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
      * the row shows, and MangaBaka's add button has nowhere else to live.
      */
     private inner class RowSlot(
+        entry: InfoSectionEntry,
         kind: InfoSectionKind,
         private val sources: List<InfoTabType>,
         showSources: Boolean,
         private val vertical: Boolean = false,
-    ) : Slot() {
+    ) : Slot(entry) {
         private val bind = ItemTitleRecyclerBinding.inflate(layoutInflater, root, false)
         private val row = ConcatAdapter(ConcatAdapter.Config.Builder().setIsolateViewTypes(true).build())
         private val placed = HashMap<InfoTabType, RecyclerView.Adapter<*>>()
         private val more = LinkedHashMap<InfoTabType, View>()
+        private val limitedRow = entry.itemLimit?.let { LimitAdapter(row, it) }
 
         init {
-            bind.itemTitle.text = kind.label(requireContext(), null)
+            bind.itemTitle.text = entry.title ?: kind.label(requireContext(), null)
             if (showSources) bind.itemTitle.addSourceIcons(sources)
-            bind.itemRecycler.adapter = row
+            bind.itemRecycler.adapter = limitedRow ?: row
+            limitedRow?.onChanged = { updateMore() }
             bind.itemRecycler.layoutManager = LinearLayoutManager(
                 requireContext(),
                 if (vertical) LinearLayoutManager.VERTICAL else LinearLayoutManager.HORIZONTAL,
@@ -967,10 +1139,20 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             )
             bind.itemMore.setSafeOnClickListener { openMore() }
             root.addView(bind.root)
+            if (entry.startCollapsed) startCollapsed(bind.root)
+        }
+
+        private fun updateMore() {
+            bind.itemMore.isVisible = more.isNotEmpty() || (limitedRow?.hiddenCount ?: 0) > 0
         }
 
         private fun openMore() {
             val options = sources.filter { it in more }
+            // Where no source has a page of its own for the rest, they come here.
+            if (options.isEmpty()) {
+                limitedRow?.expand()
+                return
+            }
             options.singleOrNull()?.let {
                 more[it]?.performClick()
                 return
@@ -996,7 +1178,7 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             }
             view.findViewById<View>(R.id.itemMore)?.takeIf { it.isVisible }?.let {
                 more[source] = it
-                bind.itemMore.isVisible = true
+                updateMore()
             }
             val add = view.findViewById<ImageView>(R.id.itemAdd)?.takeIf { it.isVisible }
             if (add != null) {
@@ -1030,11 +1212,56 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             root.removeView(view)
             placed.remove(source)?.let { row.removeAdapter(it) }
             more.remove(source)
-            bind.itemMore.isVisible = more.isNotEmpty()
+            updateMore()
+        }
+    }
+
+    /**
+     * One row of relations with each work once, in source order: see [InfoExtraSections.distinctRelations].
+     * Drawn here, from what the sources describe, as no one source's cards could take the others' in.
+     */
+    private inner class RelationSlot(
+        entry: InfoSectionEntry,
+        kind: InfoSectionKind,
+        private val sources: List<InfoTabType>,
+        showSources: Boolean,
+    ) : Slot(entry) {
+        private val bind = ItemTitleRecyclerBinding.inflate(layoutInflater, root, false)
+        private val offers = HashMap<InfoTabType, List<InfoExtraSections.RelationCard>>()
+        private val cards = ArrayList<InfoExtraSections.RelationCard>()
+        private val adapter = InfoExtraSections.RelationCardAdapter(cards)
+
+        init {
+            bind.itemTitle.text = entry.title ?: kind.label(requireContext(), null)
+            if (showSources) bind.itemTitle.addSourceIcons(sources)
+            val row = limited(adapter)
+            bind.itemRecycler.adapter = row
+            bind.itemRecycler.layoutManager =
+                LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+            (row as? LimitAdapter)?.let { expandWith(bind.itemMore, it) }
+            root.addView(bind.root)
+            if (entry.startCollapsed) startCollapsed(bind.root)
+        }
+
+        // Its own card row replaces whatever view each source drew for this section.
+        override fun publish(source: InfoTabType, view: View) {}
+
+        fun offer(source: InfoTabType, offered: List<InfoExtraSections.RelationCard>) {
+            offers[source] = offered
+            cards.clear()
+            cards.addAll(InfoExtraSections.distinctRelations(sources.map { offers[it].orEmpty() }))
+            @Suppress("NotifyDataSetChanged")
+            adapter.notifyDataSetChanged()
+            if (cards.isNotEmpty()) reveal()
         }
     }
 
     companion object {
+        /** The views that can hold a section's title. */
+        private val TITLE_IDS = setOf(
+            R.id.itemTitle, R.id.tagsTitle, R.id.mediaInfoDescriptionText, R.id.genreSectionTitle,
+        )
+
         private const val ARG_CONTEXT = "context"
         private const val ARG_TAB = "tab"
         private const val EMPTY_AFTER_MILLIS = 12_000L
