@@ -40,10 +40,57 @@ class MediaInfoFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        pagerAdapter = null
     }
 
     private var isSetup = false
     private var currentMedia: Media? = null
+    private var pagerAdapter: InfoTabsPagerAdapter? = null
+    private var builtFrom: String? = null
+
+    /** The tabs as the settings have them now, offline leaving only what can still show. */
+    private fun buildTabs(media: Media) {
+        // Build list of tabs according to the user's saved order/visibility for this
+        // media context (falls back to fetch-enabled connections only)
+        val tabContext = InfoTabContext.forAniList(media)
+        // Offline, the external source tabs (MAL/Comick/MangaUpdates/MangaBaka) can't fetch
+        // anything, so show only the AniList tab, whose info is stored with the download.
+        val offline = PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
+                !isOnline(requireContext())
+        fun isAniList(entry: InfoTabEntry) =
+            (entry as? InfoTabEntry.Builtin)?.type == InfoTabType.ANILIST
+        val orderedTabs = tabContext.visibleEntries().let { ordered ->
+            if (offline) ordered.filter { isAniList(it) }
+                .ifEmpty { tabContext.orderedEntries().filter { isAniList(it) } }
+            else ordered
+        }
+        tabs = orderedTabs.map { entry ->
+            TabInfo(entry, tabContext.createTabFragment(entry))
+        }
+        builtFrom = tabContext.layoutSignature()
+    }
+
+    /** If only one tab is left, the TabLayout goes and that tab's info shows directly. */
+    private fun showTabBar() {
+        binding.mediaInfoTabLayout.visibility = if (tabs.size <= 1) View.GONE else View.VISIBLE
+    }
+
+    /** Catches up with tabs edited in the settings, opened from this very page or anywhere else. */
+    override fun onResume() {
+        super.onResume()
+        val media = currentMedia ?: return
+        val adapter = pagerAdapter ?: return
+        if (InfoTabContext.forAniList(media).layoutSignature() == builtFrom) return
+        val model: MediaDetailsViewModel by activityViewModels()
+        val shown = tabs.getOrNull(binding.mediaInfoViewPager.currentItem)?.entry?.key
+        buildTabs(media)
+        adapter.rebuild()
+        showTabBar()
+        binding.mediaInfoViewPager.setCurrentItem(
+            tabs.indexOfFirst { it.entry.key == shown }.coerceAtLeast(0), false
+        )
+        updateTabStates(model, media)
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -62,43 +109,15 @@ class MediaInfoFragment : Fragment() {
                 // Setup ViewPager - show tabs depending on media type and enabled connections
                 val isAnime = media.anime != null
 
-                // Build list of tabs according to the user's saved order/visibility for this
-                // media context (falls back to fetch-enabled connections only)
-                val tabContext = InfoTabContext.forAniList(media)
-                // Offline, the external source tabs (MAL/Comick/MangaUpdates/MangaBaka) can't fetch
-                // anything, so show only the AniList tab, whose info is stored with the download.
-                val offline = PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
-                        !isOnline(requireContext())
-                fun isAniList(entry: InfoTabEntry) =
-                    (entry as? InfoTabEntry.Builtin)?.type == InfoTabType.ANILIST
-                val orderedTabs = tabContext.visibleEntries().let { ordered ->
-                    if (offline) ordered.filter { isAniList(it) }
-                        .ifEmpty { tabContext.orderedEntries().filter { isAniList(it) } }
-                    else ordered
-                }
-                tabs = orderedTabs.map { entry ->
-                    TabInfo(entry, tabContext.createTabFragment(entry))
-                }
-                childFragmentManager.applyInfoTabRules(tabContext)
+                buildTabs(media)
+                childFragmentManager.applyInfoTabRules(InfoTabContext.forAniList(media))
 
-                val adapter = object : androidx.viewpager2.adapter.FragmentStateAdapter(childFragmentManager, viewLifecycleOwner.lifecycle) {
-                    override fun getItemCount(): Int = tabs.size
-                    override fun createFragment(position: Int): Fragment = tabs[position].fragment
-                }
-
+                val adapter = InfoTabsPagerAdapter(
+                    this, { tabs.size }, { position -> tabs[position].fragment }
+                )
+                pagerAdapter = adapter
                 binding.mediaInfoViewPager.adapter = adapter
-
-                // If only AniList is enabled (single tab), hide the TabLayout and show the
-                // AniList info directly without tabs.
-                if (tabs.size <= 1) {
-                    binding.mediaInfoTabLayout.visibility = android.view.View.GONE
-                    // Keep ViewPager visible to host the AniList fragment
-                    binding.mediaInfoViewPager.isUserInputEnabled = false
-                    // No need to setup tabs
-                    return@observe
-                } else {
-                    binding.mediaInfoTabLayout.visibility = android.view.View.VISIBLE
-                }
+                showTabBar()
 
                 // Only load adjacent tabs to reduce API calls and prevent rate limiting
                 binding.mediaInfoViewPager.offscreenPageLimit = 1

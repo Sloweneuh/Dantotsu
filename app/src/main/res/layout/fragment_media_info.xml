@@ -198,6 +198,81 @@
                     </ani.dantotsu.media.InfoFieldRow>
 
                     <ani.dantotsu.media.InfoFieldRow
+                        android:tag="latest_chapter"
+                        android:id="@+id/mediaInfoLatestChapterContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoLatestChapterLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/latest_chapter"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoLatestChapter"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
+                        android:tag="volumes"
+                        android:id="@+id/mediaInfoVolumesContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoVolumesLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/volumes"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoVolumes"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
+                        android:tag="final_chapter"
+                        android:id="@+id/mediaInfoFinalChapterContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoFinalChapterLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/final_chapter"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoFinalChapter"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
                         android:tag="duration"
                         android:id="@+id/mediaInfoDurationContainer"
                         android:layout_width="match_parent"
@@ -246,6 +321,31 @@
                     </ani.dantotsu.media.InfoFieldRow>
 
                     <ani.dantotsu.media.InfoFieldRow
+                        android:tag="demographic"
+                        android:id="@+id/mediaInfoDemographicContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoDemographicLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/demographic"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoDemographic"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
                         android:tag="source"
                         android:id="@+id/mediaInfoSourceContainer"
                         android:layout_width="match_parent"
@@ -262,6 +362,56 @@
 
                         <TextView
                             android:id="@+id/mediaInfoSource"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
+                        android:tag="origin"
+                        android:id="@+id/mediaInfoOriginContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoOriginLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/origin"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoOrigin"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
+                        android:tag="network"
+                        android:id="@+id/mediaInfoNetworkContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoNetworkLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/network"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoNetwork"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -341,6 +491,31 @@
                             android:fontFamily="@font/poppins_bold"
                             android:textAlignment="textEnd"
                             android:textColor="?attr/colorPrimary" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
+                        android:tag="serialization"
+                        android:id="@+id/mediaInfoSerializationContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoSerializationLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/serialization"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoSerialization"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
                     </ani.dantotsu.media.InfoFieldRow>
 
                     <ani.dantotsu.media.InfoFieldRow
@@ -434,6 +609,56 @@
                     </ani.dantotsu.media.InfoFieldRow>
 
                     <ani.dantotsu.media.InfoFieldRow
+                        android:tag="followers"
+                        android:id="@+id/mediaInfoFollowersContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoFollowersLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/followers"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoFollowers"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
+                        android:tag="rank"
+                        android:id="@+id/mediaInfoRankContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoRankLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/rank"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoRank"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
                         android:tag="favourites"
                         android:layout_width="match_parent"
                         android:layout_height="24dp"
@@ -454,6 +679,32 @@
                             android:fontFamily="@font/poppins_bold"
                             android:textAlignment="textEnd" />
                     </ani.dantotsu.media.InfoFieldRow>
+
+                    <ani.dantotsu.media.InfoFieldRow
+                        android:tag="scored_by"
+                        android:id="@+id/mediaInfoScoredByContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/mediaInfoScoredByLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/scored_by"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/mediaInfoScoredBy"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:textAlignment="textEnd" />
+                    </ani.dantotsu.media.InfoFieldRow>
+
                 </TableLayout>
 
                 <LinearLayout

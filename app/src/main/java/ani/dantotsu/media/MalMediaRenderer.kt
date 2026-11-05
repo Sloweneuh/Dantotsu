@@ -108,7 +108,7 @@ object MalMediaRenderer {
         contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), canonical) }
         contentHost.infoSection(InfoSectionKind.GENRES) { addGenres(activity, contentHost, full.genres, isAnime = true) }
         InfoExtraSections.addMalExtras(
-            contentHost, full.background, full.pictures, full.relatedAnime, full.relatedManga,
+            contentHost, full.background, full.relatedAnime, full.relatedManga,
         )
         contentHost.infoSection(InfoSectionKind.RECOMMENDATIONS) { addRecommendations(activity, contentHost, anilistRecs) }
     }
@@ -140,14 +140,10 @@ object MalMediaRenderer {
             totalRow?.visibility = View.GONE
         }
 
-        val volumes = full.numVolumes?.takeIf { it > 0 }
-        if (volumes != null) {
-            info.mediaInfoDurationContainer.visibility = View.VISIBLE
-            (info.mediaInfoDurationContainer.getChildAt(0) as? android.widget.TextView)?.setText(R.string.volumes)
-            info.mediaInfoDuration.text = volumes.toString()
-        } else {
-            info.mediaInfoDurationContainer.visibility = View.GONE
-        }
+        setInfoLine(
+            info.mediaInfoVolumesContainer, info.mediaInfoVolumes,
+            full.numVolumes?.takeIf { it > 0 }?.toString(),
+        )
 
         info.mediaInfoFormatLabel.setText(R.string.format)
         info.mediaInfoFormat.text = full.mediaType?.let { titleCase(it) } ?: activity.getString(R.string.unknown)
@@ -171,7 +167,7 @@ object MalMediaRenderer {
         contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), canonical) }
         contentHost.infoSection(InfoSectionKind.GENRES) { addGenres(activity, contentHost, full.genres, isAnime = false) }
         InfoExtraSections.addMalExtras(
-            contentHost, full.background, full.pictures, full.relatedAnime, full.relatedManga,
+            contentHost, full.background, full.relatedAnime, full.relatedManga,
             full.serialization,
         )
         contentHost.infoSection(InfoSectionKind.RECOMMENDATIONS) { addRecommendations(activity, contentHost, anilistRecs) }
@@ -220,22 +216,16 @@ object MalMediaRenderer {
     }
 
     private fun setPopularityFavorites(info: FragmentMediaInfoBinding, rank: Int?, popularity: Int?, numScoringUsers: Int?) {
-        val popRow = info.mediaInfoPopularity.parent as? ViewGroup
-        val popRank = rank ?: popularity
-        if (popRank != null && popRank > 0) {
-            popRow?.visibility = View.VISIBLE
-            info.mediaInfoPopularity.text = "#$popRank"
-        } else {
-            popRow?.visibility = View.GONE
-        }
-        val favRow = info.mediaInfoFavorites.parent as? ViewGroup
-        if (numScoringUsers != null && numScoringUsers > 0) {
-            favRow?.visibility = View.VISIBLE
-            info.mediaInfoFavorites.text = numScoringUsers.toString()
-            (favRow?.getChildAt(0) as? android.widget.TextView)?.setText(R.string.scored_by)
-        } else {
-            favRow?.visibility = View.GONE
-        }
+        (info.mediaInfoPopularity.parent as? ViewGroup)?.visibility = View.GONE
+        (info.mediaInfoFavorites.parent as? ViewGroup)?.visibility = View.GONE
+        setInfoLine(
+            info.mediaInfoRankContainer, info.mediaInfoRank,
+            (rank ?: popularity)?.takeIf { it > 0 }?.let { "#$it" },
+        )
+        setInfoLine(
+            info.mediaInfoScoredByContainer, info.mediaInfoScoredBy,
+            numScoringUsers?.takeIf { it > 0 }?.toString(),
+        )
     }
 
     @SuppressLint("ClickableViewAccessibility")

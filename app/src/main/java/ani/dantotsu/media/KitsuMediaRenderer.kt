@@ -75,27 +75,23 @@ object KitsuMediaRenderer {
             totalRow?.visibility = View.GONE
         }
 
-        // ---- duration (episode length / volume count) ----
-        val durationLabel: Int
-        val durationText = if (isAnime) {
-            durationLabel = R.string.ep_duration
-            media.episodeLength?.takeIf { it > 0 }?.let { "$it min" }
-        } else {
-            durationLabel = R.string.volumes
-            media.volumeCount?.takeIf { it > 0 }?.toString()
-        }
-        if (durationText != null) {
-            info.mediaInfoDurationContainer.visibility = View.VISIBLE
-            (info.mediaInfoDurationContainer.getChildAt(0) as? TextView)?.setText(durationLabel)
-            info.mediaInfoDuration.text = durationText
-        } else {
-            info.mediaInfoDurationContainer.visibility = View.GONE
-        }
+        // ---- episode length / volume count ----
+        setInfoLine(
+            info.mediaInfoDurationContainer, info.mediaInfoDuration,
+            media.episodeLength?.takeIf { isAnime && it > 0 }?.let { "$it min" },
+        )
+        setInfoLine(
+            info.mediaInfoVolumesContainer, info.mediaInfoVolumes,
+            media.volumeCount?.takeIf { !isAnime && it > 0 }?.toString(),
+        )
 
         // ---- format ----
         info.mediaInfoFormatLabel.setText(R.string.format)
         info.mediaInfoFormat.text = (media.subtype ?: media.showType ?: media.mangaType)
             ?.let { titleCase(it) } ?: activity.getString(R.string.unknown)
+
+        // Kitsu doesn't say what a title is based on, and the row is shown until told otherwise.
+        info.mediaInfoSourceContainer.visibility = View.GONE
 
         // ---- content rating ----
         val ageRating = media.ageRating?.takeIf { it.isNotBlank() }
@@ -110,13 +106,11 @@ object KitsuMediaRenderer {
         }
 
         // ---- serialization (manga) ----
-        val serialization = media.serialization?.takeIf { it.isNotBlank() }
-        if (!isAnime && serialization != null) {
-            info.mediaInfoAuthorContainer.visibility = View.VISIBLE
-            info.mediaInfoAuthor.text = serialization
-        } else {
-            info.mediaInfoAuthorContainer.visibility = View.GONE
-        }
+        info.mediaInfoAuthorContainer.visibility = View.GONE
+        setInfoLine(
+            info.mediaInfoSerializationContainer, info.mediaInfoSerialization,
+            media.serialization?.takeIf { !isAnime && it.isNotBlank() },
+        )
 
         // ---- season ----
         val seasonYear = media.startDate?.take(4)
@@ -138,14 +132,11 @@ object KitsuMediaRenderer {
         info.mediaInfoEnd.text = end ?: ""
 
         // ---- popularity / favourites ----
-        val popRow = info.mediaInfoPopularity.parent as? ViewGroup
-        val popRank = media.popularityRank ?: media.ratingRank
-        if (popRank != null && popRank > 0) {
-            popRow?.visibility = View.VISIBLE
-            info.mediaInfoPopularity.text = "#$popRank"
-        } else {
-            popRow?.visibility = View.GONE
-        }
+        (info.mediaInfoPopularity.parent as? ViewGroup)?.visibility = View.GONE
+        setInfoLine(
+            info.mediaInfoRankContainer, info.mediaInfoRank,
+            (media.popularityRank ?: media.ratingRank)?.takeIf { it > 0 }?.let { "#$it" },
+        )
         val favRow = info.mediaInfoFavorites.parent as? ViewGroup
         val favs = media.favoritesCount ?: media.userCount
         if (favs != null && favs > 0) {

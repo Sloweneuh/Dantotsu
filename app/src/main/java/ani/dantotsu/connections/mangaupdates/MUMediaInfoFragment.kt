@@ -18,6 +18,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import ani.dantotsu.R
+import ani.dantotsu.media.setInfoLine
 import ani.dantotsu.buildMarkwon
 import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.copyToClipboard
@@ -150,19 +151,11 @@ class MUMediaInfoFragment : Fragment() {
         binding.mediaInfoPopularity.visibility = View.GONE
         (binding.mediaInfoPopularity.parent as? ViewGroup)?.visibility = View.GONE
 
-        // Re-label "Favourites" as "Followers"
-        val favRow = binding.mediaInfoFavorites.parent as? ViewGroup
-        favRow?.let { row ->
-            for (i in 0 until row.childCount) {
-                val child = row.getChildAt(i)
-                if (child is TextView && child.id != binding.mediaInfoFavorites.id) {
-                    child.text = getString(R.string.followers)
-                    break
-                }
-            }
-        }
-        binding.mediaInfoFavorites.text =
-            media?.favourites?.takeIf { it > 0 }?.toString() ?: getString(R.string.question_marks)
+        (binding.mediaInfoFavorites.parent as? ViewGroup)?.visibility = View.GONE
+        setInfoLine(
+            binding.mediaInfoFollowersContainer, binding.mediaInfoFollowers,
+            media?.favourites?.takeIf { it > 0 }?.toString() ?: getString(R.string.question_marks),
+        )
 
         val desc = media?.description?.takeIf { it.isNotBlank() }
             ?: getString(R.string.no_description_available)
@@ -246,12 +239,16 @@ class MUMediaInfoFragment : Fragment() {
 
         binding.mediaInfoStatus.text =
             parsedStatus.status?.toString() ?: getString(R.string.unknown)
-        // Two in five series are counted in volumes, not chapters - label the row for what it holds.
-        binding.mediaInfoTotalTitle.setText(
-            if (parsedStatus.unit == MuStatusText.Unit.VOLUMES) R.string.total_vols
-            else R.string.total_chaps
-        )
+        // Two in five series are counted in volumes, not chapters.
+        val inVolumes = parsedStatus.unit == MuStatusText.Unit.VOLUMES
+        (binding.mediaInfoTotal.parent as? ViewGroup)?.visibility = if (inVolumes) View.GONE else View.VISIBLE
+        binding.mediaInfoTotalTitle.setText(R.string.total_chaps)
         binding.mediaInfoTotal.text = parsedStatus.count?.toString() ?: "~"
+        binding.mediaInfoVolumesLabel.setText(R.string.total_vols)
+        setInfoLine(
+            binding.mediaInfoVolumesContainer, binding.mediaInfoVolumes,
+            parsedStatus.count?.takeIf { inVolumes }?.toString(),
+        )
         binding.mediaInfoFormat.text = series.type ?: getString(R.string.manga)
 
         binding.mediaInfoSourceContainer.visibility = View.GONE
@@ -274,24 +271,14 @@ class MUMediaInfoFragment : Fragment() {
         binding.mediaInfoPopularity.visibility = View.GONE
         (binding.mediaInfoPopularity.parent as? ViewGroup)?.visibility = View.GONE
 
-        // Re-label "Favourites" as "Followers" and show the count
-        val favRow = binding.mediaInfoFavorites.parent as? ViewGroup
-        favRow?.let { row ->
-            for (i in 0 until row.childCount) {
-                val child = row.getChildAt(i)
-                if (child is TextView && child.id != binding.mediaInfoFavorites.id) {
-                    child.text = getString(R.string.followers)
-                    break
-                }
-            }
-        }
-        series.rank?.lists?.let { lists ->
-            val followers =
-                (lists.reading ?: 0) + (lists.wish ?: 0) + (lists.complete ?: 0) +
-                        (lists.unfinished ?: 0) + (lists.custom ?: 0)
-            binding.mediaInfoFavorites.text =
-                if (followers > 0) followers.toString() else getString(R.string.question_marks)
-        } ?: run { binding.mediaInfoFavorites.text = getString(R.string.question_marks) }
+        (binding.mediaInfoFavorites.parent as? ViewGroup)?.visibility = View.GONE
+        setInfoLine(
+            binding.mediaInfoFollowersContainer, binding.mediaInfoFollowers,
+            series.rank?.lists?.let { lists ->
+                ((lists.reading ?: 0) + (lists.wish ?: 0) + (lists.complete ?: 0) +
+                        (lists.unfinished ?: 0) + (lists.custom ?: 0)).takeIf { it > 0 }?.toString()
+            } ?: getString(R.string.question_marks),
+        )
 
         // Description
         val desc = (series.description ?: getString(R.string.no_description_available))

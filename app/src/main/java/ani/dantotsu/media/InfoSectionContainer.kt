@@ -47,6 +47,9 @@ interface InfoSectionSink {
     /** What [source] offers about its match in place of the page it can't show from here. */
     fun offerMatchAction(source: InfoTabType, action: InfoMatchAction)
 
+    /** [source] finished drawing: a section it hasn't handed over by now, it doesn't have. */
+    fun sourceRendered(source: InfoTabType)
+
     /** Runs every source again, after a match changed which entry one of them should show. */
     fun reloadSources()
 }
@@ -220,6 +223,7 @@ class InfoSectionContainer @JvmOverloads constructor(context: Context, attrs: At
                     super.removeView(static)
                     if (s.wantsSection(src, kind)) s.publishSection(src, kind, static)
                 }
+            s.sourceRendered(src)
         }
     }
 

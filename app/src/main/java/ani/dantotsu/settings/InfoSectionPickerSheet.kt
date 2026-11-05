@@ -1,12 +1,17 @@
 package ani.dantotsu.settings
 
+import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CompoundButton
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.databinding.BottomSheetInfoSectionPickerBinding
@@ -15,9 +20,12 @@ import ani.dantotsu.databinding.ItemInfoPickerRowBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.media.InfoSectionKind
 import ani.dantotsu.media.InfoSectionMerge
+import ani.dantotsu.media.InfoSourceMode
 import ani.dantotsu.media.InfoTabLongPress
 import ani.dantotsu.media.InfoTabType
+import ani.dantotsu.media.label
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.px
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -165,86 +173,207 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
 
     // ---- sources ---------------------------------------------------------------------------------
 
-    /** One source by default; several only after asking to merge. [row] is [NEW_ROW] when adding. */
+    /**
+     * One source by default; several after asking for them, in one of three modes: merged, in
+     * fallback order, or with both subtoggles off, one after another. [row] is [NEW_ROW] when adding.
+     */
     private fun showSources(kind: InfoSectionKind, row: Int, canGoBack: Boolean) {
         val host = editor ?: return
         val existing = host.rowAt(row)
         val choices = if (existing != null) host.pickerSources(existing) else host.freeSources(kind)
-        val selected = LinkedHashSet<InfoTabType>()
-        if (existing != null) selected.addAll(existing.sources)
-        else choices.firstOrNull()?.let { selected.add(it) }
-        var merge = selected.size > 1
+        val canMerge = kind.merge != InfoSectionMerge.STACK
+        // Details decide all this per line, in their own sheet.
+        val perLine = kind.merge == InfoSectionMerge.FIELDS
+        val listed = ArrayList<InfoTabType>()
+        if (existing != null) listed.addAll(existing.sources)
+        else choices.firstOrNull()?.let { listed.add(it) }
+        var multiple = listed.size > 1
+        var mode = existing?.mode ?: InfoSourceMode.MERGE
+        if (mode == InfoSourceMode.MERGE && !canMerge) mode = InfoSourceMode.LIST
 
-        fun render() {
+        lateinit var render: () -> Unit
+
+        fun bindSource(bind: ItemInfoPickerRowBinding, source: InfoTabType) {
+            val isOn = source in listed
+            showLogo(bind, source.iconRes)
+            bind.infoPickerTitle.setText(source.labelRes)
+            host.unavailableReason(source, kind)?.let { reason ->
+                bind.infoPickerDetail.isVisible = true
+                bind.infoPickerDetail.setText(reason)
+                bind.infoPickerDetail.setTextColor(
+                    requireContext().getThemeColor(androidx.appcompat.R.attr.colorError)
+                )
+            }
+            bind.root.setCardBackgroundColor(SectionCard.fill(bind.root, isOn))
+            // Only showing the state: the whole card is what takes the tap.
+            val indicator: CompoundButton =
+                if (multiple) MaterialCheckBox(requireContext()) else MaterialRadioButton(requireContext())
+            indicator.isChecked = isOn
+            indicator.isClickable = false
+            indicator.isFocusable = false
+            indicator.minimumWidth = 0
+            indicator.minimumHeight = 0
+            bind.infoPickerIndicator.removeAllViews()
+            bind.infoPickerIndicator.addView(indicator)
+            bind.root.setOnClickListener {
+                if (multiple) {
+                    if (!listed.remove(source)) listed.add(source)
+                } else {
+                    listed.clear()
+                    listed.add(source)
+                }
+                render()
+            }
+        }
+
+        render = {
             startPage(
                 kind.label(requireContext(), null),
                 getString(kind.descriptionRes),
                 if (canGoBack) ({ showSections() }) else null,
             )
-            choices.forEach { source ->
+            val ordering = multiple && mode == InfoSourceMode.FALLBACK && !perLine
+            if (ordering) addOrderedSources(listed) { bind, source -> bindSource(bind, source) }
+            choices.filter { !ordering || it !in listed }.forEach { source ->
                 val bind = addRow()
-                val isOn = source in selected
-                showLogo(bind, source.iconRes)
-                bind.infoPickerTitle.setText(source.labelRes)
-                host.unavailableReason(source, kind)?.let { reason ->
-                    bind.infoPickerDetail.isVisible = true
-                    bind.infoPickerDetail.setText(reason)
-                    bind.infoPickerDetail.setTextColor(
-                        requireContext().getThemeColor(androidx.appcompat.R.attr.colorError)
-                    )
-                }
-                bind.root.setCardBackgroundColor(SectionCard.fill(bind.root, isOn))
-                // Only showing the state: the whole card is what takes the tap.
-                val indicator: CompoundButton =
-                    if (merge) MaterialCheckBox(requireContext()) else MaterialRadioButton(requireContext())
-                indicator.isChecked = isOn
-                indicator.isClickable = false
-                indicator.isFocusable = false
-                indicator.minimumWidth = 0
-                indicator.minimumHeight = 0
-                bind.infoPickerIndicator.addView(indicator)
-                bind.root.setOnClickListener {
-                    if (merge) {
-                        if (!selected.remove(source)) selected.add(source)
-                    } else {
-                        selected.clear()
-                        selected.add(source)
-                    }
-                    render()
-                }
+                bindSource(bind, source)
+                // Keeps the logos in line with the draggable rows above.
+                if (ordering) bind.infoPickerHandle.visibility = View.INVISIBLE
             }
 
-            val mergeRow = addRow()
-            mergeRow.infoPickerTitle.setText(R.string.info_tab_merge_sources)
-            mergeRow.infoPickerDetail.isVisible = merge
-            mergeRow.infoPickerDetail.setText(mergeHint(kind.merge))
-            val toggle = MaterialSwitch(requireContext())
-            toggle.isChecked = merge
-            toggle.isClickable = false
-            toggle.isFocusable = false
-            mergeRow.infoPickerIndicator.addView(toggle)
-            (mergeRow.root.layoutParams as ViewGroup.MarginLayoutParams).topMargin =
-                resources.getDimensionPixelSize(R.dimen.info_picker_group_gap)
-            mergeRow.root.setOnClickListener {
-                merge = !merge
-                if (!merge) selected.firstOrNull()?.let {
-                    selected.clear()
-                    selected.add(it)
+            val multipleRow = toggleRow(
+                R.string.info_tab_multiple_sources,
+                detail = when {
+                    !multiple -> null
+                    perLine -> R.string.info_tab_multiple_details_hint
+                    mode == InfoSourceMode.LIST -> R.string.info_tab_merge_hint_stack
+                    else -> null
+                },
+                checked = multiple,
+            ) {
+                multiple = !multiple
+                if (!multiple) {
+                    val kept = listed.firstOrNull()
+                    listed.clear()
+                    kept?.let { listed.add(it) }
                 }
                 render()
+            }
+            (multipleRow.root.layoutParams as ViewGroup.MarginLayoutParams).topMargin =
+                resources.getDimensionPixelSize(R.dimen.info_picker_group_gap)
+
+            if (multiple && !perLine) {
+                val merging = mode == InfoSourceMode.MERGE
+                toggleRow(
+                    R.string.info_tab_merge_mode,
+                    detail = if (canMerge) mergeHint(kind.merge).takeIf { merging }
+                    else R.string.info_tab_merge_unavailable,
+                    checked = merging,
+                    enabled = canMerge,
+                    nested = true,
+                ) {
+                    mode = if (merging) InfoSourceMode.LIST else InfoSourceMode.MERGE
+                    render()
+                }
+                val falling = mode == InfoSourceMode.FALLBACK
+                toggleRow(
+                    R.string.info_tab_fallback_mode,
+                    detail = R.string.info_tab_fallback_hint.takeIf { falling },
+                    checked = falling,
+                    nested = true,
+                ) {
+                    mode = if (falling) InfoSourceMode.LIST else InfoSourceMode.FALLBACK
+                    render()
+                }
             }
 
             binding.infoPickerRows.addView(
                 binding.infoPickerConfirmTemplate(
                     if (existing != null) R.string.save else R.string.info_tab_add_section,
-                    selected.isNotEmpty(),
+                    listed.isNotEmpty(),
                 ) {
-                    host.applySources(kind, row, choices.filter { it in selected })
+                    val picked = if (ordering) listed.toList() else choices.filter { it in listed }
+                    host.applySources(kind, row, picked, if (multiple) mode else InfoSourceMode.MERGE)
                     dismiss()
                 }
             )
         }
         render()
+    }
+
+    private fun toggleRow(
+        titleRes: Int,
+        detail: Int?,
+        checked: Boolean,
+        enabled: Boolean = true,
+        nested: Boolean = false,
+        onClick: () -> Unit,
+    ): ItemInfoPickerRowBinding {
+        val bind = addRow()
+        bind.infoPickerTitle.setText(titleRes)
+        bind.infoPickerDetail.isVisible = detail != null
+        detail?.let { bind.infoPickerDetail.setText(it) }
+        val toggle = MaterialSwitch(requireContext())
+        toggle.isChecked = checked
+        toggle.isClickable = false
+        toggle.isFocusable = false
+        bind.infoPickerIndicator.addView(toggle)
+        if (nested) (bind.root.layoutParams as ViewGroup.MarginLayoutParams).apply {
+            marginStart = 16f.px
+            // Otherwise the parent measures the row without it, and the row is cut off at the end.
+            resolveLayoutDirection(binding.infoPickerRows.layoutDirection)
+        }
+        if (enabled) bind.root.setOnClickListener { onClick() } else bind.root.alpha = 0.5f
+        return bind
+    }
+
+    /** The chosen sources of a fallback section, dragged into the order they're tried in. */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun addOrderedSources(
+        order: MutableList<InfoTabType>,
+        bindRow: (ItemInfoPickerRowBinding, InfoTabType) -> Unit,
+    ) {
+        class Holder(val bind: ItemInfoPickerRowBinding) : RecyclerView.ViewHolder(bind.root)
+        lateinit var helper: ItemTouchHelper
+        val list = RecyclerView(requireContext()).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            layoutManager = LinearLayoutManager(requireContext())
+            isNestedScrollingEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        list.adapter = object : RecyclerView.Adapter<Holder>() {
+            override fun getItemCount() = order.size
+
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+                Holder(ItemInfoPickerRowBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+
+            override fun onBindViewHolder(holder: Holder, position: Int) {
+                bindRow(holder.bind, order[position])
+                holder.bind.infoPickerHandle.isVisible = true
+                holder.bind.infoPickerHandle.setOnTouchListener { _, event ->
+                    if (event.actionMasked == MotionEvent.ACTION_DOWN) helper.startDrag(holder)
+                    false
+                }
+            }
+        }
+        helper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
+            override fun onMove(
+                rv: RecyclerView, vh: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder,
+            ): Boolean {
+                val from = vh.bindingAdapterPosition
+                val to = target.bindingAdapterPosition
+                order.add(to, order.removeAt(from))
+                rv.adapter?.notifyItemMoved(from, to)
+                return true
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+        }).also { it.attachToRecyclerView(list) }
+        binding.infoPickerRows.addView(list)
     }
 
     private fun BottomSheetInfoSectionPickerBinding.infoPickerConfirmTemplate(
@@ -264,6 +393,8 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
         InfoSectionMerge.MEDIA -> R.string.info_tab_merge_hint_media
         InfoSectionMerge.FIELDS -> R.string.info_tab_merge_hint_fields
         InfoSectionMerge.ROW -> R.string.info_tab_merge_hint_row
+        InfoSectionMerge.LIST -> R.string.info_tab_merge_hint_list
+        InfoSectionMerge.LINES -> R.string.info_tab_merge_hint_lines
     }
 
     // ---- copying a whole tab ---------------------------------------------------------------------
@@ -271,26 +402,24 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
     private fun showCopy() {
         val host = editor ?: return
         startPage(getString(R.string.info_tab_copy_from), null, null)
-        host.copySources().forEach { source ->
-            val count = host.copyableSections(source).size
-            val bind = addRow()
-            showLogo(bind, source.iconRes)
-            bind.infoPickerTitle.setText(source.labelRes)
-            bind.infoPickerDetail.isVisible = true
-            if (count == 0) {
-                // Nothing of its own it could add: either it's all here, or none of it can show.
-                val sections = host.sectionsFrom(source)
-                val reason = sections.takeIf { all ->
-                    all.none { host.unavailableReason(source, it) == null }
-                }?.firstNotNullOfOrNull { host.unavailableReason(source, it) }
-                bind.infoPickerDetail.setText(reason ?: R.string.info_tab_section_used)
-                bind.root.alpha = 0.5f
-            } else {
-                bind.infoPickerDetail.text =
-                    resources.getQuantityString(R.plurals.info_tab_section_count, count, count)
-                bind.root.setOnClickListener {
-                    host.copyFrom(source)
-                    dismiss()
+        host.copyChoices().forEach { (context, tabs) ->
+            addGroupTitle(context.label(requireContext()))
+            tabs.forEach { source ->
+                val count = source.rows.size
+                val bind = addRow()
+                showLogo(bind, source.iconRes)
+                bind.infoPickerTitle.text = source.name
+                bind.infoPickerDetail.isVisible = true
+                if (count == 0) {
+                    bind.infoPickerDetail.setText(source.emptyReason ?: R.string.info_tab_section_used)
+                    bind.root.alpha = 0.5f
+                } else {
+                    bind.infoPickerDetail.text =
+                        resources.getQuantityString(R.plurals.info_tab_section_count, count, count)
+                    bind.root.setOnClickListener {
+                        host.copyFrom(source)
+                        dismiss()
+                    }
                 }
             }
         }
@@ -322,7 +451,8 @@ class InfoSectionPickerSheet : BottomSheetDialogFragment() {
         }
         option(InfoTabLongPress.NAME, R.drawable.ic_round_label_outline_24, getString(R.string.info_tab_long_press_name))
         option(InfoTabLongPress.EDIT, R.drawable.ic_round_edit_outline_24, getString(R.string.info_tab_long_press_edit))
-        host.copySources().forEach { source ->
+        // Not a source that's turned off, unless it's what this tab is already set to.
+        host.copySources().filter { it.fetchEnabled || host.longPress == it.key }.forEach { source ->
             option(
                 source.key, source.iconRes,
                 getString(R.string.info_tab_long_press_open, getString(source.labelRes)),

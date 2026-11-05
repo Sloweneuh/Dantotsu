@@ -11,7 +11,6 @@ import androidx.core.net.toUri
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
-import ani.dantotsu.connections.mal.MALPicture
 import ani.dantotsu.connections.mal.MALRelation
 import ani.dantotsu.connections.mal.MALSerialization
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
@@ -80,24 +79,6 @@ object InfoExtraSections {
         parent.addInfoSection(kind, bind.root)
     }
 
-    private fun addMalPictures(parent: ViewGroup, pictures: List<MALPicture>) {
-        val covers = pictures.mapNotNull { picture ->
-            val thumb = picture.medium ?: picture.large ?: return@mapNotNull null
-            MangaBakaCover(thumb, picture.large ?: thumb)
-        }.distinctBy { it.thumbUrl }
-        if (covers.isEmpty()) return
-        val bind = ItemTitleRecyclerBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        val title = parent.context.getString(R.string.info_section_pictures)
-        bind.itemTitle.text = title
-        val adapter = MangaBakaCoverAdapter(covers)
-        bind.itemRecycler.adapter = adapter
-        bind.itemRecycler.layoutManager =
-            LinearLayoutManager(parent.context, LinearLayoutManager.HORIZONTAL, false)
-        bind.itemMore.visibility = View.VISIBLE
-        bind.itemMore.setSafeOnClickListener { adapter.showGallery(bind.itemMore, title) }
-        parent.addInfoSection(InfoSectionKind.COVERS, bind.root)
-    }
-
     private fun addMalRelations(parent: ViewGroup, relatedAnime: List<MALRelation>, relatedManga: List<MALRelation>) {
         val context = parent.context
         fun card(relation: MALRelation, isAnime: Boolean): RelationCard {
@@ -121,7 +102,6 @@ object InfoExtraSections {
     fun addMalExtras(
         parent: ViewGroup,
         background: String?,
-        pictures: List<MALPicture>,
         relatedAnime: List<MALRelation>,
         relatedManga: List<MALRelation>,
         serialization: List<MALSerialization> = emptyList(),
@@ -131,7 +111,6 @@ object InfoExtraSections {
             parent, InfoSectionKind.BACKGROUND, context.getString(R.string.info_section_background),
             background.orEmpty(),
         )
-        addMalPictures(parent, pictures)
         addMalRelations(parent, relatedAnime, relatedManga)
         addChips(
             parent, InfoSectionKind.PUBLISHERS, context.getString(R.string.info_section_publishers),

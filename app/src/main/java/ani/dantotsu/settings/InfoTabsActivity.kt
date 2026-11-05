@@ -75,10 +75,7 @@ class InfoTabsActivity : AppCompatActivity() {
         binding.infoTabsBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         binding.infoTabsRecycler.layoutManager = LinearLayoutManager(this)
 
-        val sections = listOf(
-            InfoTabContext.ANILIST_ANIME, InfoTabContext.ANILIST_MANGA, InfoTabContext.ANILIST_NOVEL,
-            InfoTabContext.MANGAUPDATES_MANGA, InfoTabContext.MANGAUPDATES_NOVEL,
-        ).map { it to it.label(this) }
+        val sections = InfoTabContext.displayOrder.map { it to it.label(this) }
         sections.forEach { (context, label) ->
             binding.infoTabsContexts.addTab(
                 binding.infoTabsContexts.newTab()
@@ -252,17 +249,16 @@ private class InfoTabRowAdapter(
             is InfoTabEntry.Builtin -> context.getString(entry.type.labelRes)
             is InfoTabEntry.Custom -> entry.tab.name
         }
-        val note = when {
-            !entry.isFetching -> context.getString(R.string.info_tab_fetch_disabled)
-            entry is InfoTabEntry.Custom -> context.getString(R.string.info_tab_custom_note)
-            else -> null
-        }
-        bind.infoTabText.text = if (note == null) name else buildSpannedString {
+        bind.infoTabCustom.visibility =
+            if (entry is InfoTabEntry.Custom && entry.isFetching) View.VISIBLE else View.GONE
+        bind.infoTabCustom.backgroundTintList =
+            ColorStateList.valueOf(MaterialColors.compositeARGBWithAlpha(primary, 36))
+        bind.infoTabText.text = if (entry.isFetching) name else buildSpannedString {
             append(name)
             val start = length
-            append("  $note")
+            append("  ${context.getString(R.string.info_tab_fetch_disabled)}")
             setSpan(RelativeSizeSpan(0.85f), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            if (!entry.isFetching) setSpan(
+            setSpan(
                 ForegroundColorSpan(context.getThemeColor(androidx.appcompat.R.attr.colorError)),
                 start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )

@@ -21,6 +21,14 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
+/** How one line of a details section uses the section's sources. */
+@Serializable
+data class InfoFieldLine(
+    val mode: InfoSourceMode = InfoSourceMode.MERGE,
+    /** The sources it uses, in order. Null is all of the section's, in the section's order. */
+    val sources: List<String>? = null,
+)
+
 /** One section of a custom tab. More than one source means they are merged. */
 @Serializable
 data class InfoSectionEntry(
@@ -29,9 +37,17 @@ data class InfoSectionEntry(
     val hiddenFields: Set<String> = emptySet(),
     /** The details table's lines, in order. Null keeps the usual order. */
     val fieldOrder: List<String>? = null,
-    /** For merged details: the source that alone fills a line. A line not listed is automatic. */
+    /** Retired for [fieldLines]: the source that alone fills a line. Only still read, from older saves. */
     val fieldSources: Map<String, String> = emptyMap(),
-)
+    /** On details, only what a line not in [fieldLines] starts from. */
+    val mode: InfoSourceMode = InfoSourceMode.MERGE,
+    /** For details with several sources, by line. */
+    val fieldLines: Map<String, InfoFieldLine> = emptyMap(),
+) {
+    /** [fieldLines], with what older saves said about a line in [fieldSources]. */
+    val resolvedLines: Map<String, InfoFieldLine>
+        get() = fieldSources.mapValues { (_, source) -> InfoFieldLine(mode, listOf(source)) } + fieldLines
+}
 
 @Serializable
 data class CustomInfoTab(
@@ -400,6 +416,49 @@ fun InfoTabContext.orderedEntries(): List<InfoTabEntry> {
 
 fun InfoTabContext.visibleEntries(): List<InfoTabEntry> =
     orderedEntries().filter { it.isVisible && it.isFetching }
+
+/**
+ * Everything the tabs on this context's pages are built from: when this changes, a page already
+ * open shows the wrong thing. Settings stacked on top of a media page don't end it, so a page
+ * compares this on coming back rather than only reading the settings when it opens.
+ */
+fun InfoTabContext.layoutSignature(): String = listOf(
+    InfoTabStore.get(this),
+    savedOrder(),
+    savedVisibility(),
+    tabs.map { unavailableReason(it, InfoSectionKind.DETAILS) },
+).toString()
+
+/**
+ * The pager behind a media page's info tabs. [rebuild] replaces every page: FragmentStateAdapter
+ * only drops a fragment once its id is gone, and its default ids are just the positions, which would
+ * leave a tab's old content in place, or under another tab.
+ */
+class InfoTabsPagerAdapter(
+    fragment: Fragment,
+    private val count: () -> Int,
+    private val create: (Int) -> Fragment,
+) : androidx.viewpager2.adapter.FragmentStateAdapter(
+    fragment.childFragmentManager, fragment.viewLifecycleOwner.lifecycle
+) {
+    private var revision = 0L
+
+    override fun getItemCount() = count()
+    override fun createFragment(position: Int) = create(position)
+    override fun getItemId(position: Int) = revision * MAX_TABS + position
+    override fun containsItem(itemId: Long) =
+        itemId / MAX_TABS == revision && itemId % MAX_TABS < count()
+
+    @android.annotation.SuppressLint("NotifyDataSetChanged")
+    fun rebuild() {
+        revision++
+        notifyDataSetChanged()
+    }
+
+    private companion object {
+        const val MAX_TABS = 1000L
+    }
+}
 
 /** Saves the order, in both forms: see [InfoTabStore]. */
 fun InfoTabContext.saveEntryOrder(keys: List<String>) {

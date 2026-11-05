@@ -117,36 +117,37 @@ object MangaBakaMediaRenderer {
         val isOngoing = status in setOf("releasing", "hiatus")
 
         val totalChapters = series.totalChapters?.takeIf { it.isNotBlank() }
+        // A finished series' count is its total; one still going only has a latest so far.
         val totalRow = info.mediaInfoTotal.parent as? ViewGroup
-        if (totalChapters != null && (isFinished || isOngoing)) {
+        if (totalChapters != null && isFinished) {
             totalRow?.visibility = View.VISIBLE
-            info.mediaInfoTotalTitle.setText(if (isFinished) R.string.total_chaps else R.string.latest_chapter)
+            info.mediaInfoTotalTitle.setText(R.string.total_chaps)
             info.mediaInfoTotal.text = totalChapters
         } else {
             totalRow?.visibility = View.GONE
         }
+        setInfoLine(
+            info.mediaInfoLatestChapterContainer, info.mediaInfoLatestChapter,
+            totalChapters?.takeIf { isOngoing },
+        )
 
-        val finalVolume = series.finalVolume?.takeIf { it.isNotBlank() }
-        if (finalVolume != null && (isFinished || isOngoing)) {
-            info.mediaInfoDurationContainer.visibility = View.VISIBLE
-            (info.mediaInfoDurationContainer.getChildAt(0) as? TextView)
-                ?.setText(if (isFinished) R.string.final_volume_label else R.string.latest_volume_label)
-            info.mediaInfoDuration.text = finalVolume
-        } else {
-            info.mediaInfoDurationContainer.visibility = View.GONE
-        }
+        info.mediaInfoDurationContainer.visibility = View.GONE
+        info.mediaInfoVolumesLabel.setText(
+            if (isFinished) R.string.final_volume_label else R.string.latest_volume_label
+        )
+        setInfoLine(
+            info.mediaInfoVolumesContainer, info.mediaInfoVolumes,
+            series.finalVolume?.takeIf { it.isNotBlank() && (isFinished || isOngoing) },
+        )
 
         info.mediaInfoFormatLabel.setText(R.string.format)
         info.mediaInfoFormat.text = formatText(activity, series.type)
 
-        val originName = nativeLangs.firstOrNull()?.let { languageName(it) }
-        if (originName != null) {
-            info.mediaInfoSourceContainer.visibility = View.VISIBLE
-            info.mediaInfoSourceLabel.setText(R.string.origin)
-            info.mediaInfoSource.text = originName
-        } else {
-            info.mediaInfoSourceContainer.visibility = View.GONE
-        }
+        info.mediaInfoSourceContainer.visibility = View.GONE
+        setInfoLine(
+            info.mediaInfoOriginContainer, info.mediaInfoOrigin,
+            nativeLangs.firstOrNull()?.let { languageName(it) },
+        )
 
         val contentRating = series.contentRating?.takeIf { it.isNotBlank() }
         if (contentRating != null) {
@@ -171,16 +172,12 @@ object MangaBakaMediaRenderer {
             if (endFuzzy != null) View.VISIBLE else View.GONE
         info.mediaInfoEnd.text = endFuzzy?.toString() ?: ""
 
-        val rank = series.popularity?.global?.current
-        val popRow = info.mediaInfoPopularity.parent as? ViewGroup
-        if (rank != null && rank > 0) {
-            popRow?.visibility = View.VISIBLE
-            (popRow?.getChildAt(0) as? TextView)?.setText(R.string.rank)
-            info.mediaInfoPopularity.text = "#$rank"
-        } else {
-            popRow?.visibility = View.GONE
-        }
+        (info.mediaInfoPopularity.parent as? ViewGroup)?.visibility = View.GONE
         (info.mediaInfoFavorites.parent as? ViewGroup)?.visibility = View.GONE
+        setInfoLine(
+            info.mediaInfoRankContainer, info.mediaInfoRank,
+            series.popularity?.global?.current?.takeIf { it > 0 }?.let { "#$it" },
+        )
 
         val desc = series.description?.takeIf { it.isNotBlank() }
             ?: activity.getString(R.string.no_description_available)

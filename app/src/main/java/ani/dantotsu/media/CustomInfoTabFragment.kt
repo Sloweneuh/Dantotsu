@@ -1,7 +1,11 @@
 package ani.dantotsu.media
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ImageSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,6 +13,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
@@ -100,7 +105,7 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             val kind = InfoSectionKind.forKey(entry.kind) ?: return@mapNotNull null
             val enabled = entry.sources.filter { key ->
                 val source = InfoTabType.forKey(key)
-                source != null && source in tabContext.tabs &&
+                source != null && source in tabContext.tabs && kind in tabContext.sectionsOf(source) &&
                         tabContext.unavailableReason(source, kind) == null
             }
             if (enabled.isEmpty()) null else entry.copy(sources = enabled) to kind
@@ -140,11 +145,17 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             if (free.isEmpty()) return@forEach
             val slot: Slot = when {
                 free.size == 1 -> StackSlot(kind, free, withCaption = showSources && mixed)
+                kind.merge == InfoSectionMerge.FIELDS -> FieldLinesSlot(entry, free, showSources)
+                entry.mode == InfoSourceMode.FALLBACK ->
+                    FallbackSlot(kind, free, withCaption = showSources && mixed)
+
+                entry.mode == InfoSourceMode.LIST -> StackSlot(kind, free, withCaption = showSources)
                 kind.merge == InfoSectionMerge.MEDIA -> MediaSlot(kind, free, showSources)
                 kind.merge == InfoSectionMerge.CHIPS -> ChipSlot(kind, free, showSources)
-                kind.merge == InfoSectionMerge.FIELDS -> FieldSlot(entry, free, showSources)
                 kind.merge == InfoSectionMerge.ROW -> RowSlot(kind, free, showSources)
-                else -> StackSlot(kind, free, withCaption = true)
+                kind.merge == InfoSectionMerge.LIST -> RowSlot(kind, free, showSources, vertical = true)
+                kind.merge == InfoSectionMerge.LINES -> LinesSlot(free, showSources)
+                else -> StackSlot(kind, free, withCaption = showSources)
             }
             binding.customInfoContent.addView(slot.root)
             free.forEach { built[it to kind] = slot }
@@ -223,6 +234,10 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         onContentArrived()
     }
 
+    override fun sourceRendered(source: InfoTabType) {
+        slots.values.distinct().forEach { it.sourceRendered(source) }
+    }
+
     /** A source picked in [ChipSearchSheet]. */
     internal fun runChipSearch(kindKey: String, name: String, sourceKey: String) {
         val kind = InfoSectionKind.forKey(kindKey) ?: return
@@ -254,26 +269,103 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         )
     }
 
+    /**
+     * Starts this text with the logos of who it came from. Inline, so they stay with the text wherever
+     * the view puts it.
+     */
+    private fun TextView.addSourceIcons(icons: List<Int>, names: List<String>) {
+        if ((text as? Spanned)?.getSpans(0, text.length, ImageSpan::class.java)?.isNotEmpty() == true) return
+        val size = textSize.toInt()
+        val align = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ImageSpan.ALIGN_CENTER
+        else ImageSpan.ALIGN_BASELINE
+        val plain = text
+        text = SpannableStringBuilder().apply {
+            icons.forEach { res ->
+                val icon = ContextCompat.getDrawable(context, res)?.mutate() ?: return@forEach
+                icon.setBounds(0, 0, size, size)
+                icon.setTint(currentTextColor)
+                val start = length
+                append("￼")
+                setSpan(ImageSpan(icon, align), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                append(" ")
+            }
+            append(plain)
+        }
+        contentDescription = (listOf(plain.toString()).filter { it.isNotEmpty() } + names).joinToString(" · ")
+    }
+
+    private fun TextView.addSourceIcons(sources: List<InfoTabType>) =
+        addSourceIcons(sources.map { it.iconRes }, sources.map { getString(it.labelRes) })
+
+    /** The sources of a section with no title of its own to put them beside. */
     private fun caption(parent: ViewGroup, sources: List<InfoTabType>): View {
         val bind = ItemInfoSectionSourceBinding.inflate(layoutInflater, parent, false)
-        val single = sources.singleOrNull()
-        bind.infoSectionSourceIcon.isVisible = single != null
-        single?.let { bind.infoSectionSourceIcon.setImageResource(it.iconRes) }
-        bind.infoSectionSourceName.text = sources.joinToString(" · ") { getString(it.labelRes) }
+        bind.infoSectionSourceIcon.isVisible = false
+        bind.infoSectionSourceName.addSourceIcons(sources)
         return bind.root
     }
 
+    /** The logo for a section with no title, or the name of a provider that has no logo here. */
     private fun providerCaption(parent: ViewGroup, kind: InfoSectionKind, source: InfoTabType): View {
         val bind = ItemInfoSectionSourceBinding.inflate(layoutInflater, parent, false)
         val icon = kind.providerIconRes(tabContext, source)
         bind.infoSectionSourceIcon.isVisible = icon != null
         icon?.let { bind.infoSectionSourceIcon.setImageResource(it) }
+        bind.infoSectionSourceIcon.contentDescription = getString(kind.providerLabelRes(tabContext, source))
+        bind.infoSectionSourceName.isVisible = icon == null
         bind.infoSectionSourceName.setText(kind.providerLabelRes(tabContext, source))
         return bind.root
     }
 
     /** An empty view group is a renderer's slot still waiting for its request to come back. */
     private fun isPendingSlot(view: View) = view is ViewGroup && view.childCount == 0
+
+    private fun findRecycler(view: View): RecyclerView? = when (view) {
+        is RecyclerView -> view
+        is ViewGroup -> (0 until view.childCount)
+            .firstNotNullOfOrNull { findRecycler(view.getChildAt(it)) }
+
+        else -> null
+    }
+
+    private fun sectionTitle(view: View): TextView? =
+        listOf(R.id.itemTitle, R.id.tagsTitle, R.id.mediaInfoDescriptionText, R.id.genreSectionTitle)
+            .firstNotNullOfOrNull { view.findViewById<TextView?>(it) }
+            ?.takeIf { it.isVisible }
+
+    /**
+     * With a [providerCaption] as [holder]'s first child: moves its logo beside the section's own
+     * title once there is one, or onto each line of the details and titles, which have no title. The
+     * caption is left only for a section with neither.
+     */
+    private fun placeProviderIcon(holder: LinearLayout, kind: InfoSectionKind, source: InfoTabType) {
+        val icon = kind.providerIconRes(tabContext, source) ?: return
+        val caption = holder.getChildAt(0) ?: return
+        val sections = (1 until holder.childCount).map { holder.getChildAt(it) }
+        val title = sections.firstNotNullOfOrNull { sectionTitle(it) }
+        val lines = sections.filter { it.id == R.id.mediaInfoNames || it.id == R.id.mediaInfoTable }
+            .filterIsInstance<ViewGroup>()
+            .flatMap { lines -> (0 until lines.childCount).mapNotNull { lines.getChildAt(it) as? ViewGroup } }
+        caption.isVisible = title == null && lines.isEmpty()
+        val names = listOf(getString(kind.providerLabelRes(tabContext, source)))
+        title?.addSourceIcons(listOf(icon), names)
+        lines.forEach { (it.getChildAt(0) as? TextView)?.addSourceIcons(listOf(icon), names) }
+    }
+
+    private fun isUnknownValue(value: String) = value.isEmpty() || value == "~" || value == "??" ||
+            value == getString(R.string.unknown_value)
+
+    /** Whether a drawn section says anything, as sources also draw some with nothing in them. */
+    private fun hasContent(view: View): Boolean = when {
+        isPendingSlot(view) -> false
+        view.id == R.id.mediaInfoDescriptionSection -> {
+            val text = view.findViewById<TextView>(R.id.mediaInfoDescription)?.text?.toString()?.trim().orEmpty()
+            text.isNotEmpty() && text != "null" && text != getString(R.string.no_description_available)
+        }
+
+        // AniList's reviews say "no reviews" over an empty list.
+        else -> findRecycler(view)?.adapter?.let { it.itemCount > 0 } ?: true
+    }
 
     private abstract inner class Slot {
         val root = newColumn().apply { visibility = View.GONE }
@@ -285,11 +377,13 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
 
         abstract fun publish(source: InfoTabType, view: View)
         open fun retract(source: InfoTabType, view: View) {}
+        open fun sourceRendered(source: InfoTabType) {}
     }
+
 
     /** Sections shown as they are, in source order; also what merging means for most kinds. */
     private inner class StackSlot(
-        kind: InfoSectionKind,
+        private val kind: InfoSectionKind,
         sources: List<InfoTabType>,
         private val withCaption: Boolean,
     ) : Slot() {
@@ -301,10 +395,11 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             }
         }
 
-        private fun refresh(holder: LinearLayout) {
+        private fun refresh(source: InfoTabType, holder: LinearLayout) {
             val first = if (withCaption) 1 else 0
             val hasContent = (first until holder.childCount).any { !isPendingSlot(holder.getChildAt(it)) }
             holder.isVisible = hasContent
+            if (withCaption) placeProviderIcon(holder, kind, source)
             if (hasContent) reveal()
         }
 
@@ -314,18 +409,230 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             if (isPendingSlot(view)) {
                 (view as ViewGroup).setOnHierarchyChangeListener(
                     object : ViewGroup.OnHierarchyChangeListener {
-                        override fun onChildViewAdded(parent: View?, child: View?) = refresh(holder)
-                        override fun onChildViewRemoved(parent: View?, child: View?) = refresh(holder)
+                        override fun onChildViewAdded(parent: View?, child: View?) = refresh(source, holder)
+                        override fun onChildViewRemoved(parent: View?, child: View?) = refresh(source, holder)
                     }
                 )
             }
-            refresh(holder)
+            refresh(source, holder)
         }
 
         override fun retract(source: InfoTabType, view: View) {
             val holder = holders[source] ?: return
             holder.removeView(view)
-            refresh(holder)
+            refresh(source, holder)
+        }
+    }
+
+    /**
+     * The first source in order that has something to show. Every source's section is kept here, as
+     * its fragment may still fill it in, and only the one that counts is visible.
+     *
+     * No source says when it has given up, so a source that is next in line waits for those before
+     * it only as long as they haven't finished drawing, or until [FALLBACK_WAIT_MILLIS] is up. One
+     * that answers even later still takes its place back.
+     */
+    private inner class FallbackSlot(
+        private val kind: InfoSectionKind,
+        private val sources: List<InfoTabType>,
+        private val withCaption: Boolean,
+    ) : Slot() {
+        private val rendered = HashSet<InfoTabType>()
+        private var waitOver = false
+        private val holders = sources.associateWith { source ->
+            newColumn().also { holder ->
+                holder.visibility = View.GONE
+                if (withCaption) holder.addView(providerCaption(holder, kind, source))
+                root.addView(holder)
+            }
+        }
+
+        init {
+            viewLifecycleOwner.lifecycleScope.launch {
+                delay(FALLBACK_WAIT_MILLIS)
+                waitOver = true
+                update()
+            }
+        }
+
+        private fun sections(holder: LinearLayout): List<View> =
+            (if (withCaption) 1 else 0).until(holder.childCount).map { holder.getChildAt(it) }
+
+        private fun has(source: InfoTabType) = holders[source]?.let { holder ->
+            sections(holder).any { hasContent(it) }
+        } == true
+
+        /** Finished drawing, and none of what it drew is still waiting for a request. */
+        private fun settled(source: InfoTabType) = source in rendered &&
+                holders[source]?.let { holder -> sections(holder).none { isPendingSlot(it) } } == true
+
+        private fun update() {
+            val first = sources.firstOrNull { has(it) }
+            val shown = first?.takeIf { winner ->
+                waitOver || sources.takeWhile { it != winner }.all { settled(it) }
+            }
+            holders.forEach { (source, holder) -> holder.isVisible = source == shown }
+            if (withCaption && shown != null) holders[shown]?.let { placeProviderIcon(it, kind, shown) }
+            root.isVisible = shown != null
+            if (shown != null) reveal()
+        }
+
+        override fun sourceRendered(source: InfoTabType) {
+            rendered.add(source)
+            update()
+        }
+
+        override fun publish(source: InfoTabType, view: View) {
+            val holder = holders[source] ?: return
+            holder.addView(view)
+            if (isPendingSlot(view)) {
+                (view as ViewGroup).setOnHierarchyChangeListener(
+                    object : ViewGroup.OnHierarchyChangeListener {
+                        override fun onChildViewAdded(parent: View?, child: View?) = update()
+                        override fun onChildViewRemoved(parent: View?, child: View?) = update()
+                    }
+                )
+            }
+            update()
+        }
+
+        override fun retract(source: InfoTabType, view: View) {
+            holders[source]?.removeView(view)
+            update()
+        }
+    }
+
+    /**
+     * One details table from several sources, each line using them its own way: each different value
+     * once, the first source with a value (waiting on those before it, as in [FallbackSlot]), or
+     * every source's value. When the tab shows its sources, each line wears its source's icon.
+     */
+    private inner class FieldLinesSlot(
+        private val entry: InfoSectionEntry,
+        private val sources: List<InfoTabType>,
+        private val showSources: Boolean,
+    ) : Slot() {
+        private val lineOrder = orderedInfoFields(entry.fieldOrder).map { it.key }
+        private val lines = entry.resolvedLines
+
+        // Not a TableLayout: its aligned columns let one long label squeeze every value below it,
+        // and an icon on a line makes for longer labels.
+        private val table = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32f.px, 16f.px, 32f.px, 16f.px)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        private val rows = HashMap<InfoTabType, HashMap<String, InfoFieldRow>>()
+        private val rendered = HashSet<InfoTabType>()
+        private var waitOver = false
+
+        init {
+            root.addView(table)
+            viewLifecycleOwner.lifecycleScope.launch {
+                delay(FALLBACK_WAIT_MILLIS)
+                waitOver = true
+                update()
+            }
+        }
+
+        private fun orderOf(line: String): List<InfoTabType> =
+            lines[line]?.sources?.mapNotNull { InfoTabType.forKey(it) }?.filter { it in sources }
+                ?.takeIf { it.isNotEmpty() } ?: sources
+
+        private fun valueOf(row: InfoFieldRow) =
+            (row.getChildAt(1) as? TextView)?.text?.toString()?.trim().orEmpty()
+
+        /**
+         * Two values with the same key say the same thing, whichever way a source writes it:
+         * "24 mins" and "24 min per ep", or "Aki Hagiu" and "HAGIU Aki".
+         */
+        private fun sameValueKey(line: String, value: String): String =
+            if (line == InfoField.DURATION.key) value.filter { it.isDigit() }
+            else value.lowercase().split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotEmpty() }
+                .sorted().joinToString(" ")
+
+        /** What [line] shows right now, each row with the source it came from. */
+        private fun picked(line: String): List<Pair<InfoTabType, InfoFieldRow>> {
+            val order = orderOf(line)
+            val filled = order.mapNotNull { source ->
+                rows[source]?.get(line)
+                    ?.takeIf { it.visibility == View.VISIBLE && !isUnknownValue(valueOf(it)) }
+                    ?.let { source to it }
+            }
+            return when (lines[line]?.mode ?: entry.mode) {
+                InfoSourceMode.MERGE -> filled.distinctBy { (_, row) -> sameValueKey(line, valueOf(row)) }
+                InfoSourceMode.LIST -> filled
+                InfoSourceMode.FALLBACK -> listOfNotNull(filled.firstOrNull()?.takeIf { (first, _) ->
+                    waitOver || order.takeWhile { it != first }.all { it in rendered }
+                })
+            }
+        }
+
+        private fun update() {
+            val shown = lineOrder.flatMap { line ->
+                picked(line).map { (source, row) ->
+                    if (showSources) (row.getChildAt(0) as? TextView)?.addSourceIcons(listOf(source))
+                    row
+                }
+            }
+            table.removeAllViews()
+            shown.forEach { table.addView(it) }
+            if (shown.isNotEmpty()) reveal()
+        }
+
+        override fun sourceRendered(source: InfoTabType) {
+            rendered.add(source)
+            update()
+        }
+
+        override fun publish(source: InfoTabType, view: View) {
+            val from = view as? ViewGroup ?: return
+            val found = (0 until from.childCount).mapNotNull { from.getChildAt(it) as? InfoFieldRow }
+            found.forEach { row ->
+                from.removeView(row)
+                (row.tag as? String)?.let { line -> rows.getOrPut(source) { HashMap() }[line] = row }
+            }
+            update()
+        }
+    }
+
+    /** One column of title lines, each once. When the tab shows its sources, each wears its icon. */
+    private inner class LinesSlot(
+        private val sources: List<InfoTabType>,
+        private val showSources: Boolean,
+    ) : Slot() {
+        private inner class Line(val source: InfoTabType, val label: String, val value: String)
+
+        private val lines = ArrayList<Line>()
+        private val column = newColumn().apply {
+            setPadding(32f.px, 0, 32f.px, 16f.px)
+        }
+
+        init {
+            root.addView(column)
+        }
+
+        override fun publish(source: InfoTabType, view: View) {
+            val from = view as? ViewGroup ?: return
+            (0 until from.childCount).mapNotNull { from.getChildAt(it) as? ViewGroup }.forEach { row ->
+                if (row.visibility != View.VISIBLE) return@forEach
+                val label = (row.getChildAt(0) as? TextView)?.text?.toString().orEmpty()
+                val value = (row.getChildAt(1) as? TextView)?.text?.toString()?.trim().orEmpty()
+                if (isUnknownValue(value)) return@forEach
+                if (lines.any { it.value.equals(value, ignoreCase = true) }) return@forEach
+                from.removeView(row)
+                val line = Line(source, label, value)
+                lines.add(line)
+                if (showSources) (row.getChildAt(0) as? TextView)?.addSourceIcons(listOf(source))
+                // Each label together, in source order within it.
+                val sorted = lines.sortedWith(
+                    compareBy({ l -> lines.indexOfFirst { it.label == l.label } }, { sources.indexOf(it.source) })
+                )
+                column.addView(row, sorted.indexOf(line))
+            }
+            if (lines.isNotEmpty()) reveal()
         }
     }
 
@@ -342,8 +649,8 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         private val adapter = MediaAdaptor(0, merged, requireActivity(), currentMedia = current)
 
         init {
-            if (showSources) root.addView(caption(root, sources))
             bind.itemTitle.setText(kind.labelRes)
+            if (showSources) bind.itemTitle.addSourceIcons(sources)
             bind.itemRecycler.adapter = adapter
             bind.itemRecycler.layoutManager =
                 LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
@@ -496,8 +803,11 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         }
 
         init {
-            if (showSources) root.addView(caption(root, sources))
             bind.tagsTitle.text = kind.label(requireContext(), sources.singleOrNull())
+            if (showSources) {
+                bind.tagsTitle.addSourceIcons(sources)
+                moveActionsBelowTitle()
+            }
             bind.tagsFilterButton.isVisible = false
             ChipSections.spoilerToggle(bind.tagsSpoilerAction) { showing ->
                 spoilersShown = showing
@@ -512,6 +822,23 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
                     render()
                 }
             }
+        }
+
+        /** The source icons need the title's row to themselves, or they push the title onto a second line. */
+        private fun moveActionsBelowTitle() {
+            val header = bind.tagsTitle.parent as? LinearLayout ?: return
+            val parent = header.parent as? ViewGroup ?: return
+            val actions = LinearLayout(requireContext()).apply {
+                gravity = android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { setMargins(32f.px, 0, 26f.px, 0) }
+            }
+            listOf(bind.tagsSpoilerAction, bind.tagsFilterButton).forEach { action ->
+                header.removeView(action)
+                actions.addView(action)
+            }
+            parent.addView(actions, parent.indexOfChild(header) + 1)
         }
 
         private fun add(source: InfoTabType, item: InfoChip) {
@@ -622,6 +949,7 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         kind: InfoSectionKind,
         private val sources: List<InfoTabType>,
         showSources: Boolean,
+        private val vertical: Boolean = false,
     ) : Slot() {
         private val bind = ItemTitleRecyclerBinding.inflate(layoutInflater, root, false)
         private val row = ConcatAdapter(ConcatAdapter.Config.Builder().setIsolateViewTypes(true).build())
@@ -629,11 +957,14 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         private val more = LinkedHashMap<InfoTabType, View>()
 
         init {
-            if (showSources) root.addView(caption(root, sources))
             bind.itemTitle.text = kind.label(requireContext(), null)
+            if (showSources) bind.itemTitle.addSourceIcons(sources)
             bind.itemRecycler.adapter = row
-            bind.itemRecycler.layoutManager =
-                LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+            bind.itemRecycler.layoutManager = LinearLayoutManager(
+                requireContext(),
+                if (vertical) LinearLayoutManager.VERTICAL else LinearLayoutManager.HORIZONTAL,
+                false,
+            )
             bind.itemMore.setSafeOnClickListener { openMore() }
             root.addView(bind.root)
         }
@@ -651,22 +982,17 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
                 .show()
         }
 
-        private fun findRecycler(view: View): RecyclerView? = when (view) {
-            is RecyclerView -> view
-            is ViewGroup -> (0 until view.childCount)
-                .firstNotNullOfOrNull { findRecycler(view.getChildAt(it)) }
-
-            else -> null
-        }
-
         private fun take(source: InfoTabType, view: View) {
             val recycler = findRecycler(view)
             val taken = recycler?.adapter
             if (taken != null) {
                 recycler.adapter = null
+                // Cards added ahead of what's showing would leave the row opened part way along.
+                val atStart = !bind.itemRecycler.canScrollHorizontally(-1)
                 placed.remove(source)?.let { row.removeAdapter(it) }
                 row.addAdapter(sources.takeWhile { it != source }.count { it in placed }, taken)
                 placed[source] = taken
+                if (atStart) bind.itemRecycler.scrollToPosition(0)
             }
             view.findViewById<View>(R.id.itemMore)?.takeIf { it.isVisible }?.let {
                 more[source] = it
@@ -679,7 +1005,9 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
                 bind.itemAdd.isVisible = true
                 bind.itemAdd.setSafeOnClickListener { add.performClick() }
             }
-            if (taken != null || add != null) reveal()
+            // A list with no entries is a source saying it has none: AniList's reviews, for one.
+            val hasEntries = taken != null && (!vertical || taken.itemCount > 0)
+            if (hasEntries || add != null) reveal()
         }
 
         override fun publish(source: InfoTabType, view: View) {
@@ -691,78 +1019,18 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
 
                     override fun onChildViewRemoved(parent: View?, child: View?) {}
                 }
-            ) else take(source, view)
-        }
-
-        override fun retract(source: InfoTabType, view: View) {
-            placed.remove(source)?.let { row.removeAdapter(it) }
-            more.remove(source)
-            bind.itemMore.isVisible = more.isNotEmpty()
-        }
-    }
-
-    /** One stats table: each field once, or once per source where they give different values. */
-    private inner class FieldSlot(
-        private val entry: InfoSectionEntry,
-        private val sources: List<InfoTabType>,
-        showSources: Boolean,
-    ) : Slot() {
-        private val lineOrder = orderedInfoFields(entry.fieldOrder).map { it.key }
-
-        // Not a TableLayout: its aligned columns let one long label squeeze every value below it,
-        // and labelling a line with its source makes for long labels.
-        private val table = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            val side = 32f.px
-            val vertical = 16f.px
-            setPadding(side, vertical, side, vertical)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        }
-
-        private inner class Field(val row: InfoFieldRow, val source: InfoTabType, val value: String) {
-            val rank = lineOrder.indexOf(row.tag)
-            val order = sources.indexOf(source)
-            var labelled = false
-
-            fun label() {
-                if (labelled) return
-                labelled = true
-                (row.getChildAt(0) as? TextView)?.let { it.text = "${it.text} · ${getString(source.labelRes)}" }
+            ) else if (findRecycler(view) != null) take(source, view) else {
+                // Not cards at all (MangaUpdates' relations are chips), so it goes under the row.
+                root.addView(view)
+                reveal()
             }
         }
 
-        private val fields = ArrayList<Field>()
-
-        init {
-            if (showSources) root.addView(caption(root, sources))
-            root.addView(table)
-        }
-
-        override fun publish(source: InfoTabType, view: View) {
-            val from = view as? ViewGroup ?: return
-            (0 until from.childCount).mapNotNull { from.getChildAt(it) as? InfoFieldRow }
-                .forEach { row ->
-                    if (row.visibility != View.VISIBLE) return@forEach
-                    // A line given to one source is that source's alone, even if it has no value.
-                    val chosen = entry.fieldSources[row.tag]?.takeIf { key -> sources.any { it.key == key } }
-                    if (chosen != null && chosen != source.key) return@forEach
-                    val value = (row.getChildAt(1) as? TextView)?.text?.toString()?.trim().orEmpty()
-                    // Unknown is no answer at all, so it can't disagree with one.
-                    if (value.isEmpty() || value == "~" || value == "??" ||
-                        value == getString(R.string.unknown_value)
-                    ) return@forEach
-                    val same = fields.filter { it.row.tag == row.tag }
-                    if (same.any { it.value.equals(value, ignoreCase = true) }) return@forEach
-                    from.removeView(row)
-                    val field = Field(row, source, value)
-                    fields.add(field)
-                    if (same.isNotEmpty()) (same + field).forEach { it.label() }
-                    val sorted = fields.sortedWith(compareBy({ it.rank }, { it.order }))
-                    table.addView(row, sorted.indexOf(field))
-                }
-            if (fields.isNotEmpty()) reveal()
+        override fun retract(source: InfoTabType, view: View) {
+            root.removeView(view)
+            placed.remove(source)?.let { row.removeAdapter(it) }
+            more.remove(source)
+            bind.itemMore.isVisible = more.isNotEmpty()
         }
     }
 
@@ -770,6 +1038,7 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         private const val ARG_CONTEXT = "context"
         private const val ARG_TAB = "tab"
         private const val EMPTY_AFTER_MILLIS = 12_000L
+        private const val FALLBACK_WAIT_MILLIS = 2_500L
         private const val SOURCE_TAG_PREFIX = "source_"
 
         fun newInstance(context: InfoTabContext, tabId: String) = CustomInfoTabFragment().apply {

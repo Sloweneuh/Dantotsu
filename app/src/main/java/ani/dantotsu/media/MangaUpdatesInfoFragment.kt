@@ -507,11 +507,15 @@ class MangaUpdatesInfoFragment : Fragment() {
             parsedStatus.status?.toString() ?: getString(R.string.unknown)
 
         // Total chapters — or volumes, which is how two in five series are actually counted.
-        binding.mediaInfoTotalTitle.setText(
-            if (parsedStatus.unit == MuStatusText.Unit.VOLUMES) ani.dantotsu.R.string.total_vols
-            else ani.dantotsu.R.string.total_chaps
-        )
+        val inVolumes = parsedStatus.unit == MuStatusText.Unit.VOLUMES
+        (binding.mediaInfoTotal.parent as? ViewGroup)?.visibility = if (inVolumes) View.GONE else View.VISIBLE
+        binding.mediaInfoTotalTitle.setText(ani.dantotsu.R.string.total_chaps)
         binding.mediaInfoTotal.text = parsedStatus.count?.toString() ?: "~"
+        binding.mediaInfoVolumesLabel.setText(ani.dantotsu.R.string.total_vols)
+        setInfoLine(
+            binding.mediaInfoVolumesContainer, binding.mediaInfoVolumes,
+            parsedStatus.count?.takeIf { inVolumes }?.toString(),
+        )
 
         // Format/Type
         binding.mediaInfoFormat.text = series.type ?: getString(R.string.manga)
@@ -540,31 +544,14 @@ class MangaUpdatesInfoFragment : Fragment() {
         binding.mediaInfoPopularity.visibility = View.GONE
         (binding.mediaInfoPopularity.parent as? ViewGroup)?.visibility = View.GONE
 
-        // Favorites -> use for Followers count
-        // Change the label from "Favourites" to "Followers"
-        val favoritesRow = binding.mediaInfoFavorites.parent as? ViewGroup
-        favoritesRow?.let { row ->
-            for (i in 0 until row.childCount) {
-                val child = row.getChildAt(i)
-                if (child is android.widget.TextView && child.id != binding.mediaInfoFavorites.id) {
-                    child.text = getString(ani.dantotsu.R.string.followers)
-                    break
-                }
-            }
-        }
-
-        series.rank?.lists?.let { lists ->
-            val followers =
-                    (lists.reading
-                            ?: 0) +
-                            (lists.wish ?: 0) +
-                            (lists.complete ?: 0) +
-                            (lists.unfinished ?: 0) +
-                            (lists.custom ?: 0)
-            binding.mediaInfoFavorites.text =
-                    if (followers > 0) followers.toString() else getString(R.string.question_marks)
-        }
-                ?: run { binding.mediaInfoFavorites.text = getString(R.string.question_marks) }
+        (binding.mediaInfoFavorites.parent as? ViewGroup)?.visibility = View.GONE
+        setInfoLine(
+            binding.mediaInfoFollowersContainer, binding.mediaInfoFollowers,
+            series.rank?.lists?.let { lists ->
+                ((lists.reading ?: 0) + (lists.wish ?: 0) + (lists.complete ?: 0) +
+                        (lists.unfinished ?: 0) + (lists.custom ?: 0)).takeIf { it > 0 }?.toString()
+            } ?: getString(R.string.question_marks),
+        )
 
         // Description — render the full synopsis as Markdown
         val fullDesc =

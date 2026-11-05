@@ -894,8 +894,7 @@ class ComickInfoFragment : Fragment() {
                     animeProfile?.anime_type?.takeIf { it.isNotBlank() }
                             ?: getString(R.string.unknown)
 
-            // Source keeps its own meaning here: what the adaptation is based on.
-            binding.mediaInfoSourceLabel.text = getString(R.string.source)
+            // What the adaptation is based on.
             binding.mediaInfoSource.text =
                     animeProfile?.source?.takeIf { it.isNotBlank() }
                             ?: getString(R.string.unknown)
@@ -909,30 +908,26 @@ class ComickInfoFragment : Fragment() {
                         getString(R.string.comick_status_ongoing)
                     }
 
-            // Change Format label to Demographic
-            binding.mediaInfoFormatLabel.text = getString(R.string.demographic)
+            setInfoLine(
+                binding.mediaInfoDemographicContainer, binding.mediaInfoDemographic,
+                when (comic.demographic) {
+                    1 -> getString(R.string.shounen)
+                    2 -> getString(R.string.shoujo)
+                    3 -> getString(R.string.seinen)
+                    4 -> getString(R.string.josei)
+                    else -> getString(R.string.unknown)
+                },
+            )
 
-            // Demographic
+            // Format - by country of origin (Manga/Manhwa/Manhua)
             binding.mediaInfoFormat.text =
-                    when (comic.demographic) {
-                        1 -> getString(R.string.shounen)
-                        2 -> getString(R.string.shoujo)
-                        3 -> getString(R.string.seinen)
-                        4 -> getString(R.string.josei)
-                        else -> getString(R.string.unknown)
-                    }
-
-            // Change Source label to Format
-            binding.mediaInfoSourceLabel.text = getString(R.string.format)
-
-            // Source/Format - Country of origin (Manga/Manhwa/Manhua)
-            binding.mediaInfoSource.text =
                     when (comic.country?.lowercase()) {
                         "jp" -> getString(R.string.manga)
                         "kr" -> getString(R.string.manhwa)
                         "cn" -> getString(R.string.manhua)
                         else -> comic.country?.uppercase() ?: getString(R.string.unknown)
                     }
+            binding.mediaInfoSourceContainer.visibility = View.GONE
         }
 
         // Content Rating (safe / suggestive / erotica / pornographic)
@@ -977,31 +972,16 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
-        // Change Popularity label to Followers
-        binding.mediaInfoPopularity.parent?.let { tableRow ->
-            if (tableRow is ViewGroup && tableRow.childCount > 0) {
-                val label = tableRow.getChildAt(0)
-                if (label is android.widget.TextView) {
-                    label.text = getString(R.string.followers)
-                }
-            }
-        }
-        // Followers (user_follow_count)
-        binding.mediaInfoPopularity.text =
-                comic.user_follow_count?.toString() ?: getString(R.string.unknown_value)
-
-        // Change Favorites label to Ranking
-        binding.mediaInfoFavorites.parent?.let { tableRow ->
-            if (tableRow is ViewGroup && tableRow.childCount > 0) {
-                val label = tableRow.getChildAt(0)
-                if (label is android.widget.TextView) {
-                    label.text = getString(R.string.ranking)
-                }
-            }
-        }
-        // Ranking (follow_rank)
-        binding.mediaInfoFavorites.text =
-                "#${comic.follow_rank ?: getString(R.string.unknown_value)}"
+        binding.mediaInfoPopularity.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
+        binding.mediaInfoFavorites.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
+        setInfoLine(
+            binding.mediaInfoFollowersContainer, binding.mediaInfoFollowers,
+            comic.user_follow_count?.toString() ?: getString(R.string.unknown_value),
+        )
+        setInfoLine(
+            binding.mediaInfoRankContainer, binding.mediaInfoRank,
+            "#${comic.follow_rank ?: getString(R.string.unknown_value)}",
+        )
 
         // Check if we should hide Latest Chapter (when completed and latest >= final)
         val finalChapterStr = comic.final_chapter
@@ -1052,50 +1032,25 @@ class ComickInfoFragment : Fragment() {
                 binding.mediaInfoDurationContainer.visibility = View.GONE
             }
         } else {
-            // Restore the chapter number in the stats table row
-            if (shouldHideLatestChapter) {
-                binding.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
-            } else {
-                binding.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.VISIBLE }
-                binding.mediaInfoTotalTitle.setText(R.string.latest_chapter)
-                binding.mediaInfoTotal.text = lastChapter?.let {
+            binding.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
+            setInfoLine(
+                binding.mediaInfoLatestChapterContainer, binding.mediaInfoLatestChapter,
+                if (shouldHideLatestChapter) null else lastChapter?.let {
                     if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
-                } ?: getString(R.string.unknown_value)
-            }
+                } ?: getString(R.string.unknown_value),
+            )
 
-
-            // Final Chapter (using duration container)
             val finalVolume = comic.final_volume
-            if (finalChapterStr != null || finalVolume != null) {
-                binding.mediaInfoDurationContainer.visibility = View.VISIBLE
-
-                // Change the label to "Final Chapter"
-                binding.mediaInfoDurationContainer.let { container ->
-                    if (container.childCount > 0) {
-                        val label = container.getChildAt(0)
-                        if (label is android.widget.TextView) {
-                            label.text = getString(ani.dantotsu.R.string.final_chapter)
-                        }
-                    }
-                }
-
-                // Format the text based on what's available
-                binding.mediaInfoDuration.text =
-                        when {
-                            finalVolume != null && finalChapterStr != null ->
-                                    getString(
-                                            R.string.volume_chapter_format,
-                                            finalVolume,
-                                            finalChapterStr
-                                    )
-                            finalChapterStr != null ->
-                                    getString(R.string.chapter_format, finalChapterStr)
-                            finalVolume != null -> getString(R.string.volume_format, finalVolume)
-                            else -> getString(R.string.unknown_value)
-                        }
-            } else {
-                binding.mediaInfoDurationContainer.visibility = View.GONE
-            }
+            setInfoLine(
+                binding.mediaInfoFinalChapterContainer, binding.mediaInfoFinalChapter,
+                when {
+                    finalVolume != null && finalChapterStr != null ->
+                        getString(R.string.volume_chapter_format, finalVolume, finalChapterStr)
+                    finalChapterStr != null -> getString(R.string.chapter_format, finalChapterStr)
+                    finalVolume != null -> getString(R.string.volume_format, finalVolume)
+                    else -> null
+                },
+            )
         }
 
         // Description

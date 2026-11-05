@@ -71,16 +71,18 @@
                     android:text="@string/info_tab_merged"
                     android:textColor="?attr/colorPrimary"
                     android:textSize="11sp" />
-
-                <TextView
-                    android:id="@+id/infoSectionSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    tools:text="3 hidden" />
             </LinearLayout>
+
+            <!-- On its own line: the icons can take the whole width of the row above. -->
+            <TextView
+                android:id="@+id/infoSectionSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="@font/poppins"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                tools:text="3 hidden" />
         </LinearLayout>
 
         <ImageButton

@@ -22,6 +22,25 @@ enum class InfoSectionMerge {
 
     /** One scrolling row holding each source's own cards, for items only their source can open. */
     ROW,
+
+    /** Like [ROW], for full-width items: one list down the page. */
+    LIST,
+
+    /** One column of label and value lines; a value is repeated only where the sources disagree. */
+    LINES,
+}
+
+/** What a custom tab's section does with several sources. */
+@kotlinx.serialization.Serializable
+enum class InfoSourceMode {
+    /** Combined as far as the section's [InfoSectionMerge] allows, otherwise as [LIST]. */
+    MERGE,
+
+    /** One after the other, each labelled with its source. */
+    LIST,
+
+    /** Only the first source in order that has something to show. */
+    FALLBACK,
 }
 
 /**
@@ -35,7 +54,7 @@ enum class InfoSectionKind(
 ) {
     COUNTDOWN("countdown", R.string.info_section_countdown),
     DETAILS("details", R.string.info_section_details, InfoSectionMerge.FIELDS),
-    TITLES("titles", R.string.info_section_titles),
+    TITLES("titles", R.string.info_section_titles, InfoSectionMerge.LINES),
     DESCRIPTION("description", R.string.description),
     DETAILED_STATUS("detailed_status", R.string.info_section_detailed_status),
     BACKGROUND("background", R.string.info_section_background),
@@ -46,7 +65,7 @@ enum class InfoSectionKind(
     SOCIAL("social", R.string.info_section_social),
     EPISODES("episodes", R.string.eps),
     LATEST_CHAPTER("latest_chapter", R.string.latest_chapter),
-    COVERS("covers", R.string.covers),
+    COVERS("covers", R.string.covers, InfoSectionMerge.ROW),
     ANIME_ADAPTATION("anime_adaptation", R.string.anime_adaptation),
     STUDIOS("studios", R.string.studios, InfoSectionMerge.CHIPS),
     TRAILER("trailer", R.string.trailer),
@@ -58,14 +77,14 @@ enum class InfoSectionKind(
     WATCH_ORDER("watch_order", R.string.watch_order),
     NEWS("news", R.string.news),
     QUELS("quels", R.string.info_section_quels),
-    RELATIONS("relations", R.string.relations),
+    RELATIONS("relations", R.string.relations, InfoSectionMerge.ROW),
     RECOMMENDATIONS("recommendations", R.string.recommended, InfoSectionMerge.MEDIA),
     CATEGORY_RECOMMENDATIONS(
         "category_recommendations", R.string.category_recommendations, InfoSectionMerge.MEDIA
     ),
     /** Curated collections of titles: MAL and MangaBaka call theirs stacks, Comick lists. */
     STACKS("stacks", R.string.info_section_stacks_lists, InfoSectionMerge.ROW),
-    REVIEWS("reviews", R.string.reviews),
+    REVIEWS("reviews", R.string.reviews, InfoSectionMerge.LIST),
     CHARACTERS("characters", R.string.characters),
     STAFF("staff", R.string.staff),
     COMMENTS("comments", R.string.comick_comments);
@@ -165,18 +184,34 @@ enum class InfoField(val key: String, @StringRes val labelRes: Int) {
     SCORE_IMDB("score_imdb", R.string.info_field_score_imdb),
     STATUS("status", R.string.status_title),
     TRANSLATION("translation", R.string.translation),
-    TOTAL("total", R.string.info_field_total),
+    TOTAL("total", R.string.total_chaps),
+    LATEST_CHAPTER("latest_chapter", R.string.latest_chapter),
+    VOLUMES("volumes", R.string.volumes),
+    FINAL_CHAPTER("final_chapter", R.string.final_chapter),
     DURATION("duration", R.string.ep_duration),
     FORMAT("format", R.string.format),
     SOURCE("source", R.string.source),
+    DEMOGRAPHIC("demographic", R.string.demographic),
     CONTENT_RATING("content_rating", R.string.content_rating),
+    ORIGIN("origin", R.string.origin),
+    NETWORK("network", R.string.network),
     STUDIO("studio", R.string.main_studio),
     AUTHOR("author", R.string.author),
     SEASON("season", R.string.season),
+    SERIALIZATION("serialization", R.string.serialization),
     START("start", R.string.start_date),
     END("end", R.string.end_date),
     POPULARITY("popularity", R.string.popularity),
+    FOLLOWERS("followers", R.string.followers),
+    RANK("rank", R.string.rank),
     FAVOURITES("favourites", R.string.favourites),
+    SCORED_BY("scored_by", R.string.scored_by),
+}
+
+/** Fills a details line, or hides it when there is nothing to say. */
+fun setInfoLine(row: View, value: android.widget.TextView, text: CharSequence?) {
+    row.visibility = if (text != null) View.VISIBLE else View.GONE
+    value.text = text ?: ""
 }
 
 /** Every details line, in [saved] order; lines the app gained since then sit where they usually do. */
@@ -195,42 +230,66 @@ fun orderedInfoFields(saved: List<String>?): List<InfoField> {
  */
 fun InfoTabContext.fieldsOf(sources: List<InfoTabType>): Set<InfoField> {
     val anime = this == InfoTabContext.ANILIST_ANIME
-    val common = setOf(
-        InfoField.SCORE, InfoField.STATUS, InfoField.TOTAL, InfoField.FORMAT, InfoField.START,
-        InfoField.FAVOURITES,
-    )
-    val full = setOf(InfoField.END, InfoField.POPULARITY)
+    val common = setOf(InfoField.SCORE, InfoField.STATUS, InfoField.FORMAT, InfoField.START)
     return sources.flatMap { source ->
         common + when (source) {
-            InfoTabType.ANILIST -> full + InfoField.SOURCE + InfoField.AUTHOR + (
-                    if (anime) setOf(InfoField.DURATION, InfoField.STUDIO, InfoField.SEASON) else emptySet()
+            InfoTabType.ANILIST -> setOf(
+                InfoField.TOTAL, InfoField.END, InfoField.SOURCE, InfoField.AUTHOR,
+                InfoField.POPULARITY, InfoField.FAVOURITES,
+            ) + (
+                    if (anime) setOf(InfoField.DURATION, InfoField.STUDIO, InfoField.SEASON)
+                    else setOf(InfoField.VOLUMES)
                     )
 
-            InfoTabType.MAL -> full + (
+            InfoTabType.MAL -> setOf(
+                InfoField.TOTAL, InfoField.END, InfoField.POPULARITY, InfoField.SCORED_BY,
+            ) + (
                     if (anime) setOf(InfoField.DURATION, InfoField.STUDIO, InfoField.SEASON, InfoField.SOURCE)
-                    else setOf(InfoField.AUTHOR)
+                    else setOf(InfoField.AUTHOR, InfoField.VOLUMES)
                     )
 
-            InfoTabType.COMICK -> full + setOf(
-                InfoField.CONTENT_RATING, InfoField.DURATION, InfoField.SOURCE, InfoField.TRANSLATION,
+            // Comick gives no end date.
+            InfoTabType.COMICK -> setOf(
+                InfoField.CONTENT_RATING, InfoField.FOLLOWERS, InfoField.RANK,
+            ) + (
+                    if (anime) setOf(InfoField.TOTAL, InfoField.DURATION, InfoField.SOURCE)
+                    else setOf(
+                        InfoField.LATEST_CHAPTER, InfoField.FINAL_CHAPTER, InfoField.TRANSLATION,
+                        InfoField.DEMOGRAPHIC,
+                    )
+                    )
+
+            InfoTabType.MANGAUPDATES -> setOf(
+                InfoField.TOTAL, InfoField.VOLUMES, InfoField.AUTHOR, InfoField.FOLLOWERS,
             )
 
-            InfoTabType.MANGAUPDATES -> setOf(InfoField.AUTHOR)
-            InfoTabType.MANGABAKA -> full + setOf(
-                InfoField.AUTHOR, InfoField.CONTENT_RATING, InfoField.DURATION, InfoField.SOURCE,
+            InfoTabType.MANGABAKA -> setOf(
+                InfoField.TOTAL, InfoField.LATEST_CHAPTER, InfoField.VOLUMES, InfoField.ORIGIN,
+                InfoField.CONTENT_RATING, InfoField.AUTHOR, InfoField.END, InfoField.RANK,
             )
 
-            InfoTabType.KITSU -> full + setOf(
-                InfoField.AUTHOR, InfoField.CONTENT_RATING, InfoField.DURATION, InfoField.SEASON,
-            )
+            InfoTabType.KITSU -> setOf(
+                InfoField.TOTAL, InfoField.END, InfoField.CONTENT_RATING, InfoField.RANK,
+                InfoField.FAVOURITES,
+            ) + (
+                    if (anime) setOf(InfoField.DURATION, InfoField.SEASON)
+                    else setOf(InfoField.VOLUMES, InfoField.SERIALIZATION)
+                    )
 
-            InfoTabType.SIMKL -> full + setOf(
-                InfoField.SCORE_IMDB, InfoField.CONTENT_RATING, InfoField.DURATION, InfoField.SEASON,
-                InfoField.SOURCE, InfoField.STUDIO,
+            InfoTabType.SIMKL -> setOf(
+                InfoField.TOTAL, InfoField.END, InfoField.SCORE_IMDB, InfoField.CONTENT_RATING,
+                InfoField.DURATION, InfoField.SEASON, InfoField.NETWORK, InfoField.STUDIO,
+                InfoField.RANK, InfoField.SCORED_BY,
             )
         }
     }.toSet()
 }
+
+/** A details line named for what it holds on this kind of page. */
+@StringRes
+fun InfoTabContext.fieldLabelRes(field: InfoField): Int =
+    if (field == InfoField.TOTAL && this == InfoTabContext.ANILIST_ANIME) R.string.total_eps
+    else field.labelRes
 
 /**
  * The sections [source] draws on this context's media page, in the order it draws them when left
@@ -265,7 +324,7 @@ fun InfoTabContext.sectionsOf(source: InfoTabType): List<InfoSectionKind> {
 
         InfoTabType.MAL -> head + listOfNotNull(
             InfoSectionKind.BACKGROUND, InfoSectionKind.SYNONYMS, InfoSectionKind.GENRES,
-            InfoSectionKind.COVERS, InfoSectionKind.RELATIONS,
+            InfoSectionKind.RELATIONS,
             InfoSectionKind.PUBLISHERS.takeIf { !anime },
             InfoSectionKind.RECOMMENDATIONS, InfoSectionKind.STACKS, InfoSectionKind.REVIEWS,
         )

@@ -103,13 +103,8 @@ object SimklMediaRenderer {
             full.network?.takeIf { it.isNotBlank() },
             full.country?.takeIf { it.isNotBlank() }?.uppercase(),
         ).joinToString(" · ")
-        if (networkLine.isNotBlank()) {
-            info.mediaInfoSourceContainer.visibility = View.VISIBLE
-            info.mediaInfoSourceLabel.setText(R.string.network)
-            info.mediaInfoSource.text = networkLine
-        } else {
-            info.mediaInfoSourceContainer.visibility = View.GONE
-        }
+        info.mediaInfoSourceContainer.visibility = View.GONE
+        setInfoLine(info.mediaInfoNetworkContainer, info.mediaInfoNetwork, networkLine.takeIf { it.isNotBlank() })
 
         val cert = full.certification?.takeIf { it.isNotBlank() }
         if (cert != null) {
@@ -143,22 +138,16 @@ object SimklMediaRenderer {
         (info.mediaInfoEnd.parent as? ViewGroup)?.visibility = if (end != null) View.VISIBLE else View.GONE
         info.mediaInfoEnd.text = end ?: ""
 
-        val popRow = info.mediaInfoPopularity.parent as? ViewGroup
-        val malRank = full.ratings?.mal?.rank
-        if (malRank != null && malRank > 0) {
-            popRow?.visibility = View.VISIBLE
-            info.mediaInfoPopularity.text = "#$malRank"
-        } else {
-            popRow?.visibility = View.GONE
-        }
-        val favRow = info.mediaInfoFavorites.parent as? ViewGroup
-        val votes = full.ratings?.simkl?.votes
-        if (votes != null && votes > 0) {
-            favRow?.visibility = View.VISIBLE
-            info.mediaInfoFavorites.text = votes.toString()
-        } else {
-            favRow?.visibility = View.GONE
-        }
+        (info.mediaInfoPopularity.parent as? ViewGroup)?.visibility = View.GONE
+        (info.mediaInfoFavorites.parent as? ViewGroup)?.visibility = View.GONE
+        setInfoLine(
+            info.mediaInfoRankContainer, info.mediaInfoRank,
+            full.ratings?.mal?.rank?.takeIf { it > 0 }?.let { "#$it" },
+        )
+        setInfoLine(
+            info.mediaInfoScoredByContainer, info.mediaInfoScoredBy,
+            full.ratings?.simkl?.votes?.takeIf { it > 0 }?.toString(),
+        )
 
         val desc = SimklApi.cleanText(full.overview)
             ?: activity.getString(R.string.no_description_available)

@@ -1244,7 +1244,6 @@ class ComickMediaActivity : AppCompatActivity() {
             b.mediaInfoFormat.text =
                 profile?.anime_type?.takeIf { it.isNotBlank() } ?: getString(R.string.unknown)
 
-            b.mediaInfoSourceLabel.text = getString(R.string.source)
             b.mediaInfoSource.text =
                 profile?.source?.takeIf { it.isNotBlank() } ?: getString(R.string.unknown)
         } else {
@@ -1256,43 +1255,43 @@ class ComickMediaActivity : AppCompatActivity() {
             val lastChapter = comic.last_chapter
             val hideLatest = comic.status == 2 && comic.translation_completed == true &&
                     lastChapter != null && finalChapterNum != null && lastChapter >= finalChapterNum
-            if (hideLatest) {
-                b.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
-            } else {
-                b.mediaInfoTotalTitle.setText(R.string.latest_chapter)
-                b.mediaInfoTotal.text = lastChapter?.let {
+            b.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
+            setInfoLine(
+                b.mediaInfoLatestChapterContainer, b.mediaInfoLatestChapter,
+                if (hideLatest) null else lastChapter?.let {
                     if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
-                } ?: getString(R.string.unknown_value)
-            }
+                } ?: getString(R.string.unknown_value),
+            )
 
-            if (comic.final_chapter != null || comic.final_volume != null) {
-                b.mediaInfoDurationContainer.visibility = View.VISIBLE
-                (b.mediaInfoDurationContainer.getChildAt(0) as? TextView)
-                    ?.text = getString(R.string.final_chapter)
-                b.mediaInfoDuration.text = when {
+            setInfoLine(
+                b.mediaInfoFinalChapterContainer, b.mediaInfoFinalChapter,
+                when {
                     comic.final_volume != null && comic.final_chapter != null ->
                         getString(R.string.volume_chapter_format, comic.final_volume, comic.final_chapter)
                     comic.final_chapter != null -> getString(R.string.chapter_format, comic.final_chapter)
-                    else -> getString(R.string.volume_format, comic.final_volume)
-                }
-            }
+                    comic.final_volume != null -> getString(R.string.volume_format, comic.final_volume)
+                    else -> null
+                },
+            )
 
-            b.mediaInfoFormatLabel.text = getString(R.string.demographic)
-            b.mediaInfoFormat.text = when (comic.demographic) {
-                1 -> getString(R.string.shounen)
-                2 -> getString(R.string.shoujo)
-                3 -> getString(R.string.seinen)
-                4 -> getString(R.string.josei)
-                else -> getString(R.string.unknown)
-            }
+            setInfoLine(
+                b.mediaInfoDemographicContainer, b.mediaInfoDemographic,
+                when (comic.demographic) {
+                    1 -> getString(R.string.shounen)
+                    2 -> getString(R.string.shoujo)
+                    3 -> getString(R.string.seinen)
+                    4 -> getString(R.string.josei)
+                    else -> getString(R.string.unknown)
+                },
+            )
 
-            b.mediaInfoSourceLabel.text = getString(R.string.format)
-            b.mediaInfoSource.text = when (comic.country?.lowercase()) {
+            b.mediaInfoFormat.text = when (comic.country?.lowercase()) {
                 "jp" -> getString(R.string.manga)
                 "kr" -> getString(R.string.manhwa)
                 "cn" -> getString(R.string.manhua)
                 else -> comic.country?.uppercase() ?: getString(R.string.unknown)
             }
+            b.mediaInfoSourceContainer.visibility = View.GONE
         }
 
         val contentRating = comic.content_rating?.takeIf { it.isNotBlank() }
@@ -1322,15 +1321,16 @@ class ComickMediaActivity : AppCompatActivity() {
 
         b.mediaInfoEnd.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
 
-        b.mediaInfoPopularity.parent?.let { row ->
-            if (row is ViewGroup) (row.getChildAt(0) as? TextView)?.text = getString(R.string.followers)
-        }
-        b.mediaInfoPopularity.text = comic.user_follow_count?.toString() ?: getString(R.string.unknown_value)
-
-        b.mediaInfoFavorites.parent?.let { row ->
-            if (row is ViewGroup) (row.getChildAt(0) as? TextView)?.text = getString(R.string.ranking)
-        }
-        b.mediaInfoFavorites.text = "#${comic.follow_rank ?: getString(R.string.unknown_value)}"
+        b.mediaInfoPopularity.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
+        b.mediaInfoFavorites.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
+        setInfoLine(
+            b.mediaInfoFollowersContainer, b.mediaInfoFollowers,
+            comic.user_follow_count?.toString() ?: getString(R.string.unknown_value),
+        )
+        setInfoLine(
+            b.mediaInfoRankContainer, b.mediaInfoRank,
+            "#${comic.follow_rank ?: getString(R.string.unknown_value)}",
+        )
 
         val container = b.mediaInfoContainer
         container.visibility = View.VISIBLE

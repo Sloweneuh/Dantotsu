@@ -364,7 +364,7 @@
     <string name="info_tab_fetch_disabled">connection off</string>
     <string name="customize_info_tabs_desc">Reorder, hide and edit info tabs, or build your own from several sources</string>
     <string name="info_tabs_add_custom">New custom tab</string>
-    <string name="info_tab_custom_note">custom</string>
+    <string name="info_tab_custom_note">Custom</string>
     <string name="info_tab_default_name">Custom tab %1$d</string>
     <string name="info_tab_name">Tab name</string>
     <string name="info_tab_icon">Icon</string>
@@ -375,25 +375,32 @@
     <string name="info_tab_icons_discovery">Discovery and links</string>
     <string name="info_tab_icons_organisation">Organisation</string>
     <string name="info_tab_icons_sources">Sources</string>
-    <string name="info_tab_show_sources">Show source names</string>
+    <string name="info_tab_show_sources">Show sources</string>
     <string name="info_tab_sections">Sections</string>
-    <string name="info_tab_custom_hint">Tap a section to change its source, or to merge several.</string>
+    <string name="info_tab_custom_hint">Tap a section to change its source, or to use several.</string>
     <string name="info_tab_long_press_title">Long press on the tab</string>
     <string name="info_tab_long_press_name">Show the tab\'s name</string>
     <string name="info_tab_long_press_edit">Edit this tab</string>
     <string name="info_tab_long_press_none">Do nothing</string>
     <string name="info_tab_long_press_open">Open on %1$s</string>
-    <string name="info_tab_merge_sources">Merge several sources</string>
-    <string name="info_tab_merge_hint_stack">Shown one after another, each labelled with its source.</string>
+    <string name="info_tab_multiple_sources">Use multiple sources</string>
+    <string name="info_tab_merge_mode">Merge mode</string>
+    <string name="info_tab_merge_unavailable">This section can’t be combined, so sources are shown one after another.</string>
+    <string name="info_tab_fallback_mode">Fallback mode</string>
+    <string name="info_tab_fallback_hint">Shows only the first source that has something. Drag sources to set the order.</string>
+    <string name="info_tab_merge_hint_list">One list with the entries of each source.</string>
+    <string name="info_tab_merge_hint_lines">One list of titles; a title repeats only where sources disagree.</string>
+    <string name="info_tab_merge_hint_stack">Shown one after another, each marked with its source.</string>
     <string name="info_tab_merge_hint_chips">One row of chips, without duplicates.</string>
     <string name="info_tab_merge_hint_media">One row without duplicates; titles suggested by more sources come first.</string>
-    <string name="info_tab_merge_hint_fields">One table; a value repeats only where sources disagree.</string>
+    <string name="info_tab_merge_hint_fields">One table; a value repeats, with its source’s icon, only where sources disagree.</string>
     <string name="info_tab_merge_hint_row">One scrolling row with the cards of each source.</string>
     <plurals name="info_tab_section_count">
         <item quantity="one">%1$d section to add</item>
         <item quantity="other">%1$d sections to add</item>
     </plurals>
     <string name="info_tab_section_used">Already on this tab</string>
+    <string name="info_tab_copy_nothing_fits">Nothing that fits this tab</string>
     <string name="info_tab_section_blocked">Needs a connection or a login</string>
     <string name="info_tab_login_required">login required</string>
     <string name="info_tab_section_unavailable">Not available for %1$s</string>
@@ -406,7 +413,8 @@
     <string name="info_tab_delete_confirm">Delete “%1$s”?</string>
     <string name="info_tab_nothing_to_show">Nothing to show here. Check that this tab\'s sources are connected and have this title.</string>
     <string name="info_tab_visible_details">Visible details</string>
-    <string name="info_tab_merged">merged</string>
+    <string name="info_tab_merged">Merged</string>
+    <string name="info_tab_fallback">Fallback</string>
     <string name="info_tab_hidden_count">%1$d hidden</string>
     <string name="info_tab_remove_section">Remove section</string>
     <string name="info_section_countdown">Next episode countdown</string>
@@ -419,12 +427,15 @@
     <string name="info_section_background">Background</string>
     <string name="scored_by">Scored by</string>
     <string name="info_section_publishers">Publishers</string>
-    <string name="info_section_pictures">Pictures</string>
     <string name="info_section_desc_background">Production history and trivia about this title, from MyAnimeList.</string>
     <string name="info_section_desc_publishers">Who publishes this title, and the magazines it runs in.</string>
     <string name="info_tab_fields_hint">Drag to reorder, switch off to hide.</string>
-    <string name="info_tab_fields_hint_merged">Drag to reorder, switch off to hide. Tap an icon to choose which source fills that line.</string>
-    <string name="info_tab_field_auto">Automatic</string>
+    <string name="info_tab_fields_hint_merged">Drag to reorder, switch off to hide. Tap a line’s source chip to choose how it uses its sources.</string>
+    <string name="info_tab_multiple_details_hint">Each line uses them its own way: tap its source chip in Visible details.</string>
+    <string name="info_tab_line_merge_hint">Shows each different value once.</string>
+    <string name="info_tab_line_fallback_hint">Shows only the first ticked source with a value. Drag sources to set the order.</string>
+    <string name="info_tab_line_list_hint">Shows the value of every ticked source, even when they match.</string>
+    <string name="info_tab_listed">Listed</string>
     <string name="info_tab_field_provider">Choose the source for this line</string>
     <string name="info_section_stacks_lists">Stacks and lists</string>
     <string name="info_tab_section_about">About this section</string>
@@ -440,7 +451,7 @@
     <string name="info_section_desc_social">Your AniList friends who have this on their list, with their status and score.</string>
     <string name="info_section_desc_episodes">A preview of the latest episodes.</string>
     <string name="info_section_desc_latest_chapter">The most recent chapter released.</string>
-    <string name="info_section_desc_covers">A gallery of covers and pictures.</string>
+    <string name="info_section_desc_covers">A gallery of covers.</string>
     <string name="info_section_desc_anime_adaptation">Where this manga\'s anime adaptation starts and ends in the story.</string>
     <string name="info_section_desc_studios">The studios that made this anime.</string>
     <string name="info_section_desc_trailer">The promotional video.</string>
@@ -464,7 +475,6 @@
     <string name="info_section_desc_comments">What Comick users are saying about this entry.</string>
     <string name="info_field_score_mal">MyAnimeList score</string>
     <string name="info_field_score_imdb">IMDb score</string>
-    <string name="info_field_total">Total episodes or chapters</string>
     <string name="anilist_equivalent_found_title">AniList Match Found</string>
     <string name="anilist_equivalent_found_desc">This manga also has a matching entry on AniList. Would you like to view it there instead?</string>
     <string name="extension_settings">Extensions</string>
@@ -2342,6 +2352,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
 
     <!-- Labels -->
     <string name="demographic">Demographic</string>
+    <string name="serialization">Serialization</string>
     <string name="published">Published</string>
     <string name="ranking">Ranking</string>
     <string name="copied_title_toast">Copied: %1$s</string>

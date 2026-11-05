@@ -281,6 +281,12 @@ class AniListInfoFragment : Fragment() {
                         binding.mediaInfoTotalTitle.setText(R.string.total_chaps)
                         binding.mediaInfoTotal.text = (media.manga.totalChapters ?: "~").toString()
 
+                        // AniList only fills this in once a series is finished.
+                        setInfoLine(
+                            binding.mediaInfoVolumesContainer, binding.mediaInfoVolumes,
+                            media.manga.totalVolumes?.takeIf { it > 0 }?.toString(),
+                        )
+
                         if (media.manga.author != null) {
                             binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
                             binding.mediaInfoAuthor.text = media.manga.author!!.name

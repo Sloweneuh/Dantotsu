@@ -121,6 +121,12 @@ enum class InfoTabContext(
     }
 
     companion object {
+        /** The order they're listed in wherever the settings show them together. */
+        val displayOrder: List<InfoTabContext>
+            get() = listOf(
+                ANILIST_ANIME, ANILIST_MANGA, ANILIST_NOVEL, MANGAUPDATES_MANGA, MANGAUPDATES_NOVEL,
+            )
+
         /** True when AniList calls this a light novel, which is a format rather than a media type. */
         fun isNovel(media: Media): Boolean = media.format.equals("NOVEL", ignoreCase = true)
 

@@ -4,13 +4,17 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.os.Bundle
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.text.buildSpannedString
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
@@ -33,15 +37,21 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.media.BuiltinTabOverride
 import ani.dantotsu.media.CustomInfoTab
 import ani.dantotsu.media.InfoField
+import ani.dantotsu.media.InfoFieldLine
 import ani.dantotsu.media.InfoSectionEntry
 import ani.dantotsu.media.InfoSectionKind
+import ani.dantotsu.media.InfoSectionMerge
+import ani.dantotsu.media.InfoSourceMode
 import ani.dantotsu.media.InfoTabContext
+import ani.dantotsu.media.InfoTabEntry
 import ani.dantotsu.media.InfoTabIcons
 import ani.dantotsu.media.InfoTabLongPress
 import ani.dantotsu.media.InfoTabStore
 import ani.dantotsu.media.InfoTabType
+import ani.dantotsu.media.fieldLabelRes
 import ani.dantotsu.media.fieldsOf
 import ani.dantotsu.media.label
+import ani.dantotsu.media.orderedEntries
 import ani.dantotsu.media.sectionRules
 import ani.dantotsu.media.sectionsOf
 import ani.dantotsu.media.unavailableReason
@@ -88,8 +98,15 @@ class InfoTabEditorActivity : AppCompatActivity() {
         val visible: Boolean = true,
         val hiddenFields: Set<String> = emptySet(),
         val fieldOrder: List<String>? = null,
-        val fieldSources: Map<String, String> = emptyMap(),
-    )
+        val mode: InfoSourceMode = InfoSourceMode.MERGE,
+        val fieldLines: Map<String, InfoFieldLine> = emptyMap(),
+    ) {
+        /** Several sources that really do end up combined. */
+        val merged: Boolean
+            get() = sources.size > 1 && mode == InfoSourceMode.MERGE && kind.merge != InfoSectionMerge.STACK
+
+        val fallback: Boolean get() = sources.size > 1 && mode == InfoSourceMode.FALLBACK
+    }
 
     override fun attachBaseContext(newBase: Context?) {
         super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
@@ -267,10 +284,12 @@ class InfoTabEditorActivity : AppCompatActivity() {
             longPress = tab.longPress
             tab.entries.forEach { entry ->
                 val kind = InfoSectionKind.forKey(entry.kind) ?: return@forEach
-                val sources = entry.sources.mapNotNull { InfoTabType.forKey(it) }.filter { it in tabContext.tabs }
+                // Also drops what a source no longer supplies, such as MAL's pictures.
+                val sources = entry.sources.mapNotNull { InfoTabType.forKey(it) }
+                    .filter { it in tabContext.tabs && kind in tabContext.sectionsOf(it) }
                 // Layouts saved before some kinds were folded together can name one twice.
                 val taken = rows.filter { it.kind == kind }.flatMap { it.sources }
-                if (sources.isNotEmpty() && sources.none { it in taken }) rows.add(SectionRow(kind, sources, true, entry.hiddenFields, entry.fieldOrder, entry.fieldSources))
+                if (sources.isNotEmpty() && sources.none { it in taken }) rows.add(SectionRow(kind, sources, true, entry.hiddenFields, entry.fieldOrder, entry.mode, entry.resolvedLines))
             }
         }
     }
@@ -296,8 +315,12 @@ class InfoTabEditorActivity : AppCompatActivity() {
                     icon = icon ?: InfoTabIcons.DEFAULT_CUSTOM,
                     entries = rows.map { row ->
                         InfoSectionEntry(
-                            row.kind.key, row.sources.map { it.key }, row.hiddenFields,
-                            row.fieldOrder, row.fieldSources,
+                            kind = row.kind.key,
+                            sources = row.sources.map { it.key },
+                            hiddenFields = row.hiddenFields,
+                            fieldOrder = row.fieldOrder,
+                            mode = row.mode,
+                            fieldLines = row.fieldLines,
                         )
                     },
                     visible = config.customTabs.find { it.id == tabKey }?.visible ?: true,
@@ -392,7 +415,20 @@ class InfoTabEditorActivity : AppCompatActivity() {
 
     fun contextLabel(): String = tabContext.label(this)
     fun rowAt(index: Int): SectionRow? = rows.getOrNull(index)
-    fun fieldsFor(row: SectionRow): Set<InfoField> = tabContext.fieldsOf(row.sources)
+
+    /** The details lines [row] can show right now, going by the sources that can supply anything. */
+    fun fieldsFor(row: SectionRow): Set<InfoField> = tabContext.fieldsOf(
+        row.sources.filter { unavailableReason(it, row.kind) == null }.ifEmpty { row.sources }
+    )
+
+    /** The sources of merged [row] that can fill [field]. */
+    fun providersOf(row: SectionRow, field: InfoField): List<InfoTabType> = row.sources.filter {
+        unavailableReason(it, row.kind) == null && field in tabContext.fieldsOf(listOf(it))
+    }
+
+    @StringRes
+    fun fieldLabel(field: InfoField): Int = tabContext.fieldLabelRes(field)
+
     fun copySources(): List<InfoTabType> = tabContext.tabs
 
     /** Every source of this context that can supply [kind]. */
@@ -420,15 +456,73 @@ class InfoTabEditorActivity : AppCompatActivity() {
     fun pickerSources(row: SectionRow): List<InfoTabType> =
         sourcesOf(row.kind).filter { unavailableReason(it, row.kind) == null || it in row.sources }
 
-    fun sectionsFrom(source: InfoTabType): List<InfoSectionKind> = tabContext.sectionsOf(source)
+    /** A tab to copy from: [rows] is what would be added, [emptyReason] why that is nothing. */
+    class CopySource(
+        val name: String,
+        @param:DrawableRes val iconRes: Int,
+        val rows: List<SectionRow>,
+        @param:StringRes val emptyReason: Int?,
+    )
 
-    /** What copying [source]'s tab would add. */
-    fun copyableSections(source: InfoTabType): List<InfoSectionKind> =
-        tabContext.sectionsOf(source).filter { source in freeSources(it) }
+    /** The sections a tab shows, as rows, whichever kind of tab it is and wherever it lives. */
+    private fun sectionsOf(context: InfoTabContext, entry: InfoTabEntry): List<SectionRow> = when (entry) {
+        is InfoTabEntry.Builtin -> {
+            val rules = context.sectionRules(entry.type)
+            rules.order.filter { it !in rules.hidden }.map { kind ->
+                val details = kind == InfoSectionKind.DETAILS
+                SectionRow(
+                    kind, listOf(entry.type),
+                    hiddenFields = if (details) rules.hiddenFields else emptySet(),
+                    fieldOrder = if (details) rules.fieldOrder else null,
+                )
+            }
+        }
 
-    fun copyFrom(source: InfoTabType) {
+        is InfoTabEntry.Custom -> entry.tab.entries.mapNotNull { section ->
+            val kind = InfoSectionKind.forKey(section.kind) ?: return@mapNotNull null
+            SectionRow(
+                kind, section.sources.mapNotNull { InfoTabType.forKey(it) }, true,
+                section.hiddenFields, section.fieldOrder, section.mode, section.resolvedLines,
+            )
+        }
+    }
+
+    private fun copySource(context: InfoTabContext, entry: InfoTabEntry): CopySource {
+        val wanted = sectionsOf(context, entry)
+        val taken = HashSet<Pair<InfoSectionKind, InfoTabType>>()
+        // Each section with only the sources that work here and aren't on this tab yet.
+        val copied = wanted.mapNotNull { row ->
+            val free = freeSources(row.kind)
+            val sources = row.sources.filter { it in free && taken.add(row.kind to it) }
+            if (sources.isEmpty()) null else row.copy(sources = sources)
+        }
+        val fits = wanted.flatMap { row -> row.sources.filter { it in sourcesOf(row.kind) }.map { row.kind to it } }
+        val reason = when {
+            copied.isNotEmpty() -> null
+            fits.isEmpty() -> R.string.info_tab_copy_nothing_fits
+            // Nothing usable at all, as opposed to everything being here already.
+            fits.none { (kind, source) -> unavailableReason(source, kind) == null } ->
+                fits.firstNotNullOf { (kind, source) -> unavailableReason(source, kind) }
+
+            else -> R.string.info_tab_section_used
+        }
+        return when (entry) {
+            is InfoTabEntry.Builtin -> CopySource(getString(entry.type.labelRes), entry.iconRes, copied, reason)
+            is InfoTabEntry.Custom -> CopySource(entry.tab.name, entry.iconRes, copied, reason)
+        }
+    }
+
+    /** Every other tab of every kind of page, this kind first. */
+    fun copyChoices(): List<Pair<InfoTabContext, List<CopySource>>> =
+        (listOf(tabContext) + (InfoTabContext.displayOrder - tabContext)).map { context ->
+            context to context.orderedEntries()
+                .filterNot { context == tabContext && it.key == tabKey }
+                .map { copySource(context, it) }
+        }.filter { (_, tabs) -> tabs.isNotEmpty() }
+
+    fun copyFrom(source: CopySource) {
         val before = rows.size
-        copyableSections(source).forEach { rows.add(SectionRow(it, listOf(source))) }
+        rows.addAll(source.rows)
         adapter.notifyItemRangeInserted(before, rows.size - before)
         save()
     }
@@ -438,13 +532,16 @@ class InfoTabEditorActivity : AppCompatActivity() {
      * source taken from another row of this kind moves here: that is how two separate rows become
      * one merged row.
      */
-    fun applySources(kind: InfoSectionKind, rowIndex: Int, picked: List<InfoTabType>) {
+    fun applySources(
+        kind: InfoSectionKind, rowIndex: Int, picked: List<InfoTabType>,
+        mode: InfoSourceMode = InfoSourceMode.MERGE,
+    ) {
         if (picked.isEmpty()) return
         val row = rows.getOrNull(rowIndex)
         if (row == null) {
-            rows.add(SectionRow(kind, picked))
+            rows.add(SectionRow(kind, picked, mode = mode))
         } else {
-            rows[rowIndex] = row.copy(sources = picked)
+            rows[rowIndex] = row.copy(sources = picked, mode = mode)
             val edited = rows[rowIndex]
             rows.filter { it.kind == kind && it !== edited }.forEach { other ->
                 val left = other.sources - picked.toSet()
@@ -458,10 +555,10 @@ class InfoTabEditorActivity : AppCompatActivity() {
     }
 
     fun updateFields(
-        index: Int, order: List<String>, hidden: Set<String>, sources: Map<String, String>,
+        index: Int, order: List<String>, hidden: Set<String>, lines: Map<String, InfoFieldLine>,
     ) {
         val row = rows.getOrNull(index) ?: return
-        rows[index] = row.copy(hiddenFields = hidden, fieldOrder = order, fieldSources = sources)
+        rows[index] = row.copy(hiddenFields = hidden, fieldOrder = order, fieldLines = lines)
         adapter.notifyItemChanged(index)
         save()
     }
@@ -490,30 +587,43 @@ class InfoTabEditorActivity : AppCompatActivity() {
 
             showSourceIcons(bind.infoSectionIcons, row.kind, if (isCustom) row.sources else emptyList())
             bind.infoSectionTitle.text = row.kind.label(context, row.sources.singleOrNull())
-            bind.infoSectionMerged.isVisible = isCustom && row.sources.size > 1
+            // Details have no mode of their own: each line has one.
+            bind.infoSectionMerged.isVisible = isCustom && (row.merged || row.fallback) &&
+                    row.kind.merge != InfoSectionMerge.FIELDS
+            bind.infoSectionMerged.setText(if (row.fallback) R.string.info_tab_fallback else R.string.info_tab_merged)
             bind.infoSectionMerged.backgroundTintList = ColorStateList.valueOf(
                 MaterialColors.compositeARGBWithAlpha(
                     context.getThemeColor(androidx.appcompat.R.attr.colorPrimary), 36
                 )
             )
             // Kept on the tab, to come back with the connection, but saying why nothing shows.
-            val reasons = if (!isCustom) emptyList()
-            else row.sources.mapNotNull { unavailableReason(it, row.kind) }.distinct()
-            val notes = buildList {
-                if (row.hiddenFields.isNotEmpty()) {
-                    add(context.getString(R.string.info_tab_hidden_count, row.hiddenFields.size))
+            val reasons = if (!isCustom) emptyList() else row.sources.mapNotNull { source ->
+                unavailableReason(source, row.kind)?.let { reason ->
+                    // With several sources, which one it is about.
+                    if (row.sources.size > 1) "${context.getString(source.labelRes)}: ${context.getString(reason)}"
+                    else context.getString(reason)
                 }
-                reasons.forEach { add(context.getString(it)) }
-            }
+            }.distinct()
+            // Only lines the sheet lists: one hidden under another source shouldn't count.
+            val fieldKeys = fieldsFor(row).map { it.key }
+            val hiddenCount = row.hiddenFields.count { it in fieldKeys }
+            val hiddenNote = context.getString(R.string.info_tab_hidden_count, hiddenCount)
+                .takeIf { hiddenCount > 0 }
+            val notes = listOfNotNull(hiddenNote) + reasons
             bind.infoSectionSubtitle.isVisible = notes.isNotEmpty()
-            bind.infoSectionSubtitle.text = notes.joinToString(" · ")
             bind.infoSectionSubtitle.setTextColor(
-                context.getThemeColor(
-                    if (reasons.isEmpty()) com.google.android.material.R.attr.colorOnSurfaceVariant
-                    else androidx.appcompat.R.attr.colorError
-                )
+                context.getThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant)
             )
-            bind.infoSectionMeta.isVisible = bind.infoSectionIcons.childCount > 0 || notes.isNotEmpty()
+            // Only what's wrong is in red, not the count of lines hidden on purpose.
+            bind.infoSectionSubtitle.text = buildSpannedString {
+                append(notes.joinToString(" · "))
+                if (reasons.isNotEmpty()) setSpan(
+                    ForegroundColorSpan(context.getThemeColor(androidx.appcompat.R.attr.colorError)),
+                    length - reasons.joinToString(" · ").length, length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
+            bind.infoSectionMeta.isVisible = bind.infoSectionIcons.childCount > 0 || bind.infoSectionMerged.isVisible
             val inert = isCustom && row.sources.none { unavailableReason(it, row.kind) == null }
             bind.infoSectionContent.alpha = if (row.visible && !inert) 1f else 0.5f
 

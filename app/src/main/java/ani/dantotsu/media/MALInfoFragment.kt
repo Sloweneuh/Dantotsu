@@ -338,10 +338,9 @@ class MALInfoFragment : Fragment() {
         // Popularity
         binding.mediaInfoPopularity.text = malData.numListUsers?.toString() ?: "??"
 
-        // MAL has no favourites count in its API; this is how many people scored it, and says so.
-        ((binding.mediaInfoFavorites.parent as? ViewGroup)?.getChildAt(0) as? android.widget.TextView)
-            ?.setText(R.string.scored_by)
-        binding.mediaInfoFavorites.text = malData.numScoringUsers?.toString() ?: "??"
+        // MAL has no favourites count in its API, only how many people scored it.
+        (binding.mediaInfoFavorites.parent as? ViewGroup)?.visibility = View.GONE
+        setInfoLine(binding.mediaInfoScoredByContainer, binding.mediaInfoScoredBy, malData.numScoringUsers?.toString() ?: "??")
 
         // Episode Duration
         if (malData.averageEpisodeDuration != null) {
@@ -458,7 +457,7 @@ class MALInfoFragment : Fragment() {
         parent.addView(stacksPlaceholder)
 
         if (!offline) InfoExtraSections.addMalExtras(
-            parent, malData.background, malData.pictures, malData.relatedAnime, malData.relatedManga,
+            parent, malData.background, malData.relatedAnime, malData.relatedManga,
         )
 
         // Recommendations - Show MAL's recommendations but reuse AniList data for matches
@@ -584,10 +583,9 @@ class MALInfoFragment : Fragment() {
         // Popularity
         binding.mediaInfoPopularity.text = malData.numListUsers?.toString() ?: "??"
 
-        // MAL has no favourites count in its API; this is how many people scored it, and says so.
-        ((binding.mediaInfoFavorites.parent as? ViewGroup)?.getChildAt(0) as? android.widget.TextView)
-            ?.setText(R.string.scored_by)
-        binding.mediaInfoFavorites.text = malData.numScoringUsers?.toString() ?: "??"
+        // MAL has no favourites count in its API, only how many people scored it.
+        (binding.mediaInfoFavorites.parent as? ViewGroup)?.visibility = View.GONE
+        setInfoLine(binding.mediaInfoScoredByContainer, binding.mediaInfoScoredBy, malData.numScoringUsers?.toString() ?: "??")
 
         // Author - prefer the one with "Story" in their role
         if (malData.authors.isNotEmpty()) {
@@ -601,6 +599,11 @@ class MALInfoFragment : Fragment() {
         // Total Chapters
         binding.mediaInfoTotalTitle.setText(R.string.total_chaps)
         binding.mediaInfoTotal.text = if (malData.numChapters == null || malData.numChapters == 0) "~" else malData.numChapters.toString()
+
+        setInfoLine(
+            binding.mediaInfoVolumesContainer, binding.mediaInfoVolumes,
+            malData.numVolumes?.takeIf { it > 0 }?.toString(),
+        )
 
         // Description
         val desc = HtmlCompat.fromHtml(
@@ -667,7 +670,7 @@ class MALInfoFragment : Fragment() {
         }
 
         if (!offline) InfoExtraSections.addMalExtras(
-            parent, malData.background, malData.pictures, malData.relatedAnime, malData.relatedManga,
+            parent, malData.background, malData.relatedAnime, malData.relatedManga,
             malData.serialization,
         )
 

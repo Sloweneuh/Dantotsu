@@ -1828,7 +1828,12 @@ class HomeFragment : Fragment() {
     override fun onStart() {
         super.onStart()
         try {
-            requireContext().registerReceiver(unreadCacheReceiver, IntentFilter(ani.dantotsu.notifications.unread.UnreadCache.ACTION_CACHE_UPDATED))
+            ContextCompat.registerReceiver(
+                requireContext(),
+                unreadCacheReceiver,
+                IntentFilter(ani.dantotsu.notifications.unread.UnreadCache.ACTION_CACHE_UPDATED),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
         } catch (e: Exception) {
             ani.dantotsu.util.Logger.log("HomeFragment.onStart registerReceiver error: ${e.message}")
         }

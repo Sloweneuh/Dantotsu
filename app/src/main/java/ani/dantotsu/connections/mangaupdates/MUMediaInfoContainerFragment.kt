@@ -14,8 +14,10 @@ import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
 import ani.dantotsu.media.InfoTabContext
 import ani.dantotsu.media.InfoTabEntry
 import ani.dantotsu.media.InfoTabType
+import ani.dantotsu.media.InfoTabsPagerAdapter
 import ani.dantotsu.media.applyInfoTabRules
 import ani.dantotsu.media.createTabFragment
+import ani.dantotsu.media.layoutSignature
 import ani.dantotsu.media.longPressSource
 import ani.dantotsu.media.runCustomTabLongPress
 import ani.dantotsu.media.orderedEntries
@@ -55,6 +57,7 @@ class MUMediaInfoContainerFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        pagerAdapter = null
     }
 
     private data class TabInfo(val entry: InfoTabEntry, val fragment: Fragment) {
@@ -64,6 +67,39 @@ class MUMediaInfoContainerFragment : Fragment() {
         val type get() = (entry as? InfoTabEntry.Builtin)?.type?.key
     }
     private var tabs: List<TabInfo> = emptyList()
+    private var tabContext: InfoTabContext? = null
+    private var pagerAdapter: InfoTabsPagerAdapter? = null
+    private var builtFrom: String? = null
+
+    /** The tabs as the settings have them now, offline leaving only what can still show. */
+    private fun buildTabs(context: InfoTabContext) {
+        val offline = PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
+                !isOnline(requireContext())
+        fun isMangaUpdates(entry: InfoTabEntry) =
+            (entry as? InfoTabEntry.Builtin)?.type == InfoTabType.MANGAUPDATES
+        tabs = context.visibleEntries()
+            .filter { !offline || isMangaUpdates(it) }
+            .ifEmpty { context.orderedEntries().filter { isMangaUpdates(it) } }
+            .map { entry -> TabInfo(entry, context.createTabFragment(entry)) }
+        builtFrom = context.layoutSignature()
+    }
+
+    /** Catches up with tabs edited in the settings, opened from this very page or anywhere else. */
+    override fun onResume() {
+        super.onResume()
+        val context = tabContext ?: return
+        val adapter = pagerAdapter ?: return
+        if (context.layoutSignature() == builtFrom) return
+        val shown = tabs.getOrNull(binding.mediaInfoViewPager.currentItem)?.entry?.key
+        buildTabs(context)
+        adapter.rebuild()
+        binding.mediaInfoTabLayout.visibility = if (tabs.size <= 1) View.GONE else View.VISIBLE
+        binding.mediaInfoViewPager.setCurrentItem(
+            tabs.indexOfFirst { it.entry.key == shown }.coerceAtLeast(0), false
+        )
+        val model: MediaDetailsViewModel by activityViewModels()
+        applyTabAlpha(model)
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val model: MediaDetailsViewModel by activityViewModels()
@@ -76,21 +112,14 @@ class MUMediaInfoContainerFragment : Fragment() {
         // picks between the manga and novel tab sets.
         val isNovel = model.getMedia().value?.let { InfoTabContext.isNovel(it) } ?: false
         val tabContext = InfoTabContext.forMangaUpdates(isNovel)
-        fun isMangaUpdates(entry: InfoTabEntry) =
-            (entry as? InfoTabEntry.Builtin)?.type == InfoTabType.MANGAUPDATES
-        tabs = tabContext.visibleEntries()
-            .filter { !offline || isMangaUpdates(it) }
-            .ifEmpty { tabContext.orderedEntries().filter { isMangaUpdates(it) } }
-            .map { entry -> TabInfo(entry, tabContext.createTabFragment(entry)) }
+        this.tabContext = tabContext
+        buildTabs(tabContext)
         childFragmentManager.applyInfoTabRules(tabContext)
 
-        val adapter = object : androidx.viewpager2.adapter.FragmentStateAdapter(
-            childFragmentManager, viewLifecycleOwner.lifecycle
-        ) {
-            override fun getItemCount() = tabs.size
-            override fun createFragment(position: Int): Fragment = tabs[position].fragment
-        }
-
+        val adapter = InfoTabsPagerAdapter(
+            this, { tabs.size }, { position -> tabs[position].fragment }
+        )
+        pagerAdapter = adapter
         binding.mediaInfoViewPager.adapter = adapter
         binding.mediaInfoViewPager.isUserInputEnabled = false
         // Only load adjacent pages to reduce unnecessary API calls
@@ -152,12 +181,8 @@ class MUMediaInfoContainerFragment : Fragment() {
             }
         }
 
-        if (tabs.size <= 1) {
-            binding.mediaInfoTabLayout.visibility = View.GONE
-            return
-        }
-
-        binding.mediaInfoTabLayout.visibility = View.VISIBLE
+        // Set up even for a single tab, as an edit in the settings can bring the others back.
+        binding.mediaInfoTabLayout.visibility = if (tabs.size <= 1) View.GONE else View.VISIBLE
 
         binding.mediaInfoViewPager.useSharedAxisTransitions()
         PagerTabsMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
