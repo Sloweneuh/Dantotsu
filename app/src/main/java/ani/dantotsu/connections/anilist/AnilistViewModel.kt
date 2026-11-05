@@ -174,6 +174,7 @@ class AnilistHomeViewModel : ViewModel() {
             if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) || malMode == "anime") {
                 unreadChapters.postValue(arrayListOf())
                 unreadChaptersError.postValue(false)
+                unreadChaptersLoading.postValue(false)
                 return
             }
 
@@ -194,6 +195,7 @@ class AnilistHomeViewModel : ViewModel() {
                 ani.dantotsu.util.Logger.log("MalSync returned empty results for ${mediaIds.size} manga - API likely failed")
                 unreadChapters.postValue(arrayListOf())
                 unreadChaptersError.postValue(true)
+                unreadChaptersLoading.postValue(false)
                 return
             }
 

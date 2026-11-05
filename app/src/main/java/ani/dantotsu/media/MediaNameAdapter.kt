@@ -147,6 +147,14 @@ object MediaNameAdapter {
     }
 
     /**
+     * A source's chapter title without its leading "Chapter" or "Ch.", for text that already says
+     * chapter: "Chapter 67" is "67", "Ch. 12 - Title" is "12 - Title". Anything else stays as it is.
+     */
+    fun withoutChapterWord(text: String): String =
+        text.replaceFirst(Regex("^\\s*(chapter|chap|ch)\\b[\\s:.\\-]*", RegexOption.IGNORE_CASE), "")
+            .ifEmpty { text }
+
+    /**
      * A volume number, only when the source's own chapter title actually names one (e.g. "Vol. 3
      * Ch. 12") — unlike [findChapterNumber], there's no bare-number fallback, since a chapter title
      * with no volume marker at all means the source isn't telling us one, not that the number we'd

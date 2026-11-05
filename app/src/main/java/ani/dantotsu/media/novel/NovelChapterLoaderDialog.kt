@@ -74,7 +74,9 @@ class NovelChapterLoaderDialog : BottomSheetDialogFragment() {
         // nothing to fetch and no way to recover what was asked for, so it just goes away.
         val req = request ?: run { dismiss(); return }
         val chapter = req.novel.chapters.getOrNull(req.index) ?: run { dismiss(); return }
-        binding.selectorTitle.text = getString(R.string.loading_chap_number, chapter.name)
+        binding.selectorTitle.text = getString(
+            R.string.loading_chap_number, ani.dantotsu.media.MediaNameAdapter.withoutChapterWord(chapter.name)
+        )
 
         viewLifecycleOwner.lifecycleScope.launch {
             val file = withContext(Dispatchers.IO) {

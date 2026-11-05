@@ -261,7 +261,16 @@ object UnreadCache {
         }
     }
 
+    /**
+     * How many updates this process has announced, for a screen that stops listening while covered:
+     * a change made on the screen covering it is exactly the one it would otherwise miss.
+     */
+    @Volatile
+    var updateCount = 0
+        private set
+
     fun broadcastUpdate(context: Context) {
+        updateCount++
         try {
             val intent = Intent(ACTION_CACHE_UPDATED)
             context.sendBroadcast(intent)

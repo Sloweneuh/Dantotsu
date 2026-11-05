@@ -31,6 +31,8 @@ class MediaExcludeBottomDialog : BottomSheetDialogFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        // See RepliesBottomDialog: animating this wrap_content list can crash RecyclerView.
+        binding.repliesRecyclerView.itemAnimator = null
         binding.repliesRecyclerView.adapter = adapter
         binding.repliesRecyclerView.layoutManager = LinearLayoutManager(
             context,

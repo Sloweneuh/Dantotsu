@@ -90,6 +90,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     /** Comick's newest chapter for this manga, once its Comick entry is found and asked. */
     private var liveComick: Pair<Int, String?>? = null
     private var comickAsked = false
+    private var malSyncAsking = false
 
     lateinit var launcher: LauncherWrapper
     lateinit var binding: ActivityMediaBinding
@@ -991,8 +992,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             if (media.manga != null) {
                 val ignores = ani.dantotsu.connections.ReleaseSourceIgnores
                 val target = ignores.anilist(media.id)
-                val passedSource = intent.getStringExtra("source")?.takeIf { it.isNotBlank() }
-                val passedLastChapter = intent.getIntExtra("lastChapter", -1)
+                // What the opener passed doesn't say which source it came from, so with one ignored
+                // it can't be believed. The caches below hold the same answers, without the ignored.
+                val anyIgnored = ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target) ||
+                    ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)
+                val passedSource = intent.getStringExtra("source")?.takeIf { it.isNotBlank() && !anyIgnored }
+                val passedLastChapter = if (anyIgnored) -1 else intent.getIntExtra("lastChapter", -1)
                 val candidates = mutableListOf<Pair<Int, String?>>()
                 if (passedLastChapter > 0) {
                     candidates += passedLastChapter to passedSource
@@ -1054,27 +1059,29 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                         candidates += known
                         renderLatest()
                     }
-                } else if (isOnline(this) && media.userStatus != "COMPLETED" &&
+                } else if (!malSyncAsking && isOnline(this) && media.userStatus != "COMPLETED" &&
                     PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode != "anime"
                 ) {
+                    malSyncAsking = true
                     lifecycleScope.launch(Dispatchers.IO) {
                         try {
                             val result = ani.dantotsu.connections.malsync.MalSyncApi
                                 .getLastChapter(media.id, media.idMAL)
                             val lastEp = result?.lastEp ?: return@launch
-                            val answer = lastEp.total to result.source.takeIf { it.isNotBlank() }
-                            liveMalSync = answer
+                            liveMalSync = lastEp.total to result.source.takeIf { it.isNotBlank() }
                             ani.dantotsu.connections.ReleaseSourceAnswers.record(
                                 ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target, lastEp.total, result.source,
                             )
                             if (ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target)) return@launch
+                            // Redrawn from scratch, not from this call's candidates: a source may
+                            // have been ignored while MALSync was being asked.
                             withContext(Dispatchers.Main) {
-                                if (isDestroyed) return@withContext
-                                candidates += answer
-                                renderLatest()
+                                if (!isDestroyed) total()
                             }
                         } catch (e: Exception) {
                             ani.dantotsu.util.Logger.log("MediaDetails: MalSync API error: ${e.message}")
+                        } finally {
+                            malSyncAsking = false
                         }
                     }
                 }

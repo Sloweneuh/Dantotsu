@@ -39,6 +39,9 @@ class RepliesBottomDialog : BottomSheetDialogFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        // A wrap_content list in a sheet: a row's add animation can end while the row is detached
+        // for layout, and RecyclerView then throws "Tmp detached view should be removed".
+        binding.repliesRecyclerView.itemAnimator = null
         binding.repliesRecyclerView.adapter = adapter
         binding.repliesRecyclerView.layoutManager = LinearLayoutManager(
             context,
@@ -56,10 +59,6 @@ class RepliesBottomDialog : BottomSheetDialogFragment() {
             )
         }
         activityId = requireArguments().getInt("activityId")
-        loading(true)
-        lifecycleScope.launch(Dispatchers.IO) {
-            loadData()
-        }
     }
 
     private suspend fun loadData() {

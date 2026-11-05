@@ -139,7 +139,13 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
     /** Seeds [knownChapter] from the intent, then from the MangaUpdates and Comick unread caches. */
     private fun loadKnownChapter() {
-        val passed = intent.getIntExtra("lastChapter", -1)
+        // What the opener passed doesn't say which source it came from, so with one ignored it can't
+        // be believed. The caches below hold the same answers, without the ignored.
+        val target = ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id)
+        val anyIgnored = ani.dantotsu.connections.ReleaseSourceIgnores.Provider.entries.any {
+            ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(it, target)
+        }
+        val passed = if (anyIgnored) -1 else intent.getIntExtra("lastChapter", -1)
         if (passed > 0) offerKnownChapter(passed, intent.getStringExtra("source"))
         try {
             ani.dantotsu.notifications.unread.UnreadCache.cachedMuInfo()[muMediaKey(muMedia.id)]

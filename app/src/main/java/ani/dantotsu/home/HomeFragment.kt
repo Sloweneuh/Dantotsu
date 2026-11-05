@@ -80,14 +80,20 @@ class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+    private var seenUnreadUpdate = ani.dantotsu.notifications.unread.UnreadCache.updateCount
     private val unreadCacheReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            try {
-                comickCache = null
-                refreshUnreadFromCache()
-            } catch (e: Exception) {
-                ani.dantotsu.util.Logger.log("unreadCacheReceiver error: ${e.message}")
-            }
+            applyUnreadCacheUpdate()
+        }
+    }
+
+    private fun applyUnreadCacheUpdate() {
+        try {
+            seenUnreadUpdate = ani.dantotsu.notifications.unread.UnreadCache.updateCount
+            comickCache = null
+            refreshUnreadFromCache()
+        } catch (e: Exception) {
+            ani.dantotsu.util.Logger.log("unreadCacheReceiver error: ${e.message}")
         }
     }
     /**
@@ -645,9 +651,15 @@ class HomeFragment : Fragment() {
         return !enabled || mode == "anime"
     }
 
+    /** Whether the row's refresh button has anything to ask: MALSync, or the Comick check. */
+    private fun canRefreshUnread(): Boolean = !isMalSyncDisabledForManga() || (
+        PrefManager.getVal<Boolean>(PrefName.ComickNotificationsEnabled) &&
+            ani.dantotsu.connections.comick.Comick.token != null
+    )
+
     private fun updateUnreadRefreshButtonState() {
         if (_binding == null) return
-        val disabled = isMalSyncDisabledForManga()
+        val disabled = !canRefreshUnread()
         binding.homeUnreadChaptersRefresh.isEnabled = !disabled
         binding.homeUnreadChaptersRefresh.alpha = if (disabled) 0.38f else 1f
     }
@@ -879,23 +891,14 @@ class HomeFragment : Fragment() {
 
         // Manual refresh button for unread chapters
         var refreshAnimator: android.animation.ObjectAnimator? = null
-        binding.homeUnreadChaptersRefresh.setOnClickListener {
-            binding.homeUnreadChaptersRefresh.isEnabled = false
-            // Both halves: the button is the user saying "check again", and the MangaUpdates half
-            // would otherwise sit on the answer it cached for this list.
-            fetchMuUnreadInfo(force = true)
-            scope.launch {
-                withContext(Dispatchers.IO) {
-                    model.initUnreadChapters()
-                }
-            }
-        }
-        updateUnreadRefreshButtonState()
+        var comickRefreshing = false
 
-        // Observe loading state to rotate refresh icon while a check runs
-        model.getUnreadChaptersLoading().observe(viewLifecycleOwner) { loading ->
-            binding.homeUnreadChaptersRefresh.isEnabled = !loading && !isMalSyncDisabledForManga()
-            binding.homeUnreadChaptersRefresh.alpha = if (!loading && isMalSyncDisabledForManga()) 0.38f else 1f
+        // Rotates the refresh icon while a check runs
+        fun showUnreadRefreshState() {
+            if (_binding == null) return
+            val loading = comickRefreshing || model.getUnreadChaptersLoading().value == true
+            binding.homeUnreadChaptersRefresh.isEnabled = !loading && canRefreshUnread()
+            binding.homeUnreadChaptersRefresh.alpha = if (!loading && !canRefreshUnread()) 0.38f else 1f
             if (loading) {
                 if (refreshAnimator == null) {
                     refreshAnimator = android.animation.ObjectAnimator.ofFloat(
@@ -919,6 +922,31 @@ class HomeFragment : Fragment() {
                 binding.homeUnreadChaptersProgressBar.visibility = if (loading) View.VISIBLE else View.GONE
             }
         }
+
+        binding.homeUnreadChaptersRefresh.setOnClickListener {
+            // Every half: the button is the user saying "check again". The MangaUpdates half would
+            // otherwise sit on the answer it cached for this list, and Comick's only changes when
+            // its check runs; that broadcasts, which redraws the row.
+            fetchMuUnreadInfo(force = true)
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    model.initUnreadChapters()
+                }
+            }
+            val context = requireContext().applicationContext
+            comickRefreshing = true
+            showUnreadRefreshState()
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    ani.dantotsu.notifications.unread.ComickUnreadNotificationTask().execute(context)
+                }
+                comickRefreshing = false
+                showUnreadRefreshState()
+            }
+        }
+        updateUnreadRefreshButtonState()
+        model.getUnreadChaptersLoading().observe(viewLifecycleOwner) { showUnreadRefreshState() }
+
         binding.homeUserAvatarContainer.setSafeOnClickListener {
             val dialogFragment =
                 SettingsDialogFragment.newInstance(SettingsDialogFragment.Companion.PageType.HOME)
@@ -1804,6 +1832,10 @@ class HomeFragment : Fragment() {
         } catch (e: Exception) {
             ani.dantotsu.util.Logger.log("HomeFragment.onStart registerReceiver error: ${e.message}")
         }
+        // What changed while covered, as ignoring a source on a media page does.
+        if (seenUnreadUpdate != ani.dantotsu.notifications.unread.UnreadCache.updateCount && _binding != null) {
+            applyUnreadCacheUpdate()
+        }
     }
 
     override fun onStop() {
@@ -1833,7 +1865,11 @@ class HomeFragment : Fragment() {
             } catch (e: Exception) {
                 null
             }
-            if (cached == null) return
+            if (cached == null) {
+                // No AniList half to rebuild, but the Comick half may have changed.
+                renderUnreadRow()
+                return
+            }
 
             // Cached candidates, cached chapter counts: neither knows what the user has read since,
             // so [reconcileUnread] is what makes this list current rather than merely stored.

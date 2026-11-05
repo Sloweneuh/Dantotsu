@@ -56,6 +56,8 @@ class ReleaseSourceIgnoresSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         binding.title.setText(R.string.release_sources_manage)
         binding.replyButton.visibility = View.GONE
+        // See RepliesBottomDialog: animating this wrap_content list can crash RecyclerView.
+        binding.repliesRecyclerView.itemAnimator = null
         binding.repliesRecyclerView.adapter = adapter
         binding.repliesRecyclerView.layoutManager = LinearLayoutManager(context)
 
