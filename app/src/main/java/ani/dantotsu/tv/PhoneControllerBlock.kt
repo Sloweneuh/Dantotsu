@@ -24,19 +24,13 @@ import androidx.fragment.app.FragmentManager
  *
  * Left alone: typing into a text field (the keyboard's whole point there), media keys, volume and
  * power, a phone's own back key, a mouse, and keys injected without a device (testing). And one
- * thing is left to a controller or a remote: taking up the offer to switch to TV mode, which the
- * phone interface makes when a controller connects ([TvOfferHost]) — or there'd be no way into TV
- * mode from one.
+ * thing is left to a controller or a remote: taking up the offer to switch to TV mode, the app
+ * notice raised when a controller connects ([ControllerOfferNotice]) — or there'd be no way into TV
+ * mode from one. No other notice answers to one.
  *
  * Told apart by where the input comes from, not by which key it is.
  */
 object PhoneControllerBlock : Application.ActivityLifecycleCallbacks {
-
-    /** The phone interface's offer to switch to TV mode, accepted with a controller's A or a remote's OK. */
-    interface TvOfferHost {
-        /** True when the offer was showing, and has been taken up. */
-        fun acceptTvOffer(): Boolean
-    }
 
     /**
      * Applies the block to [window] — an activity's, or a dialog's. Every window needs its own: a
@@ -77,7 +71,9 @@ object PhoneControllerBlock : Application.ActivityLifecycleCallbacks {
         override fun dispatchKeyEvent(event: KeyEvent): Boolean {
             if (!blocked(event, window, context)) return base.dispatchKeyEvent(event)
             if (event.action == KeyEvent.ACTION_UP && event.keyCode in ACCEPT_KEYS && fromController(event)) {
-                (context as? TvOfferHost)?.acceptTvOffer()
+                // Not from a dialog or sheet over the screen: the card is under it.
+                (context as? Activity)?.takeIf { it.window === window }
+                    ?.let { ControllerOfferNotice.accept(it) }
             }
             return true
         }

@@ -3698,7 +3698,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tv_big_picture_on">On</string>
     <string name="tv_big_picture_off">Off</string>
     <string name="tv_exit">Exit TV mode</string>
-    <string name="tv_controller_offer">Controller connected — switch to TV mode?</string>
     <string name="tv_switch">Switch</string>
     <string name="tv_trending">Trending now</string>
     <string name="tv_episodes">Episodes</string>
@@ -4210,4 +4209,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="stats_format_novel">Novel</string>
     <string name="stats_format_one_shot">One-shot</string>
     <string name="language_system_default">System Default (%1$s)</string>
+    <string name="tv_controller_offer_title">Controller connected</string>
+    <string name="tv_controller_offer_hint">Press A or OK to switch to TV mode</string>
+    <string name="notice_controller_offer">Controller connected</string>
 </resources>

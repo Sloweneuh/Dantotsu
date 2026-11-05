@@ -146,9 +146,14 @@ object TvMode {
         PrefManager.getNullableCustomVal(key, null, String::class.java)
             ?.let { android.graphics.Rect.unflattenFromString(it) }?.takeIf { !it.isEmpty }
 
-    /** Back to the phone interface, until switched on again (even on a TV). */
+    /**
+     * Back to the phone interface. Automatic rather than off: leaving can just mean wanting to read
+     * manga, which TV mode doesn't have, so a controller still offers TV mode on the next launch.
+     * Not on this one, having only just left it.
+     */
     fun exit(activity: Activity) {
-        PrefManager.setVal(PrefName.BigPictureMode, OFF)
+        PrefManager.setVal(PrefName.BigPictureMode, AUTOMATIC)
+        ControllerOfferNotice.skipThisLaunch()
         rememberTvWindow(activity)
         val intent = Intent(activity, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -190,6 +195,7 @@ object TvMode {
     }
 
     fun InputDevice.isController(): Boolean =
-        !isVirtual && (sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
+        // A keyboard can claim gamepad keys too (WSA's does): that doesn't make it a controller.
+        !isVirtual && keyboardType != InputDevice.KEYBOARD_TYPE_ALPHABETIC && (sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
             sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK)
 }

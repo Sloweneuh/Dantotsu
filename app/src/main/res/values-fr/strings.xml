@@ -3571,7 +3571,6 @@
     <string name="tv_big_picture_on">Activé</string>
     <string name="tv_big_picture_off">Désactivé</string>
     <string name="tv_exit">Quitter le mode TV</string>
-    <string name="tv_controller_offer">Manette connectée — passer en mode TV ?</string>
     <string name="tv_switch">Passer</string>
     <string name="tv_trending">Tendances du moment</string>
     <string name="tv_episodes">Épisodes</string>
@@ -4088,4 +4087,7 @@
     <string name="stats_format_novel">Roman</string>
     <string name="stats_format_one_shot">One-shot</string>
     <string name="language_system_default">Langue du système (%1$s)</string>
+    <string name="tv_controller_offer_title">Manette connectée</string>
+    <string name="tv_controller_offer_hint">Appuyez sur A ou OK pour passer en mode TV</string>
+    <string name="notice_controller_offer">Manette connectée</string>
 </resources>

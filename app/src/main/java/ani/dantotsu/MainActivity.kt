@@ -86,7 +86,7 @@ import java.io.Serializable
 
 private const val BACK_TO_EXIT_MILLIS = 2_000L
 
-class MainActivity : AppCompatActivity(), ani.dantotsu.tv.PhoneControllerBlock.TvOfferHost {
+class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var incognitoLiveData: SharedPreferenceBooleanLiveData
     private val scope = lifecycleScope
@@ -672,12 +672,17 @@ class MainActivity : AppCompatActivity(), ani.dantotsu.tv.PhoneControllerBlock.T
         // New releases of what's being read or watched, if switched on; at most hourly.
         ani.dantotsu.download.AutoDownloads.runIfDue(this)
         inputManager.registerInputDeviceListener(controllerListener, null)
-        if (ani.dantotsu.tv.TvMode.hasController()) offerTvMode()
+        if (ani.dantotsu.tv.TvMode.hasController()) ani.dantotsu.tv.ControllerOfferNotice.offer(this)
     }
 
     override fun onPause() {
         inputManager.unregisterInputDeviceListener(controllerListener)
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        if (isFinishing) ani.dantotsu.tv.ControllerOfferNotice.onAppClosed()
+        super.onDestroy()
     }
 
     private val inputManager get() = getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager
@@ -686,32 +691,12 @@ class MainActivity : AppCompatActivity(), ani.dantotsu.tv.PhoneControllerBlock.T
     private val controllerListener = object : android.hardware.input.InputManager.InputDeviceListener {
         override fun onInputDeviceAdded(deviceId: Int) {
             val device = android.view.InputDevice.getDevice(deviceId) ?: return
-            if (with(ani.dantotsu.tv.TvMode) { device.isController() }) offerTvMode()
+            if (with(ani.dantotsu.tv.TvMode) { device.isController() }) ani.dantotsu.tv.ControllerOfferNotice.offer(this@MainActivity)
         }
-        override fun onInputDeviceRemoved(deviceId: Int) = Unit
+        override fun onInputDeviceRemoved(deviceId: Int) {
+            if (!ani.dantotsu.tv.TvMode.hasController()) ani.dantotsu.tv.ControllerOfferNotice.withdraw()
+        }
         override fun onInputDeviceChanged(deviceId: Int) = Unit
-    }
-
-    /** Once per launch, and never when the user has turned the TV interface off themselves. */
-    private fun offerTvMode() {
-        if (tvModeOffered || ani.dantotsu.tv.TvMode.isOn(this)) return
-        // Off is a choice the user made (leaving TV mode, or the setting): don't argue with it.
-        if (PrefManager.getVal<Int>(PrefName.BigPictureMode) == ani.dantotsu.tv.TvMode.OFF) return
-        tvModeOffered = true
-        tvOffer = com.google.android.material.snackbar.Snackbar.make(
-            binding.root, R.string.tv_controller_offer, com.google.android.material.snackbar.Snackbar.LENGTH_LONG
-        ).setAction(R.string.tv_switch) { ani.dantotsu.tv.TvMode.enter(this) }.also { it.show() }
-    }
-
-    /** The offer on screen, if it is: the one thing a controller does in the phone interface. */
-    private var tvOffer: com.google.android.material.snackbar.Snackbar? = null
-
-    override fun acceptTvOffer(): Boolean {
-        // The controller's press that accepts it, or a remote's OK.
-        val offer = tvOffer?.takeIf { it.isShownOrQueued } ?: return false
-        offer.dismiss()
-        ani.dantotsu.tv.TvMode.enter(this)
-        return true
     }
 
     //ViewPager
@@ -752,7 +737,6 @@ class MainActivity : AppCompatActivity(), ani.dantotsu.tv.PhoneControllerBlock.T
 
     companion object {
         /** Whether this launch already offered the TV interface for a connected controller. */
-        private var tvModeOffered = false
 
         /** Canonical tab index, in the saved instance state. See [onSaveInstanceState]. */
         private const val STATE_SELECTED_TAB = "mainSelectedTab"

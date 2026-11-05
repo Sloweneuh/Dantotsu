@@ -17,13 +17,16 @@ import ani.dantotsu.others.AppUpdateNotice
 import ani.dantotsu.settings.ExtensionObsoleteNotice
 import ani.dantotsu.settings.ExtensionUpdateNotice
 import ani.dantotsu.settings.SettingsBackupSyncActivity
+import ani.dantotsu.tv.ControllerOfferNotice
 
 /**
  * Decides the order pending [TopBanner]s stack in.
  *
  * Only the top card of the stack can be read without unfolding it, so the notices have to be
  * ordered rather than left to whichever fires last — otherwise a low-stakes one repeatedly takes the
- * top from the one that matters. The order is by what happens if it's ignored:
+ * top from the one that matters. The offer of TV mode to a controller just connected comes first:
+ * it's the only card a controller can answer, so it has to be the one in view. After that, the
+ * order is by what happens if it's ignored:
  *
  *  0. a device left in offline mode after its connection came back is cut off from everything
  *     below — the network notices are held back while offline — and from the app besides,
@@ -107,6 +110,8 @@ object AppNotices {
     data class Choice(val id: String, val title: Int, val icon: Int, val warning: Int? = null)
 
     val CHOICES = listOf(
+        Choice(ControllerOfferNotice.ID, R.string.notice_controller_offer,
+            R.drawable.ic_round_sports_esports_outline_24),
         Choice(BackOnlineNotice.ID, R.string.notice_back_online, R.drawable.ic_round_wifi_24),
         Choice(SyncLinkNotice.ID, R.string.notice_sync_link, R.drawable.ic_round_cloud_sync_outline_24,
             R.string.notice_unsaid_sync),
@@ -143,6 +148,7 @@ object AppNotices {
      * anything it can still act on.
      */
     private fun states(context: Context?): List<Pair<String, Boolean>> = listOf(
+        ControllerOfferNotice.ID to ControllerOfferNotice.isPending(),
         BackOnlineNotice.ID to BackOnlineNotice.isPending(),
         SyncLinkNotice.ID to SyncLinkNotice.isPending(),
         SyncConflictNotice.ID to SyncConflictNotice.isPending(),
@@ -185,6 +191,7 @@ object AppNotices {
     }
 
     private fun spec(activity: Activity, id: String): TopBanner.Spec = when (id) {
+        ControllerOfferNotice.ID -> ControllerOfferNotice.spec(activity)
         BackOnlineNotice.ID -> BackOnlineNotice.spec(activity)
         SyncLinkNotice.ID -> SyncLinkNotice.spec(activity)
         SyncConflictNotice.ID -> SyncConflictNotice.spec(activity)
