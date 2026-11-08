@@ -56,6 +56,8 @@ object ExtensionPreferencesUi {
     fun style(group: PreferenceGroup) {
         group.forEach { pref ->
             pref.isIconSpaceReserved = false
+            // Long titles wrap instead of trailing off; the stock row keeps them to one line.
+            pref.isSingleLineTitle = false
             if (pref is SwitchPreferenceCompat) pref.widgetLayoutResource = R.layout.pref_widget_material_switch
             if (pref is PreferenceGroup) style(pref)
         }
@@ -78,14 +80,20 @@ object ExtensionPreferencesUi {
             val start = position == 0 || isHeader(position - 1)
             val end = item(position + 1) == null || isHeader(position + 1)
             row.background = settingsTile(row, start, end)
-            // The settings rows' type: a bold title over a lighter summary.
+            // The settings rows' type: a bold title over a lighter summary. Done on attach, which
+            // comes before the row is measured, so the wider font is what the height is worked
+            // out from.
             row.findViewById<TextView>(android.R.id.title)?.apply {
                 typeface = ResourcesCompat.getFont(context, R.font.poppins_bold)
                 textSize = 16f
+                ellipsize = null
             }
             row.findViewById<TextView>(android.R.id.summary)?.apply {
                 typeface = ResourcesCompat.getFont(context, R.font.poppins_semi_bold)
                 alpha = 0.66f
+                // Extensions put whole explanations here; the stock row stops at ten lines.
+                maxLines = Int.MAX_VALUE
+                ellipsize = null
             }
         }
 

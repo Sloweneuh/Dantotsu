@@ -3,6 +3,7 @@ package ani.dantotsu.profile.notification
 import ani.dantotsu.util.capContentWidth
 import android.content.Intent
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
@@ -72,6 +73,13 @@ class NotificationActivity : AppCompatActivity() {
             tabs.add(Pair(R.drawable.ic_round_forum_outline_24, "Comments"))
         }
 
+        // Five tabs leave a selected label like "COMMENTS" too little width at the usual size.
+        if (tabs.size >= 5) {
+            navBar.textAppearance = R.style.NavBarText_Compact
+            navBar.textSize = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP, 12f, resources.displayMetrics
+            ).toInt()
+        }
         tabs.forEach { (icon, title) -> navBar.addTab(navBar.createTab(icon, title)) }
 
         val requestedTab = intent.getIntExtra("selectedTab", -1)

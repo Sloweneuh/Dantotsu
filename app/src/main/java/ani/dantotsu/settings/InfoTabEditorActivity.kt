@@ -611,8 +611,10 @@ class InfoTabEditorActivity : AppCompatActivity() {
         @param:StringRes val emptyReason: Int?,
         /** A preset's: says what it is, where another tab has only its name and size. */
         val description: String? = null,
-        /** A preset's: what an empty tab takes on along with its name. */
+        /** What an empty tab takes on along with its name, when copied onto one. */
         val iconKey: String? = null,
+        /** What a long press on it does, which an empty tab also takes on: a tab's, not a preset's. */
+        val longPress: String? = null,
     )
 
     /** The sections a tab shows, as rows, whichever kind of tab it is and wherever it lives. */
@@ -659,8 +661,18 @@ class InfoTabEditorActivity : AppCompatActivity() {
             else -> R.string.info_tab_section_used
         }
         return when (entry) {
-            is InfoTabEntry.Builtin -> CopySource(getString(entry.type.labelRes), entry.iconRes, copied, reason)
-            is InfoTabEntry.Custom -> CopySource(entry.tab.name, entry.iconRes, copied, reason)
+            is InfoTabEntry.Builtin -> CopySource(
+                getString(entry.type.labelRes), entry.iconRes, copied, reason,
+                iconKey = InfoTabIcons.keyOf(entry.iconRes),
+                // A source's own tab opens the source's page on a long press.
+                longPress = entry.type.key,
+            )
+
+            is InfoTabEntry.Custom -> CopySource(
+                entry.tab.name, entry.iconRes, copied, reason,
+                iconKey = entry.tab.icon.takeIf { InfoTabIcons.res(it) != null } ?: InfoTabIcons.DEFAULT_CUSTOM,
+                longPress = entry.tab.longPress,
+            )
         }
     }
 
@@ -678,11 +690,17 @@ class InfoTabEditorActivity : AppCompatActivity() {
         rows.addAll(source.rows)
         adapter.notifyItemRangeInserted(before, rows.size - before)
         changed()
-        // A preset on an empty tab names it too, short of overwriting what the user chose.
-        val presetIcon = source.iconKey
-        if (wasEmpty && presetIcon != null) {
+        // Copied onto an empty tab, a preset or another tab names it too, short of overwriting
+        // what the user chose.
+        if (wasEmpty && source.rows.isNotEmpty()) {
             if (hasUsualName()) header.infoTabEditorName.setText(source.name)
-            if (icon == null || icon == InfoTabIcons.DEFAULT_CUSTOM) onIconPicked(presetIcon)
+            val sourceIcon = source.iconKey
+            if (sourceIcon != null && (icon == null || icon == InfoTabIcons.DEFAULT_CUSTOM)) onIconPicked(sourceIcon)
+            // Only a source this kind of page has: another page's would open nothing here.
+            val sourceLongPress = source.longPress?.takeIf { action ->
+                InfoTabType.forKey(action)?.let { it in copySources() } ?: true
+            }
+            if (sourceLongPress != null && longPress == InfoTabLongPress.NAME) onLongPressPicked(sourceLongPress)
         }
     }
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A hairline between a custom info tab's sections, inset to the sections' own margins. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:bottom="12dp"
+        android:left="32dp"
+        android:right="32dp"
+        android:top="12dp">
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorOutlineVariant" />
+            <size android:height="1dp" />
+        </shape>
+    </item>
+</layer-list>

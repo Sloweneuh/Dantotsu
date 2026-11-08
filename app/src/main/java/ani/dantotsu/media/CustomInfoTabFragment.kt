@@ -10,6 +10,7 @@ import android.text.style.ImageSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.graphics.drawable.Drawable
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -1134,11 +1135,20 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         /** Reviews and stacks: the sources that have some, for a page of everyone's. */
         private val feeds = HashMap<InfoTabType, MergedFeed>()
 
+        /** What each source that has none says about it ("No reviews yet"), icon and text. */
+        private val empties = HashMap<InfoTabType, Pair<Drawable?, CharSequence>>()
+
         init {
             bind.itemTitle.text = entry.title ?: kind.label(requireContext(), null)
             if (showSources) bind.itemTitle.addSourceIcons(sources)
             bind.itemRecycler.adapter = limitedRow ?: row
             limitedRow?.onChanged = { updateMore() }
+            // Sources fill their adapters in after handing them over.
+            row.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+                override fun onChanged() = updateEmpty()
+                override fun onItemRangeInserted(positionStart: Int, itemCount: Int) = updateEmpty()
+                override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) = updateEmpty()
+            })
             bind.itemRecycler.layoutManager = LinearLayoutManager(
                 requireContext(),
                 if (vertical) LinearLayoutManager.VERTICAL else LinearLayoutManager.HORIZONTAL,
@@ -1216,9 +1226,28 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
                 bind.itemAdd.isVisible = true
                 bind.itemAdd.setSafeOnClickListener { add.performClick() }
             }
+            // A source with nothing says so in its own empty slot, which the merged row speaks for
+            // while no source has anything.
+            val empty = view.findViewById<View>(R.id.itemEmptyContainer)?.takeIf { it.isVisible }
+            if (empty != null) {
+                val text: CharSequence = view.findViewById<TextView>(R.id.itemEmpty)?.text ?: ""
+                empties[source] = view.findViewById<ImageView>(R.id.itemEmptyIcon)?.drawable to text
+            } else empties.remove(source)
+            updateEmpty()
             // A list with no entries is a source saying it has none: AniList's reviews, for one.
             val hasEntries = taken != null && (!vertical || taken.itemCount > 0)
-            if (hasEntries || add != null) reveal()
+            if (hasEntries || add != null || empty != null) reveal()
+        }
+
+        private fun updateEmpty() {
+            val said = sources.firstNotNullOfOrNull { empties[it] }
+            val none = row.itemCount == 0 && said != null
+            bind.itemEmptyContainer.isVisible = none
+            bind.itemRecycler.isVisible = !none
+            if (none && said != null) {
+                said.first?.let { bind.itemEmptyIcon.setImageDrawable(it.constantState?.newDrawable()?.mutate() ?: it) }
+                bind.itemEmpty.text = said.second
+            }
         }
 
         override fun publish(source: InfoTabType, view: View) {
@@ -1242,7 +1271,9 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             placed.remove(source)?.let { row.removeAdapter(it) }
             more.remove(source)
             feeds.remove(source)
+            empties.remove(source)
             updateMore()
+            updateEmpty()
         }
     }
 

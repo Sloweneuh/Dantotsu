@@ -54,17 +54,32 @@ class FailedPageTracker(private val pageAt: (Int) -> Any?) {
         if (failedPages.remove(page)) updateRetryAllButtons(parent)
     }
 
-    /** Reloads every failed page that is currently attached, in place. */
+    /**
+     * Reloads every failed page: the attached ones in place, the others by having them rebound.
+     *
+     * The rebind matters. A page just scrolled past sits in the RecyclerView's view cache, and a
+     * cached view comes back as it was, without being bound again, so it would keep showing
+     * its error however long ago "retry all" was pressed.
+     */
     fun retryAll(anyItemView: View, retry: (Int, View) -> Unit) {
         val recycler = recyclerOf(anyItemView) ?: return
         // Snapshot first: each retry mutates the set as soon as a page loads.
         val targets = ArrayList<Pair<Int, View>>(failedPages.size)
+        val attached = HashSet<Int>()
         for (i in 0 until recycler.childCount) {
             val child = recycler.getChildAt(i)
             val position = recycler.getChildAdapterPosition(child)
             if (position == RecyclerView.NO_POSITION) continue
+            attached.add(position)
             val page = pageAt(position) ?: continue
             if (failedPages.contains(page)) targets.add(position to child)
+        }
+        recycler.adapter?.let { adapter ->
+            for (position in 0 until adapter.itemCount) {
+                if (position in attached) continue
+                val page = pageAt(position) ?: continue
+                if (failedPages.contains(page)) adapter.notifyItemChanged(position)
+            }
         }
         targets.forEach { (position, child) -> retry(position, child) }
     }

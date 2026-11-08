@@ -383,6 +383,10 @@ object InfoTabIcons {
     const val DEFAULT_CUSTOM = "star"
 
     fun res(key: String?): Int? = key?.let { byKey[it] }
+
+    /** The key of the built-in icon drawn by [res], when there is one. */
+    fun keyOf(@androidx.annotation.DrawableRes res: Int): String? =
+        byKey.entries.firstOrNull { it.value == res }?.key
 }
 
 /** A tab on a media page's info screen: a source's own, or one the user built. */

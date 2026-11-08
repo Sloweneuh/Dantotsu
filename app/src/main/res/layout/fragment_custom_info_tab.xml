@@ -39,7 +39,9 @@
                 android:id="@+id/customInfoContent"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical" />
+                android:divider="@drawable/info_section_divider"
+                android:orientation="vertical"
+                android:showDividers="middle" />
 
             <!-- The source fragments run here, out of sight; their sections move to the content above. -->
             <FrameLayout
