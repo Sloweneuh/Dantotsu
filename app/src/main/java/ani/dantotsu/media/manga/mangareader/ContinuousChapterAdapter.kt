@@ -116,7 +116,10 @@ class ContinuousChapterAdapter(
     val items = mutableListOf<ReaderItem>()
     val settings get() = activity.defaultSettings
 
-    private val failedPages = FailedPageTracker { position -> imageItemAt(position) }
+    private val failedPages = FailedPageTracker(
+        pageAt = { position -> imageItemAt(position) },
+        warm = { positions -> activity.warmFailedPages(positions) },
+    )
     private val retryPage: (Int, View) -> Unit = { position, view ->
         activity.lifecycleScope.launch { loadImage(position, view) }
     }

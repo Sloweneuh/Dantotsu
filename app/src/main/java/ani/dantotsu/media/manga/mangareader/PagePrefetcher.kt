@@ -74,6 +74,31 @@ class PagePrefetcher(
         repeat(WORKERS - workers.size) { workers += scope.launch { drain() } }
     }
 
+    /**
+     * Fetches the pages at [positions] now, wherever they are: "retry all" asking for failed pages
+     * the reader isn't showing, so that by the time it gets back to them they come out of the cache
+     * instead of behind a spinner. A page already claimed is taken again — it failed, so whatever
+     * claimed it didn't leave it in the cache. One worker, in order, stopping at the first failure
+     * for the same reason [drain] does.
+     */
+    fun warm(positions: List<Int>) {
+        val wanted = positions.flatMap { pagesAt(it) }.distinctBy { it.url.url }
+            .filter { isWorthWarming(it.url.url) }
+        if (wanted.isEmpty()) return
+        wanted.forEach { claimed.add(it.url.url) }
+        scope.launch {
+            for (image in wanted) {
+                val bitmap = with(activity) {
+                    loadBitmap(image.url, activity.pageTransforms(image), maxHeightOverride)
+                }
+                if (bitmap == null) {
+                    wanted.dropWhile { it !== image }.forEach { claimed.remove(it.url.url) }
+                    return@launch
+                }
+            }
+        }
+    }
+
     /** Drops what's in flight, for good — the chapter changed, or the reader is going away. */
     fun cancel() {
         scope.cancel()

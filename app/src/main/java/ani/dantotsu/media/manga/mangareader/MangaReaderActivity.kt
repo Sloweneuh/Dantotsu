@@ -382,6 +382,27 @@ class MangaReaderActivity : AppCompatActivity() {
      * layout manager's own prefetch isn't enough. Null in paged mode, where ViewPager2 does it.
      */
     private var prefetcher: PagePrefetcher? = null
+
+    /** Paged mode's stand-in for [prefetcher], made only when "retry all" has pages to fetch. */
+    private var pagedWarmer: PagePrefetcher? = null
+
+    /**
+     * Downloads the pages at [positions] into the cache now: failed pages "retry all" can't reload
+     * in place because they aren't on screen. Through a [PagePrefetcher] either way, as that builds
+     * the cache key exactly as the real load will read it.
+     */
+    internal fun warmFailedPages(positions: List<Int>) {
+        val warmer = prefetcher ?: pagedWarmer ?: PagePrefetcher(this, null) { position ->
+            imageAdapter?.pagesAt(position).orEmpty()
+        }.also { pagedWarmer = it }
+        warmer.warm(positions)
+    }
+
+    private fun cancelPagedWarmer() {
+        pagedWarmer?.cancel()
+        pagedWarmer = null
+    }
+
     private val isContinuousMultiChapter: Boolean
         get() = PrefManager.getVal(PrefName.ContinuousMultiChapter)
 
@@ -471,6 +492,7 @@ class MangaReaderActivity : AppCompatActivity() {
         autoscroll.release()
         prefetcher?.cancel()
         prefetcher = null
+        cancelPagedWarmer()
         PageEdges.onProfiled = null
         PageEdges.clear()
         // The reader is the only thing that fills MangaCache, but the cache outlives it: it is an
@@ -1205,6 +1227,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 }
 
                 prefetcher?.cancel()
+                cancelPagedWarmer()
                 prefetcher = if (isContinuousMultiChapter) {
                     PagePrefetcher(
                         this@MangaReaderActivity,
@@ -1299,6 +1322,8 @@ class MangaReaderActivity : AppCompatActivity() {
             // that is no longer on screen.
             prefetcher?.cancel()
             prefetcher = null
+            // A new chapter's positions mean other pages: an old warm in flight would fetch those.
+            cancelPagedWarmer()
             binding.mangaReaderPager.apply {
                 binding.mangaReaderSwipy.child = this
                 visibility = View.VISIBLE

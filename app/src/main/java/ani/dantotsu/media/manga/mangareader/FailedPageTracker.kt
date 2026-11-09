@@ -22,7 +22,11 @@ import java.util.IdentityHashMap
  *
  * @param pageAt the page an adapter position currently holds, or null when it holds no image.
  */
-class FailedPageTracker(private val pageAt: (Int) -> Any?) {
+class FailedPageTracker(
+    private val pageAt: (Int) -> Any?,
+    /** Downloads the pages at these positions into the cache, for failed pages not on screen. */
+    private val warm: (List<Int>) -> Unit = {},
+) {
 
     private val failedPages: MutableSet<Any> = Collections.newSetFromMap(IdentityHashMap())
 
@@ -55,11 +59,13 @@ class FailedPageTracker(private val pageAt: (Int) -> Any?) {
     }
 
     /**
-     * Reloads every failed page: the attached ones in place, the others by having them rebound.
+     * Reloads every failed page: the attached ones in place, the others by downloading them now and
+     * having them rebound.
      *
      * The rebind matters. A page just scrolled past sits in the RecyclerView's view cache, and a
      * cached view comes back as it was, without being bound again, so it would keep showing
-     * its error however long ago "retry all" was pressed.
+     * its error however long ago "retry all" was pressed. The download is what makes coming back
+     * to it instant rather than a spinner: the rebind reads the cache it went into.
      */
     fun retryAll(anyItemView: View, retry: (Int, View) -> Unit) {
         val recycler = recyclerOf(anyItemView) ?: return
@@ -74,14 +80,20 @@ class FailedPageTracker(private val pageAt: (Int) -> Any?) {
             val page = pageAt(position) ?: continue
             if (failedPages.contains(page)) targets.add(position to child)
         }
+        val elsewhere = ArrayList<Int>()
         recycler.adapter?.let { adapter ->
             for (position in 0 until adapter.itemCount) {
                 if (position in attached) continue
                 val page = pageAt(position) ?: continue
-                if (failedPages.contains(page)) adapter.notifyItemChanged(position)
+                if (failedPages.contains(page)) {
+                    adapter.notifyItemChanged(position)
+                    elsewhere.add(position)
+                }
             }
         }
         targets.forEach { (position, child) -> retry(position, child) }
+        // After the pages on screen, which go first; these are fetched one at a time behind them.
+        if (elsewhere.isNotEmpty()) warm(elsewhere)
     }
 
     fun clear() = failedPages.clear()

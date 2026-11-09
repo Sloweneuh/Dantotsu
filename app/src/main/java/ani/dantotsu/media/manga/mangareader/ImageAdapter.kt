@@ -41,7 +41,10 @@ open class ImageAdapter(
 
     inner class ImageViewHolder(binding: ItemImageBinding) : RecyclerView.ViewHolder(binding.root)
 
-    private val failedPages = FailedPageTracker { position -> pageKey(position) }
+    private val failedPages = FailedPageTracker(
+        pageAt = { position -> pageKey(position) },
+        warm = { positions -> activity.warmFailedPages(positions) },
+    )
     private val retryPage: (Int, View) -> Unit = { position, view ->
         activity.lifecycleScope.launch { loadImage(position, view) }
     }
