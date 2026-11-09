@@ -31,8 +31,6 @@ import java.util.Locale
  */
 object SimklMediaRenderer {
 
-    private const val tripleTab = "\t\t\t"
-
     @SuppressLint("SetTextI18n", "ClickableViewAccessibility")
     fun render(
         activity: AppCompatActivity,
@@ -46,20 +44,20 @@ object SimklMediaRenderer {
         /** Info-tab only: Simkl's recommendations pre-resolved to AniList media (tap → in-app page). */
         anilistRecs: List<Media>? = null,
         recSource: Media? = null,
+        /** On an info tab, whose header is AniList's: Simkl's own title goes in the stats too. */
+        nameInStats: Boolean = false,
     ) {
         val container = info.mediaInfoContainer
         container.visibility = View.VISIBLE
-        info.mediaInfoNameContainer.visibility = View.GONE
 
+        // Simkl's title is the romaji for anime and the English for everything else; en_title is
+        // the English one when that differs. It used to be shown as the romaji line.
         val primary = full.title?.trim()
-        val en = full.enTitle?.trim()?.takeIf { it.isNotBlank() && !it.equals(primary, true) }
-        if (en != null) {
-            info.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            info.mediaInfoNameRomaji.text = tripleTab + en
-            info.mediaInfoNameRomaji.setOnLongClickListener { copyToClipboard(en); true }
-        } else {
-            info.mediaInfoNameRomajiContainer.visibility = View.GONE
-        }
+        info.setInfoNames(
+            name = full.enTitle?.takeIf { it.isNotBlank() } ?: primary,
+            romaji = primary,
+            headerTitle = if (nameInStats) null else primary ?: full.enTitle,
+        )
 
         val simklRating = full.ratings?.simkl?.rating
         info.mediaInfoMeanScore.text = simklRating?.takeIf { it > 0 }

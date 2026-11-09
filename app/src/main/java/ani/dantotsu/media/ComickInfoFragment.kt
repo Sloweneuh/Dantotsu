@@ -834,13 +834,6 @@ class ComickInfoFragment : Fragment() {
                 }
                         ?: false
 
-        // Display Title
-        binding.mediaInfoName.text = tripleTab + (comic.displayTitle() ?: getString(R.string.unknown))
-        binding.mediaInfoName.setOnLongClickListener {
-            copyToClipboard(comic.displayTitle() ?: "")
-            true
-        }
-
         // Display Romaji Title based on country of origin
         val romajiLang =
                 when (comic.country?.lowercase()) {
@@ -853,16 +846,7 @@ class ComickInfoFragment : Fragment() {
         val romajiTitle =
                 romajiLang?.let { lang -> comic.md_titles?.firstOrNull { it.lang == lang }?.title }
 
-        if (romajiTitle != null) {
-            binding.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            binding.mediaInfoNameRomaji.text = tripleTab + romajiTitle
-            binding.mediaInfoNameRomaji.setOnLongClickListener {
-                copyToClipboard(romajiTitle)
-                true
-            }
-        } else {
-            binding.mediaInfoNameRomajiContainer.visibility = View.GONE
-        }
+        binding.setInfoNames(comic.displayTitle() ?: getString(R.string.unknown), romajiTitle)
         binding.mediaInfoMeanScore.text = comic.bayesian_rating ?: getString(R.string.unknown_value)
 
         val animeProfile = comic.anime_profiles

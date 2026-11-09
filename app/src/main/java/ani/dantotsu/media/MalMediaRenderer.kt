@@ -35,8 +35,6 @@ import java.util.Locale
  */
 object MalMediaRenderer {
 
-    private const val tripleTab = "\t\t\t"
-
     @SuppressLint("SetTextI18n")
     fun renderAnime(
         activity: AppCompatActivity,
@@ -47,9 +45,10 @@ object MalMediaRenderer {
     ) {
         val container = prepare(info, contentHost)
 
-        val canonical = full.alternativeTitles?.en?.trim()?.takeIf { it.isNotBlank() }
-            ?: full.alternativeTitles?.ja?.trim()?.takeIf { it.isNotBlank() } ?: full.title.trim()
-        setNames(info, canonical, full.title.trim())
+        val english = full.alternativeTitles?.en?.trim()?.takeIf { it.isNotBlank() }
+        // What MalMediaActivity puts in its header, which the lines below needn't repeat.
+        val header = english ?: full.alternativeTitles?.ja?.trim()?.takeIf { it.isNotBlank() } ?: full.title.trim()
+        info.setInfoNames(english ?: full.title, full.title, headerTitle = header)
 
         info.mediaInfoMeanScore.text = full.mean?.let { String.format(Locale.US, "%.1f", it) }
             ?: activity.getString(R.string.unknown_value)
@@ -105,7 +104,7 @@ object MalMediaRenderer {
         setPopularityFavorites(info, full.rank, full.popularity, full.numScoringUsers)
         setSynopsis(activity, info, full.synopsis)
 
-        contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), canonical) }
+        contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), header) }
         contentHost.infoSection(InfoSectionKind.GENRES) { addGenres(activity, contentHost, full.genres, isAnime = true) }
         InfoExtraSections.addMalExtras(
             contentHost, full.background, full.relatedAnime, full.relatedManga,
@@ -123,9 +122,10 @@ object MalMediaRenderer {
     ) {
         val container = prepare(info, contentHost)
 
-        val canonical = full.alternativeTitles?.en?.trim()?.takeIf { it.isNotBlank() }
-            ?: full.alternativeTitles?.ja?.trim()?.takeIf { it.isNotBlank() } ?: full.title.trim()
-        setNames(info, canonical, full.title.trim())
+        val english = full.alternativeTitles?.en?.trim()?.takeIf { it.isNotBlank() }
+        // What MalMediaActivity puts in its header, which the lines below needn't repeat.
+        val header = english ?: full.alternativeTitles?.ja?.trim()?.takeIf { it.isNotBlank() } ?: full.title.trim()
+        info.setInfoNames(english ?: full.title, full.title, headerTitle = header)
 
         info.mediaInfoMeanScore.text = full.mean?.let { String.format(Locale.US, "%.1f", it) }
             ?: activity.getString(R.string.unknown_value)
@@ -164,7 +164,7 @@ object MalMediaRenderer {
         setPopularityFavorites(info, full.rank, full.popularity, full.numScoringUsers)
         setSynopsis(activity, info, full.synopsis)
 
-        contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), canonical) }
+        contentHost.infoSection(InfoSectionKind.SYNONYMS) { addSynonyms(activity, contentHost, full.alternativeTitles?.synonyms.orEmpty(), header) }
         contentHost.infoSection(InfoSectionKind.GENRES) { addGenres(activity, contentHost, full.genres, isAnime = false) }
         InfoExtraSections.addMalExtras(
             contentHost, full.background, full.relatedAnime, full.relatedManga,
@@ -186,17 +186,6 @@ object MalMediaRenderer {
             contentHost.addView(container)
         }
         return container
-    }
-
-    private fun setNames(info: FragmentMediaInfoBinding, canonical: String, rawTitle: String) {
-        val romaji = rawTitle.takeIf { it.isNotBlank() && !it.equals(canonical, true) }
-        if (romaji != null) {
-            info.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            info.mediaInfoNameRomaji.text = tripleTab + romaji
-            info.mediaInfoNameRomaji.setOnLongClickListener { copyToClipboard(romaji); true }
-        } else {
-            info.mediaInfoNameRomajiContainer.visibility = View.GONE
-        }
     }
 
     private fun setSeason(info: FragmentMediaInfoBinding, season: String?, year: Int?) {

@@ -83,7 +83,7 @@ class MediaAdaptor(
         return when (item) {
             MediaKind.ANIME -> R.string.anime to R.drawable.ic_round_movie_filter_24
             MediaKind.MANGA -> R.string.manga to R.drawable.ic_round_import_contacts_24
-            MediaKind.NOVEL -> R.string.novel to R.drawable.ic_round_import_contacts_24
+            MediaKind.NOVEL -> R.string.novel to R.drawable.ic_round_book_24
         }
     }
 
@@ -185,7 +185,7 @@ class MediaAdaptor(
                         b.itemCompactTypeImage.setImageDrawable(
                             AppCompatResources.getDrawable(
                                 activity,
-                                R.drawable.ic_round_import_contacts_24
+                                R.drawable.ic_round_book_24
                             )
                         )
                         b.itemCompactType.visibility = View.VISIBLE
@@ -205,7 +205,7 @@ class MediaAdaptor(
                         if (media.relation != null) b.itemCompactTypeImage.setImageDrawable(
                             AppCompatResources.getDrawable(
                                 activity,
-                                R.drawable.ic_round_import_contacts_24
+                                InfoExtraSections.typeIcon(false, media.format)
                             )
                         )
                         // MangaUpdates has no reliable total, so show its latest chapter in the
@@ -301,7 +301,7 @@ class MediaAdaptor(
                             b.itemCompactTypeImage.setImageDrawable(
                                 AppCompatResources.getDrawable(
                                     activity,
-                                    R.drawable.ic_round_import_contacts_24
+                                    R.drawable.ic_round_book_24
                                 )
                             )
                             b.itemCompactType.visibility = View.VISIBLE

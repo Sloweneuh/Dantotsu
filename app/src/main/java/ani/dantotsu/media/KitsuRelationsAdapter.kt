@@ -50,10 +50,7 @@ class KitsuRelationsAdapter(
         b.itemCompactType.visibility = View.VISIBLE
         b.itemCompactRelation.text = rel.role.replace('_', ' ')
         b.itemCompactTypeImage.setImageDrawable(
-            ContextCompat.getDrawable(
-                b.root.context,
-                if (rel.isAnime) R.drawable.ic_round_movie_filter_24 else R.drawable.ic_round_menu_book_24,
-            )
+            ContextCompat.getDrawable(b.root.context, InfoExtraSections.typeIcon(rel.isAnime, media.subtype))
         )
 
         b.root.setSafeOnClickListener { onItemClick(rel) }

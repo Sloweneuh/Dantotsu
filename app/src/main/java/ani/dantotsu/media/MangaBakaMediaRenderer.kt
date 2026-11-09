@@ -60,8 +60,6 @@ import java.util.Locale
  */
 object MangaBakaMediaRenderer {
 
-    private const val tripleTab = "\t\t\t"
-
     /** The fragment-only "similar → recommendations" row needs the current media + its view model. */
     data class RecoConfig(val media: Media, val model: MediaDetailsViewModel)
 
@@ -91,22 +89,13 @@ object MangaBakaMediaRenderer {
         val nativeLangs = nativeLanguages(series)
         val displayTitle = series.displayTitle() ?: activity.getString(R.string.unknown)
 
-        if (nameInStats) {
-            info.mediaInfoNameContainer.visibility = View.VISIBLE
-            info.mediaInfoName.text = tripleTab + displayTitle
-            info.mediaInfoName.setOnLongClickListener { copyToClipboard(displayTitle); true }
-        } else {
-            info.mediaInfoNameContainer.visibility = View.GONE
-        }
-
-        val romaji = series.romanizedTitle()?.takeIf { it.isNotBlank() }
-        if (romaji != null) {
-            info.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            info.mediaInfoNameRomaji.text = tripleTab + romaji
-            info.mediaInfoNameRomaji.setOnLongClickListener { copyToClipboard(romaji); true }
-        } else {
-            info.mediaInfoNameRomajiContainer.visibility = View.GONE
-        }
+        // displayTitle is the title in the language picked in settings; the romaji is the native
+        // title's romanization, which is often what that picks for a series with no English one.
+        info.setInfoNames(
+            name = displayTitle,
+            romaji = series.romanizedTitle(),
+            headerTitle = if (nameInStats) null else displayTitle,
+        )
 
         info.mediaInfoMeanScore.text = series.rating?.let { String.format(Locale.US, "%.1f", it / 10.0) }
             ?: activity.getString(R.string.unknown_value)

@@ -3,6 +3,7 @@ package ani.dantotsu.media
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import android.content.Context
+import android.graphics.Canvas
 import android.util.AttributeSet
 import android.view.View
 import android.view.ViewGroup
@@ -112,6 +113,8 @@ class InfoSectionContainer @JvmOverloads constructor(context: Context, attrs: At
         }
     }
 
+    private val headingPainter = InfoSectionHeadings.Painter(context)
+
     override fun onFinishInflate() {
         super.onFinishInflate()
         // Binding-referenced children of the layout itself: the sections every source has.
@@ -119,6 +122,24 @@ class InfoSectionContainer @JvmOverloads constructor(context: Context, attrs: At
         findViewById<View>(R.id.mediaInfoNames)?.infoSectionKind = InfoSectionKind.TITLES
         findViewById<View>(R.id.mediaInfoDescriptionSection)?.infoSectionKind =
             InfoSectionKind.DESCRIPTION
+        (0 until childCount).map { getChildAt(it) }
+            .filter { it.infoSectionKind != null }
+            .forEach { InfoSectionHeadings.space(it) }
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        super.onLayout(changed, l, t, r, b)
+        if (sink == null && InfoSectionHeadings.settle(this) { it.infoSectionKind != null }) {
+            post { requestLayout() }
+        }
+    }
+
+    /** Each section's heading marked; anchors and buttons that aren't sections stay as they are. */
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+        if (sink == null) {
+            InfoSectionHeadings.draw(this, canvas, headingPainter) { it.infoSectionKind != null }
+        }
     }
 
     fun wants(kind: InfoSectionKind): Boolean {
@@ -233,6 +254,7 @@ class InfoSectionContainer @JvmOverloads constructor(context: Context, attrs: At
                 .forEach { static ->
                     val kind = static.infoSectionKind ?: return@forEach
                     super.removeView(static)
+                    InfoSectionHeadings.unspace(static)
                     if (s.wantsSection(src, kind)) s.publishSection(src, kind, static)
                 }
             s.sourceRendered(src)
@@ -253,6 +275,7 @@ class InfoSectionContainer @JvmOverloads constructor(context: Context, attrs: At
             // anchors and unlink buttons) on a tab whose sections are leaving: those stay put.
             s != null && src != null && kind != null -> {
                 child.layoutParams = params
+                InfoSectionHeadings.unspace(child)
                 val stub = SectionStub(context, child).apply { tag = child.tag }
                 stubs[child] = stub
                 super.addView(stub, -1, generateDefaultLayoutParams())
@@ -264,12 +287,21 @@ class InfoSectionContainer @JvmOverloads constructor(context: Context, attrs: At
                 val childRank = rank(child)
                 val position = (0 until childCount)
                     .firstOrNull { rank(getChildAt(it)) > childRank } ?: -1
-                super.addView(child, position, params)
+                val checked = checkedParams(params)
+                if (kind != null) InfoSectionHeadings.space(child, checked)
+                super.addView(child, position, checked)
             }
 
-            else -> super.addView(child, index, params)
+            else -> {
+                val checked = checkedParams(params)
+                if (kind != null) InfoSectionHeadings.space(child, checked)
+                super.addView(child, index, checked)
+            }
         }
     }
+
+    private fun checkedParams(params: ViewGroup.LayoutParams) =
+        if (checkLayoutParams(params)) params else generateLayoutParams(params)
 
     override fun removeView(view: View) {
         val real = (view as? SectionStub)?.real ?: view

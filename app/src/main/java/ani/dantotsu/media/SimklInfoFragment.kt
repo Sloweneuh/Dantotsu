@@ -75,6 +75,7 @@ class SimklInfoFragment : TrackerInfoFragment<SimklInfoFragment.Data>() {
             contentHost = binding.mediaInfoContainer,
             full = full.full,
             showMalScore = false,
+            nameInStats = true,
             // The AniList tab one swipe away already carries the full tag list.
             anilistTags = null,
             onGenreClick = { genre ->

@@ -182,20 +182,8 @@ class AniListInfoFragment : Fragment() {
 
                     binding.mediaInfoProgressBar.visibility = View.GONE
                     binding.mediaInfoContainer.visibility = View.VISIBLE
-                    val infoName = tripleTab + (media.name ?: media.nameRomaji)
-                    binding.mediaInfoName.text = infoName
-                    binding.mediaInfoName.setOnLongClickListener {
-                        copyToClipboard(media.name ?: media.nameRomaji)
-                        true
-                    }
-                    if (media.name != null) binding.mediaInfoNameRomajiContainer.visibility =
-                        View.VISIBLE
-                    val infoNameRomaji = tripleTab + media.nameRomaji
-                    binding.mediaInfoNameRomaji.text = infoNameRomaji
-                    binding.mediaInfoNameRomaji.setOnLongClickListener {
-                        copyToClipboard(media.nameRomaji)
-                        true
-                    }
+                    // English, or the romaji when there's none; the romaji line then says nothing new.
+                    binding.setInfoNames(media.name ?: media.nameRomaji, media.nameRomaji)
                     binding.mediaInfoMeanScore.text =
                         if (media.meanScore != null) (media.meanScore / 10.0).toString() else "??"
                     binding.mediaInfoStatus.text = media.status

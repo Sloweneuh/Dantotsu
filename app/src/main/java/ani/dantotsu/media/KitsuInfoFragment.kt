@@ -74,6 +74,7 @@ class KitsuInfoFragment : TrackerInfoFragment<KitsuInfoFragment.Data>() {
             contentHost = binding.mediaInfoContainer,
             full = full.full,
             isAnime = isAnime,
+            nameInStats = true,
             onCategoryClick = { slug, name ->
                 KitsuApi.seedCategoryName(slug, name)
                 startActivity(

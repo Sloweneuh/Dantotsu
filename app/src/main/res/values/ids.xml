@@ -52,4 +52,7 @@
     <item name="info_section_renamed" type="id" />
     <item name="info_section_collapsible" type="id" />
     <item name="info_section_limited" type="id" />
+    <item name="info_section_card" type="id" />
+    <item name="info_section_heading" type="id" />
+    <item name="info_section_heading_at" type="id" />
 </resources>

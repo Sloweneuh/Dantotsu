@@ -301,23 +301,10 @@ class MALInfoFragment : Fragment() {
         anilistId: Int,
         malId: Int
     ) {
-        // Title - MAL title is romaji, so show English/Japanese as main title if available
-        val mainTitle = malData.alternativeTitles?.en ?: malData.alternativeTitles?.ja ?: malData.title
-        binding.mediaInfoName.text = tripleTab + mainTitle
-        binding.mediaInfoName.setOnLongClickListener {
-            copyToClipboard(mainTitle)
-            true
-        }
-
-        // Romaji title (MAL's default title is in romaji)
-        if (malData.alternativeTitles?.en != null || malData.alternativeTitles?.ja != null) {
-            binding.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            binding.mediaInfoNameRomaji.text = tripleTab + malData.title
-            binding.mediaInfoNameRomaji.setOnLongClickListener {
-                copyToClipboard(malData.title)
-                true
-            }
-        }
+        // MAL's own title is the romaji. The English one, when MAL has it (it sends "" when not),
+        // is the name; the Japanese never is, as it isn't what "Name" means anywhere else.
+        val english = malData.alternativeTitles?.en?.takeIf { it.isNotBlank() }
+        binding.setInfoNames(english ?: malData.title, malData.title)
 
         // Mean Score
         binding.mediaInfoMeanScore.text = malData.mean?.toString() ?: "??"
@@ -546,23 +533,10 @@ class MALInfoFragment : Fragment() {
         anilistId: Int,
         malId: Int
     ) {
-        // Title - MAL title is romaji, so show English/Japanese as main title if available
-        val mainTitle = malData.alternativeTitles?.en ?: malData.alternativeTitles?.ja ?: malData.title
-        binding.mediaInfoName.text = tripleTab + mainTitle
-        binding.mediaInfoName.setOnLongClickListener {
-            copyToClipboard(mainTitle)
-            true
-        }
-
-        // Romaji title (MAL's default title is in romaji)
-        if (malData.alternativeTitles?.en != null || malData.alternativeTitles?.ja != null) {
-            binding.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            binding.mediaInfoNameRomaji.text = tripleTab + malData.title
-            binding.mediaInfoNameRomaji.setOnLongClickListener {
-                copyToClipboard(malData.title)
-                true
-            }
-        }
+        // MAL's own title is the romaji. The English one, when MAL has it (it sends "" when not),
+        // is the name; the Japanese never is, as it isn't what "Name" means anywhere else.
+        val english = malData.alternativeTitles?.en?.takeIf { it.isNotBlank() }
+        binding.setInfoNames(english ?: malData.title, malData.title)
 
         // Mean Score
         binding.mediaInfoMeanScore.text = malData.mean?.toString() ?: "??"

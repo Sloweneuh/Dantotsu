@@ -162,6 +162,9 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
                 kind.merge == InfoSectionMerge.LINES -> LinesSlot(entry, free, showSources)
                 else -> StackSlot(entry, kind, free, withCaption = showSources)
             }
+            // Before it is added: the column leaves room for the heading of a kind that has none.
+            slot.root.infoSectionKind = kind
+            InfoSectionHeadings.setHeading(slot.root, entry.title)
             binding.customInfoContent.addView(slot.root)
             free.forEach { built[it to kind] = slot }
         }
@@ -1319,9 +1322,7 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
 
     companion object {
         /** The views that can hold a section's title. */
-        private val TITLE_IDS = setOf(
-            R.id.itemTitle, R.id.tagsTitle, R.id.mediaInfoDescriptionText, R.id.genreSectionTitle,
-        )
+        private val TITLE_IDS get() = InfoSectionHeadings.TITLE_IDS
 
         private const val ARG_CONTEXT = "context"
         private const val ARG_TAB = "tab"

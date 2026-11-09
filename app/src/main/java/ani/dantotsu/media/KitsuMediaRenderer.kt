@@ -30,8 +30,6 @@ import java.util.Locale
  */
 object KitsuMediaRenderer {
 
-    private const val tripleTab = "\t\t\t"
-
     @SuppressLint("SetTextI18n", "ClickableViewAccessibility")
     fun render(
         activity: AppCompatActivity,
@@ -41,21 +39,21 @@ object KitsuMediaRenderer {
         isAnime: Boolean,
         onCategoryClick: (slug: String, name: String) -> Unit,
         onRelationClick: (KitsuApi.Relation) -> Unit,
+        /** On an info tab, whose header is AniList's: Kitsu's own title goes in the stats too. */
+        nameInStats: Boolean = false,
     ) {
         val media = full.media
         val container = info.mediaInfoContainer
         container.visibility = View.VISIBLE
-        info.mediaInfoNameContainer.visibility = View.GONE
 
+        // Kitsu's canonical title is whichever it settled on, often the romaji; "en" is the
+        // English one and "en_jp" the romaji.
         val canonical = media.canonicalTitle?.trim()
-        val romaji = media.titles?.get("en_jp")?.trim()?.takeIf { it.isNotBlank() && !it.equals(canonical, true) }
-        if (romaji != null) {
-            info.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            info.mediaInfoNameRomaji.text = tripleTab + romaji
-            info.mediaInfoNameRomaji.setOnLongClickListener { copyToClipboard(romaji); true }
-        } else {
-            info.mediaInfoNameRomajiContainer.visibility = View.GONE
-        }
+        info.setInfoNames(
+            name = media.titles?.get("en")?.takeIf { it.isNotBlank() } ?: canonical,
+            romaji = media.titles?.get("en_jp"),
+            headerTitle = if (nameInStats) null else canonical,
+        )
 
         // ---- score / ranks ----
         val score = media.averageRating?.toDoubleOrNull()?.let { it / 10.0 }

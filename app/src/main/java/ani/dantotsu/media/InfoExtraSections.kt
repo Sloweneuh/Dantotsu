@@ -72,6 +72,18 @@ object InfoExtraSections {
      *  - One card is only ever the same as one card of each later source, so a source listing two
      *    works of one name against another's single card still shows the second.
      */
+    /**
+     * The icon a card shows for what kind of work it is: a film for anime, an open book for comics
+     * and a closed one for novels, as the novel reader's button and the extension list have it.
+     * [format] is whatever the source calls it; MAL's relations say nothing, so read as comics.
+     */
+    @androidx.annotation.DrawableRes
+    fun typeIcon(isAnime: Boolean, format: String?): Int = when {
+        isAnime -> R.drawable.ic_round_movie_filter_24
+        format?.contains("novel", ignoreCase = true) == true -> R.drawable.ic_round_book_24
+        else -> R.drawable.ic_round_import_contacts_24
+    }
+
     fun distinctRelations(bySource: List<List<RelationCard>>): List<RelationCard> {
         class Work(val card: RelationCard) {
             val ids = card.ids.toMutableSet()
@@ -263,10 +275,7 @@ object InfoExtraSections {
             b.itemCompactRelation.text = card.relation.replace('_', ' ')
                 .replaceFirstChar { it.uppercase() }
             b.itemCompactTypeImage.setImageDrawable(
-                ContextCompat.getDrawable(
-                    b.root.context,
-                    if (card.isAnime) R.drawable.ic_round_movie_filter_24 else R.drawable.ic_round_menu_book_24,
-                )
+                ContextCompat.getDrawable(b.root.context, typeIcon(card.isAnime, card.format))
             )
             b.root.setSafeOnClickListener { card.onClick() }
             b.itemCompactImage.setSafeOnClickListener { card.onClick() }

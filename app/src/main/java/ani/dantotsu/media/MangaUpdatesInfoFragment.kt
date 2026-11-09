@@ -619,7 +619,8 @@ class MangaUpdatesInfoFragment : Fragment() {
 
                 // First, remove escaped characters (backslashes before special chars)
                 // This converts "001\\~040" to "001~040", etc.
-                val statusText = rawStatusText.replace("\\", "")
+                // MangaUpdates' status often ends in a line break, which reads as a gap under it.
+                val statusText = rawStatusText.replace("\\", "").trim()
 
                 // Process markdown: **text** -> bold
                 val processedText = android.text.SpannableStringBuilder()

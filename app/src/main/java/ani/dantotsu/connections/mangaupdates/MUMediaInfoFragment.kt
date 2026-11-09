@@ -317,7 +317,8 @@ class MUMediaInfoFragment : Fragment() {
             if (rawStatus.isNotBlank()) {
                 val bind = ItemTitleTextBinding.inflate(LayoutInflater.from(context), parent, false)
                 bind.itemTitle.setText(R.string.status_title)
-                bind.itemText.text = parseSimpleBold(rawStatus.replace("\\", ""))
+                // MangaUpdates' status often ends in blank lines, which read as a gap under it.
+                bind.itemText.text = parseSimpleBold(rawStatus.replace("\\", "").trim())
                 bind.itemText.maxLines = 3
                 bind.itemText.setOnClickListener {
                     ObjectAnimator.ofInt(
