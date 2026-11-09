@@ -43,6 +43,8 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.media.savedfilters.SavedFiltersStore
+import ani.dantotsu.media.savedfilters.SavedStackFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,7 +54,7 @@ import kotlinx.coroutines.withContext
  * or, for a MAL interest stack, with just the stack's URL — in which case this screen resolves the
  * stack itself behind a spinner instead of the caller stalling on it. See [StackResolver].
  */
-class MediaListViewActivity : AppCompatActivity() {
+class MediaListViewActivity : AppCompatActivity(), StackFilterHost {
     private lateinit var binding: ActivityMediaListViewBinding
 
     // Filled in from the caller, or once a stack has been resolved.
@@ -75,7 +77,10 @@ class MediaListViewActivity : AppCompatActivity() {
     private var combinedItems: List<Any>? = null
 
     private var currentMode = 0
-    private var showNovels = true
+
+    /** Shared by every stack, as the novel toggle it replaced was. See [SavedFiltersStore.activeStack]. */
+    override var stackFilter = SavedStackFilter()
+        private set
     private var screenWidth = 0f
     private lateinit var mediaViewButton: ImageView
 
@@ -126,7 +131,12 @@ class MediaListViewActivity : AppCompatActivity() {
         screenWidth = resources.displayMetrics.run { widthPixels / density }
         screenTitle = intent.getStringExtra("title") ?: ""
         binding.listTitle.text = screenTitle
-        showNovels = PrefManager.getCustomVal(SHOW_NOVELS, true)
+        stackFilter = SavedFiltersStore.activeStack()
+        binding.listFilter.setOnClickListener {
+            if (supportFragmentManager.findFragmentByTag(STACK_FILTER_TAG) == null) {
+                StackFilterBottomSheet.newInstance().show(supportFragmentManager, STACK_FILTER_TAG)
+            }
+        }
 
         currentMode = PrefManager.getCustomVal("mediaView", 0)
         mediaViewButton = if (currentMode == 1) binding.mediaList else binding.mediaGrid
@@ -469,22 +479,8 @@ class MediaListViewActivity : AppCompatActivity() {
 
         showDescriptionButton()
 
-        // Toggle to hide novels from a MAL interest stack's list. The choice is shared by every
-        // stack, so it's persisted under a single pref rather than one per stack.
-        // Only relevant when there's actually a novel in the list to hide.
-        val hasNovels = fromMalStack && combinedItems == null &&
-            mediaList.any { it.format?.equals("NOVEL", ignoreCase = true) == true }
-        if (hasNovels) {
-            binding.listNovelToggle.visibility = View.VISIBLE
-            binding.listNovelToggle.imageAlpha = if (showNovels) 255 else 84
-            binding.listNovelToggle.setOnClickListener {
-                showNovels = !showNovels
-                PrefManager.setCustomVal(SHOW_NOVELS, showNovels)
-                binding.listNovelToggle.imageAlpha = if (showNovels) 255 else 84
-                updateTitle()
-                buildAdapter(currentMode)
-            }
-        }
+        // A stack's own filter; other lists of media don't have one.
+        binding.listFilter.visibility = if (isStack && combinedItems == null) View.VISIBLE else View.GONE
 
         // A stack that resolved to nothing (scrape failed, or no entry matched anywhere) would
         // otherwise leave an empty screen with no explanation.
@@ -496,13 +492,71 @@ class MediaListViewActivity : AppCompatActivity() {
         }
 
         updateTitle()
+        updateStackChips()
         buildAdapter(currentMode)
     }
 
     private fun filteredMediaList(): MutableList<Media> =
-        if (showNovels) mediaList
-        else mediaList.filterNot { it.format?.equals("NOVEL", ignoreCase = true) == true }
-            .toMutableList()
+        if (isStack) StackFilters.apply(mediaList, stackFilter).toMutableList() else mediaList
+
+    /** Judged on the whole stack, so filtering it down to one kind doesn't take the lines away. */
+    private fun mixedTypes() = isStack && StackFilters.isMixed(mediaList)
+
+    // ---- stack filter ----
+
+    override fun stackEntries(): List<Media> = mediaList
+
+    override fun applyStackFilter(filter: SavedStackFilter) {
+        stackFilter = filter.copy(name = "")
+        SavedFiltersStore.setActiveStack(stackFilter)
+        updateTitle()
+        updateStackChips()
+        buildAdapter(currentMode)
+    }
+
+    override fun openStackManageFilters() {
+        val items = StackFilters.activeChips(this, stackFilter).map { (label, without) ->
+            ActiveFilterChip(label) { applyStackFilter(without) }
+        }
+        ManageFiltersDialog.show(this, items) { applyStackFilter(SavedStackFilter()) }
+    }
+
+    /**
+     * The row of active filters under the title: tapping one takes it away. Each chip carries the
+     * filter as it would be without it, so removing one leaves whatever else was taken away first.
+     */
+    private fun updateStackChips() {
+        val group = binding.mediaFilterChipGroup
+        group.removeAllViews()
+        val chips = if (isStack && combinedItems == null) StackFilters.activeChips(this, stackFilter) else emptyList()
+        binding.mediaFilterChipsScroll.visibility = if (chips.isEmpty()) View.GONE else View.VISIBLE
+        chips.forEach { (label, _) ->
+            val chip = com.google.android.material.chip.Chip(this)
+            chip.text = label
+            chip.isCloseIconVisible = true
+            chip.chipBackgroundColor = ContextCompat.getColorStateList(this, R.color.chip_background_color)
+            chip.chipStrokeColor = android.content.res.ColorStateList.valueOf(
+                getThemeColor(com.google.android.material.R.attr.colorPrimaryContainer)
+            )
+            chip.setTextAppearance(R.style.Suffix)
+            chip.textSize = 14f
+            // Looked up when tapped: an earlier tap has already changed the filter.
+            val remove = {
+                StackFilters.activeChips(this, stackFilter).firstOrNull { it.first == label }
+                    ?.let { applyStackFilter(it.second) }
+                Unit
+            }
+            chip.setOnClickListener { remove() }
+            chip.setOnCloseIconClickListener { remove() }
+            group.addView(chip)
+        }
+        // Everything filtered away is a different thing from an empty stack.
+        if (isStack && combinedItems == null && mediaList.isNotEmpty()) {
+            val none = filteredMediaList().isEmpty()
+            binding.mediaListEmpty.text = getString(R.string.stack_filter_empty)
+            binding.mediaListEmpty.visibility = if (none) View.VISIBLE else View.GONE
+        }
+    }
 
     private fun updateTitle() {
         val totalCount = combinedItems?.count() ?: filteredMediaList().count()
@@ -538,7 +592,7 @@ class MediaListViewActivity : AppCompatActivity() {
                 val ordered =
                     if (isStack) list else ani.dantotsu.home.UnreadOrder.sort(list, localUnreadInfo)
                 binding.mediaRecyclerView.adapter =
-                    ani.dantotsu.home.UnreadChaptersAdapter(ordered, localUnreadInfo, mode, fromMalStack)
+                    ani.dantotsu.home.UnreadChaptersAdapter(ordered, localUnreadInfo, mode, fromMalStack, mixedTypes())
             }
 
             localUnreleasedInfo != null -> {
@@ -553,7 +607,8 @@ class MediaListViewActivity : AppCompatActivity() {
                     MediaAdaptor(
                         mode, list, this,
                         fromMalStack = fromMalStack,
-                        currentMedia = recommendationSource
+                        currentMedia = recommendationSource,
+                        mixedTypes = mixedTypes(),
                     )
             }
         }
@@ -590,8 +645,7 @@ class MediaListViewActivity : AppCompatActivity() {
     }
 
     companion object {
-        // Shared by all interest stacks, not stored per stack.
-        const val SHOW_NOVELS = "stackShowNovels"
+        private const val STACK_FILTER_TAG = "stackFilter"
 
         /** A MangaBaka stack id (Long) to load instead of a MAL `stackUrl`. */
         const val EXTRA_MANGABAKA_STACK_ID = "mangaBakaStackId"

@@ -42,6 +42,12 @@ import kotlinx.coroutines.withContext
  */
 object StackResolver {
 
+    /**
+     * What the stack filter needs beyond the standard fields: the start year, and the tags with
+     * their spoiler flags so spoiler tags are never offered as filters. Same request, no extra calls.
+     */
+    private const val FILTER_FIELDS = "startDate { year month day } tags { name rank isMediaSpoiler isGeneralSpoiler isAdult }"
+
     /** Everything the list screen needs to show a resolved stack. */
     data class Resolved(
         val media: List<Media>,
@@ -192,8 +198,24 @@ object StackResolver {
         return Media(
             id = (series.id and 0x7FFFFFFF).toInt(),
             name = name, nameRomaji = name, userPreferredName = name,
-            cover = cover, banner = cover, isAdult = false, manga = Manga(),
-            format = if (series.type.equals("novel", ignoreCase = true)) "NOVEL" else "MANGA",
+            cover = cover, banner = cover, manga = Manga(totalChapters = series.totalChapters?.toInt()),
+            // What the stack filter reads, in AniList's terms. MangaBaka rates out of 100 too.
+            isAdult = series.contentRating == "erotica" || series.contentRating == "pornographic",
+            format = when (series.type?.lowercase()) {
+                "novel" -> "NOVEL"
+                "manhwa" -> "MANHWA"
+                "manhua" -> "MANHUA"
+                else -> "MANGA"
+            },
+            status = when (series.status?.lowercase()) {
+                "releasing" -> "RELEASING"
+                "completed" -> "FINISHED"
+                "hiatus" -> "HIATUS"
+                "cancelled" -> "CANCELLED"
+                "upcoming" -> "NOT_YET_RELEASED"
+                else -> null
+            },
+            meanScore = series.rating?.let { kotlin.math.round(it).toInt() },
             mangaBakaSeriesId = series.id,
         )
     }
@@ -214,7 +236,7 @@ object StackResolver {
         val byAl = withContext(Dispatchers.IO) {
             if (alIds.isEmpty()) emptyList()
             else try {
-                Anilist.query.getMediaBatch(alIds, mediaType = "MANGA")
+                Anilist.query.getMediaBatch(alIds, mediaType = "MANGA", extraFields = FILTER_FIELDS)
             } catch (e: Exception) {
                 emptyList()
             }
@@ -225,7 +247,7 @@ object StackResolver {
         val byMal = withContext(Dispatchers.IO) {
             if (malIds.isEmpty()) emptyList()
             else try {
-                Anilist.query.getMediaBatch(malIds, mal = true, mediaType = "MANGA")
+                Anilist.query.getMediaBatch(malIds, mal = true, mediaType = "MANGA", extraFields = FILTER_FIELDS)
             } catch (e: Exception) {
                 emptyList()
             }
@@ -305,7 +327,7 @@ object StackResolver {
         // AniList matches (one batch call, keyed by MAL id).
         val anilistMedia = withContext(Dispatchers.IO) {
             try {
-                Anilist.query.getMediaBatch(malIds, mal = true, mediaType = if (isAnime) "ANIME" else "MANGA")
+                Anilist.query.getMediaBatch(malIds, mal = true, mediaType = if (isAnime) "ANIME" else "MANGA", extraFields = FILTER_FIELDS)
             } catch (e: Exception) {
                 emptyList()
             }

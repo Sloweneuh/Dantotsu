@@ -236,9 +236,10 @@
                 android:alpha="0.58"
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:letterSpacing="0.03"
                 android:textAllCaps="true"
-                android:textSize="12sp"
-                android:textStyle="italic"
+                android:textSize="11sp"
                 tools:ignore="TextContrastCheck"
                 tools:text="Novel" />
 

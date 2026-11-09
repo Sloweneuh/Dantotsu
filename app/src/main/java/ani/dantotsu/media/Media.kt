@@ -167,6 +167,9 @@ data class Media(
         // genre/tag works for every screen built on this constructor, not just search.
         apiMedia.genres?.let { genres = ArrayList(it) }
         apiMedia.tags?.let { list -> tags = ArrayList(list.mapNotNull { it.name }) }
+        // Kept whole where the query asked for them: a stack's filter needs the spoiler flags to
+        // leave spoiler tags out. A media page still replaces this with its own full fetch.
+        apiMedia.tags?.takeIf { list -> list.any { it.isMediaSpoiler != null } }?.let { tagsInfo = ArrayList(it) }
     }
 
     constructor(mediaList: MediaList) : this(mediaList.media!!) {

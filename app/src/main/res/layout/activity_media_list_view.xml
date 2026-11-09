@@ -62,16 +62,16 @@
                     tools:ignore="ContentDescription,ImageContrastCheck" />
 
                 <ImageButton
-                    android:contentDescription="@string/cd_show_novels"
-                    android:id="@+id/listNovelToggle"
+                    android:id="@+id/listFilter"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:layout_gravity="center_vertical"
                     android:background="?android:attr/selectableItemBackground"
+                    android:contentDescription="@string/filter"
                     android:visibility="gone"
-                    app:srcCompat="@drawable/ic_round_menu_book_24"
+                    app:srcCompat="@drawable/ic_round_filter_alt_24"
                     app:tint="?attr/colorOnBackground"
-                    tools:ignore="ContentDescription,ImageContrastCheck" />
+                    tools:ignore="ImageContrastCheck" />
 
                 <ImageButton
                     android:id="@+id/listStackActions"

@@ -623,6 +623,46 @@ data class SavedExtensionFilter(
     }
 }
 
+/**
+ * A stack's filter: MAL and MangaBaka stacks alike, applied on the device to the media a stack
+ * resolved to (see [ani.dantotsu.media.StackFilters]). Also what the active filter is kept as, under
+ * [ani.dantotsu.settings.saving.PrefName.StackFilter] with an empty [name].
+ *
+ * Keys are AniList's tokens: [hideListStatuses] are list statuses (CURRENT, COMPLETED, …),
+ * [statuses] publishing statuses (FINISHED, RELEASING, …), formats the kinds
+ * [ani.dantotsu.media.StackFilters.formatOf] sorts entries into, [lengths] SHORT/MEDIUM/LONG.
+ * A null [sort] is the stack's own order.
+ */
+data class SavedStackFilter(
+    val name: String = "",
+    val sort: String? = null,
+    val hideListStatuses: List<String> = emptyList(),
+    val formats: List<String> = emptyList(),
+    val excludedFormats: List<String> = emptyList(),
+    val statuses: List<String> = emptyList(),
+    val minScore: Int? = null,
+    val genres: List<String> = emptyList(),
+    val excludedGenres: List<String> = emptyList(),
+    val tags: List<String> = emptyList(),
+    val excludedTags: List<String> = emptyList(),
+    val fromYear: Int? = null,
+    val toYear: Int? = null,
+    val lengths: List<String> = emptyList(),
+    val hideAdult: Boolean = false,
+) : Serializable {
+    companion object {
+        private const val serialVersionUID: Long = 1L
+    }
+
+    /** Nothing set at all, sort included. */
+    val isDefault: Boolean get() = copy(name = "") == SavedStackFilter()
+
+    fun chips(): List<String> {
+        val context = currContext() ?: return emptyList()
+        return ani.dantotsu.media.StackFilters.activeChips(context, this).map { it.first }
+    }
+}
+
 // ---- Shared helpers ----
 
 internal fun pluralCounted(n: Int, singular: String, plural: String = singular + "s"): String =

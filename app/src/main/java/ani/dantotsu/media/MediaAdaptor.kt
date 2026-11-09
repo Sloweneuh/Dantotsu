@@ -59,6 +59,8 @@ class MediaAdaptor(
     private val fav: Boolean = false,
     private val fromMalStack: Boolean = false,
     private val currentMedia: Media? = null,
+    /** A stack mixing kinds of work, whose cards each say which they are. */
+    private val mixedTypes: Boolean = false,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private enum class MediaKind { ANIME, MANGA, NOVEL }
@@ -179,15 +181,11 @@ class MediaAdaptor(
                         } else {
                             b.itemCompactType.visibility = View.GONE
                         }
-                    } else if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
-                        // Only show Novel label when adapter was created for a MAL stack
-                        b.itemCompactRelation.setText(R.string.novel)
-                        b.itemCompactTypeImage.setImageDrawable(
-                            AppCompatResources.getDrawable(
-                                activity,
-                                R.drawable.ic_round_book_24
-                            )
-                        )
+                    } else if (StackFilters.typeLine(activity, media, mixedTypes, novels = fromMalStack) != null) {
+                        // What kind of work it is: on every card of a mixed stack, on a novel's in other stacks.
+                        val (label, icon) = StackFilters.typeLine(activity, media, mixedTypes, novels = fromMalStack)!!
+                        b.itemCompactRelation.text = label
+                        b.itemCompactTypeImage.setImageResource(icon)
                         b.itemCompactType.visibility = View.VISIBLE
                     } else {
                         b.itemCompactType.visibility = View.GONE
@@ -295,15 +293,11 @@ class MediaAdaptor(
                             } else {
                                 b.itemCompactType.visibility = View.GONE
                             }
-                        } else if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
-                            // Only show Novel label when adapter was created for a MAL stack
-                            b.itemCompactRelation.setText(R.string.novel)
-                            b.itemCompactTypeImage.setImageDrawable(
-                                AppCompatResources.getDrawable(
-                                    activity,
-                                    R.drawable.ic_round_book_24
-                                )
-                            )
+                        } else if (StackFilters.typeLine(activity, media, mixedTypes, novels = fromMalStack) != null) {
+                            // What kind of work it is: on every card of a mixed stack, on a novel's in other stacks.
+                            val (label, icon) = StackFilters.typeLine(activity, media, mixedTypes, novels = fromMalStack)!!
+                            b.itemCompactRelation.text = label
+                            b.itemCompactTypeImage.setImageResource(icon)
                             b.itemCompactType.visibility = View.VISIBLE
                         } else {
                             b.itemCompactType.visibility = View.GONE

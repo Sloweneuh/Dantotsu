@@ -26,6 +26,7 @@ import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.connections.mangaupdates.toMUMedia
+import ani.dantotsu.connections.mangaupdates.toMedia
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemUnreadChapterBinding
 import ani.dantotsu.inAppIntentForLink
@@ -36,6 +37,7 @@ import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.media.MediaNameAdapter
+import ani.dantotsu.media.StackFilters
 import java.io.Serializable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +50,9 @@ class UnreadChaptersAdapter(
     initialItems: List<Any>,  // List<Media | MUMedia | ComickUnreadEntry>
     private val unreadInfo: Map<Int, UnreadChapterInfo>,
     private var type: Int = 0, // 0 = grid/compact, 1 = list/large
-    private val fromMalStack: Boolean = false
+    private val fromMalStack: Boolean = false,
+    /** A stack mixing kinds of work, whose cards each say which they are. */
+    private val mixedTypes: Boolean = false,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val items: List<Any> = initialItems
@@ -192,14 +196,13 @@ class UnreadChaptersAdapter(
             itemCompactScoreContainer.visibility =
                 if (isReleasingStatus(media.status)) View.VISIBLE else View.GONE
 
-            // Show 'Novel' label when this stack item is a novel (only relevant for MAL stacks)
-            itemCompactNovel.setText(R.string.novel)
-            itemCompactNovelContainer.visibility =
-                if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
-                    View.VISIBLE
-                } else {
-                    View.GONE
-                }
+            // What kind of work it is: on every card of a mixed stack, on a novel's in other stacks.
+            val typeLine = StackFilters.typeLine(root.context, media, mixedTypes, novels = fromMalStack)
+            itemCompactNovelContainer.visibility = if (typeLine != null) View.VISIBLE else View.GONE
+            typeLine?.let { (label, icon) ->
+                itemCompactNovel.text = label
+                itemCompactNovelIcon.setImageResource(icon)
+            }
 
             // Set score - divide by 10.0 to match Anilist format, fallback to mean score
             val score = if (media.userScore == 0) (media.meanScore ?: 0) else media.userScore
@@ -315,18 +318,12 @@ class UnreadChaptersAdapter(
                     itemCompactLanguageBG.visibility = View.GONE
                 }
 
-            // Show 'Novel' badge when this stack item is a novel (only relevant for MAL stacks)
-            if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
-                itemCompactRelation.setText(R.string.novel)
-                itemCompactTypeImage.setImageDrawable(
-                    androidx.appcompat.content.res.AppCompatResources.getDrawable(
-                        root.context,
-                        R.drawable.ic_round_import_contacts_24
-                    )
-                )
-                itemCompactType.visibility = View.VISIBLE
-            } else {
-                itemCompactType.visibility = View.GONE
+            // What kind of work it is: on every card of a mixed stack, on a novel's in other stacks.
+            val typeLine = StackFilters.typeLine(root.context, media, mixedTypes, novels = fromMalStack)
+            itemCompactType.visibility = if (typeLine != null) View.VISIBLE else View.GONE
+            typeLine?.let { (label, icon) ->
+                itemCompactRelation.text = label
+                itemCompactTypeImage.setImageResource(icon)
             }
 
             // Show media status between title and synopsis when available
@@ -438,6 +435,14 @@ class UnreadChaptersAdapter(
             // because the status is unknown. It is known: [MUDetailsCache] carries it now.
             itemCompactScoreContainer.visibility = View.GONE
 
+            // Set either way: a recycled row would otherwise keep the line of whatever it showed last.
+            val typeLine = StackFilters.typeLine(root.context, item.toMedia(), mixedTypes, novels = fromMalStack)
+            itemCompactNovelContainer.visibility = if (typeLine != null) View.VISIBLE else View.GONE
+            typeLine?.let { (label, icon) ->
+                itemCompactNovel.text = label
+                itemCompactNovelIcon.setImageResource(icon)
+            }
+
             // Badge: the MU logo on its own, or — when MALSync knows where the newest chapter is —
             // the source name behind the same logo. The two badges share a corner, so only one can
             // show; keeping the logo inside the wider one is what stops the entry from reading as
@@ -518,7 +523,12 @@ class UnreadChaptersAdapter(
             itemCompactOngoing.getChildAt(0)?.setBackgroundResource(
                 if (muHiatus) R.drawable.item_hiatus else R.drawable.item_ongoing
             )
-            itemCompactType.visibility = View.GONE
+            val typeLine = StackFilters.typeLine(root.context, item.toMedia(), mixedTypes, novels = fromMalStack)
+            itemCompactType.visibility = if (typeLine != null) View.VISIBLE else View.GONE
+            typeLine?.let { (label, icon) ->
+                itemCompactRelation.text = label
+                itemCompactTypeImage.setImageResource(icon)
+            }
             itemCompactStatus.text = muStatus ?: ""
             itemCompactStatus.visibility =
                 if (itemCompactStatus.text.isNullOrBlank()) View.GONE else View.VISIBLE

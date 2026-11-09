@@ -780,13 +780,14 @@ object BackupTree {
         PrefName.MangaUpdatesNotificationInterval.name to R.string.mu_notification_interval_title,
         PrefName.MangaUpdatesNotificationsEnabled.name to R.string.pref_mu_notifications,
         PrefName.SavedComickListFilters.name to R.string.pref_saved_comick_filters,
+        PrefName.SavedStackFilters.name to R.string.pref_saved_stack_filters,
+        PrefName.StackFilter.name to R.string.pref_stack_filter,
         PrefName.SavedMangaBakaFilters.name to R.string.pref_saved_mangabaka_filters,
         PrefName.SavedKitsuFilters.name to R.string.pref_saved_kitsu_filters,
         PrefName.SearchStyle.name to R.string.pref_search_style,
         PrefName.SearchStyleSupporting.name to R.string.pref_search_style_supporting,
         "subscriptions" to R.string.subscriptions,
         "mediaView" to R.string.pref_media_view,
-        "stackShowNovels" to R.string.pref_stack_show_novels,
     )
 
     fun titleResFor(prefName: String): Int? =

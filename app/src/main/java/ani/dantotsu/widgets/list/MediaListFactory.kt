@@ -200,7 +200,7 @@ class MediaListFactory(
                     setViewVisibility(R.id.itemLanguageIcon, View.VISIBLE)
                     setViewVisibility(R.id.itemLanguageCode, View.VISIBLE)
                     val (labelRes, iconRes) = when {
-                        item.isNovel -> R.string.novel to R.drawable.ic_round_import_contacts_24
+                        item.isNovel -> R.string.novel to R.drawable.ic_round_book_24
                         item.isAnime -> R.string.anime to R.drawable.ic_round_movie_filter_24
                         else -> R.string.manga to R.drawable.ic_round_import_contacts_24
                     }

@@ -339,7 +339,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
             if (media.format.equals("NOVEL", ignoreCase = true)) {
                 b.itemCompactType.visibility = View.VISIBLE
                 b.itemCompactRelation.setText(R.string.novel)
-                b.itemCompactTypeImage.setImageResource(R.drawable.ic_round_import_contacts_24)
+                b.itemCompactTypeImage.setImageResource(R.drawable.ic_round_book_24)
             } else {
                 b.itemCompactType.visibility = View.GONE
             }

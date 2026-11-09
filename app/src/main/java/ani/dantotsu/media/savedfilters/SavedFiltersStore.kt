@@ -169,6 +169,49 @@ object SavedFiltersStore {
         PrefManager.setVal(PrefName.SavedComickListFilters, all.toList())
     }
 
+    // ---- Stack filter presets, and the filter stacks currently use ----
+
+    fun loadStack(): List<SavedStackFilter> =
+        PrefManager.getVal<List<SavedStackFilter>>(PrefName.SavedStackFilters)
+
+    fun saveStack(preset: SavedStackFilter) {
+        val all = loadStack().toMutableList()
+        all.removeAll { it.name == preset.name }
+        all.add(preset)
+        PrefManager.setVal(PrefName.SavedStackFilters, all.toList())
+    }
+
+    fun deleteStack(name: String) {
+        PrefManager.setVal(PrefName.SavedStackFilters, loadStack().filter { it.name != name })
+    }
+
+    fun renameStack(oldName: String, newName: String) {
+        val all = loadStack().toMutableList()
+        val idx = all.indexOfFirst { it.name == oldName }
+        if (idx < 0) return
+        all[idx] = all[idx].copy(name = newName)
+        PrefManager.setVal(PrefName.SavedStackFilters, all.toList())
+    }
+
+    /**
+     * The filter every stack opens with: shared by all of them, as the novel toggle it replaces
+     * was. Someone who had novels hidden with that toggle keeps them hidden.
+     */
+    fun activeStack(): SavedStackFilter {
+        PrefManager.getVal<List<SavedStackFilter>>(PrefName.StackFilter).firstOrNull()?.let { return it }
+        val legacyHideNovels = !PrefManager.getCustomVal(LEGACY_SHOW_NOVELS_KEY, true)
+        val filter = if (legacyHideNovels) SavedStackFilter(excludedFormats = listOf("NOVEL")) else SavedStackFilter()
+        setActiveStack(filter)
+        PrefManager.removeCustomVal(LEGACY_SHOW_NOVELS_KEY)
+        return filter
+    }
+
+    fun setActiveStack(filter: SavedStackFilter) {
+        PrefManager.setVal(PrefName.StackFilter, listOf(filter.copy(name = "")))
+    }
+
+    private const val LEGACY_SHOW_NOVELS_KEY = "stackShowNovels"
+
     // ---- User list filter presets (split per anime/manga) ----
 
     fun loadList(isAnime: Boolean): List<SavedListFilter> =

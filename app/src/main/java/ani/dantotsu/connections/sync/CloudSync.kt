@@ -92,7 +92,6 @@ object CloudSync {
     private val SYNCABLE_IRRELEVANT_KEYS = setOf(
         "subscriptions",                            // SubscriptionHelper: notification subscriptions
         "mediaView",                                // MediaListViewActivity: list/grid choice
-        "stackShowNovels",                          // MediaListViewActivity: novels shown in stacks
         PrefName.MalSyncLanguagePreferences.name,
         PrefName.DiscordStatus.name,
         PrefName.DiscordShowButtons.name,
