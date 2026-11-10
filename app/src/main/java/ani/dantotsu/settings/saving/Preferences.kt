@@ -93,8 +93,6 @@ enum class PrefName(val data: Pref) {
     SavedMangaBakaFilters(Pref(Location.General, List::class, listOf<SavedMangaBakaFilter>())),
     SavedComickListFilters(Pref(Location.General, List::class, listOf<SavedComickListFilter>())),
     SavedStackFilters(Pref(Location.General, List::class, listOf<SavedStackFilter>())),
-    /** The filter stacks open with; one element, or none before the first use. */
-    StackFilter(Pref(Location.General, List::class, listOf<SavedStackFilter>())),
     SavedListFilters(Pref(Location.General, List::class, listOf<SavedListFilter>())),
     SavedExtensionFilters(Pref(Location.General, List::class, listOf<SavedExtensionFilterBundle>())),
     NovelSourcesOrder(Pref(Location.General, List::class, listOf<String>())),

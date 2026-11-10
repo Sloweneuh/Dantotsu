@@ -625,8 +625,8 @@ data class SavedExtensionFilter(
 
 /**
  * A stack's filter: MAL and MangaBaka stacks alike, applied on the device to the media a stack
- * resolved to (see [ani.dantotsu.media.StackFilters]). Also what the active filter is kept as, under
- * [ani.dantotsu.settings.saving.PrefName.StackFilter] with an empty [name].
+ * resolved to (see [ani.dantotsu.media.StackFilters]). Also a stack's filter while it's open, with
+ * an empty [name].
  *
  * Keys are AniList's tokens: [hideListStatuses] are list statuses (CURRENT, COMPLETED, …),
  * [statuses] publishing statuses (FINISHED, RELEASING, …), formats the kinds

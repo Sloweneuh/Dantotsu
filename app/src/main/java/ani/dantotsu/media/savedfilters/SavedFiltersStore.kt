@@ -193,25 +193,6 @@ object SavedFiltersStore {
         PrefManager.setVal(PrefName.SavedStackFilters, all.toList())
     }
 
-    /**
-     * The filter every stack opens with: shared by all of them, as the novel toggle it replaces
-     * was. Someone who had novels hidden with that toggle keeps them hidden.
-     */
-    fun activeStack(): SavedStackFilter {
-        PrefManager.getVal<List<SavedStackFilter>>(PrefName.StackFilter).firstOrNull()?.let { return it }
-        val legacyHideNovels = !PrefManager.getCustomVal(LEGACY_SHOW_NOVELS_KEY, true)
-        val filter = if (legacyHideNovels) SavedStackFilter(excludedFormats = listOf("NOVEL")) else SavedStackFilter()
-        setActiveStack(filter)
-        PrefManager.removeCustomVal(LEGACY_SHOW_NOVELS_KEY)
-        return filter
-    }
-
-    fun setActiveStack(filter: SavedStackFilter) {
-        PrefManager.setVal(PrefName.StackFilter, listOf(filter.copy(name = "")))
-    }
-
-    private const val LEGACY_SHOW_NOVELS_KEY = "stackShowNovels"
-
     // ---- User list filter presets (split per anime/manga) ----
 
     fun loadList(isAnime: Boolean): List<SavedListFilter> =

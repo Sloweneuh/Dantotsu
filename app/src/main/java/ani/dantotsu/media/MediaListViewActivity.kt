@@ -78,7 +78,10 @@ class MediaListViewActivity : AppCompatActivity(), StackFilterHost {
 
     private var currentMode = 0
 
-    /** Shared by every stack, as the novel toggle it replaced was. See [SavedFiltersStore.activeStack]. */
+    /**
+     * This stack's filter, for as long as it's open: every stack opens unfiltered. Kept over a
+     * rotation, and saved for good only as a preset.
+     */
     override var stackFilter = SavedStackFilter()
         private set
     private var screenWidth = 0f
@@ -131,7 +134,7 @@ class MediaListViewActivity : AppCompatActivity(), StackFilterHost {
         screenWidth = resources.displayMetrics.run { widthPixels / density }
         screenTitle = intent.getStringExtra("title") ?: ""
         binding.listTitle.text = screenTitle
-        stackFilter = SavedFiltersStore.activeStack()
+        (savedInstanceState?.getSerializable(STATE_STACK_FILTER) as? SavedStackFilter)?.let { stackFilter = it }
         binding.listFilter.setOnClickListener {
             if (supportFragmentManager.findFragmentByTag(STACK_FILTER_TAG) == null) {
                 StackFilterBottomSheet.newInstance().show(supportFragmentManager, STACK_FILTER_TAG)
@@ -508,7 +511,6 @@ class MediaListViewActivity : AppCompatActivity(), StackFilterHost {
 
     override fun applyStackFilter(filter: SavedStackFilter) {
         stackFilter = filter.copy(name = "")
-        SavedFiltersStore.setActiveStack(stackFilter)
         updateTitle()
         updateStackChips()
         buildAdapter(currentMode)
@@ -644,8 +646,14 @@ class MediaListViewActivity : AppCompatActivity(), StackFilterHost {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putSerializable(STATE_STACK_FILTER, stackFilter)
+    }
+
     companion object {
         private const val STACK_FILTER_TAG = "stackFilter"
+        private const val STATE_STACK_FILTER = "stack_filter"
 
         /** A MangaBaka stack id (Long) to load instead of a MAL `stackUrl`. */
         const val EXTRA_MANGABAKA_STACK_ID = "mangaBakaStackId"

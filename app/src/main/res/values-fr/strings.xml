@@ -4189,5 +4189,4 @@
     <string name="stack_chip_min_score">Note ≥ %1$d</string>
     <string name="stack_filter_empty">Rien dans cette pile ne correspond à ces filtres</string>
     <string name="pref_saved_stack_filters">Filtres de piles enregistrés</string>
-    <string name="pref_stack_filter">Filtre des piles</string>
 </resources>

@@ -4311,5 +4311,4 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="stack_chip_min_score">Score ≥ %1$d</string>
     <string name="stack_filter_empty">Nothing in this stack matches these filters</string>
     <string name="pref_saved_stack_filters">Saved stack filters</string>
-    <string name="pref_stack_filter">Stack filter</string>
 </resources>
