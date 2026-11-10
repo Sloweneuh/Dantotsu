@@ -115,14 +115,13 @@ object ScreenshotUtil {
 
     /**
      * The web page a capture card's QR code opens: the media's own page where it lives — AniList,
-     * else MangaUpdates or MangaBaka for a title only they know — or, for an extension-only title,
+     * else MangaUpdates for a series only it knows — or, for an extension-only title,
      * the source's page for it. A plain https link anyone can open, never an app protocol. Null
      * when there's nothing to link to.
      */
     fun mediaUrl(media: ani.dantotsu.media.Media?): String? {
         media ?: return null
         media.muSeriesId?.let { return "https://www.mangaupdates.com/series/${it.toString(36)}" }
-        media.mangaBakaSeriesId?.let { return "${ani.dantotsu.connections.mangabaka.MangaBaka.WEB_URL}/$it" }
         if (media.id > 0) {
             return "https://anilist.co/${if (media.anime != null) "anime" else "manga"}/${media.id}"
         }
