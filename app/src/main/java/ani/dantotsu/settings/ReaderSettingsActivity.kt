@@ -510,6 +510,17 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 isChecked = PrefManager.getVal(PrefName.OcrTranslateEnabled),
                 switch = { on, _ -> PrefManager.setVal(PrefName.OcrTranslateEnabled, on) },
             ),
+            // The default every manga starts from until its own reader sheet says otherwise. It had
+            // no switch here for a while — the reader's switch once wrote this very preference, so
+            // turning it on in one series left it on for every series not yet given its own.
+            Settings(
+                type = 2,
+                name = getString(R.string.mtl_auto),
+                desc = getString(R.string.mtl_auto_default_desc),
+                icon = R.drawable.ic_round_translate_24,
+                isChecked = PrefManager.getVal(PrefName.OcrAutoTranslate),
+                switch = { on, _ -> PrefManager.setVal(PrefName.OcrAutoTranslate, on) },
+            ),
             Settings(
                 type = 2,
                 name = getString(R.string.mtl_novel),

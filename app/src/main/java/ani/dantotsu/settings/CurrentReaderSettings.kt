@@ -36,6 +36,24 @@ data class CurrentReaderSettings(
     var mtlStitch: Boolean = PrefManager.getVal(PrefName.OcrStitchPages),
 ) : Serializable {
 
+    /**
+     * Every series' reader settings are stored as this object, serialized ([ReaderSettingsStore]).
+     * Without a fixed version id, Java derives one from the class's shape, so adding a setting
+     * made every stored file unreadable — and the store deletes those without a word, putting
+     * every series back on the global defaults. That is how a series the reader had been told not
+     * to auto-translate started translating again. Pinned to the id the class had then, so files
+     * written before it load as they are; a field added later reads as Java's default (false, 0,
+     * null) from an older file — [readResolve] puts text fields right.
+     */
+    private fun readResolve(): Any {
+        @Suppress("SENSELESS_COMPARISON", "USELESS_ELVIS")
+        if (mtlModel == null || mtlTarget == null) {
+            mtlModel = mtlModel ?: ""
+            mtlTarget = mtlTarget ?: ""
+        }
+        return this
+    }
+
     enum class Directions {
         TOP_TO_BOTTOM,
         RIGHT_TO_LEFT,
@@ -66,6 +84,9 @@ data class CurrentReaderSettings(
     }
 
     companion object {
+        /** See [readResolve]: the id the class had when it was pinned, so older files still load. */
+        private const val serialVersionUID = 8599800351496651642L
+
         fun applyWebtoon(settings: CurrentReaderSettings) {
             settings.apply {
                 layout = Layouts.CONTINUOUS

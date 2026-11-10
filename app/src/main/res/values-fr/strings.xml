@@ -3073,6 +3073,7 @@
     <string name="mtl_failed">Échec de la traduction</string>
     <string name="mtl_translation_settings">Paramètres de traduction</string>
     <string name="mtl_auto">Traduire au fil du défilement</string>
+    <string name="mtl_auto_default_desc">Réglage par défaut pour chaque manga que vous n’avez pas réglé dans ses propres paramètres de lecture. Désactivé, les pages ne sont traduites que depuis le menu d’appui long</string>
     <string name="mtl_auto_on">Les pages se traduiront d\'elles-mêmes en apparaissant</string>
     <string name="mtl_auto_off">Les pages ne seront traduites que sur demande</string>
     <string name="mtl_auto_stopped">Traduction au défilement arrêtée — trop de pages en échec</string>

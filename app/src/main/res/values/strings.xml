@@ -3200,6 +3200,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="mtl_failed">Translation failed</string>
     <string name="mtl_translation_settings">Translation Settings</string>
     <string name="mtl_auto">Translate as you scroll</string>
+    <string name="mtl_auto_default_desc">Default for every manga you haven\'t set it for in its own reader settings. Off, pages are only translated from the long-press menu</string>
     <string name="mtl_auto_on">Pages will translate themselves as they come into view</string>
     <string name="mtl_auto_off">Pages will only be translated when you ask</string>
     <string name="mtl_auto_stopped">Stopped translating as you scroll — too many pages failed</string>

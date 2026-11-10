@@ -6,6 +6,7 @@ import android.graphics.Rect
 import ani.dantotsu.settings.CurrentReaderSettings.Directions
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -131,6 +132,22 @@ object PageEdges {
     private val profiles = ConcurrentHashMap<String, Profile>()
     private val breaks = ConcurrentHashMap<String, Breaks>()
 
+    /**
+     * Images whose breaks were judged with their whole chapter in view ([settle]). The reader
+     * judges an image again as it comes on screen, from the few neighbours it has around it — some
+     * not even profiled yet — which is far weaker evidence: a chapter of ordinary pages found to be
+     * just that had a period accepted for an image there, and a gap drawn through its panel.
+     */
+    private val settled: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    /** The breaks the reader was last told of for each image, to tell it when the scan changed them. */
+    private val reported = ConcurrentHashMap<String, Breaks>()
+
+    /** Marks [urls] as judged with their whole chapter; see [settled]. */
+    fun settle(urls: Collection<String>) {
+        settled += urls
+    }
+
     /** Told the url of every page profiled, so pages waiting on their neighbours can be judged again. */
     @Volatile
     var onProfiled: ((String) -> Unit)? = null
@@ -142,6 +159,8 @@ object PageEdges {
     fun clear() {
         profiles.clear()
         breaks.clear()
+        settled.clear()
+        reported.clear()
     }
 
     /**
@@ -155,7 +174,8 @@ object PageEdges {
         if (known != null && known.width >= bitmap.width) return
         val profile = profile(bitmap, sourceWidth ?: known?.sourceWidth ?: bitmap.width) ?: return
         profiles[url] = profile
-        if (known != null) breaks.remove(url)
+        // Breaks carry the width they were found at, so a settled image's still hold.
+        if (known != null && url !in settled) breaks.remove(url)
         onProfiled?.invoke(url)
     }
 
@@ -403,14 +423,26 @@ object PageEdges {
      * width on either side, run together as one strip, rather than alone — one chunk may not even
      * hold a whole page. Heavy enough to keep off the main thread.
      */
-    fun judgeRun(urls: List<String?>, index: Int): Boolean {
+    fun judgeRun(
+        urls: List<String?>,
+        index: Int,
+        /** False for the chapter scan: only what the reader draws pages from counts as told. */
+        fromReader: Boolean = true,
+    ): Boolean {
         val url = urls.getOrNull(index) ?: return false
         val self = profiles[url] ?: return false
+        if (url in settled) {
+            // Not judged again, but a page drawn before the scan settled it is redrawn once.
+            val current = breaks[url] ?: return false
+            val previous = reported.put(url, current)
+            return previous != null && !current.sameAs(previous)
+        }
         val result = if (!worthJudging(urls, index, self)) {
             Breaks(self.width, self.height, IntArray(0), atStart = false, stitched = false)
         } else judge(urls, index, self)
         val changed = !result.sameAs(breaks[url])
         breaks[url] = result
+        if (fromReader) reported[url] = result
         return changed
     }
 
@@ -466,12 +498,14 @@ object PageEdges {
         val from = maxOf(0, start - reach)
         val to = minOf(jumps.size, start + self.height + reach)
         val blank = blankRows(run)
+        val windowSeams = seams.filter { it in (from + 1) until to }.map { it - from }.toIntArray()
         val found = pageBreaks(
             jumps.copyOfRange(from, to), jumps2.copyOfRange(from, to), self.width,
-            seams.filter { it in (from + 1) until to }.map { it - from }.toIntArray(),
+            windowSeams,
             blank.copyOfRange(from, minOf(blank.size, to + 1)),
-        )
+        )?.takeIf { agreesWithChapter(urls, run, self, it) }
         if (found == null) {
+            continued(urls, run, first, start, jumps, self)?.let { return it }
             divide(urls, run, first, last, start, total, jumps, self, ::walled)?.let { return it }
             wholePages(urls, self)?.let { return it }
         }
@@ -509,6 +543,88 @@ object PageEdges {
             period = found?.period ?: 0f,
             positions = inside.toFloatArray(),
         )
+    }
+
+    /**
+     * [self]'s page breaks carried on from an image of its own [run] whose period was found:
+     * the run is one strip, so the pages of the confident image go on at the same height through
+     * this one. A source that stitched a chapter and cut it every 1002 rows leaves some stretches
+     * with too few clear page edges for the period search to trust on their own — white-margined
+     * pages, soft art — and those images were left uncut, a gap running through the panel the
+     * cut went through. Each predicted break is nudged onto the most abrupt row near it.
+     *
+     * Taken from the nearest such image, so the period's small error has the fewest pages to
+     * build up over. Only in a run that holds a period actually found somewhere along it. [first] is the run's first position in [urls]; [start] is [self]'s row in it.
+     */
+    private fun continued(
+        urls: List<String?>,
+        run: List<Profile>,
+        first: Int,
+        start: Int,
+        jumps: FloatArray,
+        self: Profile,
+    ): Breaks? {
+        val offsets = IntArray(run.size)
+        for (i in 1 until run.size) offsets[i] = offsets[i - 1] + run[i - 1].height
+        val selfIndex = offsets.indexOfFirst { it == start }.takeIf { it >= 0 } ?: return null
+        val source = run.indices.filter { it != selfIndex }
+            .sortedBy { abs(it - selfIndex) }
+            .firstNotNullOfOrNull { i ->
+                val b = urls.getOrNull(first + i)?.let { breaks[it] }
+                    // Continued ones too, so the pages carry on image after image through a long
+                    // stretch; each break is snapped onto an edge again, so no error builds up.
+                    ?.takeIf { it.stitched && it.period > 0f && it.positions.isNotEmpty() }
+                    ?: return@firstNotNullOfOrNull null
+                Triple(i, b, run[i])
+            } ?: return null
+        val (i, b, p) = source
+        val scale = self.width.toFloat() / p.width
+        val period = b.period * scale
+        val anchor = offsets[i] + b.positions.first() * scale
+        val from = ceil((start - anchor) / period).toInt()
+        val until = floor((start + self.height - anchor) / period).toInt()
+        val positions = (from..until).map { k ->
+            val y = (anchor + k * period).roundToInt()
+            if (y <= 0 || y >= jumps.size) y.toFloat() else snapToEdge(jumps, y - 1, SNAP)
+        }
+        val local = positions.map { it - start }
+        val edge = maxOf(SEAM_TOLERANCE.toFloat(), period * EDGE_SHARE)
+        val inside = local.filter { it > edge && it < self.height - edge }
+        android.util.Log.d("SmartPages", "continued from run image $i: period $period, breaks at ${inside.map { it.roundToInt() }}")
+        return Breaks(
+            self.width, self.height,
+            inside.map { it.roundToInt() }.toIntArray(),
+            atStart = local.any { abs(it) <= edge },
+            stitched = true,
+            period = period,
+            positions = inside.toFloatArray(),
+            // Inferred rather than found: never itself evidence for another image.
+            divided = true,
+        )
+    }
+
+    /**
+     * Whether a period [found] in a short [run] — a few images, so few breaks to go by — agrees
+     * with the one found in the rest of the chapter's images of the same width. A run of two can
+     * land a wrong period on its panel borders every time (920 rows where every other image of
+     * the chapter has pages of 770); left to [wholePages], it's cut into the chapter's own pages.
+     * A long run, or a chapter with no period found elsewhere yet, decides for itself.
+     */
+    private fun agreesWithChapter(urls: List<String?>, run: List<Profile>, self: Profile, found: Detected): Boolean {
+        if (run.size > SHORT_RUN) return true
+        val members = run.toSet()
+        val periods = urls.filterNotNull().mapNotNull { url ->
+            val p = profiles[url]?.takeIf {
+                it !in members && abs(it.sourceWidth - self.sourceWidth) <= self.sourceWidth * SAME_BREADTH
+            } ?: return@mapNotNull null
+            val b = breaks[url]?.takeIf { it.stitched && !it.divided && it.period > 0f } ?: return@mapNotNull null
+            b.period * self.width / p.width
+        }.sorted()
+        if (periods.size < 2) return true
+        val chapter = periods[periods.size / 2]
+        val agrees = abs(found.period - chapter) <= chapter * CHAPTER_PERIOD_SHARE
+        if (!agrees) android.util.Log.d("SmartPages", "period ${found.period} rejected: the chapter's is $chapter")
+        return agrees
     }
 
     /**
@@ -624,8 +740,10 @@ object PageEdges {
         return Breaks(
             self.width, self.height,
             inside.map { it.roundToInt() }.toIntArray(),
-            // Walled in, the run's first image starts on a page edge.
-            atStart = start == 0,
+            // Walled in, the run's first image starts on a page edge — and so does any other whose
+            // top a break falls on: images 2312 and 1541 rows tall divided into five pages put
+            // one exactly on the seam, and the image below was glued to the page above it.
+            atStart = start == 0 || local.any { abs(it) <= SEAM_TOLERANCE },
             stitched = true,
             period = period,
             positions = inside.toFloatArray(),
@@ -1049,6 +1167,12 @@ object PageEdges {
 
     /** Pages either side of an image searched for the period. */
     private const val SEARCH_PAGES = 8
+
+    /** Images in a run, at most, for its period to be held to the chapter's ([agreesWithChapter])... */
+    private const val SHORT_RUN = 3
+
+    /** ...and how far off the chapter's, as a share of it, it may be. */
+    private const val CHAPTER_PERIOD_SHARE = 0.02f
 
     /** Neighbours on either side an image is judged together with for stitched pages. */
     private const val RUN_REACH = 4

@@ -130,7 +130,24 @@ private suspend fun carryOver(muSeriesId: Long, anilistId: Int) {
     )
     ReleaseSourceAnswers.move(from, to)
     val context = App.instance ?: App.context ?: return
+    moveReaderSettings(context, muMediaKey(muSeriesId), anilistId)
     if (media != null) UnreadCache.moveMuToAnilist(context, muSeriesId, media)
+}
+
+/**
+ * The series' reader settings — layout, translation and the rest, a file named after the id the
+ * reader knew it by — moved to the AniList id it's read under from now on, unless that already has
+ * its own. Otherwise the converted series opened on the defaults, auto-translation included.
+ */
+private fun moveReaderSettings(context: android.content.Context, muKey: Int, anilistId: Int) {
+    val from = "${muKey}_current_settings"
+    val to = "${anilistId}_current_settings"
+    runCatching {
+        val files = context.fileList()
+        if (from !in files || to in files) return
+        val bytes = context.openFileInput(from).use { it.readBytes() }
+        context.openFileOutput(to, android.content.Context.MODE_PRIVATE).use { it.write(bytes) }
+    }.onFailure { Logger.log("convertMuToAnilist: reader settings not carried over: ${it.message}") }
 }
 
 /**

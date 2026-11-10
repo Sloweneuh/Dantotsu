@@ -91,13 +91,16 @@ object ChapterPages {
      */
     fun build(urls: List<String>, preferJoin: Boolean): ChapterPageMap? {
         val profiles = urls.map { PageEdges.get(it) ?: return null }
-        urls.indices.forEach { PageEdges.judgeRun(urls, it) }
+        urls.indices.forEach { PageEdges.judgeRun(urls, it, fromReader = false) }
         // Again for the images nothing was found in: one too short to search alone can be divided
         // into whole pages, but only once the chapter's other runs are known to be pages.
         urls.indices.forEach {
-            if (PageEdges.breaksFor(urls[it])?.stitched != true) PageEdges.judgeRun(urls, it)
+            if (PageEdges.breaksFor(urls[it])?.stitched != true) PageEdges.judgeRun(urls, it, fromReader = false)
         }
         val breaks = urls.map { PageEdges.breaksFor(it) ?: return null }
+        // Judged with the whole chapter in view: what the reader finds from a few neighbours
+        // later mustn't overrule it.
+        PageEdges.settle(urls)
         urls.forEachIndexed { i, u ->
             val p = profiles[i]; val b = breaks[i]
             android.util.Log.d("SmartPages", "image $i ${u.takeLast(30)} ${p.width}x${p.height} stitched=${b.stitched} atStart=${b.atStart} rows=${b.rows.toList()}")
