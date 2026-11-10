@@ -230,7 +230,9 @@ enum class PrefName(val data: Pref) {
     MalSyncExcludeList(Pref(Location.General, Set::class, setOf<String>())),
     // Titles the toolbox's checks were told to stop suggesting, "id||cover||title" like the list
     // above so the same manager edits them. General, so they follow the user to every device.
+    // Anime sequels: older builds kept manga sequels here too, moved out by LibraryCheck.splitSequelIgnores.
     IgnoredSequels(Pref(Location.General, Set::class, setOf<String>())),
+    IgnoredMangaSequels(Pref(Location.General, Set::class, setOf<String>())),
     IgnoredAdaptations(Pref(Location.General, Set::class, setOf<String>())),
     HiddenFromLists(Pref(Location.General, Set::class, setOf<String>())),
 

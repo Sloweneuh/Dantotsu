@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One finding of a toolbox check: the title, the title of the user's it was found from (which
-     opens that one), and a button to stop suggesting it. -->
+     opens that one), and buttons to add it to Planning or stop suggesting it. -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -78,6 +78,15 @@
                     tools:text="Sequel to Title" />
             </LinearLayout>
         </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/toolResultPlan"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/tool_results_plan"
+            android:tooltipText="@string/tool_results_plan"
+            app:icon="@drawable/ic_round_playlist_add_24" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/toolResultIgnore"

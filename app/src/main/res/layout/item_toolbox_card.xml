@@ -65,7 +65,7 @@
                 android:visibility="gone"
                 app:drawableStartCompat="@drawable/ic_round_visibility_off_outline_white_24"
                 app:drawableTint="?attr/colorOnSecondaryContainer"
-                tools:text="3 ignored"
+                tools:text="3"
                 tools:visibility="visible" />
         </LinearLayout>
 

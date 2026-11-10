@@ -37,8 +37,7 @@ import kotlinx.coroutines.withContext
  * A toolbox check over the user's AniList library: titles AniList relates to theirs that they don't
  * have on a list yet. What sets one apart from another is all here; [ToolResultsActivity] runs any.
  *
- * Each has an ignore list ([ignorePref]), shared by the checks that find the same kind of thing, in
- * a General pref so it syncs; entries are "id||cover||title" so [MediaExcludeBottomDialog] manages
+ * Each has its own ignore list ([ignorePref]), in a General pref so it syncs; entries are "id||cover||title" so [MediaExcludeBottomDialog] manages
  * them as it does the unread exclusion list.
  */
 enum class LibraryCheck(
@@ -62,7 +61,7 @@ enum class LibraryCheck(
     ),
     MANGA_SEQUELS(
         R.string.missed_manga_sequels, R.drawable.ic_round_playlist_add_24,
-        sourcesFromAnime = false, MediaRelation.SEQUEL, MediaType.MANGA, PrefName.IgnoredSequels,
+        sourcesFromAnime = false, MediaRelation.SEQUEL, MediaType.MANGA, PrefName.IgnoredMangaSequels,
         R.string.missed_sequels_source, R.plurals.missed_sequels_summary, R.string.missed_sequels_none,
     ),
     ANIME_ADAPTATIONS(
@@ -74,25 +73,60 @@ enum class LibraryCheck(
     /**
      * The titles on the list worth checking: for sequels, the ones finished (or being rewatched,
      * which means finished once) — a sequel to something still in progress isn't missed yet. For
-     * adaptations, every manga and novel whatever its status: an anime is worth knowing about
-     * from the first chapter.
+     * adaptations, every manga and novel not dropped: an anime is worth knowing about from the
+     * first chapter, but not of something the user gave up on.
      */
     fun sources(list: List<Media>): List<Media> = when (relation) {
         MediaRelation.SEQUEL -> list.filter { it.userStatus == "COMPLETED" || it.userStatus == "REPEATING" }
-        else -> list.filter { it.format?.replace(' ', '_') in PRINT_FORMATS }
+        else -> list.filter { it.format?.replace(' ', '_') in PRINT_FORMATS && it.userStatus != "DROPPED" }
     }
 
     fun ignoredIds(): Set<Int> = PrefManager.getVal<Set<String>>(ignorePref)
         .mapNotNullTo(HashSet()) { it.substringBefore("||").toIntOrNull() }
 
-    private companion object {
-        val PRINT_FORMATS = setOf("MANGA", "NOVEL", "ONE_SHOT")
+    companion object {
+        private val PRINT_FORMATS = setOf("MANGA", "NOVEL", "ONE_SHOT")
+        private const val SEQUELS_SPLIT_KEY = "ignored_sequels_split"
+
+        /** Whether [splitSequelIgnores] still has to run. */
+        fun sequelIgnoresNeedSplit(): Boolean =
+            !PrefManager.getCustomVal(SEQUELS_SPLIT_KEY, false) &&
+                PrefManager.getVal<Set<String>>(PrefName.IgnoredSequels).isNotEmpty()
+
+        /**
+         * Older builds kept the anime and manga sequel checks' ignores in one list, [PrefName.IgnoredSequels],
+         * which made both cards show the same count. The entries carry no type, so AniList is asked
+         * for each one's, and the manga ones move to [PrefName.IgnoredMangaSequels]. Runs once;
+         * true when something moved. Left for next time if AniList doesn't answer.
+         */
+        suspend fun splitSequelIgnores(): Boolean = withContext(Dispatchers.IO) {
+            if (!sequelIgnoresNeedSplit()) return@withContext false
+            val entries = PrefManager.getVal<Set<String>>(PrefName.IgnoredSequels)
+            val ids = entries.mapNotNull { it.substringBefore("||").toIntOrNull() }.distinct()
+            val mangaIds = HashSet<Int>()
+            for (chunk in ids.chunked(50)) {
+                val query = "{ page0: Page(perPage: ${chunk.size}) { media(id_in: [${chunk.joinToString(",")}]) { id type } } }"
+                val pages = runCatching {
+                    Anilist.executeQuery<ani.dantotsu.connections.anilist.api.Query.BatchedPageResponse>(query, force = true)?.data
+                }.getOrNull() ?: return@withContext false
+                pages.values.forEach { page ->
+                    page.media.orEmpty().filter { it.type == MediaType.MANGA }.mapTo(mangaIds) { it.id }
+                }
+            }
+            val manga = entries.filterTo(HashSet()) { it.substringBefore("||").toIntOrNull() in mangaIds }
+            if (manga.isNotEmpty()) {
+                PrefManager.setVal(PrefName.IgnoredSequels, entries - manga)
+                PrefManager.setVal(PrefName.IgnoredMangaSequels, PrefManager.getVal<Set<String>>(PrefName.IgnoredMangaSequels) + manga)
+            }
+            PrefManager.setCustomVal(SEQUELS_SPLIT_KEY, true)
+            manga.isNotEmpty()
+        }
     }
 }
 
 /**
- * What a [LibraryCheck] finds, one row each: the title, the user's title it was found from, and
- * "Ignore" (with undo), which keeps it out of every later run of the checks sharing that list.
+ * What a [LibraryCheck] finds, one row each: the title, the user's title it was found from, "Add to
+ * Planning" (on AniList), and "Ignore" (with undo), which keeps it out of every later run.
  *
  * The check runs here, behind the spinner, rather than on the screen it was started from: it reads
  * the whole list and every title's relations, which takes a while on a large library.
@@ -131,6 +165,8 @@ class ToolResultsActivity : AppCompatActivity() {
             return
         }
         lifecycleScope.launch {
+            // So a manga sequel ignored on an older build isn't suggested again.
+            if (check.relation == MediaRelation.SEQUEL) LibraryCheck.splitSequelIgnores()
             val found = withContext(Dispatchers.IO) {
                 runCatching {
                     // Null rather than empty when AniList didn't answer, so an outage can't read as
@@ -196,6 +232,31 @@ class ToolResultsActivity : AppCompatActivity() {
         b.toolResultOpen.setOnClickListener { openMedia(media) }
         b.toolResultSource.setOnClickListener { openMedia(row.source) }
         b.toolResultIgnore.setOnClickListener { ignore(row) }
+        b.toolResultPlan.isEnabled = true
+        b.toolResultPlan.setOnClickListener {
+            it.isEnabled = false
+            plan(row)
+        }
+    }
+
+    /** Puts [row]'s title on the user's AniList Planning list, which takes it out of the results. */
+    private fun plan(row: AnilistQueries.RelatedTitle) {
+        val media = row.related
+        lifecycleScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { Anilist.mutation.editList(media.id, status = "PLANNING") }.getOrDefault(false)
+            }
+            val index = rows.indexOfFirst { it.related.id == media.id }
+            if (ok && index >= 0) {
+                rows.removeAt(index)
+                refresh()
+            } else if (!ok) {
+                // Rebinding turns the button back on.
+                adapter.notifyItemChanged(adapter.currentList.indexOfFirst { it.related.id == media.id })
+            }
+            val message = if (ok) R.string.tool_results_planned else R.string.tool_results_plan_failed
+            Snackbar.make(binding.root, getString(message, media.userPreferredName), Snackbar.LENGTH_LONG).show()
+        }
     }
 
     private fun openMedia(media: Media) {

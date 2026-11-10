@@ -3393,7 +3393,7 @@
     <string name="missed_sequels_source">Suite de %1$s</string>
     <string name="missed_sequels_none">Aucune suite manquée</string>
     <string name="anime_adaptations">Adaptations en anime</string>
-    <string name="anime_adaptations_desc">Anime de vos manga et romans, absents de votre liste</string>
+    <string name="anime_adaptations_desc">Anime de vos manga et romans non abandonnés, absents de votre liste</string>
     <string name="anime_adaptations_source">Adapté de %1$s</string>
     <string name="anime_adaptations_none">Aucune adaptation en anime ne manque à votre liste</string>
     <string name="search_equivalents_desc">Trouvez les entrées AniList de vos séries MangaUpdates</string>
@@ -3401,7 +3401,11 @@
     <string name="tool_results_failed">Impossible de charger votre liste. Vérifiez votre connexion et réessayez.</string>
     <string name="tool_results_ignore">Ignorer</string>
     <string name="tool_results_ignored">%1$s ne sera plus suggéré</string>
-    <string name="ignored_sequels">Suites ignorées</string>
+    <string name="ignored_anime_sequels">Suites d’anime ignorées</string>
+    <string name="ignored_manga_sequels">Suites de manga ignorées</string>
+    <string name="tool_results_plan">Ajouter aux prévus</string>
+    <string name="tool_results_planned">%1$s ajouté aux prévus</string>
+    <string name="tool_results_plan_failed">Impossible d’ajouter %1$s aux prévus</string>
     <string name="ignored_adaptations">Adaptations ignorées</string>
     <plurals name="missed_sequels_summary">
         <item quantity="one">%1$d suite d’un titre que vous avez terminé n’est pas dans votre liste.</item>

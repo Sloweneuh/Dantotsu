@@ -3520,7 +3520,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="missed_sequels_source">Sequel to %1$s</string>
     <string name="missed_sequels_none">No missed sequels</string>
     <string name="anime_adaptations">Anime adaptations</string>
-    <string name="anime_adaptations_desc">Anime of your manga and novels that aren\'t on your list</string>
+    <string name="anime_adaptations_desc">Anime of manga and novels you haven\'t dropped that aren\'t on your list</string>
     <string name="anime_adaptations_source">Adapted from %1$s</string>
     <string name="anime_adaptations_none">No anime adaptations missing from your list</string>
     <string name="search_equivalents_desc">Find the AniList entries of your MangaUpdates series</string>
@@ -3528,7 +3528,11 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="tool_results_failed">Couldn\'t load your list. Check your connection and try again.</string>
     <string name="tool_results_ignore">Ignore</string>
     <string name="tool_results_ignored">%1$s won\'t be suggested again</string>
-    <string name="ignored_sequels">Ignored sequels</string>
+    <string name="ignored_anime_sequels">Ignored anime sequels</string>
+    <string name="ignored_manga_sequels">Ignored manga sequels</string>
+    <string name="tool_results_plan">Add to Planning</string>
+    <string name="tool_results_planned">%1$s added to Planning</string>
+    <string name="tool_results_plan_failed">Couldn\'t add %1$s to Planning</string>
     <string name="ignored_adaptations">Ignored adaptations</string>
     <plurals name="missed_sequels_summary">
         <item quantity="one">%1$d sequel to a title you\'ve completed isn\'t on your list.</item>

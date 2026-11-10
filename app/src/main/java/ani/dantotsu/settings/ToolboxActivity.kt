@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
@@ -28,6 +29,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.themes.ThemeManager
+import kotlinx.coroutines.launch
 
 /**
  * Tools that work over the whole library rather than one title: the checks for titles AniList
@@ -84,6 +86,9 @@ class ToolboxActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         render()
+        if (LibraryCheck.sequelIgnoresNeedSplit()) lifecycleScope.launch {
+            if (LibraryCheck.splitSequelIgnores() && !isFinishing) render()
+        }
     }
 
     private var items: List<Item> = emptyList()
@@ -92,8 +97,8 @@ class ToolboxActivity : AppCompatActivity() {
         val anilist = Anilist.token != null
         val library = buildList {
             if (anilist) {
-                add(check(LibraryCheck.ANIME_SEQUELS, R.string.missed_anime_sequels_desc, R.string.ignored_sequels))
-                add(check(LibraryCheck.MANGA_SEQUELS, R.string.missed_manga_sequels_desc, R.string.ignored_sequels))
+                add(check(LibraryCheck.ANIME_SEQUELS, R.string.missed_anime_sequels_desc, R.string.ignored_anime_sequels))
+                add(check(LibraryCheck.MANGA_SEQUELS, R.string.missed_manga_sequels_desc, R.string.ignored_manga_sequels))
                 add(check(LibraryCheck.ANIME_ADAPTATIONS, R.string.anime_adaptations_desc, R.string.ignored_adaptations))
             }
             if (MangaUpdates.token != null) add(
@@ -169,7 +174,9 @@ class ToolboxActivity : AppCompatActivity() {
         val count = tool.ignored?.let { PrefManager.getVal<Set<String>>(it).size } ?: 0
         b.toolboxCardIgnored.isVisible = count > 0
         if (count == 0) return
-        b.toolboxCardIgnored.text = resources.getQuantityString(R.plurals.toolbox_ignored_pill, count, count)
+        // Icon and count only; the words go to TalkBack.
+        b.toolboxCardIgnored.text = count.toString()
+        b.toolboxCardIgnored.contentDescription = resources.getQuantityString(R.plurals.toolbox_ignored_pill, count, count)
         b.toolboxCardIgnored.setOnClickListener {
             val pref = tool.ignored ?: return@setOnClickListener
             MediaExcludeBottomDialog.newInstance(pref, getString(tool.ignoredTitleRes))
