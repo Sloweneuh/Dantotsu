@@ -2325,6 +2325,8 @@
     <string name="screenshot_show_media_info">Afficher les infos du média</string>
     <string name="screenshot_show_user_info">Afficher les infos utilisateur</string>
     <string name="screenshot_show_app_icon">Afficher le logo de l\'application</string>
+    <string name="screenshot_show_qr">Code QR</string>
+    <string name="screenshot_qr">Code QR menant à la page du média</string>
     <string name="screenshot_show_frame">Cadre</string>
     <string name="screenshot_show_rounded_corners">Coins arrondis</string>
     <string name="screenshot_show_date">Afficher la date</string>

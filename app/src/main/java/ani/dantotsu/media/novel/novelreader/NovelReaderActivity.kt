@@ -818,6 +818,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
                     ?.let { getString(R.string.handoff_page_label, it) }
                     .orEmpty(),
                 sourceLabel = LNReaderSession.parser?.plugin?.name,
+                mediaUrl = ani.dantotsu.media.screenshot.ScreenshotUtil.mediaUrl(media),
                 isAnime = false,
             ).show(supportFragmentManager, "screenshot")
         }, 200)

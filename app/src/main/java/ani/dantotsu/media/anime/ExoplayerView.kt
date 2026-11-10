@@ -914,6 +914,7 @@ class ExoplayerView :
                             sourceLabel = model.watchSources?.names
                                 ?.getOrNull(media.selected!!.sourceIndex),
                             isAnime = true,
+                            mediaUrl = ScreenshotUtil.mediaUrl(media),
                         ).apply {
                             // Resume where we left off once the user closes the review sheet.
                             onDismissed = {
@@ -964,6 +965,7 @@ class ExoplayerView :
                     sourceLabel = model.watchSources?.names?.getOrNull(media.selected!!.sourceIndex),
                     windowStartMs = start,
                     windowEndMs = position,
+                    mediaUrl = ScreenshotUtil.mediaUrl(media),
                 ).apply {
                     onDismissed = {
                         if (wasPlaying && !isDestroyed && !isFinishing) exoPlayer.play()

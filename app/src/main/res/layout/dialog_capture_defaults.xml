@@ -71,6 +71,13 @@
                 android:text="@string/screenshot_show_app_icon" />
 
             <com.google.android.material.chip.Chip
+                android:id="@+id/dsQr"
+                style="@style/CaptureFilterChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/screenshot_show_qr" />
+
+            <com.google.android.material.chip.Chip
                 android:id="@+id/dsFrame"
                 style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"

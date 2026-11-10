@@ -763,6 +763,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 progressLabel = getString(R.string.handoff_page_label, "$currentChapterPage/$maxChapterPage"),
                 sourceLabel = sourceLabel,
                 isAnime = false,
+                mediaUrl = ani.dantotsu.media.screenshot.ScreenshotUtil.mediaUrl(media),
             ).show(supportFragmentManager, "screenshot")
         }
 

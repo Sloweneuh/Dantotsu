@@ -172,6 +172,7 @@ class ClipDialogFragment : CaptureSheetFragment() {
         options.chipUserInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowUserInfo)
         options.chipAppIcon.isChecked = PrefManager.getVal(PrefName.ScreenshotShowAppLogo)
         options.chipFrame.isChecked = PrefManager.getVal(PrefName.ScreenshotShowFrame)
+        options.chipQr.isChecked = PrefManager.getVal(PrefName.ScreenshotShowQr)
         options.chipSubtitles.isChecked = PrefManager.getVal(PrefName.ClipBurnSubtitles)
 
         // Rounded corners are a stills-only idea: on moving footage the curve reads as the video
@@ -179,6 +180,12 @@ class ClipDialogFragment : CaptureSheetFragment() {
         // something unwanted. The shared default still applies to screenshots.
         options.chipRounded.isVisible = false
         options.chipRounded.isChecked = false
+
+        // The QR code needs a page to link to.
+        val qr = arguments?.getString(ARG_URL)?.let(ScreenshotUtil::qrCode)
+        ScreenshotUtil.showQr(stage.clipQr, qr)
+        options.chipQr.isEnabled = qr != null
+        if (qr == null) options.chipQr.isChecked = false
 
         val loggedIn = !Anilist.username.isNullOrEmpty()
         options.chipUserInfo.isEnabled = loggedIn
@@ -210,7 +217,7 @@ class ClipDialogFragment : CaptureSheetFragment() {
 
         listOf(
             options.chipMediaInfo, options.chipDate, options.chipSource, options.chipUserInfo,
-            options.chipAppIcon, options.chipFrame
+            options.chipAppIcon, options.chipFrame, options.chipQr
         ).forEach { it.setOnCheckedChangeListener { _, _ -> applyLayout() } }
         // Burning subtitles changes the pixels, so the GIF preview has to be rebuilt for it.
         options.chipSubtitles.setOnCheckedChangeListener { _, _ -> onOutputChanged() }
@@ -883,8 +890,10 @@ class ClipDialogFragment : CaptureSheetFragment() {
     private fun hasDecor(): Boolean {
         val userInfo = options.chipUserInfo.isChecked && !Anilist.username.isNullOrEmpty()
         return captionText().isNotEmpty() || options.chipMediaInfo.isChecked || userInfo ||
-            options.chipAppIcon.isChecked
+            options.chipAppIcon.isChecked || showQr()
     }
+
+    private fun showQr() = options.chipQr.isChecked && options.chipQr.isEnabled
 
     /** Applies the current toggle state to the live preview card. Mirrors the screenshot composer. */
     private fun applyLayout() {
@@ -924,6 +933,8 @@ class ClipDialogFragment : CaptureSheetFragment() {
         stage.clipLogoCaption.isVisible = onCaption
         stage.clipLogoFooter.isVisible = onFooter
         stage.clipFooter.isVisible = userInfo || onFooter
+
+        stage.clipQr.isVisible = showQr()
 
         val decor = hasDecor()
         stage.clipDecorContainer.isVisible = decor
@@ -1247,6 +1258,7 @@ class ClipDialogFragment : CaptureSheetFragment() {
         private const val ARG_SOURCE = "source"
         private const val ARG_WINDOW_START = "windowStart"
         private const val ARG_WINDOW_END = "windowEnd"
+        private const val ARG_URL = "url"
 
         private val BARE_NUMBER = Regex("""\d+([.,]\d+)?""")
 
@@ -1296,6 +1308,7 @@ class ClipDialogFragment : CaptureSheetFragment() {
         /**
          * @param windowStartMs/[windowEndMs] the captured window in episode time; the sheet trims
          *   within it, and the full window is what the preview loads
+         * @param mediaUrl the media's page, for the card's QR code ([ScreenshotUtil.mediaUrl])
          */
         fun newInstance(
             payload: Payload,
@@ -1306,6 +1319,7 @@ class ClipDialogFragment : CaptureSheetFragment() {
             sourceLabel: String?,
             windowStartMs: Long,
             windowEndMs: Long,
+            mediaUrl: String? = null,
         ): ClipDialogFragment {
             pending = payload
             return ClipDialogFragment().apply {
@@ -1317,6 +1331,7 @@ class ClipDialogFragment : CaptureSheetFragment() {
                     ARG_SOURCE to sourceLabel,
                     ARG_WINDOW_START to windowStartMs,
                     ARG_WINDOW_END to windowEndMs,
+                    ARG_URL to mediaUrl,
                 )
             }
         }

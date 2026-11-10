@@ -113,6 +113,46 @@ object ScreenshotUtil {
         }
     }
 
+    /**
+     * The web page a capture card's QR code opens: the media's own page where it lives — AniList,
+     * else MangaUpdates or MangaBaka for a title only they know — or, for an extension-only title,
+     * the source's page for it. A plain https link anyone can open, never an app protocol. Null
+     * when there's nothing to link to.
+     */
+    fun mediaUrl(media: ani.dantotsu.media.Media?): String? {
+        media ?: return null
+        media.muSeriesId?.let { return "https://www.mangaupdates.com/series/${it.toString(36)}" }
+        media.mangaBakaSeriesId?.let { return "${ani.dantotsu.connections.mangabaka.MangaBaka.WEB_URL}/$it" }
+        if (media.id > 0) {
+            return "https://anilist.co/${if (media.anime != null) "anime" else "manga"}/${media.id}"
+        }
+        return media.shareLink?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+    }
+
+    /**
+     * [url] as a QR code, one pixel per module and no margin (the card's padding is the quiet
+     * zone). Drawn scaled up without filtering, it stays sharp at any export size.
+     */
+    fun qrCode(url: String): Bitmap? = runCatching {
+        val matrix = com.google.zxing.qrcode.QRCodeWriter().encode(
+            url, com.google.zxing.BarcodeFormat.QR_CODE, 0, 0,
+            mapOf(
+                com.google.zxing.EncodeHintType.ERROR_CORRECTION to com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.M,
+                com.google.zxing.EncodeHintType.MARGIN to 0,
+            ),
+        )
+        val size = matrix.width
+        val pixels = IntArray(size * size) { i -> if (matrix[i % size, i / size]) Color.BLACK else Color.WHITE }
+        Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
+    }.getOrNull()
+
+    /** Puts [qr] in [view] scaled up pixel for pixel, as a blurred code scans badly. */
+    fun showQr(view: android.widget.ImageView, qr: Bitmap?) {
+        view.setImageDrawable(qr?.let {
+            android.graphics.drawable.BitmapDrawable(view.resources, it).apply { isFilterBitmap = false }
+        })
+    }
+
     /** Formats a clip's span as `12:04 – 12:34`, for the media info row on a clip card. */
     fun formatInterval(startMs: Long, endMs: Long): String =
         "${formatTimestamp(startMs)} – ${formatTimestamp(endMs)}"

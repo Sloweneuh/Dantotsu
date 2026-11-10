@@ -1293,6 +1293,8 @@
     <string name="screenshot_show_media_info">Show media info</string>
     <string name="screenshot_show_user_info">Show user info</string>
     <string name="screenshot_show_app_icon">Show app logo</string>
+    <string name="screenshot_show_qr">QR code</string>
+    <string name="screenshot_qr">QR code linking to the media\'s page</string>
     <string name="screenshot_show_frame">Frame</string>
     <string name="screenshot_show_rounded_corners">Rounded corners</string>
     <string name="screenshot_show_date">Show date</string>

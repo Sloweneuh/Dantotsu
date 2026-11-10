@@ -321,6 +321,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
         view.dsSource.isChecked = PrefManager.getVal(PrefName.ScreenshotShowSource)
         view.dsUserInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowUserInfo)
         view.dsAppLogo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowAppLogo)
+        view.dsQr.isChecked = PrefManager.getVal(PrefName.ScreenshotShowQr)
         view.dsFrame.isChecked = PrefManager.getVal(PrefName.ScreenshotShowFrame)
         view.dsRounded.isChecked = PrefManager.getVal(PrefName.ScreenshotShowRoundedCorners)
         view.dsMediaInfo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowMediaInfo, c) }
@@ -328,6 +329,7 @@ class SettingsGeneralActivity : AppCompatActivity() {
         view.dsSource.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowSource, c) }
         view.dsUserInfo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowUserInfo, c) }
         view.dsAppLogo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowAppLogo, c) }
+        view.dsQr.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowQr, c) }
         view.dsFrame.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowFrame, c) }
         view.dsRounded.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowRoundedCorners, c) }
 

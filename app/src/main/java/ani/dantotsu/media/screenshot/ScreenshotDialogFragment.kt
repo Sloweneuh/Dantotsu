@@ -64,6 +64,7 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
     private val progressLabel get() = arguments?.getString(ARG_PROGRESS).orEmpty()
     private val sourceLabel get() = arguments?.getString(ARG_SOURCE)
     private val isAnime get() = arguments?.getBoolean(ARG_IS_ANIME) ?: false
+    private val mediaUrl get() = arguments?.getString(ARG_URL)
 
     /**
      * Sources usually label the number themselves ("Vol. 4 Ch. 20", "Episode 5"), so it's shown
@@ -127,6 +128,13 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
         binding.screenshotOptions.chipAppIcon.isChecked = PrefManager.getVal(PrefName.ScreenshotShowAppLogo)
         binding.screenshotOptions.chipFrame.isChecked = PrefManager.getVal(PrefName.ScreenshotShowFrame)
         binding.screenshotOptions.chipRounded.isChecked = PrefManager.getVal(PrefName.ScreenshotShowRoundedCorners)
+        binding.screenshotOptions.chipQr.isChecked = PrefManager.getVal(PrefName.ScreenshotShowQr)
+
+        // The QR code needs a page to link to.
+        val qr = mediaUrl?.let(ScreenshotUtil::qrCode)
+        ScreenshotUtil.showQr(binding.screenshotStage.screenshotQr, qr)
+        binding.screenshotOptions.chipQr.isEnabled = qr != null
+        if (qr == null) binding.screenshotOptions.chipQr.isChecked = false
 
         // User info is only meaningful when signed in to AniList.
         val loggedIn = !Anilist.username.isNullOrEmpty()
@@ -140,7 +148,7 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
         val toggles = listOf(
             binding.screenshotOptions.chipMediaInfo, binding.screenshotOptions.chipDate, binding.screenshotOptions.chipSource,
             binding.screenshotOptions.chipUserInfo, binding.screenshotOptions.chipAppIcon, binding.screenshotOptions.chipFrame,
-            binding.screenshotOptions.chipRounded
+            binding.screenshotOptions.chipRounded, binding.screenshotOptions.chipQr
         )
         toggles.forEach { it.setOnCheckedChangeListener { _, _ -> applyLayout() } }
         binding.screenshotOptions.screenshotCaptionInput.doOnTextChanged { _, _, _, _ -> applyLayout() }
@@ -276,8 +284,11 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
     private fun hasDecor(): Boolean {
         val mediaInfo = binding.screenshotOptions.chipMediaInfo.isChecked
         val userInfo = binding.screenshotOptions.chipUserInfo.isChecked && !Anilist.username.isNullOrEmpty()
-        return captionText().isNotEmpty() || mediaInfo || userInfo || binding.screenshotOptions.chipAppIcon.isChecked
+        return captionText().isNotEmpty() || mediaInfo || userInfo || binding.screenshotOptions.chipAppIcon.isChecked ||
+            showQr()
     }
+
+    private fun showQr() = binding.screenshotOptions.chipQr.isChecked && binding.screenshotOptions.chipQr.isEnabled
 
     /** Applies the current toggle state to the live preview card. */
     private fun applyLayout() {
@@ -316,6 +327,8 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
         binding.screenshotStage.screenshotLogoCaption.isVisible = onCaption
         binding.screenshotStage.screenshotLogoFooter.isVisible = onFooter
         binding.screenshotStage.screenshotFooter.isVisible = userInfo || onFooter
+
+        binding.screenshotStage.screenshotQr.isVisible = showQr()
 
         val decor = hasDecor()
         binding.screenshotStage.screenshotDecorContainer.isVisible = decor
@@ -402,6 +415,7 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
         private const val ARG_PROGRESS = "progress"
         private const val ARG_SOURCE = "source"
         private const val ARG_IS_ANIME = "isAnime"
+        private const val ARG_URL = "url"
 
         /** A number and nothing else — no "Ch."/"Episode"/title to say what it's counting. */
         private val BARE_NUMBER = Regex("""\d+([.,]\d+)?""")
@@ -416,6 +430,8 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
          * @param sourceLabel  extension/source name, or null to hide the row
          * @param titleOptions alternate titles/synonyms offered in the title dropdown (e.g. via
          *   [ani.dantotsu.media.Media.mainTitleOptions]); the selector is hidden when there's 1 or fewer
+         * @param mediaUrl the media's page, for the card's QR code ([ScreenshotUtil.mediaUrl]); none
+         *   and the QR option is off
          */
         fun newInstance(
             screenshot: Bitmap,
@@ -426,6 +442,7 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
             progressLabel: String,
             sourceLabel: String?,
             isAnime: Boolean,
+            mediaUrl: String? = null,
         ): ScreenshotDialogFragment {
             pending = screenshot
             return ScreenshotDialogFragment().apply {
@@ -437,6 +454,7 @@ class ScreenshotDialogFragment : CaptureSheetFragment() {
                     ARG_PROGRESS to progressLabel,
                     ARG_SOURCE to sourceLabel,
                     ARG_IS_ANIME to isAnime,
+                    ARG_URL to mediaUrl,
                 )
             }
         }

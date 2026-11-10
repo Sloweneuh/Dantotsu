@@ -316,6 +316,7 @@ object BackupTree {
                         BackupItem(PrefName.ScreenshotShowSource, R.string.screenshot_show_source),
                         BackupItem(PrefName.ScreenshotShowUserInfo, R.string.screenshot_show_user_info),
                         BackupItem(PrefName.ScreenshotShowAppLogo, R.string.screenshot_show_app_icon),
+                        BackupItem(PrefName.ScreenshotShowQr, R.string.screenshot_show_qr),
                         BackupItem(PrefName.ScreenshotShowFrame, R.string.screenshot_show_frame),
                         BackupItem(PrefName.ScreenshotShowRoundedCorners, R.string.screenshot_show_rounded_corners),
                         BackupItem(PrefName.ClipDurationSeconds, R.string.clip_duration),

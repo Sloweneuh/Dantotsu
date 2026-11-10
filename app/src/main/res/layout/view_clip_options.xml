@@ -192,6 +192,13 @@
             android:text="@string/screenshot_show_app_icon" />
 
         <com.google.android.material.chip.Chip
+            android:id="@+id/chipQr"
+            style="@style/CaptureFilterChip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/screenshot_show_qr" />
+
+        <com.google.android.material.chip.Chip
             android:id="@+id/chipFrame"
             style="@style/CaptureFilterChip"
             android:layout_width="wrap_content"

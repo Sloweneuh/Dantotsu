@@ -122,6 +122,8 @@ enum class PrefName(val data: Pref) {
     ScreenshotShowSource(Pref(Location.General, Boolean::class, true)),
     ScreenshotShowUserInfo(Pref(Location.General, Boolean::class, false)),
     ScreenshotShowAppLogo(Pref(Location.General, Boolean::class, true)),
+    /** A QR code linking to the media's page on the capture card. */
+    ScreenshotShowQr(Pref(Location.General, Boolean::class, false)),
     ScreenshotShowFrame(Pref(Location.General, Boolean::class, true)),
     ScreenshotShowRoundedCorners(Pref(Location.General, Boolean::class, true)),
     // Anime clip capture: how far back from the current position the clip starts, and what it
