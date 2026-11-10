@@ -262,6 +262,50 @@ object UnreadCache {
     }
 
     /**
+     * Moves MangaUpdates series [muSeriesId]'s unread chapters to the AniList entry it was just
+     * converted to ([media]): its MALSync info joins the AniList half, and Comick titles shown as
+     * the series are shown as the AniList media. Otherwise the row would drop it until the next
+     * checks ran, the series being gone from the MangaUpdates lists the row reads it through.
+     */
+    fun moveMuToAnilist(context: Context, muSeriesId: Long, media: Media) {
+        try {
+            PrefManager.init(context)
+            val key = ani.dantotsu.connections.mangaupdates.muMediaKey(muSeriesId)
+            var changed = false
+
+            val muInfo = rawMuInfo().toMutableMap()
+            muInfo.remove(key)?.let { moved ->
+                PrefManager.setCustomVal("cached_mu_unread_info", HashMap(muInfo))
+                PrefManager.setCustomVal(
+                    "cached_mu_unread_media", ArrayList(cachedMuMedia().filterNot { it.id == muSeriesId })
+                )
+                val info = rawInfo().toMutableMap()
+                // An answer the AniList check already has for the media stands, if it's as new.
+                if ((info[media.id]?.lastChapter ?: -1) < moved.lastChapter) {
+                    info[media.id] = moved.copy(mediaId = media.id, userProgress = media.userProgress ?: moved.userProgress)
+                    PrefManager.setCustomVal("cached_unread_info", HashMap(info))
+                    PrefManager.setCustomVal(
+                        "cached_unread_chapters", ArrayList(cachedMedia().filterNot { it.id == media.id } + media)
+                    )
+                }
+                changed = true
+            }
+
+            val comick = rawComick()
+            val comickMoved = comick.map { entry ->
+                if (entry.muMedia?.id != muSeriesId) return@map entry
+                changed = true
+                entry.copy(anilistMedia = media, muMedia = null, anilistId = media.id, notifId = media.id)
+            }
+            if (comickMoved != comick) PrefManager.setCustomVal("cached_comick_unread", ArrayList(comickMoved))
+
+            if (changed) broadcastUpdate(context)
+        } catch (e: Exception) {
+            Logger.log("UnreadCache: Failed to move MangaUpdates $muSeriesId to AniList ${media.id}: ${e.message}")
+        }
+    }
+
+    /**
      * How many updates this process has announced, for a screen that stops listening while covered:
      * a change made on the screen covering it is exactly the one it would otherwise miss.
      */

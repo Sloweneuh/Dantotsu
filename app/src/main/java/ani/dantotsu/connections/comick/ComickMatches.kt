@@ -204,6 +204,70 @@ object ComickMatches {
         if (pick.muKey != null && pick.muSeriesId != null) recordMuPick(pick.muKey, pick.muSeriesId)
     }
 
+    /**
+     * Retires the hand picks of Comick entry [slug] that Comick itself now links: picked for an
+     * AniList title its catalog links to by [anilistId], or for a MangaUpdates series it links by
+     * [mangaUpdates] (Comick keeps that id as the old number or in base 36). Comick's own link is
+     * the automatic match from then on, so the title leaves the hand-picked ones — and the entries
+     * sync resolved stay, so nothing is looked up again. True when one was retired.
+     */
+    fun retireIfLinked(slug: String, anilistId: Int?, mangaUpdates: String?): Boolean {
+        if (slug.isBlank() || (anilistId == null && mangaUpdates.isNullOrBlank())) return false
+        val muIds = mangaUpdates?.trim()?.let { setOfNotNull(it.toLongOrNull(), it.toLongOrNull(36)) }.orEmpty()
+        val retired = picks().filter { pick ->
+            pick.slug == slug &&
+                ((pick.anilistId != null && pick.anilistId == anilistId) ||
+                    (pick.muSeriesId != null && pick.muSeriesId in muIds))
+        }
+        retired.forEach { pick ->
+            PrefManager.removeCustomVal(pickKey(pick))
+            pick.muKey?.let { clearMuPick(it) }
+            val anilist = pick.anilistId ?: return@forEach
+            // Where the automatic matching keeps what it found, so the media page goes straight to
+            // this entry rather than searching for it again.
+            if (pick.isAnime) {
+                ComickEpisodes.cacheAutoSlug(anilist, slug)
+            } else {
+                val key = ComickApi.matchedSlugKey(ComickApi.MEDIA_TYPE_MANGA, anilist)
+                val known = IdCache[key]?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+                IdCache.put(key, (listOf(slug) + (known - slug)).joinToString(","))
+            }
+        }
+        if (retired.isEmpty()) return false
+        IdCache.flush()
+        ani.dantotsu.util.Logger.log("ComickMatches: $slug is linked by Comick now, ${retired.size} hand pick(s) retired")
+        return true
+    }
+
+    /** [retireIfLinked] with the links of a Comick entry's details. */
+    fun retireIfLinked(slug: String, links: ComickLinks?): Boolean =
+        retireIfLinked(slug, links?.al?.trim()?.toIntOrNull()?.takeIf { it > 0 }, links?.mu)
+
+    /**
+     * Carries a MangaUpdates series' Comick match over to the AniList entry it was converted to: a
+     * hand pick becomes the AniList title's pick (unless it has its own), and the Comick entries
+     * list sync resolved for the series become the title's — so the page, sync and the checks keep
+     * the same Comick entry instead of matching the title afresh.
+     */
+    fun moveMangaUpdatesToAnilist(muSeriesId: Long, anilistId: Int) {
+        val muKey = ani.dantotsu.connections.mangaupdates.muMediaKey(muSeriesId)
+        val muPick = PrefManager.getNullableCustomVal("$PICK_PREFIX$muKey", null, String::class.java)
+            ?.takeIf { it.isNotBlank() }
+        if (muPick != null) {
+            if (pinnedSlug(anilistId, isAnime = false) == null) PrefManager.setCustomVal(pinnedKey(anilistId, false), muPick)
+            PrefManager.removeCustomVal("$PICK_PREFIX$muKey")
+            clearMuPick(muKey)
+        }
+        val hidsKey = "comick_hids_${ComickApi.MEDIA_TYPE_MANGA}_$anilistId"
+        val muHids = IdCache[muHidsKey(muSeriesId)]
+        // A miss ("-<time>") is only worth keeping where nothing better is known.
+        if (muHids != null && !muHids.startsWith("-")) {
+            if (IdCache[hidsKey].let { it == null || it.startsWith("-") }) IdCache.put(hidsKey, muHids)
+        }
+        IdCache.remove(muHidsKey(muSeriesId))
+        IdCache.flush()
+    }
+
     private fun pickKey(pick: Pick) = when {
         pick.anilistId != null -> pinnedKey(pick.anilistId, pick.isAnime)
         else -> "$PICK_PREFIX${pick.muKey ?: pick.muSeriesId?.let { ani.dantotsu.connections.mangaupdates.muMediaKey(it) }}"

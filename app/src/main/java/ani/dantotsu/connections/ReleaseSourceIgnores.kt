@@ -23,9 +23,13 @@ import ani.dantotsu.settings.saving.PrefName
  * knows, its Comick HID. Each provider is ignored per page — a series on both an AniList and a
  * MangaUpdates page is set on each.
  *
+ * Comick can also be believed apart from some of its scanlation groups: a group that numbers its
+ * uploads ahead of the real chapters is ignored for a series without losing what the others upload.
+ *
  * Kept as one string set in [PrefName.IgnoredReleaseSources]: `provider|scope:id` for each provider
- * ignored, and `info|scope:id|muSeriesId|cover|title` naming the series for the management sheet.
- * One set, so the names sync and back up with what they name.
+ * ignored, `comickgroup|scope:id|Group name` for each Comick group ignored, and
+ * `info|scope:id|muSeriesId|cover|title` naming the series for the management sheet. One set, so
+ * the names sync and back up with what they name.
  */
 object ReleaseSourceIgnores {
 
@@ -43,9 +47,11 @@ object ReleaseSourceIgnores {
         val muSeriesId: Long? = null,
     )
 
-    data class IgnoredSeries(val series: Series, val providers: List<Provider>)
+    /** [groups]: the Comick scanlation groups ignored for the series, as Comick names them. */
+    data class IgnoredSeries(val series: Series, val providers: List<Provider>, val groups: List<String> = emptyList())
 
     private const val INFO_PREFIX = "info|"
+    private const val GROUP_PREFIX = "comickgroup|"
     private const val COMICK_SCOPE = "ck:"
 
     /** Above any AniList id, and a truncated MangaUpdates id is all but never below it. */
@@ -61,6 +67,19 @@ object ReleaseSourceIgnores {
     fun muKeyOf(target: String): Int? = target.takeIf { it.startsWith("mu:") }?.drop(3)?.toIntOrNull()
 
     private fun entry(provider: Provider, target: String) = "${provider.key}|$target"
+
+    private fun groupEntry(target: String, group: String) = "$GROUP_PREFIX$target|${group.trim()}"
+
+    /** Splits Comick's "Group A, Group B" into its groups, which are ignored one by one. */
+    fun groupsOf(source: String?): List<String> = source.orEmpty().split(',')
+        .map { it.trim() }.filter { it.isNotEmpty() && !it.equals("Comick", ignoreCase = true) }
+
+    /** Whether anything at all is still ignored for [target]: a provider or a group. */
+    private fun Set<String>.anyFor(target: String) =
+        Provider.entries.any { entry(it, target) in this } || any { it.startsWith("$GROUP_PREFIX$target|") }
+
+    private fun Set<String>.isFor(raw: String, target: String) =
+        raw.startsWith("$GROUP_PREFIX$target|") || Provider.entries.any { raw == entry(it, target) }
 
     private fun infoEntry(series: Series) =
         "$INFO_PREFIX${series.target}|${series.muSeriesId ?: ""}|${series.cover.orEmpty()}|${series.title.orEmpty()}"
@@ -87,8 +106,82 @@ object ReleaseSourceIgnores {
             named + key
         } else {
             val remaining = current - key
-            val stillIgnored = Provider.entries.any { entry(it, target) in remaining }
-            if (stillIgnored) remaining else remaining.withoutInfo(target)
+            if (remaining.anyFor(target)) remaining else remaining.withoutInfo(target)
+        }
+        PrefManager.setVal(PrefName.IgnoredReleaseSources, updated)
+        notifyChanged()
+    }
+
+    /** The Comick groups ignored for [target], lower-cased for comparing. */
+    fun comickGroups(target: String): Set<String> = comickGroups(ignored(), listOf(target))
+
+    private fun comickGroups(set: Set<String>, targets: Collection<String>): Set<String> {
+        if (set.isEmpty() || targets.isEmpty()) return emptySet()
+        val prefixes = targets.map { "$GROUP_PREFIX$it|" }
+        return set.mapNotNullTo(HashSet()) { raw ->
+            prefixes.firstOrNull { raw.startsWith(it) }?.let { raw.removePrefix(it).lowercase() }
+        }
+    }
+
+    /** The groups ignored on any page this Comick title is shown as, or as itself. */
+    fun comickGroupsFor(anilistId: Int?, muSeriesIds: Collection<Long>, hids: Collection<String>): Set<String> =
+        comickGroups(
+            ignored(),
+            listOfNotNull(anilistId?.let(::anilist)) + muSeriesIds.map(::mu) + hids.map(::comick),
+        )
+
+    fun isComickGroupIgnored(target: String, group: String): Boolean =
+        group.trim().lowercase() in comickGroups(target)
+
+    /** Ignores (or believes again) what [group] uploads to Comick for [target]; see [setIgnored]. */
+    fun setComickGroupIgnored(target: String, group: String, ignore: Boolean, series: Series? = null) {
+        val current = ignored()
+        // Matched without regard to case: Comick isn't consistent about it.
+        val same = current.filter { it.equals(groupEntry(target, group), ignoreCase = true) }.toSet()
+        val updated = if (ignore) {
+            val named = if (series != null) current.withoutInfo(target) + infoEntry(series) else current
+            named - same + groupEntry(target, group)
+        } else {
+            val remaining = current - same
+            if (remaining.anyFor(target)) remaining else remaining.withoutInfo(target)
+        }
+        PrefManager.setVal(PrefName.IgnoredReleaseSources, updated)
+        notifyChanged()
+    }
+
+    /**
+     * Whether a chapter uploaded by [groups] is left out under [ignoredGroups]: when every group it
+     * names is ignored. One that names none — Comick's own upload — always counts.
+     */
+    fun isChapterIgnored(groups: Collection<String>?, ignoredGroups: Set<String>): Boolean {
+        if (ignoredGroups.isEmpty()) return false
+        val named = groups.orEmpty().map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+        return named.isNotEmpty() && named.all { it in ignoredGroups }
+    }
+
+    /**
+     * Moves everything ignored for series [from] to series [to] — a MangaUpdates series converted to
+     * its AniList entry. Only what can speak for the new page goes: MangaUpdates' own answers count
+     * for nothing on an AniList page. [series] names it there; else the old name is carried over.
+     */
+    fun move(from: String, to: String, series: Series? = null) {
+        val current = ignored()
+        if (!current.anyFor(from)) return
+        val allowed = providersFor(to).toSet()
+        val moved = current.mapNotNull { raw ->
+            when {
+                raw.startsWith("$GROUP_PREFIX$from|") -> raw.takeIf { Provider.COMICK in allowed }
+                    ?.let { GROUP_PREFIX + to + "|" + it.removePrefix("$GROUP_PREFIX$from|") }
+                else -> Provider.entries.firstOrNull { raw == entry(it, from) }
+                    ?.takeIf { it in allowed }?.let { entry(it, to) }
+            }
+        }
+        val oldInfo = current.firstOrNull { it.startsWith("$INFO_PREFIX$from|") }
+        var updated = current.filterNot { current.isFor(it, from) }.toSet().withoutInfo(from) + moved
+        if (moved.isNotEmpty()) {
+            val info = series?.copy(target = to)?.let(::infoEntry)
+                ?: oldInfo?.replaceFirst("$INFO_PREFIX$from|", "$INFO_PREFIX$to|")
+            updated = updated.withoutInfo(to) + listOfNotNull(info)
         }
         PrefManager.setVal(PrefName.IgnoredReleaseSources, updated)
         notifyChanged()
@@ -124,8 +217,15 @@ object ReleaseSourceIgnores {
         val set = ignored()
         val info = HashMap<String, Series>()
         val providers = LinkedHashMap<String, MutableList<Provider>>()
+        val groups = HashMap<String, MutableList<String>>()
         set.forEach { raw ->
-            if (raw.startsWith(INFO_PREFIX)) {
+            if (raw.startsWith(GROUP_PREFIX)) {
+                val parts = raw.removePrefix(GROUP_PREFIX).split('|', limit = 2)
+                if (parts.size == 2) {
+                    providers.getOrPut(parts[0]) { mutableListOf() }
+                    groups.getOrPut(parts[0]) { mutableListOf() } += parts[1]
+                }
+            } else if (raw.startsWith(INFO_PREFIX)) {
                 val parts = raw.removePrefix(INFO_PREFIX).split('|', limit = 4)
                 if (parts.size == 4) {
                     info[parts[0]] = Series(
@@ -144,6 +244,7 @@ object ReleaseSourceIgnores {
             IgnoredSeries(
                 info[target] ?: Series(target, null, null),
                 ignoredProviders.sortedBy { it.ordinal },
+                groups[target].orEmpty().sortedBy { it.lowercase() },
             )
         }
     }
@@ -214,8 +315,16 @@ object ReleaseSourceIgnores {
         return muSeriesIds.any { entry(Provider.COMICK, mu(it)) in set }
     }
 
-    fun comickIgnored(entry: ComickUnreadEntry): Boolean =
-        comickIgnored(entry.anilistMedia?.id ?: entry.anilistId, listOfNotNull(entry.muMedia?.id), listOf(entry.hid))
+    /**
+     * Whether a cached Comick answer is left out: Comick is ignored for the title, or the group that
+     * uploaded its newest chapter is. The next check looks past that group's uploads.
+     */
+    fun comickIgnored(entry: ComickUnreadEntry): Boolean {
+        val anilistId = entry.anilistMedia?.id ?: entry.anilistId
+        val muIds = listOfNotNull(entry.muMedia?.id)
+        if (comickIgnored(anilistId, muIds, listOf(entry.hid))) return true
+        return isChapterIgnored(groupsOf(entry.source), comickGroupsFor(anilistId, muIds, listOf(entry.hid)))
+    }
 }
 
 /**
@@ -254,6 +363,17 @@ object ReleaseSourceAnswers {
 
     fun record(provider: ReleaseSourceIgnores.Provider, target: String, latest: Int, source: String?) =
         record(provider, mapOf(target to (latest to source)))
+
+    /** Moves [from]'s answers to [to], where [to] has none — a series converted to AniList. */
+    fun move(from: String, to: String) {
+        ReleaseSourceIgnores.Provider.entries.forEach { provider ->
+            val raw = PrefManager.getNullableCustomVal(key(provider, from), null, String::class.java) ?: return@forEach
+            if (PrefManager.getNullableCustomVal(key(provider, to), null, String::class.java) == null) {
+                PrefManager.setCustomVal(key(provider, to), raw)
+            }
+            PrefManager.removeCustomVal(key(provider, from))
+        }
+    }
 
     fun get(provider: ReleaseSourceIgnores.Provider, target: String): Answer? {
         val raw = PrefManager.getNullableCustomVal(key(provider, target), null, String::class.java)

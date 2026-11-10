@@ -136,6 +136,7 @@ class ReleaseSourceIgnoresSheet : BottomSheetDialogFragment() {
     private inner class SeriesItem(ignored: IgnoredSeries) : BindableItem<ItemReleaseSourceSeriesBinding>() {
         private val series = ignored.series
         private val providers = ignored.providers.toMutableList()
+        private val groups = ignored.groups.toMutableList()
 
         override fun bind(viewBinding: ItemReleaseSourceSeriesBinding, position: Int) {
             val context = viewBinding.root.context
@@ -155,12 +156,32 @@ class ReleaseSourceIgnoresSheet : BottomSheetDialogFragment() {
                     setOnCloseIconClickListener(restore)
                 })
             }
+            groups.forEach { group ->
+                viewBinding.releaseSeriesSources.addView(Chip(context).apply {
+                    text = context.getString(R.string.release_source_comick_group, group)
+                    isCloseIconVisible = true
+                    closeIconContentDescription = context.getString(R.string.release_source_track)
+                    val restore = View.OnClickListener { restoreGroup(group) }
+                    setOnClickListener(restore)
+                    setOnCloseIconClickListener(restore)
+                })
+            }
         }
 
         private fun restore(provider: ReleaseSourceIgnores.Provider) {
             ReleaseSourceIgnores.setIgnored(provider, series.target, false)
             providers -= provider
-            if (providers.isEmpty()) {
+            removedOne()
+        }
+
+        private fun restoreGroup(group: String) {
+            ReleaseSourceIgnores.setComickGroupIgnored(series.target, group, false)
+            groups -= group
+            removedOne()
+        }
+
+        private fun removedOne() {
+            if (providers.isEmpty() && groups.isEmpty()) {
                 adapter.remove(this)
                 if (adapter.itemCount == 0 && _binding != null) showEmpty()
             } else {

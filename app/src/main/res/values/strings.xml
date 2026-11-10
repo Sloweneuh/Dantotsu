@@ -3683,6 +3683,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="release_source_ignored_value">Ignored · %1$s</string>
     <string name="release_source_ignore">Ignore</string>
     <string name="release_source_track">Track again</string>
+    <string name="release_source_groups_loading">Loading groups…</string>
+    <string name="release_source_groups_none">No group has uploaded lately</string>
+    <string name="release_source_groups_failed">Couldn\'t load the groups</string>
+    <string name="release_source_comick_group">Comick · %1$s</string>
     <string name="release_sources_manage">Manage Ignored Release Sources</string>
     <string name="release_sources_manage_desc">Series with a release progress source ignored, on any page</string>
     <string name="release_sources_manage_empty">No release source is ignored for any series</string>

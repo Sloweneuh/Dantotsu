@@ -1,9 +1,15 @@
 package ani.dantotsu.connections.mangaupdates
 
+import ani.dantotsu.App
+import ani.dantotsu.connections.ReleaseSourceAnswers
+import ani.dantotsu.connections.ReleaseSourceIgnores
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
+import ani.dantotsu.connections.comick.ComickMatches
 import ani.dantotsu.connections.mangabaka.MangaBakaSync
+import ani.dantotsu.notifications.unread.UnreadCache
+import ani.dantotsu.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -100,9 +106,31 @@ suspend fun convertMuToAnilist(
     )
     if (added) {
         MangaUpdates.removeFromList(muSeriesId)
+        carryOver(muSeriesId, anilistId)
         mirrorConvertedEntry(anilistId, status, chapter, volume, startedAt)
     }
     return added
+}
+
+/**
+ * Moves what the app knows of the series under its MangaUpdates id to its AniList entry: the
+ * Comick match, the release sources ignored for it (and their last answers), and its unread
+ * chapters on the home row — or the AniList page would start over without them.
+ */
+private suspend fun carryOver(muSeriesId: Long, anilistId: Int) {
+    val from = ReleaseSourceIgnores.mu(muSeriesId)
+    val to = ReleaseSourceIgnores.anilist(anilistId)
+    runCatching { ComickMatches.moveMangaUpdatesToAnilist(muSeriesId, anilistId) }
+        .onFailure { Logger.log("convertMuToAnilist: Comick match not carried over: ${it.message}") }
+    // Named as the AniList entry in the management sheet once it's known; the old name till then.
+    val media = runCatching { Anilist.query.getMedia(anilistId, type = "MANGA") }.getOrNull()
+    ReleaseSourceIgnores.move(
+        from, to,
+        media?.let { ReleaseSourceIgnores.Series(to, it.userPreferredName, it.cover) },
+    )
+    ReleaseSourceAnswers.move(from, to)
+    val context = App.instance ?: App.context ?: return
+    if (media != null) UnreadCache.moveMuToAnilist(context, muSeriesId, media)
 }
 
 /**

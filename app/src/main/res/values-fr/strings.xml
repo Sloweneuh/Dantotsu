@@ -3556,6 +3556,10 @@
     <string name="release_source_ignored_value">Ignorée · %1$s</string>
     <string name="release_source_ignore">Ignorer</string>
     <string name="release_source_track">Suivre à nouveau</string>
+    <string name="release_source_groups_loading">Chargement des groupes…</string>
+    <string name="release_source_groups_none">Aucun groupe n’a publié récemment</string>
+    <string name="release_source_groups_failed">Impossible de charger les groupes</string>
+    <string name="release_source_comick_group">Comick · %1$s</string>
     <string name="release_sources_manage">Gérer les sources de progression ignorées</string>
     <string name="release_sources_manage_desc">Séries dont une source de progression est ignorée, sur n\'importe quelle page</string>
     <string name="release_sources_manage_empty">Aucune source de progression n\'est ignorée</string>

@@ -706,8 +706,12 @@ class ComickUnreadNotificationTask : Task {
                     synchronized(latestByHid) { latestByHid[hid] = floor(listed).toInt() }
                     return@async null
                 }
+                // Past what the groups ignored for this title uploaded: on any page it's shown as.
+                val ignoredGroups = ReleaseSourceIgnores.comickGroupsFor(
+                    candidate.links.anilistId, candidate.links.mangaUpdatesIds, listOf(hid),
+                )
                 val lookup = slots.withPermit {
-                    ComickApi.latestChapterLookup(hid).also { delay(REQUEST_SPACING_MS) }
+                    ComickApi.latestChapterLookup(hid, ignoredGroups = ignoredGroups).also { delay(REQUEST_SPACING_MS) }
                 }
                 val chapter = lookup.getOrNull() ?: run {
                     // Listing no chapters at all is an answer: nothing past the saved one.
@@ -769,7 +773,16 @@ class ComickUnreadNotificationTask : Task {
      * Fetches are spaced like [titlesBehind]'s, since a first run looks up the whole library.
      */
     private suspend fun linksFor(entry: ComickLibraryEntry, match: ComickMatches.Target?): Links? =
-        comickLinksFor(entry)?.let { withMatch(entry.hid, it, match) }?.let { withMangaBakaAnilist(entry.hid, it) }
+        comickLinksFor(entry)
+            ?.also { links ->
+                // A title picked by hand that Comick has since linked itself: the pick is retired
+                // for Comick's own link.
+                val slug = entry.slug
+                if (match != null && slug != null && (links.anilistId != null || links.mangaUpdates != null)) {
+                    ComickMatches.retireIfLinked(slug, links.anilistId, links.mangaUpdates)
+                }
+            }
+            ?.let { withMatch(entry.hid, it, match) }?.let { withMangaBakaAnilist(entry.hid, it) }
 
     /**
      * [links] with what the title was matched to in the app ([match]) where Comick's catalog has no

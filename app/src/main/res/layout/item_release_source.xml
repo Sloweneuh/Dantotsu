@@ -46,6 +46,20 @@
             tools:text="Chapter 120 · MangaDex" />
     </LinearLayout>
 
+    <!-- Comick only: opens the line per scanlation group below the row. -->
+    <ImageView
+        android:id="@+id/releaseSourceExpand"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/expand"
+        android:padding="6dp"
+        android:src="@drawable/ic_round_arrow_drop_down_24"
+        android:visibility="gone"
+        app:tint="?attr/colorOnBackground"
+        tools:visibility="visible" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/releaseSourceToggle"
         style="@style/Widget.Material3.Button.TonalButton"

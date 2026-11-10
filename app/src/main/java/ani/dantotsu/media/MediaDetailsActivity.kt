@@ -90,6 +90,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     /** Comick's newest chapter for this manga, once its Comick entry is found and asked. */
     private var liveComick: Pair<Int, String?>? = null
     private var comickAsked = false
+    /** The series' Comick entry, once found: its groups are listed in the sources sheet. */
+    private var liveComickHid: String? = null
     private var malSyncAsking = false
 
     lateinit var launcher: LauncherWrapper
@@ -1089,31 +1091,36 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
 
         // Comick's newest chapter, asked as soon as the series' Comick entry is known, for the
-        // progress line (unless ignored) and the sources sheet.
+        // progress line (unless ignored) and the sources sheet — and again when a group is
+        // ignored or believed again there, as the newest may then be another upload.
+        fun askComick(slug: String) {
+            comickAsked = true
+            lifecycleScope.launch(Dispatchers.IO) {
+                val comic = runCatching {
+                    ani.dantotsu.connections.comick.ComickApi.getComicDetails(slug)?.comic
+                }.getOrNull() ?: return@launch
+                liveComickHid = comic.hid
+                // A hand pick Comick now links to this media itself is an automatic match.
+                ani.dantotsu.connections.comick.ComickMatches.retireIfLinked(slug, comic.links)
+                val target = ani.dantotsu.connections.ReleaseSourceIgnores.anilist(media.id)
+                // With its uploader, as the Comick tab shows it.
+                val (last, group) = comickLatestFor(comic.hid, comic.last_chapter, target) ?: return@launch
+                ani.dantotsu.connections.ReleaseSourceAnswers.record(
+                    ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target, last, group,
+                )
+                withContext(Dispatchers.Main) {
+                    if (isDestroyed) return@withContext
+                    liveComick = last to (group ?: "Comick")
+                    if (!ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)) {
+                        total()
+                    }
+                }
+            }
+        }
         if (media.manga != null) {
             model.comickSlug.observe(this) { slug ->
                 if (slug.isNullOrBlank() || comickAsked || !isOnline(this)) return@observe
-                comickAsked = true
-                lifecycleScope.launch(Dispatchers.IO) {
-                    val comic = runCatching {
-                        ani.dantotsu.connections.comick.ComickApi.getComicDetails(slug)?.comic
-                    }.getOrNull()
-                    val lastExact = comic?.last_chapter
-                    val last = lastExact?.toInt()?.takeIf { it > 0 } ?: return@launch
-                    // Who uploaded it, as the Comick tab shows it.
-                    val group = comickGroupOf(comic.hid, lastExact)
-                    val target = ani.dantotsu.connections.ReleaseSourceIgnores.anilist(media.id)
-                    ani.dantotsu.connections.ReleaseSourceAnswers.record(
-                        ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target, last, group,
-                    )
-                    withContext(Dispatchers.Main) {
-                        if (isDestroyed) return@withContext
-                        liveComick = last to (group ?: "Comick")
-                        if (!ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)) {
-                            total()
-                        }
-                    }
-                }
+                askComick(slug)
             }
         }
 
@@ -1133,10 +1140,15 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, malSync?.first, malSync?.second)
             )
             if (!anime) {
+                // What a group ignored here uploaded isn't Comick's answer any more.
+                val ignores = ani.dantotsu.connections.ReleaseSourceIgnores
+                val groups = ignores.comickGroups(target)
                 val comick = ani.dantotsu.notifications.unread.UnreadCache.rawComick()
                     .filter { (it.anilistMedia?.id ?: it.anilistId) == media.id }
+                    .filterNot { ignores.isChapterIgnored(ignores.groupsOf(it.source), groups) }
                     .maxByOrNull { it.latestChapter }
                 val answer = ani.dantotsu.connections.ReleaseSourceAnswers.get(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)
+                    ?.takeUnless { ignores.isChapterIgnored(ignores.groupsOf(it.source), groups) }
                 val live = liveComick
                 rows += if (live != null && live.first >= maxOf(comick?.latestChapter ?: 0, answer?.latest ?: 0)) {
                     ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, live.first, live.second)
@@ -1147,11 +1159,20 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 }
             }
             val series = ani.dantotsu.connections.ReleaseSourceIgnores.Series(target, media.userPreferredName, media.cover)
-            ReleaseSourcesSheet.show(this, series, anime, rows) {
+            var groupsBefore = ani.dantotsu.connections.ReleaseSourceIgnores.comickGroups(target)
+            val comickHid = liveComickHid ?: ani.dantotsu.notifications.unread.UnreadCache.rawComick()
+                .firstOrNull { (it.anilistMedia?.id ?: it.anilistId) == media.id }?.hid
+            ReleaseSourcesSheet.show(this, series, anime, rows, comickHid.takeIf { !anime }) {
                 // What the unread row passed in may have come from the source just changed.
                 intent.removeExtra("lastChapter")
                 intent.removeExtra("source")
                 binding.mediaUnreadSource?.visibility = View.GONE
+                val groupsNow = ani.dantotsu.connections.ReleaseSourceIgnores.comickGroups(target)
+                if (groupsNow != groupsBefore) {
+                    groupsBefore = groupsNow
+                    liveComick = null
+                    model.comickSlug.value?.takeIf { it.isNotBlank() }?.let(::askComick)
+                }
                 total()
             }
         }

@@ -157,23 +157,35 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         }
     }
 
-    /** Comick's latest chapter for the series, once its Comick entry has been found. */
+    /** The series' Comick entry, once found: asked again when a group is ignored in the sheet. */
+    private var comickComic: ComickComic? = null
+
+    /**
+     * Comick's latest chapter for the series, once its Comick entry has been found — the newest one
+     * uploaded by a group not ignored here — with the group(s) behind it, as the Comick tab finds them.
+     */
     private fun offerComickChapter(comic: ComickComic?) {
-        val last = comic?.last_chapter?.toInt() ?: return
-        liveComickChapter = last
-        // The answer is stored once the uploader is known, as the Comick tab finds it.
+        comic ?: return
+        comickComic = comic
+        val target = ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id)
         lifecycleScope.launch(Dispatchers.IO) {
-            val group = ani.dantotsu.media.comickGroupOf(comic.hid, comic.last_chapter)
-            liveComickSource = group
+            // A hand pick Comick now links to this series itself is an automatic match.
+            comic.slug?.let { ani.dantotsu.connections.comick.ComickMatches.retireIfLinked(it, comic.links) }
+            val (last, group) = ani.dantotsu.media.comickLatestFor(comic.hid, comic.last_chapter, target)
+                ?: return@launch
             ani.dantotsu.connections.ReleaseSourceAnswers.record(
-                ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK,
-                ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id), last, group,
+                ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target, last, group,
             )
+            withContext(Dispatchers.Main) {
+                if (isDestroyed) return@withContext
+                liveComickChapter = last
+                liveComickSource = group
+                if (ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)) return@withContext
+                val before = knownChapter
+                offerKnownChapter(last, "Comick")
+                if (knownChapter != before) progress()
+            }
         }
-        if (ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id))) return
-        val before = knownChapter
-        offerKnownChapter(last, "Comick")
-        if (knownChapter != before) progress()
     }
 
     private var muUserEntryDeferred: kotlinx.coroutines.Deferred<Unit>? = null
@@ -235,8 +247,13 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             ?: ani.dantotsu.connections.ReleaseSourceAnswers.get(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target)
                 ?.let { it.latest to it.source }
             ?: cache.rawMuInfo()[key]?.let { it.lastChapter to it.source }
+        // What a group ignored here uploaded isn't Comick's answer any more.
+        val ignores = ani.dantotsu.connections.ReleaseSourceIgnores
+        val groups = ignores.comickGroups(target)
         val comick = cache.rawComick().firstOrNull { it.muMedia?.id == muMedia.id }
+            ?.takeUnless { ignores.isChapterIgnored(ignores.groupsOf(it.source), groups) }
         val comickAnswer = ani.dantotsu.connections.ReleaseSourceAnswers.get(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)
+            ?.takeUnless { ignores.isChapterIgnored(ignores.groupsOf(it.source), groups) }
         // Each candidate's chapter with the uploader it came with; the newest is shown.
         val comickBest = listOfNotNull(
             liveComickChapter?.let { it to liveComickSource },
@@ -253,7 +270,17 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             ),
         )
         val series = ani.dantotsu.connections.ReleaseSourceIgnores.Series(target, muMedia.title, muMedia.coverUrl, muMedia.id)
-        ani.dantotsu.media.ReleaseSourcesSheet.show(this, series, false, rows) {
+        var groupsBefore = ani.dantotsu.connections.ReleaseSourceIgnores.comickGroups(target)
+        val comickHid = comickComic?.hid ?: cache.rawComick().firstOrNull { it.muMedia?.id == muMedia.id }?.hid
+        ani.dantotsu.media.ReleaseSourcesSheet.show(this, series, false, rows, comickHid) {
+            // A group ignored or believed again: Comick's newest may now be another upload.
+            val groupsNow = ani.dantotsu.connections.ReleaseSourceIgnores.comickGroups(target)
+            if (groupsNow != groupsBefore) {
+                groupsBefore = groupsNow
+                liveComickChapter = null
+                liveComickSource = null
+                offerComickChapter(comickComic)
+            }
             // Worked out again from what is still believed: the caches read without what is
             // ignored, and the unread row's passed-in chapter dropped, as it may be the one.
             intent.removeExtra("lastChapter")

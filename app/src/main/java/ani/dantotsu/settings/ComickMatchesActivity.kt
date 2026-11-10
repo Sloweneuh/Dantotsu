@@ -129,10 +129,19 @@ class ComickMatchesActivity : AppCompatActivity() {
                 }.toMap()
             }
             // The Comick side of each match, a few at a time: the details are cached once fetched.
+            // A pick whose entry Comick now links to the same title itself is retired for that
+            // automatic match, and isn't listed among the hand-picked ones.
             val gate = Semaphore(COMICK_PARALLEL)
+            val retired = java.util.Collections.synchronizedSet(HashSet<ComickMatches.Pick>())
             val comickTitles = withContext(Dispatchers.IO) {
                 picks.map { pick ->
-                    async { gate.withPermit { pick to comickTitle(pick) } }
+                    async {
+                        gate.withPermit {
+                            val comic = comickDetails(pick)
+                            if (comic != null && ComickMatches.retireIfLinked(pick.slug, comic.links)) retired += pick
+                            pick to comic?.title
+                        }
+                    }
                 }.awaitAll().toMap()
             }
 
@@ -146,7 +155,7 @@ class ComickMatchesActivity : AppCompatActivity() {
             }
             waiting.sortBy { it.title.name.lowercase() }
             matched.clear()
-            picks.mapTo(matched) { pick ->
+            picks.filterNot { it in retired }.mapTo(matched) { pick ->
                 val comickTitle = comickTitles[pick]
                 val title = pick.anilistId?.let { media[it] }?.let { anilistTitle(it, pick.isAnime) }
                     ?: pick.muSeriesId?.let { series[it] }?.let(::mangaUpdatesTitle)
@@ -160,9 +169,9 @@ class ComickMatchesActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun comickTitle(pick: ComickMatches.Pick): String? = runCatching {
+    private suspend fun comickDetails(pick: ComickMatches.Pick) = runCatching {
         val type = if (pick.isAnime) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
-        ComickApi.getComicDetails(pick.slug, mediaType = type)?.comic?.title
+        ComickApi.getComicDetails(pick.slug, mediaType = type)?.comic
     }.getOrNull()
 
     /** Media.status is the display label (MediaStatus.toString), or the raw name without a context. */

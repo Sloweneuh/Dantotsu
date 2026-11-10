@@ -949,8 +949,9 @@ object ComickApi {
     suspend fun getLatestChapter(
         hid: String,
         lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
-        nearChapter: Double? = null
-    ): ComickChapter? = latestChapterLookup(hid, lang, nearChapter).getOrNull()
+        nearChapter: Double? = null,
+        ignoredGroups: Set<String> = emptySet(),
+    ): ComickChapter? = latestChapterLookup(hid, lang, nearChapter, ignoredGroups).getOrNull()
 
     /**
      * [getLatestChapter], telling "Comick lists no chapters" (success, null) apart from "couldn't
@@ -960,21 +961,68 @@ object ComickApi {
     suspend fun latestChapterLookup(
         hid: String,
         lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
-        nearChapter: Double? = null
+        nearChapter: Double? = null,
+        /**
+         * Scanlation groups whose uploads don't count ([ReleaseSourceIgnores.comickGroups]), lower
+         * case: the newest chapter is the newest anyone else uploaded.
+         */
+        ignoredGroups: Set<String> = emptySet(),
     ): Result<ComickChapter?> = withContext(Dispatchers.IO) {
-        val preferred = fetchLatestChapterForLang(hid, lang, nearChapter)
+        val preferred = fetchLatestChapterForLang(hid, lang, nearChapter, ignoredGroups)
         if (preferred.getOrNull() != null || lang.equals("en", ignoreCase = true)) return@withContext preferred
-        val english = fetchLatestChapterForLang(hid, "en", nearChapter)
+        val english = fetchLatestChapterForLang(hid, "en", nearChapter, ignoredGroups)
         // Nothing in English either: only an answer if the preferred language was one as well.
         if (english.getOrNull() == null && preferred.isFailure) preferred else english
     }
 
-    private fun fetchLatestChapterForLang(hid: String, lang: String, nearChapter: Double?): Result<ComickChapter?> {
+    /**
+     * Each scanlation group's newest upload of [hid] among Comick's most recent chapters, newest
+     * group first, by the name Comick gives it. Chapters naming no group (Comick's own) are left
+     * out: there's no group to ignore. Same "en" fallback as [latestChapterLookup]. Null when
+     * Comick can't be asked.
+     */
+    suspend fun latestByGroup(
+        hid: String,
+        lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
+    ): List<Pair<String, ComickChapter>>? = withContext(Dispatchers.IO) {
+        fun fetch(language: String): List<ComickChapter>? = runCatching {
+            val url = "${chaptersUrl(hid)}?lang=$language&limit=60&chap-order=0"
+            val response = client.newCall(request(url)).execute()
+            if (!response.isSuccessful) return@runCatching null
+            val arr = gson.fromJson(response.body.string(), com.google.gson.JsonObject::class.java)
+                ?.getAsJsonArray("chapters") ?: return@runCatching null
+            gson.fromJson(arr, Array<ComickChapter>::class.java).toList()
+        }.getOrNull()
+        val chapters = fetch(lang)?.takeIf { it.isNotEmpty() || lang.equals("en", ignoreCase = true) }
+            ?: fetch("en") ?: return@withContext null
+        val best = LinkedHashMap<String, Pair<String, ComickChapter>>()
+        chapters.forEach { chapter ->
+            val number = chapter.chap?.toDoubleOrNull() ?: return@forEach
+            chapter.group_name.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }.forEach { group ->
+                val key = group.lowercase()
+                val known = best[key]?.second?.chap?.toDoubleOrNull()
+                if (known == null || number > known) best[key] = (best[key]?.first ?: group) to chapter
+            }
+        }
+        best.values.sortedByDescending { it.second.chap?.toDoubleOrNull() ?: -1.0 }
+    }
+
+    private fun fetchLatestChapterForLang(
+        hid: String,
+        lang: String,
+        nearChapter: Double?,
+        ignoredGroups: Set<String> = emptySet(),
+    ): Result<ComickChapter?> {
         try {
-            val chapParam = nearChapter?.let {
+            // Near a given number the window holds that chapter — but with groups ignored, that may
+            // be the very upload being looked past, so the window is the newest ones instead, and
+            // wider: an ignored group's run of uploads shouldn't crowd the others out of it.
+            val near = nearChapter.takeIf { ignoredGroups.isEmpty() }
+            val chapParam = near?.let {
                 "&chap=${if (it % 1.0 == 0.0) it.toInt() else it}"
             } ?: ""
-            val url = "${chaptersUrl(hid)}?lang=$lang&limit=10$chapParam&chap-order=0"
+            val limit = if (ignoredGroups.isEmpty()) 10 else 40
+            val url = "${chaptersUrl(hid)}?lang=$lang&limit=$limit$chapParam&chap-order=0"
             val request = request(url)
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return Result.failure(Exception("HTTP ${response.code}"))
@@ -985,6 +1033,7 @@ object ComickApi {
             val arr = obj.getAsJsonArray("chapters") ?: return Result.failure(Exception("no chapters field"))
             if (arr.size() == 0) return Result.success(null)
             val chapters = gson.fromJson(arr, Array<ComickChapter>::class.java).toList()
+                .filterNot { ani.dantotsu.connections.ReleaseSourceIgnores.isChapterIgnored(it.group_name, ignoredGroups) }
             // Take the chapter with the highest chapter number in the returned window
             return Result.success(chapters.maxByOrNull { it.chap?.toDoubleOrNull() ?: -1.0 })
         } catch (e: Exception) {
