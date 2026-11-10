@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Sees every touch on the card, a child's too, for its press feedback (MediaItemMotion.kt). -->
+<ani.dantotsu.media.PressObservingCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/itemContainer"
@@ -334,4 +335,4 @@
 
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+</ani.dantotsu.media.PressObservingCardView>

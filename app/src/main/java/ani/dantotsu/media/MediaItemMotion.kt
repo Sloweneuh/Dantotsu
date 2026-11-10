@@ -58,9 +58,29 @@ fun ItemUnreleasedEpisodeBinding.withPressFeedback(): ItemUnreleasedEpisodeBindi
     pressFeedback(root, itemCompactCard, 0.94f)
 }
 
-/** The whole card, gently: it's wide, and the cover alone moving would look detached. */
+/**
+ * The whole card, gently: it's wide, and the cover alone moving would look detached. The card
+ * watches its touches before its children get them, so a press on the cover, the synopsis or the
+ * info button gives too, not just one on the card's bare background.
+ */
 fun ItemMediaLargeBinding.withPressFeedback(): ItemMediaLargeBinding = apply {
     pressFeedback(root, root, 0.98f)
+}
+
+/**
+ * A CardView that tells [onTouch] about every touch it's handed, before any child sees it. An
+ * OnTouchListener only hears the touches no child took, and a large media card's children take most.
+ */
+class PressObservingCardView @JvmOverloads constructor(
+    context: android.content.Context,
+    attrs: android.util.AttributeSet? = null,
+) : androidx.cardview.widget.CardView(context, attrs) {
+    var onTouch: ((MotionEvent) -> Unit)? = null
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        onTouch?.invoke(event)
+        return super.dispatchTouchEvent(event)
+    }
 }
 
 /**
@@ -290,10 +310,17 @@ private fun View.isInside(ancestor: View): Boolean {
 @SuppressLint("ClickableViewAccessibility")
 private fun pressFeedback(itemView: View, target: View, scale: Float) {
     var riders: List<View> = emptyList()
-    itemView.setOnTouchListener { _, event ->
-        if (!PrefManager.getVal<Boolean>(PrefName.LayoutAnimations)) return@setOnTouchListener false
+    var pressed = false
+    var downX = 0f
+    var downY = 0f
+    val slop = android.view.ViewConfiguration.get(itemView.context).scaledTouchSlop
+    val onEvent = onEvent@{ event: MotionEvent ->
+        if (!PrefManager.getVal<Boolean>(PrefName.LayoutAnimations)) return@onEvent
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                pressed = true
+                downX = event.rawX
+                downY = event.rawY
                 riders = coverBadges(itemView).filter { it !== target && !it.isInside(target) }
                 val centre = IntArray(2).also(target::getLocationInWindow)
                     .let { (x, y) -> (x + target.width / 2f) to (y + target.height / 2f) }
@@ -308,21 +335,44 @@ private fun pressFeedback(itemView: View, target: View, scale: Float) {
                 }
             }
 
+            // A drag inside a child that keeps the touch from the list (the synopsis scrolls) never
+            // gets cancelled: once it's a drag, it springs back as a cancelled touch would.
+            MotionEvent.ACTION_MOVE -> if (pressed &&
+                (kotlin.math.abs(event.rawX - downX) > slop || kotlin.math.abs(event.rawY - downY) > slop)
+            ) {
+                pressed = false
+                (riders + target).forEach {
+                    it.animate().scaleX(1f).scaleY(1f).setDuration(220)
+                        .setInterpolator(OvershootInterpolator(2f)).start()
+                }
+            }
+
             // A tap opens the media page straight away, and its cover transition starts from
             // wherever this cover is at that instant — springing back from pressed, it set off
             // small and grew on the way. So a tap snaps it back first; only a touch that turned
             // into a scroll gets the spring.
-            MotionEvent.ACTION_UP -> (riders + target).forEach {
+            MotionEvent.ACTION_UP -> if (pressed) (riders + target).forEach {
                 it.animate().cancel()
                 it.scaleX = 1f
                 it.scaleY = 1f
             }
 
-            MotionEvent.ACTION_CANCEL -> (riders + target).forEach {
+            MotionEvent.ACTION_CANCEL -> if (pressed) (riders + target).forEach {
                 it.animate().scaleX(1f).scaleY(1f).setDuration(220)
                     .setInterpolator(OvershootInterpolator(2f)).start()
             }
         }
+    }
+    if (itemView is PressObservingCardView) {
+        itemView.onTouch = { event ->
+            onEvent(event)
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) pressed = false
+        }
+        return
+    }
+    itemView.setOnTouchListener { _, event ->
+        onEvent(event)
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) pressed = false
         false
     }
 }
