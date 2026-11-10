@@ -85,6 +85,123 @@ fun Activity.useCoverTransition() {
     }
     window.sharedElementEnterTransition = cover()
     window.sharedElementReturnTransition = cover()
+    // The cover sets off showing only what the list showed of it (see CoverClip), opening up to
+    // the whole cover over the flight.
+    setEnterSharedElementCallback(object : SharedElementCallback() {
+        private val clipped = mutableListOf<View>()
+
+        override fun onSharedElementStart(
+            sharedElementNames: MutableList<String>?,
+            sharedElements: MutableList<View>?,
+            sharedElementSnapshots: MutableList<View>?,
+        ) {
+            // Opening, the cut the cover left its list with; going back, the one the list says
+            // the cover lands with — this page flies its own copy of it, in its own window above
+            // the list, and it would land over the list's header whole.
+            val pending = CoverClip.take() ?: return
+            sharedElements.orEmpty().filter { it.transitionName == pending.name }.forEach { view ->
+                view.clipBounds = pending.fractions.toLocal(view.width, view.height)
+                clipped += view
+            }
+        }
+
+        override fun onSharedElementEnd(
+            sharedElementNames: MutableList<String>?,
+            sharedElements: MutableList<View>?,
+            sharedElementSnapshots: MutableList<View>?,
+        ) {
+            clipped.forEach { it.clipBounds = null }
+            clipped.clear()
+        }
+    })
+}
+
+/**
+ * What part of a cover its list actually showed — a row half under the list's header, or under a
+ * bar drawn over the list — so its flight starts (and, coming back, lands) cut the same way instead
+ * of the hidden part appearing above the header for the length of the flight.
+ */
+internal object CoverClip {
+    /** The visible part of a cover, as fractions of its width and height. */
+    data class Fractions(val left: Float, val top: Float, val right: Float, val bottom: Float) {
+        fun toLocal(width: Int, height: Int) = android.graphics.Rect(
+            (left * width).toInt(), (top * height).toInt(),
+            (right * width).toInt(), (bottom * height).toInt(),
+        )
+    }
+
+    data class Pending(val name: String, val fractions: Fractions)
+
+    /** Set by the list as a cover leaves it, taken by the page it flies to. */
+    @Volatile
+    private var pending: Pending? = null
+
+    /**
+     * Hands what [view]'s list shows of it to the page on the other end of the flight — the page
+     * it leaves for, or the page coming back, which flies its own copy of the cover to the row —
+     * and returns it, null when the list shows all of [view].
+     */
+    fun offer(view: View, viewport: android.graphics.Rect): Fractions? {
+        val fractions = fractionsIn(view, viewport)
+        pending = view.transitionName?.let { name -> fractions?.let { Pending(name, it) } }
+        return fractions
+    }
+
+    fun take(): Pending? = pending.also { pending = null }
+
+    /** Null when [viewport] shows all of [view]: nothing to clip. */
+    fun fractionsIn(view: View, viewport: android.graphics.Rect): Fractions? {
+        if (view.width <= 0 || view.height <= 0) return null
+        val at = IntArray(2).also(view::getLocationInWindow)
+        val bounds = android.graphics.Rect(at[0], at[1], at[0] + view.width, at[1] + view.height)
+        if (viewport.contains(bounds)) return null
+        val shown = android.graphics.Rect(bounds)
+        if (!shown.intersect(viewport)) shown.set(bounds.left, bounds.top, bounds.left, bounds.top)
+        return Fractions(
+            (shown.left - bounds.left) / view.width.toFloat(),
+            (shown.top - bounds.top) / view.height.toFloat(),
+            (shown.right - bounds.left) / view.width.toFloat(),
+            (shown.bottom - bounds.top) / view.height.toFloat(),
+        )
+    }
+
+    /**
+     * The part of the window [view] can be seen in, in window coordinates: every clipping ancestor's
+     * bounds (inside its padding when it clips to it), less any bar drawn over it — a later sibling
+     * of an ancestor spanning the whole width, like a header or a bottom bar laid over a list.
+     */
+    fun viewport(view: View): android.graphics.Rect {
+        val root = view.rootView
+        val rect = android.graphics.Rect(0, 0, root.width, root.height)
+        val at = IntArray(2)
+        var child = view
+        var parent = view.parent as? ViewGroup
+        while (parent != null) {
+            parent.getLocationInWindow(at)
+            if (parent.clipChildren) {
+                val clip = if (parent.clipToPadding) android.graphics.Rect(
+                    at[0] + parent.paddingLeft, at[1] + parent.paddingTop,
+                    at[0] + parent.width - parent.paddingRight, at[1] + parent.height - parent.paddingBottom,
+                ) else android.graphics.Rect(at[0], at[1], at[0] + parent.width, at[1] + parent.height)
+                if (!rect.intersect(clip)) return android.graphics.Rect()
+            }
+            val index = parent.indexOfChild(child)
+            for (i in index + 1 until parent.childCount) {
+                val bar = parent.getChildAt(i)
+                if (!bar.isShown || bar.alpha == 0f || bar.height <= 0 || bar.height >= rect.height() / 2) continue
+                bar.getLocationInWindow(at)
+                val top = at[1]
+                val barRect = android.graphics.Rect(at[0], top, at[0] + bar.width, top + bar.height)
+                if (barRect.left > rect.left || barRect.right < rect.right) continue
+                if (!android.graphics.Rect.intersects(barRect, rect)) continue
+                if (barRect.centerY() < rect.centerY()) rect.top = maxOf(rect.top, barRect.bottom)
+                else rect.bottom = minOf(rect.bottom, barRect.top)
+            }
+            child = parent
+            parent = parent.parent as? ViewGroup
+        }
+        return rect
+    }
 }
 
 /**
@@ -281,6 +398,13 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
      */
     private val returning = WeakHashMap<Activity, Boolean>()
 
+    /** Covers cut while they left this activity ([CoverClip.offer]), made whole once it's hidden. */
+    private val leftClipped = WeakHashMap<Activity, MutableList<View>>()
+
+    private fun unclipLeft(activity: Activity) {
+        leftClipped.remove(activity)?.forEach { it.clipBounds = null }
+    }
+
     /** Counts each activity's stops, so a clear scheduled for one visit can't undo a later one. */
     private val stops = WeakHashMap<Activity, Int>()
 
@@ -319,15 +443,36 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
         activity.setExitSharedElementCallback(object : SharedElementCallback() {
+            /** What the list shows of each cover a page is coming back to, from the destination capture. */
+            private val landingCuts = mutableMapOf<View, CoverClip.Fractions>()
+
+            /** Covers landing clipped to their viewport, unclipped once landed. */
+            private val clipped = mutableListOf<View>()
+
             override fun onCaptureSharedElementSnapshot(
                 sharedElement: View,
                 viewToGlobalMatrix: Matrix,
                 screenBounds: RectF,
             ): Parcelable? {
                 hideBadges(activity, sharedElement)
-                return super.onCaptureSharedElementSnapshot(
+                // The snapshot first: the page gets the whole cover, and cuts it itself.
+                val snapshot = super.onCaptureSharedElementSnapshot(
                     sharedElement, viewToGlobalMatrix, screenBounds,
                 )
+                val fractions = CoverClip.offer(sharedElement, CoverClip.viewport(sharedElement))
+                    ?: return snapshot
+                if (returning[activity] == true) {
+                    // Captured to tell a page coming back where its cover lands: this list's own
+                    // cover flies cut the same way from start to end, so it has nothing left to
+                    // cut once the page is gone.
+                    landingCuts[sharedElement] = fractions
+                } else {
+                    // Leaving: while the page holds its first frame, the framework draws this
+                    // cover in the window's overlay where it sat — above the header, whole.
+                    sharedElement.clipBounds = fractions.toLocal(sharedElement.width, sharedElement.height)
+                    leftClipped.getOrPut(activity) { mutableListOf() } += sharedElement
+                }
+                return snapshot
             }
 
             // On the way back this runs before the framework copies the re-enter transition for
@@ -341,7 +486,13 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
                 sharedElementSnapshots: MutableList<View>?,
             ) {
                 if (returning.remove(activity) != true) return
+                unclipLeft(activity)
                 val elements = sharedElements.orEmpty()
+                elements.forEach { view ->
+                    val cut = landingCuts[view] ?: return@forEach
+                    view.clipBounds = cut.toLocal(view.width, view.height)
+                    clipped += view
+                }
                 val lifted = mutableListOf<() -> Unit>()
                 elements.forEach { lifted += liftOutOfClipping(activity, it) }
                 activity.window.sharedElementReenterTransition?.addListener(
@@ -350,17 +501,39 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
                         override fun onTransitionCancel(transition: Transition) = landed(transition)
 
                         private fun landed(transition: Transition) {
-                            transition.removeListener(this)
                             lifted.forEach { it() }
+                            // Not unclipped yet: the framework keeps drawing the cover in the
+                            // window's overlay, above the header, for a moment after this — whole,
+                            // had its cut gone now. Cut to what the list shows, it looks the same
+                            // as the list's own clipping for as long as the row stays put.
+                            clipped.forEach { keepClipUntilMoved(it) }
+                            clipped.clear()
                             restore(activity)
                         }
                     }
                 )
             }
+
+            // The covers are back at their rows here, before the flight's end state is captured:
+            // cut to what the list shows of them, as they were at the start, so they land under
+            // the header, not over it.
+            override fun onSharedElementEnd(
+                sharedElementNames: MutableList<String>?,
+                sharedElements: MutableList<View>?,
+                sharedElementSnapshots: MutableList<View>?,
+            ) {
+                if (landingCuts.isEmpty()) return
+                sharedElements.orEmpty().forEach { view ->
+                    val cut = landingCuts[view] ?: return@forEach
+                    view.clipBounds = cut.toLocal(view.width, view.height)
+                }
+                landingCuts.clear()
+            }
         })
     }
 
     override fun onActivityStopped(activity: Activity) {
+        unclipLeft(activity)
         stops[activity] = (stops[activity] ?: 0) + 1
         returning[activity] = true
     }
@@ -371,6 +544,8 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
         // next launch's start as a return. Only this visit's flag is cleared: a page opened within
         // the delay stops this activity again, and an unguarded clear then wiped the flag that stop
         // had just set, so the return went unrecognised and its tint never blended in flight.
+        // Back without having been stopped (the page never showed): the cover is still cut.
+        unclipLeft(activity)
         val visit = stops[activity]
         activity.window.decorView.postDelayed({
             if (stops[activity] == visit) returning.remove(activity)
@@ -381,8 +556,39 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityDestroyed(activity: Activity) {
         away.remove(activity)
+        leftClipped.remove(activity)
         stops.remove(activity)
         returning.remove(activity)
+    }
+
+    /**
+     * Drops [view]'s landing cut once the row can move — the list scrolls, or the row leaves it —
+     * or once the overlay has long let go of it.
+     */
+    private fun keepClipUntilMoved(view: View) {
+        val list = listItemOf(view)?.parent as? RecyclerView
+        var done = false
+        var unclip: () -> Unit = {}
+        val onScroll = object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                if (dx != 0 || dy != 0) unclip()
+            }
+        }
+        val detach = object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) {}
+            override fun onViewDetachedFromWindow(v: View) = unclip()
+        }
+        unclip = {
+            if (!done) {
+                done = true
+                view.clipBounds = null
+                list?.removeOnScrollListener(onScroll)
+                view.removeOnAttachStateChangeListener(detach)
+            }
+        }
+        list?.addOnScrollListener(onScroll)
+        view.addOnAttachStateChangeListener(detach)
+        view.postDelayed({ unclip() }, LANDED_CLIP_MS)
     }
 
     /** Fades out the badges of the list item [cover] belongs to, if it belongs to one. */
@@ -426,6 +632,9 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
 
     private const val BADGE_FADE_MS = 120L
+
+    /** How long a landed cover keeps its cut if nothing moves: well past the overlay letting go. */
+    private const val LANDED_CLIP_MS = 3000L
 
     /** After the activity returns, by which time any cover flight has long landed. */
     private const val FALLBACK_RESTORE_MS = 1200L
