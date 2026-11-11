@@ -149,7 +149,7 @@ object ReleaseSourcesSheet {
                 b.root.setPadding(24f.px, 2f.px, 24f.px, 2f.px)
                 // Kept, not shown: it lines the group up under the Comick name.
                 b.releaseSourceIcon.visibility = android.view.View.INVISIBLE
-                b.releaseSourceName.text = group
+                b.releaseSourceName.text = ReleaseSourceIgnores.groupTitle(activity, group)
                 b.releaseSourceName.textSize = 14f
                 fun bind() {
                     val ignored = ReleaseSourceIgnores.isComickGroupIgnored(target, group)
@@ -223,6 +223,16 @@ private fun groupLabel(groups: List<String>?): String? =
 suspend fun comickLatestFor(hid: String?, lastChapter: Double?, target: String): Pair<Int, String?>? {
     val ignored = ReleaseSourceIgnores.comickGroups(target)
     if (ignored.isEmpty()) {
+        // The catalog's number can lag: it follows the latest upload, so a re-upload of an old
+        // chapter (often group-less, "Fixed …") pulls it back below what's out. The newest
+        // chapters, as the unread check asks for them, win when they go further.
+        val newest = if (hid.isNullOrBlank()) null else runCatching {
+            ani.dantotsu.connections.comick.ComickApi.getLatestChapter(hid)
+        }.getOrNull()
+        val newestNumber = newest?.chap?.toDoubleOrNull()
+        if (newest != null && newestNumber != null && newestNumber.toInt() > 0 &&
+            newestNumber.toInt() > (lastChapter?.toInt() ?: 0)
+        ) return newestNumber.toInt() to groupLabel(newest.group_name)
         val last = lastChapter?.toInt()?.takeIf { it > 0 } ?: return null
         return last to comickGroupOf(hid, lastChapter)
     }

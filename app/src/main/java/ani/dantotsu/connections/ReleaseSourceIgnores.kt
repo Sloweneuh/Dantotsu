@@ -70,6 +70,16 @@ object ReleaseSourceIgnores {
 
     private fun groupEntry(target: String, group: String) = "$GROUP_PREFIX$target|${group.trim()}"
 
+    /**
+     * Stands in for "no group" among a series' ignored Comick groups: uploads that name none (often
+     * Comick's own, or a "Fixed" re-upload) are ignored together under it. Not a name Comick gives.
+     */
+    const val NO_GROUP = "#nogroup"
+
+    /** [group] as the sheets show it: [NO_GROUP] by its label, any other as Comick names it. */
+    fun groupTitle(context: android.content.Context, group: String): String =
+        if (group.equals(NO_GROUP, ignoreCase = true)) context.getString(R.string.release_source_no_group) else group
+
     /** Splits Comick's "Group A, Group B" into its groups, which are ignored one by one. */
     fun groupsOf(source: String?): List<String> = source.orEmpty().split(',')
         .map { it.trim() }.filter { it.isNotEmpty() && !it.equals("Comick", ignoreCase = true) }
@@ -151,12 +161,13 @@ object ReleaseSourceIgnores {
 
     /**
      * Whether a chapter uploaded by [groups] is left out under [ignoredGroups]: when every group it
-     * names is ignored. One that names none — Comick's own upload — always counts.
+     * names is ignored. One that names none counts unless [NO_GROUP] is ignored.
      */
     fun isChapterIgnored(groups: Collection<String>?, ignoredGroups: Set<String>): Boolean {
         if (ignoredGroups.isEmpty()) return false
         val named = groups.orEmpty().map { it.trim().lowercase() }.filter { it.isNotEmpty() }
-        return named.isNotEmpty() && named.all { it in ignoredGroups }
+        if (named.isEmpty()) return NO_GROUP in ignoredGroups
+        return named.all { it in ignoredGroups }
     }
 
     /**

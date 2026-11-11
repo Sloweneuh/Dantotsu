@@ -977,28 +977,42 @@ object ComickApi {
 
     /**
      * Each scanlation group's newest upload of [hid] among Comick's most recent chapters, newest
-     * group first, by the name Comick gives it. Chapters naming no group (Comick's own) are left
-     * out: there's no group to ignore. Same "en" fallback as [latestChapterLookup]. Null when
+     * group first, by the name Comick gives it. Chapters naming no group are gathered under
+     * [ReleaseSourceIgnores.NO_GROUP], so they can be ignored too. Same "en" fallback as [latestChapterLookup]. Null when
      * Comick can't be asked.
      */
     suspend fun latestByGroup(
         hid: String,
         lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
     ): List<Pair<String, ComickChapter>>? = withContext(Dispatchers.IO) {
-        fun fetch(language: String): List<ComickChapter>? = runCatching {
-            val url = "${chaptersUrl(hid)}?lang=$language&limit=60&chap-order=0"
-            val response = client.newCall(request(url)).execute()
-            if (!response.isSuccessful) return@runCatching null
-            val arr = gson.fromJson(response.body.string(), com.google.gson.JsonObject::class.java)
-                ?.getAsJsonArray("chapters") ?: return@runCatching null
-            gson.fromJson(arr, Array<ComickChapter>::class.java).toList()
-        }.getOrNull()
+        // Every page, not just the newest uploads: a group that stopped a while back (or uploads
+        // far behind the others) still has to be listed to be ignored. Null only when the first
+        // page fails; a later failure keeps what came before it.
+        fun fetch(language: String): List<ComickChapter>? {
+            val all = mutableListOf<ComickChapter>()
+            val limit = 300
+            for (page in 1..20) {
+                val chunk = runCatching {
+                    val url = "${chaptersUrl(hid)}?lang=$language&limit=$limit&page=$page&chap-order=0"
+                    val response = client.newCall(request(url)).execute()
+                    if (!response.isSuccessful) return@runCatching null
+                    val arr = gson.fromJson(response.body.string(), com.google.gson.JsonObject::class.java)
+                        ?.getAsJsonArray("chapters") ?: return@runCatching null
+                    gson.fromJson(arr, Array<ComickChapter>::class.java).toList()
+                }.getOrNull() ?: return if (page == 1) null else all
+                all.addAll(chunk)
+                if (chunk.size < limit) break
+            }
+            return all
+        }
         val chapters = fetch(lang)?.takeIf { it.isNotEmpty() || lang.equals("en", ignoreCase = true) }
             ?: fetch("en") ?: return@withContext null
         val best = LinkedHashMap<String, Pair<String, ComickChapter>>()
         chapters.forEach { chapter ->
             val number = chapter.chap?.toDoubleOrNull() ?: return@forEach
-            chapter.group_name.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }.forEach { group ->
+            // Uploads naming no group are listed together, to be ignored like one.
+            val named = chapter.group_name.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }
+            named.ifEmpty { listOf(ani.dantotsu.connections.ReleaseSourceIgnores.NO_GROUP) }.forEach { group ->
                 val key = group.lowercase()
                 val known = best[key]?.second?.chap?.toDoubleOrNull()
                 if (known == null || number > known) best[key] = (best[key]?.first ?: group) to chapter

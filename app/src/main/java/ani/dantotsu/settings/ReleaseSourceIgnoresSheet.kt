@@ -158,7 +158,7 @@ class ReleaseSourceIgnoresSheet : BottomSheetDialogFragment() {
             }
             groups.forEach { group ->
                 viewBinding.releaseSeriesSources.addView(Chip(context).apply {
-                    text = context.getString(R.string.release_source_comick_group, group)
+                    text = context.getString(R.string.release_source_comick_group, ReleaseSourceIgnores.groupTitle(context, group))
                     isCloseIconVisible = true
                     closeIconContentDescription = context.getString(R.string.release_source_track)
                     val restore = View.OnClickListener { restoreGroup(group) }
