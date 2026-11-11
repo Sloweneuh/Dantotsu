@@ -98,7 +98,13 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
     private var activeSession: Pair<Entry, Int>? = null
 
     /** The confirmation the system asked for and this put on screen, while its answer is outstanding. */
-    private class PendingUserAction(val sessionId: Int, val intent: Intent, var reprompted: Boolean = false)
+    private class PendingUserAction(
+        val sessionId: Int,
+        val intent: Intent,
+        var reprompted: Boolean = false,
+        /** The system started installing it: the confirmation was answered, its report is on its way. */
+        var installing: Boolean = false,
+    )
 
     private var userAction: PendingUserAction? = null
 
@@ -115,6 +121,14 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
     private val returnCheck = Runnable {
         val pending = userAction ?: return@Runnable
         if (pending.sessionId != activeSession?.second) return@Runnable
+        // Answered, and the install is under way or done but its report is late (a slow install
+        // takes well over the wait). Showing the confirmation again then opens a session that's
+        // used up, and the system calls the file broken while the install itself goes through.
+        val info = runCatching { packageInstaller.getSessionInfo(pending.sessionId) }.getOrNull()
+        if (info == null || pending.installing) {
+            handler.postDelayed(lateReport, 10_000)
+            return@Runnable
+        }
         if (!pending.reprompted) {
             pending.reprompted = true
             runCatching { service.startActivity(pending.intent) }
@@ -127,11 +141,37 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
         continueQueue(InstallStep.Idle)
     }
 
+    /**
+     * The install went ahead but its report never came: the queue moves on rather than wait
+     * forever. Idle, not an error — the extension list reads what's installed from the system.
+     */
+    private val lateReport = Runnable {
+        val pending = userAction ?: return@Runnable
+        if (pending.sessionId != activeSession?.second) return@Runnable
+        Logger.log("No report for install session ${pending.sessionId} after it went ahead, moving on")
+        userAction = null
+        continueQueue(InstallStep.Idle)
+    }
+
+    /** Tells an answered confirmation (the install starts moving) from one left open. */
+    private val sessionCallback = object : PackageInstaller.SessionCallback() {
+        private fun moved(sessionId: Int) {
+            userAction?.takeIf { it.sessionId == sessionId }?.installing = true
+        }
+
+        override fun onCreated(sessionId: Int) {}
+        override fun onBadgingChanged(sessionId: Int) {}
+        override fun onActiveChanged(sessionId: Int, active: Boolean) = if (active) moved(sessionId) else Unit
+        override fun onProgressChanged(sessionId: Int, progress: Float) = moved(sessionId)
+        override fun onFinished(sessionId: Int, success: Boolean) = moved(sessionId)
+    }
+
     private val returnWatcher = object : Application.ActivityLifecycleCallbacks {
         override fun onActivityResumed(activity: Activity) {
             if (userAction == null) return
             // Long enough for the answer of a confirmation that did go through to arrive first.
             handler.removeCallbacks(returnCheck)
+            handler.removeCallbacks(lateReport)
             handler.postDelayed(returnCheck, 2000)
         }
 
@@ -208,6 +248,8 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
         service.unregisterReceiver(packageActionReceiver)
         service.application.unregisterActivityLifecycleCallbacks(returnWatcher)
         handler.removeCallbacks(returnCheck)
+        handler.removeCallbacks(lateReport)
+        packageInstaller.unregisterSessionCallback(sessionCallback)
         super.onDestroy()
     }
 
@@ -219,6 +261,7 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
             ContextCompat.RECEIVER_EXPORTED,
         )
         service.application.registerActivityLifecycleCallbacks(returnWatcher)
+        packageInstaller.registerSessionCallback(sessionCallback, handler)
     }
 }
 

@@ -318,7 +318,8 @@ class ExtensionsActivity : AppCompatActivity() {
 
     /**
      * Puts the header in the state the given tab wants: language and repository apply to browsing
-     * an available-extensions list, and mean nothing on Updates or an Installed list.
+     * an available-extensions list, and mean nothing on Updates or an Installed list; checking for
+     * updates is the other way round.
      *
      * A function rather than the body of the tab listener because the listener is only told about
      * changes. Nothing had ever applied this to the tab the screen opens on, which left it showing
@@ -330,6 +331,9 @@ class ExtensionsActivity : AppCompatActivity() {
         val browsing = !label.contains("Updates") && !label.contains("Installed")
         binding.languageselect.isVisible = browsing
         binding.openSettingsButton.isVisible = browsing
+        // Updates are about what's installed; on a browsing tab its button only crowds the title
+        // into wrapping next to the language and repository buttons.
+        binding.checkUpdatesButton.isVisible = !browsing
         when {
             label.contains("Anime") -> generateRepositoryButton(MediaType.ANIME)
             label.contains("Manga") -> generateRepositoryButton(MediaType.MANGA)
