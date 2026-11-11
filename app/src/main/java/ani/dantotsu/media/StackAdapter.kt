@@ -22,8 +22,9 @@ class StackAdapter(private val items: List<InterestStack>, private val isAnime: 
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_stack_compact, parent, false)
-        return VH(v)
+        val b = ani.dantotsu.databinding.ItemStackCompactBinding
+            .inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback()
+        return VH(b.root)
     }
 
     override fun onBindViewHolder(holder: VH, position: Int) {

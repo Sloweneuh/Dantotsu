@@ -60,7 +60,7 @@ class StackListAdapter(private val items: List<InterestStack>, private val isAni
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-        val b = ItemStackLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val b = ItemStackLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback()
         return VH(b)
     }
 

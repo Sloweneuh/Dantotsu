@@ -67,6 +67,16 @@ fun ItemMediaLargeBinding.withPressFeedback(): ItemMediaLargeBinding = apply {
     pressFeedback(root, root, 0.98f)
 }
 
+/** A stack's cover collage, as a media item's cover gives. */
+fun ani.dantotsu.databinding.ItemStackCompactBinding.withPressFeedback() = apply {
+    pressFeedback(root, itemCompactCard, 0.94f)
+}
+
+/** A stack's wide card, as [ItemMediaLargeBinding]'s does. */
+fun ani.dantotsu.databinding.ItemStackLargeBinding.withPressFeedback() = apply {
+    pressFeedback(root, root, 0.98f)
+}
+
 /**
  * A CardView that tells [onTouch] about every touch it's handed, before any child sees it. An
  * OnTouchListener only hears the touches no child took, and a large media card's children take most.
