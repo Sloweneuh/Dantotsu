@@ -30,8 +30,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
-import java.net.ConnectException
-import java.net.UnknownHostException
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
@@ -303,7 +301,9 @@ object Comick {
                             renewed?.accessToken
                         }
                         // invalid_grant & co: revoked, expired, or the authorizing session ended.
-                        resp.code in 400..401 -> {
+                        // Any other 400 (a malformed or throttled request, a proxy's error page)
+                        // says nothing about the token, which then still works next time.
+                        resp.code == 401 || (resp.code == 400 && oauthError(text) in SESSION_ENDED) -> {
                             Logger.log("Comick: refresh rejected (HTTP ${resp.code}) — ${text.take(200)}")
                             clearLocal(keepAccountName = true)
                             null
@@ -316,15 +316,12 @@ object Comick {
                     }
                 }
             } catch (e: IOException) {
-                // Only a request that never left the device is safe to retry later. Anything else
-                // may have rotated the token server-side, and reusing the old one would revoke the
-                // whole login — so that connection is dropped and the user reconnects.
-                if (e is UnknownHostException || e is ConnectException) {
-                    Logger.log("Comick: refresh not sent (${e.javaClass.simpleName}), keeping session")
-                } else {
-                    Logger.log("Comick: refresh outcome unknown (${e.message}), disconnecting")
-                    clearLocal(keepAccountName = true)
-                }
+                // A timeout or dropped connection may or may not have rotated the token server-side.
+                // It used to drop the connection, which made a flaky network (a background check on
+                // mobile data, Doze) log the user out. Keeping it is never worse: if the token did
+                // rotate, the next refresh is refused as reused and disconnects then, which is where
+                // dropping it now ends up anyway; if it didn't, the session carries on.
+                Logger.log("Comick: refresh failed (${e.javaClass.simpleName}: ${e.message}), keeping session")
                 null
             } catch (e: Exception) {
                 Logger.log("Comick: refresh failed: ${e.message}")
@@ -332,6 +329,13 @@ object Comick {
             }
         }
     }
+
+    /** The OAuth errors that mean the refresh token is no good any more, so the session is over. */
+    private val SESSION_ENDED = setOf("invalid_grant", "invalid_client", "unauthorized_client")
+
+    private fun oauthError(body: String): String? = runCatching {
+        gson.fromJson(body, com.google.gson.JsonObject::class.java)?.get("error")?.asString
+    }.getOrNull()
 
     /** Disconnects: revokes the refresh token server-side (best effort), then forgets everything. */
     suspend fun removeSavedToken() {
