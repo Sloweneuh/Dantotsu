@@ -93,6 +93,9 @@ object PageEdges {
         val sourceWidth: Int = width,
     ) {
         val ratio get() = height.toFloat() / width
+
+        /** Far too short to be a page: the remainder a source cut off one (see [SLIVER_RATIO]). */
+        val isSliver get() = ratio < SLIVER_RATIO
     }
 
     /**
@@ -407,8 +410,13 @@ object PageEdges {
      */
     private fun worthJudging(urls: List<String?>, index: Int, self: Profile): Boolean {
         if (self.ratio > MAX_PAGE_RATIO) return true
-        val before = urls.getOrNull(index - 1)?.let { profiles[it] }
-        val after = urls.getOrNull(index + 1)?.let { profiles[it] }
+        // A sliver is the end of the page before it, not a run of pages; and a page-shaped image
+        // joined only to slivers is a page with its remainder. Natomanga cuts every page into an
+        // 819-row image and a 19-row sliver: searched for a period, those runs are too short to
+        // trust and landed gaps on panel borders.
+        if (self.isSliver) return false
+        val before = urls.getOrNull(index - 1)?.let { profiles[it] }?.takeUnless { it.isSliver }
+        val after = urls.getOrNull(index + 1)?.let { profiles[it] }?.takeUnless { it.isSliver }
         return (before != null && !shouldSpace(before, self, Directions.TOP_TO_BOTTOM, false)) ||
                 (after != null && !shouldSpace(self, after, Directions.TOP_TO_BOTTOM, false))
     }
@@ -1112,6 +1120,10 @@ object PageEdges {
         // A page break that happens to fall on a strip's seam is [judgeRun]'s to find.
         if (before.ratio() > STRIP_RATIO || after.ratio() > STRIP_RATIO) return false
 
+        // A sliver after a page is the bottom of that page, whatever its pixels: often just a
+        // margin and a watermark, nothing that reads as one picture across the cut.
+        if (after.ratio() < SLIVER_RATIO && before.ratio() >= SLIVER_RATIO) return false
+
         val (trailing, leading) = when (direction) {
             Directions.TOP_TO_BOTTOM -> before.bottom to after.top
             Directions.BOTTOM_TO_TOP -> before.top to after.bottom
@@ -1154,6 +1166,9 @@ object PageEdges {
      * detail on both sides started at 2.4.
      */
     private const val CONTINUOUS_STEP_RATIO = 1.6
+
+    /** Length/breadth under which an image is a sliver cut off a page rather than a page. */
+    private const val SLIVER_RATIO = 0.2f
 
     /** Length/breadth past which a page is a long strip rather than a page. */
     private const val STRIP_RATIO = 2.2f
