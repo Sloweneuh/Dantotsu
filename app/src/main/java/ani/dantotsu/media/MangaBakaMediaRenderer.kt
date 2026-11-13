@@ -550,7 +550,7 @@ object MangaBakaMediaRenderer {
             parent, InfoSectionKind.EXTERNAL_LINKS, activity.getString(R.string.external_links),
             links.mapNotNull { link ->
                 val label = link.nameDisplay ?: link.name ?: return@mapNotNull null
-                InfoExtraSections.Chip(label) { openLinkInBrowser(link.url!!) }
+                InfoExtraSections.Chip(label, { openLinkInBrowser(link.url!!) }, link.url)
             },
         )
     }

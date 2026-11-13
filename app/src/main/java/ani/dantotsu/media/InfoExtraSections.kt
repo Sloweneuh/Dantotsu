@@ -28,7 +28,8 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withC
 /** Sections several sources build the same way out of data of different shapes. */
 object InfoExtraSections {
 
-    class Chip(val label: String, val onClick: (() -> Unit)? = null)
+    /** [link]: where it leads, for a custom tab to tell the same link under two names. */
+    class Chip(val label: String, val onClick: (() -> Unit)? = null, val link: String? = null)
 
     /** A related entry that opens in its own source's page. */
     class RelationCard(
@@ -134,6 +135,7 @@ object InfoExtraSections {
         chips.forEach { item ->
             val chip = ItemChipBinding.inflate(inflater, bind.itemChipGroup, false).root
             chip.text = item.label
+            item.link?.let { chip.setTag(R.id.info_chip_link, it) }
             item.onClick?.let { click -> chip.setOnClickListener { click() } }
             chip.setOnLongClickListener { copyToClipboard(item.label); true }
             bind.itemChipGroup.addView(chip)

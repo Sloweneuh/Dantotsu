@@ -25,6 +25,8 @@ data class InfoChip(
     val opensWebsite: Boolean = false,
     /** Null copies the name. */
     val onLongClick: (() -> Unit)? = null,
+    /** Where it leads, for links: the same link can go by different names at different sources. */
+    val link: String? = null,
     val onClick: (() -> Unit)? = null,
 )
 

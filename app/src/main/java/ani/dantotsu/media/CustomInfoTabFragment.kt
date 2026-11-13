@@ -920,6 +920,8 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         private var expanded = false
 
         private inner class Entry(val name: String, var sourceRank: Int) {
+            /** For links, where it leads ([linkKey]). */
+            var link: String? = null
             val chip = ItemChipBinding.inflate(layoutInflater, bind.tagsChipGroup, false).root
             var detail: String? = null
             var spoiler = false
@@ -1023,8 +1025,23 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
             val name = item.label.trim()
             if (name.isEmpty()) return
             val rank = sources.indexOf(source)
-            val entry = entries.getOrPut(name.lowercase()) { Entry(name, rank) }
+            val link = item.link?.let { linkKey(it) }
+            val label = labelKey(name)
+            // A link is the same link by its address, whatever each source calls it ("Official Site",
+            // "Official Website"; AniList adds a language flag). Two addresses under one name stay two.
+            val sameLink = link?.let { byLink[it] }
+            val entry = sameLink ?: entries[label]?.takeIf { it.link == null || link == null || it.link == link }
+                ?: Entry(name, rank).also { entries[if (entries.containsKey(label)) "$label|$link" else label] = it }
+            if (link != null) {
+                if (entry.link == null) entry.link = link
+                byLink[link] = entry
+            }
             entry.sourceRank = minOf(entry.sourceRank, rank)
+            // The same address from another source opens nothing new: no asking which one to open.
+            if (sameLink != null && entry.searches.isNotEmpty()) {
+                if (entry.onLongClick == null) entry.onLongClick = item.onLongClick
+                return
+            }
             if (entry.detail == null) entry.detail = item.detail
             if (item.isSpoiler && !entry.spoiler) {
                 entry.spoiler = true
@@ -1042,7 +1059,24 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
         }
 
         fun search(name: String, source: InfoTabType) {
-            entries[name.lowercase()]?.searches?.get(source)?.invoke()
+            entries.values.firstOrNull { it.name == name }?.searches?.get(source)?.invoke()
+        }
+
+        /** Chips by their link's [linkKey]. */
+        private val byLink = HashMap<String, Entry>()
+
+        /** A name as compared across sources: no case, flags, spaces or punctuation ("Sci-Fi" is "SciFi"). */
+        private fun labelKey(name: String) = name.lowercase().filter { it.isLetterOrDigit() }.ifEmpty { name.lowercase() }
+
+        /** An address as compared across sources: no scheme, "www." or "m.", trailing slash or case. */
+        private fun linkKey(url: String): String {
+            val uri = runCatching { android.net.Uri.parse(url.trim()) }.getOrNull() ?: return url.trim().lowercase()
+            var host = uri.host?.lowercase().orEmpty()
+            listOf("www.", "m.", "mobile.").forEach { host = host.removePrefix(it) }
+            if (host == "twitter.com") host = "x.com"
+            val path = uri.path.orEmpty().trimEnd('/').lowercase()
+            val query = uri.query?.let { "?$it" }.orEmpty()
+            return host + path + query
         }
 
         /**
@@ -1087,6 +1121,7 @@ class CustomInfoTabFragment : Fragment(), InfoSectionSink {
                         label = text.substringBefore(" : "),
                         detail = text.substringAfter(" : ", "").ifBlank { null },
                         onClick = if (chip.hasOnClickListeners()) ({ chip.performClick(); Unit }) else null,
+                        link = chip.getTag(R.id.info_chip_link) as? String,
                     )
                 )
             }

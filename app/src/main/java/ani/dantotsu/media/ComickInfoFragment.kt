@@ -2084,6 +2084,7 @@ class ComickInfoFragment : Fragment() {
                 LayoutInflater.from(context), bind.itemChipGroup, false
             ).root
             chip.text = link.name
+            chip.setTag(R.id.info_chip_link, link.url)
             chip.setOnClickListener { openExternalUrl(link.url!!) }
             chip.setOnLongClickListener { copyToClipboard(link.url!!); true }
             bind.itemChipGroup.addView(chip)

@@ -358,6 +358,8 @@ class AniListInfoFragment : Fragment() {
                             }
                         
                             chip.text = "$siteName$languageFlag"
+                            // What a custom tab merging links matches them on: names differ by source.
+                            chip.setTag(R.id.info_chip_link, media.externalLinks[position][1])
                             chip.setSafeOnClickListener {
                                 val url = media.externalLinks[position][1]
                                 val uri = url?.toUri()

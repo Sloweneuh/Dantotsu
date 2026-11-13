@@ -248,6 +248,7 @@ object KitsuMediaRenderer {
         streamers.forEach { (name, url) ->
             val chip = ItemChipBinding.inflate(activity.layoutInflater, bind.itemChipGroup, false).root
             chip.text = name
+            chip.setTag(R.id.info_chip_link, url)
             chip.setOnClickListener { openLinkInBrowser(url) }
             bind.itemChipGroup.addView(chip)
         }
