@@ -485,7 +485,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             binding.mediaClose?.visibility = View.INVISIBLE
             binding.quickSettings.root.visibility = View.INVISIBLE
             binding.mediaCover?.visibility = View.INVISIBLE
-            binding.commentMessageContainer?.visibility = View.INVISIBLE
+            binding.commentBox.root.visibility = View.INVISIBLE
             lifecycleScope.launch(Dispatchers.IO) {
                 // Ensure we are logged in and have a token before fetching user lists
                 MangaUpdates.getSavedToken()
@@ -533,7 +533,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                         binding.mediaClose?.visibility = View.VISIBLE
                         binding.quickSettings.root.visibility = View.VISIBLE
                         binding.mediaCover?.visibility = View.VISIBLE
-                        binding.commentMessageContainer?.visibility = View.VISIBLE
+                        binding.commentBox.root.visibility = View.VISIBLE
                         launchMediaDetails(muMedia)
                     } else {
                         Log.e("MUMediaDetailsActivity", "No details found for slugOrId: $slugOrId, finishing activity.")
@@ -1120,7 +1120,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // Hide other Anilist-specific UI elements
         binding.mediaFav.visibility = View.GONE
         binding.incognito.visibility = View.GONE
-        binding.commentInputLayout.visibility = View.GONE
+        binding.commentBox.commentInputLayout.visibility = View.GONE
         binding.mediaLanguageButton.visibility = View.GONE
         // Shown again by [progress] if MALSync turns out to have a source for this series.
         binding.mediaUnreadSource?.visibility = View.GONE

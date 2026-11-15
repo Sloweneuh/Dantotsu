@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The comment box: the details page's comments tab and the player's comments sheet. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/commentMessageContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom|end"
+    android:background="@color/nav_bg"
+    android:orientation="vertical"
+    android:windowSoftInputMode="adjustResize">
+
+    <LinearLayout
+        android:id="@+id/commentReplyToContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        tools:ignore="UseCompoundDrawables">
+
+        <TextView
+            android:id="@+id/commentReplyTo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:singleLine="true"
+            android:text="Replying to "
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="14sp"
+            tools:ignore="HardcodedText" />
+
+        <ImageView
+            android:contentDescription="@string/cd_cancel_reply"
+            android:id="@+id/commentReplyToCancel"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="16dp"
+            android:background="?android:attr/selectableItemBackground"
+            app:srcCompat="@drawable/ic_round_close_24"
+            app:tint="?attr/colorOnBackground"
+            tools:ignore="ContentDescription" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/commentInputLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?android:colorBackground"
+        android:orientation="horizontal"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/commentUserAvatar"
+            style="@style/CircularImageView"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="12dp"
+            android:scaleType="center"
+            app:srcCompat="@drawable/ic_round_add_circle_24"
+            tools:ignore="ContentDescription,ImageContrastCheck" />
+
+        <EditText
+            android:id="@+id/commentInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start|center_vertical"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:autofillHints="The One Piece is real"
+            android:background="@drawable/card_outline"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:hint="@string/comment_hint"
+            android:inputType="textMultiLine"
+            android:maxLength="300"
+            android:maxLines="8"
+            android:padding="8dp"
+            android:textSize="12sp"
+            tools:ignore="HardcodedText" />
+
+        <!-- Spoiler and GIF, shown with the tag and send buttons once the box is focused. -->
+        <ImageButton
+            android:id="@+id/commentSpoiler"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:layout_marginEnd="4dp"
+            android:alpha="0.6"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/comment_spoiler"
+            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_round_visibility_24"
+            android:tooltipText="@string/comment_spoiler"
+            android:visibility="gone"
+            app:tint="?attr/colorOnBackground"
+            tools:visibility="visible" />
+
+        <ImageButton
+            android:id="@+id/commentGif"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:layout_marginEnd="4dp"
+            android:alpha="0.6"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/comment_gif"
+            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_round_gif_box_outline_24"
+            android:tooltipText="@string/comment_gif"
+            android:visibility="gone"
+            app:tint="?attr/colorOnBackground"
+            tools:visibility="visible" />
+
+        <ImageButton
+            android:contentDescription="@string/cd_comment_tag"
+            android:id="@+id/commentLabel"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/ic_round_label_off_outline_24"
+            android:visibility="gone"
+            tools:ignore="ContentDescription"
+            tools:visibility="visible" />
+
+        <ImageButton
+            android:contentDescription="@string/cd_send"
+            android:id="@+id/commentSend"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/ic_round_send_outline_24"
+            android:visibility="gone"
+            tools:ignore="ContentDescription"
+            tools:visibility="visible" />
+    </LinearLayout>
+</LinearLayout>

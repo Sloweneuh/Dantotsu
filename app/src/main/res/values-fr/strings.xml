@@ -629,7 +629,7 @@
     <string name="watch_complete_percentage">Pourcentage de mise à jour du visionnage</string>
 
     <string name="behaviour">Comportement</string>
-    <string name="always_continue">Toujours continuer là où vous vous êtes arrêté</string>
+    <string name="always_continue">Reprendre sans proposer de recommencer</string>
     <string name="pause_video_focus">Pause quand pas au premier plan</string>
     <string name="player_background_play">Continuer la lecture écran éteint</string>
     <string name="player_background_play_desc">Le son continue quand l\'écran s\'éteint, avec les commandes dans la notification</string>
@@ -2321,7 +2321,6 @@
     <string name="screenshot">Capture d\'écran</string>
     <string name="screenshot_preview">Aperçu de la capture</string>
     <string name="screenshot_failed">Échec de la capture d\'écran</string>
-    <string name="screenshot_unsupported">Les captures nécessitent Android 7.0 ou une version ultérieure</string>
     <string name="screenshot_show_media_info">Afficher les infos du média</string>
     <string name="screenshot_show_user_info">Afficher les infos utilisateur</string>
     <string name="screenshot_show_app_icon">Afficher le logo de l\'application</string>
@@ -2673,7 +2672,6 @@
     <string name="clip">Clip</string>
     <string name="clip_failed">Impossible de générer le clip</string>
     <string name="clip_save_failed">Impossible d\'enregistrer le clip</string>
-    <string name="clip_unsupported">Les clips nécessitent Android 7.0 ou une version ultérieure</string>
     <string name="clip_too_short">Sélectionnez une portion plus longue pour créer un clip</string>
     <string name="clip_trim">Rogner le clip</string>
     <string name="clip_sound">Son de l\'aperçu</string>
@@ -2840,7 +2838,7 @@
     <string name="search_kw_ask_update_progress_anime">progression mise à jour mettre demander invite confirmer</string>
     <string name="search_kw_ask_update_progress_chapter_zero">progression épisode premier zéro</string>
     <string name="search_kw_ask_update_progress_hentai">progression hentai adulte mise à jour mettre</string>
-    <string name="search_kw_always_continue">reprendre lecture automatique continuer épisode</string>
+    <string name="search_kw_always_continue">reprendre recommencer début depuis le début invite continuer épisode</string>
     <string name="search_kw_pause_video_focus">pause audio focus appel interrompre</string>
     <string name="search_kw_gestures">luminosité volume balayage glisser</string>
     <string name="search_kw_fast_forward">avance recherche</string>
@@ -4193,4 +4191,17 @@
     <string name="stack_chip_min_score">Note ≥ %1$d</string>
     <string name="stack_filter_empty">Rien dans cette pile ne correspond à ces filtres</string>
     <string name="pref_saved_stack_filters">Filtres de piles enregistrés</string>
+    <!-- Player, portrait layout -->
+    <string name="player_fullscreen">Plein écran</string>
+    <string name="player_exit_fullscreen">Quitter le plein écran</string>
+    <string name="player_now_playing">En cours de lecture</string>
+    <string name="player_episodes">Épisodes</string>
+    <string name="player_add_to_list">Ajouter à une liste</string>
+    <string name="player_subscribe">S\'abonner</string>
+    <string name="player_subscribed">Abonné</string>
+    <string name="player_open_series">Ouvrir la fiche de la série</string>
+    <string name="player_show_more">Afficher plus</string>
+    <string name="player_show_less">Afficher moins</string>
+    <string name="player_resumed_from">Reprise à %1$s</string>
+    <string name="player_start_over">Reprendre au début</string>
 </resources>

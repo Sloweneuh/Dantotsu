@@ -679,7 +679,7 @@
     <string name="watch_complete_percentage_info">The percentage at which your AniList progress should be updated after watching an episode. \nThis also sets the %% for when to preload links for the next episode.</string>
 
     <string name="behaviour">Behaviour</string>
-    <string name="always_continue">Always Continue from where you left off</string>
+    <string name="always_continue">Resume without offering to start over</string>
     <string name="pause_video_focus">Pause when not in Focus</string>
     <string name="player_background_play">Keep playing with the screen off</string>
     <string name="player_background_play_desc">Audio carries on when the screen turns off, with controls in the notification</string>
@@ -1289,7 +1289,6 @@
     <string name="screenshot">Screenshot</string>
     <string name="screenshot_preview">Screenshot preview</string>
     <string name="screenshot_failed">Couldn\'t capture the screenshot</string>
-    <string name="screenshot_unsupported">Screenshots need Android 7.0 or newer</string>
     <string name="screenshot_show_media_info">Show media info</string>
     <string name="screenshot_show_user_info">Show user info</string>
     <string name="screenshot_show_app_icon">Show app logo</string>
@@ -1310,7 +1309,6 @@
     <string name="clip">Clip</string>
     <string name="clip_failed">Couldn\'t render the clip</string>
     <string name="clip_save_failed">Couldn\'t save the clip</string>
-    <string name="clip_unsupported">Clips need Android 7.0 or newer</string>
     <string name="clip_too_short">Trim a longer section to make a clip</string>
     <string name="clip_trim">Trim the clip</string>
     <string name="clip_sound">Preview sound</string>
@@ -2985,7 +2983,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_ask_update_progress_anime">progress update prompt confirm</string>
     <string name="search_kw_ask_update_progress_chapter_zero">progress episode first zero</string>
     <string name="search_kw_ask_update_progress_hentai">progress hentai adult update</string>
-    <string name="search_kw_always_continue">resume autoplay continue episode</string>
+    <string name="search_kw_always_continue">resume start over beginning prompt notice continue episode</string>
     <string name="search_kw_pause_video_focus">pause audio focus call interrupt</string>
     <string name="search_kw_gestures">brightness volume swipe</string>
     <string name="search_kw_fast_forward">seek</string>
@@ -4315,4 +4313,17 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="stack_chip_min_score">Score ≥ %1$d</string>
     <string name="stack_filter_empty">Nothing in this stack matches these filters</string>
     <string name="pref_saved_stack_filters">Saved stack filters</string>
+    <!-- Player, portrait layout -->
+    <string name="player_fullscreen">Fullscreen</string>
+    <string name="player_exit_fullscreen">Exit fullscreen</string>
+    <string name="player_now_playing">Now playing</string>
+    <string name="player_episodes">Episodes</string>
+    <string name="player_add_to_list">Add to list</string>
+    <string name="player_subscribe">Subscribe</string>
+    <string name="player_subscribed">Subscribed</string>
+    <string name="player_open_series">Open series page</string>
+    <string name="player_show_more">Show more</string>
+    <string name="player_show_less">Show less</string>
+    <string name="player_resumed_from">Resumed from %1$s</string>
+    <string name="player_start_over">Start over</string>
 </resources>

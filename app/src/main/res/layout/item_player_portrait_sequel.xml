@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The end of the player's episode list: the next season, when the series has one. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/playerSequelCard"
+    android:layout_width="match_parent"
+    android:layout_height="112dp"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp">
+
+    <ImageView
+        android:id="@+id/playerSequelImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop" />
+
+    <!-- Fixed dark scrim and white text: they sit on artwork, not on the app's background. -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:alpha="0.8"
+            android:drawablePadding="4dp"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:gravity="center_vertical"
+            android:text="@string/next_season"
+            android:textColor="@android:color/white"
+            android:textSize="13sp"
+            app:drawableStartCompat="@drawable/ic_round_skip_next_24"
+            app:drawableTint="@android:color/white" />
+
+        <TextView
+            android:id="@+id/playerSequelTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_bold"
+            android:maxLines="2"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            tools:text="Reincarnated as a Sword Season 3" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

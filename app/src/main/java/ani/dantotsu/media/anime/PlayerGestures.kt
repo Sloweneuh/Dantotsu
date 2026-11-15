@@ -27,14 +27,11 @@ import ani.dantotsu.brightnessConverter
 import ani.dantotsu.circularReveal
 import ani.dantotsu.getCurrentBrightnessValue
 import ani.dantotsu.hideSystemBars
-import ani.dantotsu.others.ResettableTimer
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import com.google.android.material.slider.Slider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Timer
-import java.util.TimerTask
 import kotlin.math.roundToInt
 
 /**
@@ -114,9 +111,11 @@ class PlayerGestures(
         )
         val overshoot = AnimationUtils.loadInterpolator(activity, R.anim.over_shoot)
         val controllerDuration = (300 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong()
+        // How far the bars slide as they come and go: a distance, not a pixel count.
+        val chromeSlide = 48f * activity.resources.displayMetrics.density
 
         fun handleController() {
-            if (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) !activity.isInPictureInPictureMode else true) {
+            if (!activity.isInPictureInPictureMode) {
                 if (playerView.isControllerFullyVisible) {
                     ObjectAnimator
                         .ofFloat(
@@ -131,7 +130,7 @@ class PlayerGestures(
                             playerView.findViewById(R.id.exo_bottom_cont),
                             "translationY",
                             0f,
-                            128f,
+                            chromeSlide,
                         ).apply {
                             interpolator = overshoot
                             duration = controllerDuration
@@ -142,7 +141,7 @@ class PlayerGestures(
                             playerView.findViewById(R.id.exo_timeline_cont),
                             "translationY",
                             0f,
-                            128f,
+                            chromeSlide,
                         ).apply {
                             interpolator = overshoot
                             duration = controllerDuration
@@ -153,7 +152,7 @@ class PlayerGestures(
                             playerView.findViewById(R.id.exo_top_cont),
                             "translationY",
                             0f,
-                            -128f,
+                            -chromeSlide,
                         ).apply {
                             interpolator = overshoot
                             duration = controllerDuration
@@ -175,7 +174,7 @@ class PlayerGestures(
                         .ofFloat(
                             playerView.findViewById(R.id.exo_bottom_cont),
                             "translationY",
-                            128f,
+                            chromeSlide,
                             0f,
                         ).apply {
                             interpolator = overshoot
@@ -186,7 +185,7 @@ class PlayerGestures(
                         .ofFloat(
                             playerView.findViewById(R.id.exo_timeline_cont),
                             "translationY",
-                            128f,
+                            chromeSlide,
                             0f,
                         ).apply {
                             interpolator = overshoot
@@ -197,7 +196,7 @@ class PlayerGestures(
                         .ofFloat(
                             playerView.findViewById(R.id.exo_top_cont),
                             "translationY",
-                            -128f,
+                            -chromeSlide,
                             0f,
                         ).apply {
                             interpolator = overshoot
@@ -217,11 +216,11 @@ class PlayerGestures(
         val fastForwardCard = playerView.findViewById<View>(R.id.exo_fast_forward)
         val fastRewindCard = playerView.findViewById<View>(R.id.exo_fast_rewind)
 
-        // Seeking
-        val seekTimerF = ResettableTimer()
-        val seekTimerR = ResettableTimer()
+        // Seeking. The streak ends on the main thread, where everything it resets is read.
         var seekTimesF = 0
         var seekTimesR = 0
+        var endForwardStreak: Runnable? = null
+        var endRewindStreak: Runnable? = null
 
         fun seek(
             forward: Boolean,
@@ -253,6 +252,8 @@ class PlayerGestures(
                 }
 
                 if (!isSeeking && event != null) {
+                    // Once per streak: a run of taps shouldn't buzz on every one.
+                    playerView.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
                     playerView.hideController()
                     card.circularReveal(event.x.toInt(), event.y.toInt(), !forward, 800)
                     showCardAnim.start()
@@ -273,29 +274,19 @@ class PlayerGestures(
 
             isSeeking = true
 
-            if (forward) {
-                seekTimerR.reset(
-                    object : TimerTask() {
-                        override fun run() {
-                            isSeeking = false
-                            stopAnim()
-                            seekTimesF = 0
-                        }
-                    },
-                    850,
-                )
-            } else {
-                seekTimerF.reset(
-                    object : TimerTask() {
-                        override fun run() {
-                            isSeeking = false
-                            stopAnim()
-                            seekTimesR = 0
-                        }
-                    },
-                    850,
-                )
+            val endStreak = Runnable {
+                isSeeking = false
+                stopAnim()
+                if (forward) seekTimesF = 0 else seekTimesR = 0
             }
+            if (forward) {
+                endForwardStreak?.let { handler.removeCallbacks(it) }
+                endForwardStreak = endStreak
+            } else {
+                endRewindStreak?.let { handler.removeCallbacks(it) }
+                endRewindStreak = endStreak
+            }
+            handler.postDelayed(endStreak, 850)
         }
 
         playerView.findViewById<View>(R.id.exo_fast_forward_button_cont).visibility = View.VISIBLE
@@ -332,20 +323,11 @@ class PlayerGestures(
             }
 
             // Brightness
-            var brightnessTimer = Timer()
             exoBrightnessCont.visibility = View.GONE
 
             fun brightnessHide() {
-                brightnessTimer.cancel()
-                brightnessTimer.purge()
-                val timerTask: TimerTask =
-                    object : TimerTask() {
-                        override fun run() {
-                            handler.post(brightnessRunnable)
-                        }
-                    }
-                brightnessTimer = Timer()
-                brightnessTimer.schedule(timerTask, 3000)
+                handler.removeCallbacks(brightnessRunnable)
+                handler.postDelayed(brightnessRunnable, 3000)
             }
             exoBrightness.value = (getCurrentBrightnessValue(activity) * 10f)
 
@@ -358,23 +340,14 @@ class PlayerGestures(
             }
 
             // Volume
-            var volumeTimer = Timer()
             exoVolumeCont.visibility = View.GONE
 
             val volumeMax = audioManager.getStreamMaxVolume(STREAM_MUSIC)
             exoVolume.value = audioManager.getStreamVolume(STREAM_MUSIC).toFloat() / volumeMax * 10
 
             fun volumeHide() {
-                volumeTimer.cancel()
-                volumeTimer.purge()
-                val timerTask: TimerTask =
-                    object : TimerTask() {
-                        override fun run() {
-                            handler.post(volumeRunnable)
-                        }
-                    }
-                volumeTimer = Timer()
-                volumeTimer.schedule(timerTask, 3000)
+                handler.removeCallbacks(volumeRunnable)
+                handler.postDelayed(volumeRunnable, 3000)
             }
             exoVolume.addOnChangeListener { _, value, _ ->
                 val volume = ((value.takeIf { !it.isNaN() } ?: 0f) / 10 * volumeMax).roundToInt()
@@ -384,6 +357,7 @@ class PlayerGestures(
             val fastForward = playerView.findViewById<TextView>(R.id.exo_fast_forward_text)
 
             fun fastForward() {
+                playerView.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
                 isFastForwarding = true
                 exoPlayer.setPlaybackSpeed(exoPlayer.playbackParameters.speed * 2)
                 fastForward.visibility = View.VISIBLE
@@ -420,6 +394,9 @@ class PlayerGestures(
                 if (swipeSeekFrom == null) {
                     swipeSeekFrom = exoPlayer.currentPosition
                     swipeSeekDx = 0f
+                    // The picture follows the finger: scrubbing mode makes each of these seeks
+                    // quick and approximate, rather than queuing exact ones.
+                    exoPlayer.setScrubbingModeEnabled(true)
                 }
                 // distanceX is the last position minus the new one: a drag to the right is negative.
                 swipeSeekDx -= distanceX
@@ -428,10 +405,14 @@ class PlayerGestures(
                 val sign = if (delta < 0) "−" else "+"
                 fastForward.text = "$sign${clock(kotlin.math.abs(delta))} · ${clock(target)}"
                 fastForward.visibility = View.VISIBLE
+                exoPlayer.seekTo(target)
             }
             fun finishSwipeSeek(commit: Boolean) {
-                if (swipeSeekFrom == null) return
-                if (commit) exoPlayer.seekTo(swipeSeekTarget())
+                val from = swipeSeekFrom ?: return
+                // Out of scrubbing mode first, so the last seek is the exact one; a cancelled
+                // swipe goes back to where it started.
+                exoPlayer.setScrubbingModeEnabled(false)
+                exoPlayer.seekTo(if (commit) swipeSeekTarget() else from)
                 swipeSeekFrom = null
                 fastForward.visibility = View.GONE
             }

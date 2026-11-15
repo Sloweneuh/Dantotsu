@@ -21,10 +21,6 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.drawable.Animatable
 import android.hardware.SensorManager
-import android.media.AudioManager
-import android.media.AudioManager.AUDIOFOCUS_GAIN
-import android.media.AudioManager.AUDIOFOCUS_LOSS
-import android.media.AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
 import android.media.AudioManager.STREAM_MUSIC
 import android.os.Build
 import android.os.Bundle
@@ -150,7 +146,6 @@ import ani.dantotsu.okHttpClient
 import ani.dantotsu.others.AniSkip
 import ani.dantotsu.others.AniSkip.getType
 import ani.dantotsu.others.LanguageMapper
-import ani.dantotsu.others.ResettableTimer
 import ani.dantotsu.others.Xubtitle
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.parsers.AnimeSources
@@ -167,6 +162,7 @@ import ani.dantotsu.snackString
 import ani.dantotsu.startMainActivity
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toPx
+import ani.dantotsu.px
 import ani.dantotsu.toast
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.LeakDetection
@@ -202,8 +198,6 @@ import uy.kohesive.injekt.api.get
 import java.net.InetAddress
 import java.util.Calendar
 import java.util.Locale
-import java.util.Timer
-import java.util.TimerTask
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
@@ -265,6 +259,332 @@ class ExoplayerView :
 
     private var hasExtSubtitles = false
 
+    // region Portrait layout and fullscreen
+
+    private lateinit var portraitPanel: PlayerPortraitPanel
+
+    /** Plays the episode at an index the way the episode dropdown does; set in onCreate. */
+    private var changeEpisode: ((Int) -> Unit)? = null
+
+    /** Upright, the video in its band at the top and [PlayerPortraitPanel] below it. */
+    private var portraitLayout = false
+
+    /** The video alone while upright: fullscreen where the window can't be turned (a tablet). */
+    private var videoOnly = false
+
+    /** Landscape came from the fullscreen button, so back returns to the upright layout. */
+    private var enteredFullscreen = false
+
+    /** Hands rotation back to the phone once it is held the way the button turned the picture. */
+    private var fullscreenReleaser: OrientationEventListener? = null
+
+    /** When one of the panel's sheets last closed; see [panelSheetOwnsFocus]. */
+    private var panelSheetClosedAt = 0L
+
+    /** For a download started from the panel, when the downloads folder needs picking first. */
+    private val downloadLauncher by lazy {
+        ani.dantotsu.util.LauncherWrapper(this, ActivityResultContracts.OpenDocumentTree())
+    }
+
+    /** A phone, which turns between portrait and landscape; a larger screen may refuse to. */
+    private val canTurn get() = resources.configuration.smallestScreenWidthDp < 600
+
+    private fun setUpPortraitPanel() {
+        // Registered now, before the activity starts, as an activity result launcher must be.
+        downloadLauncher
+        val host = object : PlayerPortraitPanel.Host {
+            override val media: Media get() = ExoplayerView.media
+            override val episodeNumbers: List<String> get() = episodeArr
+            override val currentIndex: Int get() = currentEpisodeIndex
+            override val playingDownload: Boolean get() = extractor?.server?.offline == true
+            override val sourceName: String?
+                get() = model.watchSources?.names?.getOrNull(ExoplayerView.media.selected?.sourceIndex ?: 0)
+
+            override fun playEpisode(index: Int) {
+                if (isInitialized) changeEpisode?.invoke(index)
+            }
+
+            override fun download() = downloadCurrentEpisode()
+            override fun clip() { playerView.findViewById<View>(R.id.exo_clip).performClick() }
+            override fun screenshot() { playerView.findViewById<View>(R.id.exo_screenshot).performClick() }
+            override fun handoff() { playerView.findViewById<View>(R.id.exo_handoff).performClick() }
+            override fun sheetHeight(): Int = binding.playerPortraitList.height
+        }
+        episodeListHost = host
+        portraitPanel = PlayerPortraitPanel(this, binding.playerPortraitList, host)
+
+        // The episode title over the video opens the episodes as a sheet, the panel's list, rather
+        // than a plain dropdown of names. The dropdown stays for keys and the TV's own menu.
+        episodeTitle.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_UP) openEpisodesSheet()
+            true
+        }
+
+        // The list editor and the comments sheet: the panel's status chip again once the editor
+        // closes, and either one closing is the player's own focus change (see panelSheetOwnsFocus).
+        supportFragmentManager.registerFragmentLifecycleCallbacks(
+            object : androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks() {
+                override fun onFragmentDestroyed(fm: androidx.fragment.app.FragmentManager, f: androidx.fragment.app.Fragment) {
+                    if (f.tag == PlayerPortraitPanel.TAG_LIST || f.tag == PlayerCommentsSheet.TAG) {
+                        panelSheetClosedAt = SystemClock.elapsedRealtime()
+                        if (f.tag == PlayerPortraitPanel.TAG_LIST) portraitPanel.refreshListStatus()
+                    }
+                }
+            },
+            false,
+        )
+
+        playerView.findViewById<ImageButton>(R.id.exo_fullscreen).setOnClickListener {
+            if (portraitLayout) enterFullscreen() else exitFullscreen()
+        }
+        applyPlayerLayout()
+    }
+
+    /** What the panel and the episode sheet list; set once the panel is. */
+    var episodeListHost: PlayerPortraitPanel.Host? = null
+        private set
+
+    private fun openEpisodesSheet() {
+        if (supportFragmentManager.findFragmentByTag(PlayerEpisodesSheet.TAG) != null) return
+        // The player's own, like the settings sheet: focus going to it isn't the user leaving.
+        settingsSheetOpen = true
+        PlayerEpisodesSheet().show(supportFragmentManager, PlayerEpisodesSheet.TAG)
+    }
+
+    /** Whether focus going or coming back is one of the panel's sheets, not the user leaving. */
+    private fun panelSheetOwnsFocus(): Boolean =
+        supportFragmentManager.findFragmentByTag(PlayerPortraitPanel.TAG_LIST) != null ||
+            supportFragmentManager.findFragmentByTag(PlayerCommentsSheet.TAG) != null ||
+            SystemClock.elapsedRealtime() - panelSheetClosedAt < 500
+
+    /**
+     * Lays the screen out for how it is held: upright on anything but a TV or a PiP window, the
+     * video is the 16:9 band at the top and the panel has the rest; on a tablet held sideways, the
+     * panel is a column beside the video. Where the panel shows, the actions it offers leave the
+     * video's controls. Otherwise the video has the whole screen.
+     */
+    private fun applyPlayerLayout() {
+        if (!::portraitPanel.isInitialized) return
+        val pip = isInPictureInPictureMode
+        val tv = ani.dantotsu.tv.TvMode.isOn(this)
+        val upright = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        // A tablet held sideways has room for both: the video, and the panel as a column beside it.
+        val beside = !upright && !canTurn && !videoOnly && !pip && !tv
+        val panel = (upright && !videoOnly && !pip && !tv) || beside
+        val wasShowing = binding.playerPortraitList.isVisible
+        portraitLayout = panel
+
+        val frame = binding.playerVideoFrame
+        val list = binding.playerPortraitList
+        val density = resources.displayMetrics.density
+        val screenWidth = (resources.configuration.screenWidthDp * density).roundToInt()
+        when {
+            beside -> {
+                val panelWidth = minOf((SIDE_PANEL_WIDTH_DP * density).roundToInt(), (screenWidth * 0.4f).roundToInt())
+                frame.updateLayoutParams<android.widget.FrameLayout.LayoutParams> {
+                    width = screenWidth - panelWidth
+                    height = ViewGroup.LayoutParams.MATCH_PARENT
+                    topMargin = 0
+                }
+                list.updateLayoutParams<android.widget.FrameLayout.LayoutParams> {
+                    width = panelWidth
+                    topMargin = 0
+                    marginStart = screenWidth - panelWidth
+                }
+            }
+            panel -> {
+                val top = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    window.decorView.rootWindowInsets?.displayCutout?.safeInsetTop ?: 0
+                } else 0
+                val videoHeight = screenWidth * 9 / 16
+                frame.updateLayoutParams<android.widget.FrameLayout.LayoutParams> {
+                    width = ViewGroup.LayoutParams.MATCH_PARENT
+                    height = videoHeight
+                    topMargin = top
+                }
+                list.updateLayoutParams<android.widget.FrameLayout.LayoutParams> {
+                    width = ViewGroup.LayoutParams.MATCH_PARENT
+                    topMargin = top + videoHeight
+                    marginStart = 0
+                }
+            }
+            else -> frame.updateLayoutParams<android.widget.FrameLayout.LayoutParams> {
+                width = ViewGroup.LayoutParams.MATCH_PARENT
+                height = ViewGroup.LayoutParams.MATCH_PARENT
+                topMargin = 0
+            }
+        }
+        list.isVisible = panel
+        // Coming into view, it shows the episode playing.
+        if (panel) portraitPanel.refresh(reveal = !wasShowing)
+        val portrait = panel
+
+        // What the panel offers leaves the video's controls while it shows; the episode dropdown
+        // and the title too, which the panel shows in full.
+        playerView.findViewById<View>(R.id.exo_clip).isVisible = !portrait
+        playerView.findViewById<View>(R.id.exo_screenshot).isVisible = !portrait
+        playerView.findViewById<View>(R.id.exo_handoff).isVisible = !portrait && media.id >= 0
+        episodeTitle.isVisible = !portrait
+        animeTitle.isVisible = !portrait
+
+        playerView.findViewById<ImageButton>(R.id.exo_fullscreen).apply {
+            // Landscape on a large screen can't be turned back from here: no button there.
+            isVisible = !tv && !pip && (portrait || videoOnly || canTurn)
+            setImageResource(
+                if (portrait) R.drawable.ic_round_fullscreen_24 else R.drawable.ic_round_fullscreen_exit_24
+            )
+            contentDescription = getString(
+                if (portrait) R.string.player_fullscreen else R.string.player_exit_fullscreen
+            )
+        }
+        checkNotch()
+    }
+
+    private fun enterFullscreen() {
+        if (canTurn) {
+            enteredFullscreen = true
+            turnTo(landscape = true)
+        } else {
+            videoOnly = true
+            applyPlayerLayout()
+        }
+    }
+
+    private fun exitFullscreen() {
+        if (videoOnly) {
+            videoOnly = false
+            applyPlayerLayout()
+        } else if (canTurn) {
+            enteredFullscreen = false
+            turnTo(landscape = false)
+        }
+    }
+
+    private fun exitFullscreenOnBack(): Boolean {
+        val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        if (videoOnly || (enteredFullscreen && landscape && canTurn)) {
+            exitFullscreen()
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Turns the picture as the fullscreen button asks, whichever way the phone is held. With
+     * auto-rotate on, rotation goes back to following the phone once it is held that way, so
+     * turning it back afterwards turns the player back too, as on a video site.
+     */
+    private fun turnTo(landscape: Boolean) {
+        requestedOrientation = if (landscape) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        fullscreenReleaser?.disable()
+        fullscreenReleaser = null
+        if (System.getInt(contentResolver, System.ACCELEROMETER_ROTATION, 0) != 1) return
+        fullscreenReleaser = object : OrientationEventListener(this, SensorManager.SENSOR_DELAY_UI) {
+            override fun onOrientationChanged(degrees: Int) {
+                if (degrees == ORIENTATION_UNKNOWN) return
+                val heldLandscape = degrees in 60..120 || degrees in 240..300
+                val heldUpright = degrees <= 30 || degrees >= 330
+                if (if (landscape) heldLandscape else heldUpright) {
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                    disable()
+                    fullscreenReleaser = null
+                }
+            }
+        }.also { it.enable() }
+    }
+
+    /** The episode playing, downloaded through the server picker as the episode list does it. */
+    private fun downloadCurrentEpisode() {
+        val number = media.anime?.selectedEpisode ?: return
+        with(ani.dantotsu.util.StoragePermissions) {
+            accessAlertDialog(downloadLauncher) { granted ->
+                if (granted) {
+                    model.onEpisodeClick(
+                        media = media,
+                        manager = supportFragmentManager,
+                        launch = false,
+                        isDownload = true,
+                        episodes = arrayListOf(number),
+                    )
+                } else {
+                    snackString(getString(R.string.download_permission_required))
+                }
+            }
+        }
+    }
+
+    // endregion
+
+    /**
+     * The play button's play/pause morph. Set straight on the button: it used to go through a
+     * Glide request on every state change, a request queue and a cache for a local vector.
+     */
+    private fun showPlayPause(@androidx.annotation.DrawableRes animation: Int) {
+        if (isDestroyed) return
+        val drawable = androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat
+            .create(this, animation) ?: return
+        exoPlay.setImageDrawable(drawable)
+        drawable.start()
+    }
+
+    /**
+     * Dragging the timeline shows the frames it passes, not just the time: the controller seeks
+     * as the thumb moves, in ExoPlayer's scrubbing mode, which it switches on for the drag. Not while
+     * casting, where every step of a drag would be a seek sent to the TV.
+     */
+    private fun updateTimeBarScrubbing() {
+        if (!::playerView.isInitialized) return
+        playerView.setTimeBarScrubbingEnabled(playerView.player == null || playerView.player is ExoPlayer)
+    }
+
+    // region Resume notice
+
+    private val hideResumedLater = Runnable { hideResumed() }
+
+    /** "Resumed from 12:34 · Start over", for [RESUME_NOTICE_MS]; see initPlayer. */
+    private fun showResumed(positionMs: Long) {
+        binding.resumeText.text = getString(R.string.player_resumed_from, formatClock(positionMs))
+        binding.resumeStartOver.setOnClickListener {
+            playbackPosition = 0L
+            if (isInitialized) exoPlayer.seekTo(0)
+            hideResumed()
+        }
+        binding.resumeCard.isVisible = true
+        handler.removeCallbacks(hideResumedLater)
+        handler.postDelayed(hideResumedLater, RESUME_NOTICE_MS)
+    }
+
+    private fun hideResumed() {
+        handler.removeCallbacks(hideResumedLater)
+        binding.resumeCard.isVisible = false
+    }
+
+    /** Raises the notice over the controls' bottom bar while it is up, as the up-next card is. */
+    private fun liftResumeCard(controls: View?) {
+        val card = binding.resumeCard
+        if (!card.isVisible) return
+        val parent = card.parent as? View ?: return
+        val at = IntArray(2)
+        parent.getLocationInWindow(at)
+        val parentBottom = at[1] + parent.height
+        val lift = if (controls != null && controls.isShown && controls.height > 0 && controls.alpha > 0f) {
+            controls.getLocationInWindow(at)
+            (parentBottom - at[1]).coerceAtLeast(0)
+        } else 0
+        val target = -lift.toFloat()
+        if (card.translationY != target) card.animate().translationY(target).setDuration(200).start()
+    }
+
+    /** 12:34, or 1:02:03 past the hour. */
+    private fun formatClock(ms: Long): String {
+        val s = ms / 1000
+        return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
+        else "%d:%02d".format(s / 60, s % 60)
+    }
+
+    // endregion
+
     /** Where TV mode's skip prompt jumps to: the end of the segment playing, in seconds. */
     private var tvSkipTo: Double? = null
 
@@ -316,6 +636,15 @@ class ExoplayerView :
         private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5000
         private const val PIP_SEEK_INCREMENT_MS = 10_000L
 
+        /** The panel's width beside the video on a tablet held sideways, at most. */
+        private const val SIDE_PANEL_WIDTH_DP = 380
+
+        /** How long the "Resumed from …" notice stays up. */
+        private const val RESUME_NOTICE_MS = 8_000L
+
+        /** Autoplay moves on only if the screen has been touched within this long. */
+        private const val AUTOPLAY_IDLE_MS = 60 * 60 * 1000L
+
         /** How far back the subtitle cue buffer keeps history — the longest clip anyone can ask for. */
         private const val CLIP_CUE_WINDOW_MS = 5 * 60 * 1000L
 
@@ -341,7 +670,6 @@ class ExoplayerView :
     private var video: Video? = null
     private var subtitle: Subtitle? = null
 
-    private var notchHeight: Int = 0
     private var currentWindow = 0
     private var playbackPosition: Long = 0
     private var episodeLength: Float = 0f
@@ -356,7 +684,10 @@ class ExoplayerView :
     private var isInitialized = false
     private var isPlayerPlaying = true
     private var changingServer = false
-    private var interacted = false
+    /** When the screen was last touched; autoplay stops after an hour without one. */
+    private var lastTouchAt = -1L
+    private val interacted: Boolean
+        get() = lastTouchAt >= 0 && SystemClock.elapsedRealtime() - lastTouchAt < AUTOPLAY_IDLE_MS
 
     private var pipEnabled = false
 
@@ -380,49 +711,36 @@ class ExoplayerView :
     var rotation = 0
 
     override fun onAttachedToWindow() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val displayCutout = window.decorView.rootWindowInsets.displayCutout
-            if (displayCutout != null) {
-                if (displayCutout.boundingRects.size > 0) {
-                    notchHeight =
-                        min(
-                            displayCutout.boundingRects[0].width(),
-                            displayCutout.boundingRects[0].height(),
-                        )
-                    checkNotch()
-                }
-            }
-        }
         super.onAttachedToWindow()
+        // The cutout is only known once attached; the video band sits below it.
+        checkNotch()
+        applyPlayerLayout()
     }
 
+    /**
+     * Keeps the controls clear of the camera cutout: from its safe insets, read afresh each time,
+     * rather than the size of its bounding box measured once. In landscape both sides get the same
+     * margin, so the controls stay centred whichever way round the phone is.
+     */
     private fun checkNotch() {
-        if (notchHeight != 0) {
-            val orientation = resources.configuration.orientation
-            playerView
-                .findViewById<View>(R.id.exo_controller_margin)
-                .updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                    if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                        marginStart = notchHeight
-                        marginEnd = notchHeight
-                        topMargin = 0
-                    } else {
-                        topMargin = notchHeight
-                        marginStart = 0
-                        marginEnd = 0
-                    }
-                }
-            playerView.findViewById<View>(androidx.media3.ui.R.id.exo_buffering).translationY =
-                (if (orientation == Configuration.ORIENTATION_LANDSCAPE) 0 else (notchHeight + 8.toPx)).dp
-            exoBrightnessCont.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                marginEnd =
-                    if (orientation == Configuration.ORIENTATION_LANDSCAPE) notchHeight else 0
+        if (!::playerView.isInitialized) return
+        val cutout = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.decorView.rootWindowInsets?.displayCutout
+        } else null
+        val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        // Upright with the panel, the video band already starts below the cutout (applyPlayerLayout).
+        val top = if (landscape || portraitLayout) 0 else cutout?.safeInsetTop ?: 0
+        val side = if (landscape) maxOf(cutout?.safeInsetLeft ?: 0, cutout?.safeInsetRight ?: 0) else 0
+        playerView.findViewById<View>(R.id.exo_controller_margin)
+            .updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                marginStart = side
+                marginEnd = side
+                topMargin = top
             }
-            exoVolumeCont.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                marginStart =
-                    if (orientation == Configuration.ORIENTATION_LANDSCAPE) notchHeight else 0
-            }
-        }
+        playerView.findViewById<View>(androidx.media3.ui.R.id.exo_buffering).translationY =
+            if (top > 0) (top + 8f.px).toFloat() else 0f
+        exoBrightnessCont.updateLayoutParams<ViewGroup.MarginLayoutParams> { marginEnd = side }
+        exoVolumeCont.updateLayoutParams<ViewGroup.MarginLayoutParams> { marginStart = side }
     }
 
     /** Shrinks a captured frame to thumbnail size; a full 1080p bitmap is a lot to hand around. */
@@ -499,6 +817,8 @@ class ExoplayerView :
         hideSystemBarsExtendView()
 
         onBackPressedDispatcher.addCallback(this) {
+            // Made fullscreen with the button: back goes back to the upright layout first.
+            if (exitFullscreenOnBack()) return@addCallback
             // On the TV, back first puts the controls away, as a remote's back does everywhere else.
             // (Back arrives here, not through dispatchKeyEvent: the app opts into predictive back.)
             if (ani.dantotsu.tv.TvMode.isOn(this@ExoplayerView) && controlsShown) {
@@ -523,15 +843,15 @@ class ExoplayerView :
             override fun withMetadata(item: MediaItem) = item.withEpisodeMetadata()
             override fun savePosition(position: Long) =
                 PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", position)
-            override fun onActivePlayerChanged() = discordRPC()
+            override fun onActivePlayerChanged() {
+                discordRPC()
+                updateTimeBarScrubbing()
+            }
             override fun onCastPlaying() {
                 playedThisEpisode = true
             }
             override fun onCastPlayWhenReadyChanged(playWhenReady: Boolean) {
-                (exoPlay.drawable as Animatable?)?.start()
-                Glide.with(this@ExoplayerView)
-                    .load(if (playWhenReady) R.drawable.anim_play_to_pause else R.drawable.anim_pause_to_play)
-                    .into(exoPlay)
+                showPlayPause(if (playWhenReady) R.drawable.anim_play_to_pause else R.drawable.anim_pause_to_play)
             }
         }).also { it.setUp() }
         exoPlay = playerView.findViewById(androidx.media3.ui.R.id.exo_play)
@@ -554,15 +874,7 @@ class ExoplayerView :
         episodeTitle = playerView.findViewById(R.id.exo_ep_sel)
 
         playerView.controllerShowTimeoutMs = 5000
-
-        val audioManager = applicationContext.getSystemService(AUDIO_SERVICE) as AudioManager
-
-        @Suppress("DEPRECATION")
-        audioManager.requestAudioFocus({ focus ->
-            when (focus) {
-                AUDIOFOCUS_LOSS_TRANSIENT, AUDIOFOCUS_LOSS -> if (isInitialized) exoPlayer.pause()
-            }
-        }, AUDIO_CONTENT_TYPE_MOVIE, AUDIOFOCUS_GAIN)
+        updateTimeBarScrubbing()
 
         if (System.getInt(contentResolver, System.ACCELEROMETER_ROTATION, 0) != 1) {
             if (PrefManager.getVal(PrefName.RotationPlayer)) {
@@ -596,7 +908,8 @@ class ExoplayerView :
                 orientationListener?.enable()
             }
 
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            // No forced landscape any more: the player opens the way the phone is held, upright
+            // with the episode list under the video, and the fullscreen button turns it.
             exoRotate.setOnClickListener {
                 requestedOrientation = rotation
                 it.visibility = View.GONE
@@ -619,18 +932,17 @@ class ExoplayerView :
         exoPlay.setOnClickListener {
             if (isInitialized) {
                 isPlayerPlaying = exoPlayer.isPlaying
-                (exoPlay.drawable as Animatable?)?.start()
                 val remote = cast.player?.takeIf { cast.isCasting }
                 if (remote?.playWhenReady ?: isPlayerPlaying) {
-                    Glide.with(this).load(R.drawable.anim_play_to_pause).into(exoPlay)
+                    showPlayPause(R.drawable.anim_play_to_pause)
                     exoPlayer.pause()
                     remote?.pause()
                 } else {
                     if (remote != null) {
-                        Glide.with(this).load(R.drawable.anim_pause_to_play).into(exoPlay)
+                        showPlayPause(R.drawable.anim_pause_to_play)
                         remote.play()
                     } else if (!isPlayerPlaying) {
-                        Glide.with(this).load(R.drawable.anim_pause_to_play).into(exoPlay)
+                        showPlayPause(R.drawable.anim_pause_to_play)
                         exoPlayer.play()
                     }
                 }
@@ -639,16 +951,14 @@ class ExoplayerView :
 
         // Picture-in-picture: the button is the choice, so it is there wherever PiP is supported;
         // going there on Home is PlayerHomeAction's to decide.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            pipEnabled = packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
-            if (pipEnabled) {
-                exoPip.visibility = View.VISIBLE
-                exoPip.setOnClickListener {
-                    enterPipMode()
-                }
-            } else {
-                exoPip.visibility = View.GONE
+        pipEnabled = packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+        if (pipEnabled) {
+            exoPip.visibility = View.VISIBLE
+            exoPip.setOnClickListener {
+                enterPipMode()
             }
+        } else {
+            exoPip.visibility = View.GONE
         }
 
         // Lock Button
@@ -658,6 +968,7 @@ class ExoplayerView :
         val timeline =
             playerView.findViewById<ExtendedTimeBar>(androidx.media3.ui.R.id.exo_progress)
         playerView.findViewById<ImageButton>(R.id.exo_lock).setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             locked = true
             screen.visibility = View.GONE
             container.visibility = View.GONE
@@ -665,6 +976,7 @@ class ExoplayerView :
             timeline.setForceDisabled(true)
         }
         lockButton.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             locked = false
             screen.visibility = View.VISIBLE
             container.visibility = View.VISIBLE
@@ -679,6 +991,7 @@ class ExoplayerView :
         )
         binding.root.viewTreeObserver.addOnGlobalLayoutListener {
             nextCountdown.avoid(countdownObstacles)
+            liftResumeCard(countdownObstacles.first())
         }
 
         skipStamps = PlayerSkipStamps(this, playerView, model, object : PlayerSkipStamps.Host {
@@ -720,7 +1033,9 @@ class ExoplayerView :
             val episode = it.value
             val cleanedTitle = MediaNameAdapter.removeEpisodeNumberCompletely(episode.title ?: "")
             episodeTitleArr.add(
-                "Episode ${episode.number}${if (episode.filler) " [Filler]" else ""}${if (cleanedTitle.isNotBlank() && cleanedTitle != "null") ": $cleanedTitle" else ""}",
+                getString(R.string.episode_num, episode.number) +
+                    (if (episode.filler) " [${getString(R.string.filler)}]" else "") +
+                    (if (cleanedTitle.isNotBlank() && cleanedTitle != "null") ": $cleanedTitle" else ""),
             )
         }
 
@@ -748,6 +1063,11 @@ class ExoplayerView :
                     prev,
                 )
             }
+        }
+
+        changeEpisode = { index ->
+            skipStamps.resetHint()
+            change(index)
         }
 
         // EpisodeSelector
@@ -804,8 +1124,10 @@ class ExoplayerView :
                 model.setMedia(media)
                 currentEpisodeIndex = episodeArr.indexOf(ep.number)
                 episodeTitle.setSelection(currentEpisodeIndex)
+                if (::portraitPanel.isInitialized) portraitPanel.refresh(reveal = true)
                 if (isInitialized) releasePlayer()
                 nextCountdown.hide()
+                hideResumed()
                 lastSecondsOffered = false
                 playbackPosition =
                     PrefManager.getCustomVal(
@@ -820,7 +1142,11 @@ class ExoplayerView :
         }
 
         // FullScreen
-        isFullscreen = PrefManager.getCustomVal("${media.id}_fullscreenInt", isFullscreen)
+        // The series' own choice, else the default from settings.
+        isFullscreen = PrefManager.getCustomVal(
+            "${media.id}_fullscreenInt",
+            PrefManager.getVal<Int>(PrefName.Resize),
+        )
         playerView.resizeMode =
             when (isFullscreen) {
                 0 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
@@ -839,12 +1165,13 @@ class ExoplayerView :
                     else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
                 }
             snackString(
-                when (isFullscreen) {
-                    0 -> "Original"
-                    1 -> "Zoom"
-                    2 -> "Stretch"
-                    else -> "Original"
-                },
+                getString(
+                    when (isFullscreen) {
+                        1 -> R.string.tv_resize_zoom
+                        2 -> R.string.tv_resize_stretch
+                        else -> R.string.tv_resize_fit
+                    }
+                ),
             )
             PrefManager.setCustomVal("${media.id}_fullscreenInt", isFullscreen)
         }
@@ -883,10 +1210,6 @@ class ExoplayerView :
         playerView.findViewById<ImageButton>(R.id.exo_screenshot).apply {
             setImageResource(ScreenshotUtil.screenshotIcon(this@ExoplayerView))
             setOnClickListener {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-                    snackString(getString(R.string.screenshot_unsupported))
-                    return@setOnClickListener
-                }
                 val episode = media.anime?.selectedEpisode
                 val position = exoPlayer.currentPosition
                 // Freeze on the exact frame the user tapped, then hide the controls before the grab.
@@ -894,7 +1217,6 @@ class ExoplayerView :
                 if (wasPlaying) exoPlayer.pause()
                 playerView.hideController()
                 playerView.postDelayed({
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return@postDelayed
                     ScreenshotUtil.captureVideoFrame(
                         playerView.videoSurfaceView,
                         listOfNotNull(assSubtitleView, exoSubtitleView, customSubtitleView),
@@ -930,10 +1252,6 @@ class ExoplayerView :
         // screen at all — the range is re-cut from the source stream, which is what keeps the
         // original resolution and frame rate. See ClipExporter.
         playerView.findViewById<ImageButton>(R.id.exo_clip).setOnClickListener {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-                snackString(getString(R.string.clip_unsupported))
-                return@setOnClickListener
-            }
             val position = exoPlayer.currentPosition
             val window = PrefManager.getVal<Int>(PrefName.ClipDurationSeconds) * 1000L
             val start = (position - window).coerceAtLeast(0L)
@@ -974,6 +1292,8 @@ class ExoplayerView :
             }
         }
 
+        setUpPortraitPanel()
+
         // Speed
         val speeds =
             if (PrefManager.getVal(PrefName.CursedSpeeds)) {
@@ -996,35 +1316,18 @@ class ExoplayerView :
                 )
             }
 
-        val speedsName = speeds.map { "${it}x" }.toTypedArray()
-        // var curSpeed = loadData("${media.id}_speed", this) ?: settings.defaultSpeed
-        val speedsLength = speeds.size
         val savedIndex = PrefManager.getCustomVal(
             "${media.id}_speed",
             PrefManager.getVal<Int>(PrefName.DefaultSpeed),
         )
-        var curSpeed = savedIndex.coerceIn(0, speedsLength - 1)
         speedOptions = speeds
-        speedIndex = curSpeed
-
-
-        playbackParameters = PlaybackParameters(speeds[curSpeed])
-        var speed: Float
+        speedIndex = savedIndex.coerceIn(0, speeds.size - 1)
+        playbackParameters = PlaybackParameters(speeds[speedIndex])
         exoSpeed.setOnClickListener {
-            customAlertDialog().apply {
-                setTitle(R.string.speed)
-                singleChoiceItems(speedsName, curSpeed) { i ->
-                    PrefManager.setCustomVal("${media.id}_speed", i)
-                    speed = speeds.getOrNull(i) ?: 1f
-                    curSpeed = i
-                    speedIndex = i
-                    playbackParameters = PlaybackParameters(speed)
-                    exoPlayer.playbackParameters = playbackParameters
-                    hideSystemBars()
-                }
-                setOnCancelListener { hideSystemBars() }
-                show()
-            }
+            if (supportFragmentManager.findFragmentByTag(PlayerSpeedSheet.TAG) != null) return@setOnClickListener
+            // The player's own, like the settings sheet: focus going to it isn't the user leaving.
+            settingsSheetOpen = true
+            PlayerSpeedSheet().show(supportFragmentManager, PlayerSpeedSheet.TAG)
         }
 
         // Sleep timer: a set time, or the end of the episode playing. The button shows in the
@@ -1077,39 +1380,10 @@ class ExoplayerView :
 
         // Always tracked, not only with autoplay on at the start: it can be switched on from the
         // settings sheet mid-episode, and would then find nobody had ever touched the screen.
-        run {
-            var touchTimer = Timer()
-
-            fun touched() {
-                interacted = true
-                touchTimer.apply {
-                    cancel()
-                    purge()
-                }
-                touchTimer = Timer()
-                touchTimer.schedule(
-                    object : TimerTask() {
-                        override fun run() {
-                            interacted = false
-                        }
-                    },
-                    1000 * 60 * 60,
-                )
-            }
-            playerView.findViewById<View>(R.id.exo_touch_view).setOnTouchListener { _, _ ->
-                touched()
-                false
-            }
+        playerView.findViewById<View>(R.id.exo_touch_view).setOnTouchListener { _, _ ->
+            lastTouchAt = SystemClock.elapsedRealtime()
+            false
         }
-
-        isFullscreen = PrefManager.getVal(PrefName.Resize)
-        playerView.resizeMode =
-            when (isFullscreen) {
-                0 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                1 -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                2 -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-            }
 
         preloading = false
         val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
@@ -1395,26 +1669,12 @@ class ExoplayerView :
         // A restart for settings picks up where it was without asking; see restartForSettings.
         val silent = resumeSilently
         resumeSilently = false
-        if (playbackPosition != 0L && !changingServer && !silent && !PrefManager.getVal<Boolean>(PrefName.AlwaysContinue)) {
-            val time =
-                String.format(
-                    "%02d:%02d:%02d",
-                    TimeUnit.MILLISECONDS.toHours(playbackPosition),
-                    TimeUnit.MILLISECONDS.toMinutes(playbackPosition) -
-                            TimeUnit.HOURS.toMinutes(
-                                TimeUnit.MILLISECONDS.toHours(
-                                    playbackPosition,
-                                ),
-                            ),
-                    TimeUnit.MILLISECONDS.toSeconds(playbackPosition) -
-                            TimeUnit.MINUTES.toSeconds(
-                                TimeUnit.MILLISECONDS.toMinutes(
-                                    playbackPosition,
-                                ),
-                            ),
-                )
+        val resuming = playbackPosition != 0L && !changingServer && !silent &&
+            !PrefManager.getVal<Boolean>(PrefName.AlwaysContinue)
+        if (resuming && ani.dantotsu.tv.TvMode.isOn(this)) {
+            // A remote answers a dialog more easily than it reaches a button over the picture.
             customAlertDialog().apply {
-                setTitle(getString(R.string.continue_from, time))
+                setTitle(getString(R.string.continue_from, formatClock(playbackPosition)))
                 setCancelable(false)
                 setPosButton(getString(R.string.yes)) {
                     buildExoplayer()
@@ -1426,7 +1686,10 @@ class ExoplayerView :
                 show()
             }
         } else {
+            // Straight on from where it was left, with the way back to the start on screen for a
+            // moment, instead of a question before anything plays.
             buildExoplayer()
+            if (resuming && playbackPosition > 0) showResumed(playbackPosition)
         }
     }
 
@@ -1487,8 +1750,18 @@ class ExoplayerView :
                 .setWakeMode(C.WAKE_MODE_NETWORK)
                 // Unplugged headphones pause rather than switch to the speaker.
                 .setHandleAudioBecomingNoisy(true)
+                // Audio focus is the player's own to manage: it pauses for a call and plays on
+                // after it, ducks under a notification, and gives focus back when released.
+                .setAudioAttributes(
+                    androidx.media3.common.AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(AUDIO_CONTENT_TYPE_MOVIE)
+                        .build(),
+                    true,
+                )
                 .build()
         playerView.player = exoPlayer
+        updateTimeBarScrubbing()
 
         // init() must be called before prepare() so it receives onTracksChanged.
         Logger.log("Libass: Calling handler.init(exoPlayer)")
@@ -1617,7 +1890,9 @@ class ExoplayerView :
         }
 
         exoPlayer.addListener(this)
-        exoPlayer.addAnalyticsListener(EventLogger())
+        if (ani.dantotsu.BuildConfig.DEBUG || ani.dantotsu.BuildConfig.BUILD_TYPE == "debug") {
+            exoPlayer.addAnalyticsListener(EventLogger())
+        }
         isInitialized = true
 
         // A new episode or server while casting goes to the TV, not to the phone: the session
@@ -1800,6 +2075,12 @@ class ExoplayerView :
         if (!::playerView.isInitialized) return
         playerView.findViewById<ImageButton>(R.id.exo_screenshot)
             ?.setImageResource(ScreenshotUtil.screenshotIcon(this))
+        if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
+            enteredFullscreen = false
+        } else {
+            videoOnly = false
+        }
+        applyPlayerLayout()
     }
 
     /** Left by the Home button or the recents gesture, as opposed to the screen going off. */
@@ -1859,7 +2140,7 @@ class ExoplayerView :
         // screen or another app must not pause it.
         // Nor the player's own "more" menu, which takes focus while it is open.
         val ownMenu = (::bottomBar.isInitialized && bottomBar.ownsFocusChange) || settingsSheetOpen ||
-            SystemClock.elapsedRealtime() - settingsSheetClosedAt < 500
+            SystemClock.elapsedRealtime() - settingsSheetClosedAt < 500 || panelSheetOwnsFocus()
         if (PrefManager.getVal(PrefName.FocusPause) && !epChanging && !inBackground && !ownMenu) {
             if (isInitialized && !hasFocus) wasPlaying = exoPlayer.isPlaying
             if (hasFocus) {
@@ -1884,12 +2165,8 @@ class ExoplayerView :
             isPlayerPlaying = isPlaying
             playerView.keepScreenOn = isPlaying
             pip.refresh()
-            (exoPlay.drawable as Animatable?)?.start()
             if (!this.isDestroyed) {
-                Glide
-                    .with(this)
-                    .load(if (isPlaying) R.drawable.anim_play_to_pause else R.drawable.anim_pause_to_play)
-                    .into(exoPlay)
+                showPlayPause(if (isPlaying) R.drawable.anim_play_to_pause else R.drawable.anim_pause_to_play)
             }
             discordRPC()
         }
@@ -1901,6 +2178,9 @@ class ExoplayerView :
         reason: Int
     ) {
         super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+        // Mid-scrub: every step of the drag is a seek. The exact one when it ends is the one to
+        // act on, rather than updating Discord and the up-next card dozens of times on the way.
+        if (isInitialized && exoPlayer.isScrubbingModeEnabled) return
         if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
             discordRPC()
             // Back before where the next-episode card came up: it goes, countdown and all, and
@@ -1980,12 +2260,14 @@ class ExoplayerView :
         if (duration != null) {
             if (duration < playbackPosition) {
                 exoPlayer.seekTo(0)
+                hideResumed()
             }
 
             // Watched to the end: start over, as the list's full bar says.
             if (watchedToEnd(playbackPosition, duration)) {
                 playbackPosition = 0
                 exoPlayer.seekTo(0)
+                hideResumed()
             }
         }
 
@@ -2080,10 +2362,6 @@ class ExoplayerView :
         val audioTracks: ArrayList<Tracks.Group> = arrayListOf()
         val subTracks: ArrayList<Tracks.Group> = arrayListOf(dummyTrack)
         tracks.groups.forEach {
-            println(
-                "Track__: $it\nTrack__: ${it.length}\nTrack__: ${it.isSelected}\n" +
-                        "Track__: ${it.type}\nTrack__: ${it.mediaTrackGroup.id}",
-            )
             when (it.type) {
                 TRACK_TYPE_AUDIO -> {
                     if (it.isSupported(true)) audioTracks.add(it)
@@ -2273,7 +2551,22 @@ class ExoplayerView :
 
     /** The speeds on offer and the one picked, for TV mode's settings menu; see the speed button. */
     private var speedOptions: Array<Float> = arrayOf(1f)
-    private var speedIndex = 0
+
+    /** The speeds on offer, for the speed sheet and the settings sheet. */
+    val speeds: Array<Float> get() = speedOptions
+
+    /** The speed playing, as an index into [speeds]. */
+    var speedIndex = 0
+        private set
+
+    /** Plays at [speeds]`[index]` from now on, and keeps it for the series. */
+    fun setSpeedIndex(index: Int) {
+        val value = speedOptions.getOrNull(index) ?: return
+        PrefManager.setCustomVal("${media.id}_speed", index)
+        speedIndex = index
+        playbackParameters = PlaybackParameters(value)
+        if (isInitialized) exoPlayer.playbackParameters = playbackParameters
+    }
 
     /** Subtitles against the picture, in TV mode; see [PlayerSubtitleDelay]. */
     private val subtitleDelay = PlayerSubtitleDelay()
@@ -2283,7 +2576,8 @@ class ExoplayerView :
 
     override fun onPlaybackStateChanged(playbackState: Int) {
         if (playbackState == ExoPlayer.STATE_READY) {
-            exoPlayer.play()
+            // No play() here: playWhenReady starts the episode, and READY also follows every seek
+            // and rebuffer — calling it here undid a pause the moment a scrub finished loading.
             if (castWhenReady) {
                 castWhenReady = false
                 if (!cast.isCasting) playerView.findViewById<View>(R.id.exo_cast)?.performClick()
@@ -2453,6 +2747,8 @@ class ExoplayerView :
         }
         sleepTimer?.cancel()
         sleepTimer = null
+        fullscreenReleaser?.disable()
+        fullscreenReleaser = null
         pip.unregister()
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
@@ -2533,6 +2829,7 @@ class ExoplayerView :
     private fun onPiPChanged(isInPictureInPictureMode: Boolean) {
         isEnteringPip = false
         playerView.useController = !isInPictureInPictureMode
+        applyPlayerLayout()
         nextCountdown.inPip = isInPictureInPictureMode
         if (isInPictureInPictureMode) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -2743,10 +3040,7 @@ class ExoplayerView :
     private fun tvChooseSpeed() {
         val options = speedOptions.mapIndexed { i, value ->
             ani.dantotsu.tv.TvPlayerController.Option("${value}x", i == speedIndex) {
-                PrefManager.setCustomVal("${media.id}_speed", i)
-                speedIndex = i
-                playbackParameters = PlaybackParameters(value)
-                if (isInitialized) exoPlayer.playbackParameters = playbackParameters
+                setSpeedIndex(i)
             }
         }
         tvOverlay?.choose(ani.dantotsu.tv.TvPlayerController.Choice(getString(R.string.speed), options))

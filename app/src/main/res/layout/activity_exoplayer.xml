@@ -1,8 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <!-- The video and what floats over it. Fills the screen, except held upright on a phone,
+         where it is the 16:9 band at the top and the portrait panel below has the rest (see
+         ExoplayerView.applyPlayerLayout). -->
+    <FrameLayout
+        android:id="@+id/playerVideoFrame"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
     <androidx.media3.ui.PlayerView
         android:id="@+id/player_view"
@@ -12,6 +22,52 @@
         app:animation_enabled="false"
         app:resize_mode="fit"
         app:show_buffering="when_playing"></androidx.media3.ui.PlayerView>
+
+    <!-- Where a resumed episode picked up, and the way back to its start: shown for a few seconds
+         instead of asking before playing. Bottom start, raised over the controls while they are up
+         (see ExoplayerView.showResumed). -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/resumeCard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#E6101010"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="4dp">
+
+            <TextView
+                android:id="@+id/resumeText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:alpha="0.8"
+                android:textColor="@android:color/white"
+                android:textSize="13sp"
+                tools:text="Resumed from 12:34" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/resumeStartOver"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="@string/player_start_over"
+                android:textColor="@android:color/white"
+                app:icon="@drawable/ic_round_restart_alt_24"
+                app:iconTint="@android:color/white" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- Above the player view rather than in its overlay frame, so the controls can't cover it or
          take its taps. Fixed dark-on-video colours, like the rest of the player chrome. Bottom end;
@@ -116,4 +172,16 @@
         </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
+    </FrameLayout>
+
+    <!-- Held upright: the episode, its actions and the other episodes, under the video. Themed like
+         the rest of the app, not like the player's chrome. See PlayerPortraitPanel. -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/playerPortraitList"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?android:colorBackground"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
+        android:visibility="gone" />
 </FrameLayout>

@@ -424,9 +424,14 @@ class ClipDialogFragment : CaptureSheetFragment() {
             addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
                 override fun onStartTrackingTouch(slider: Slider) {
                     scrubbing = true
+                    // The preview keeps up with the finger: quick, approximate seeks while held.
+                    previewPlayer?.setScrubbingModeEnabled(true)
                 }
 
                 override fun onStopTrackingTouch(slider: Slider) {
+                    // And lands exactly where it was let go.
+                    previewPlayer?.setScrubbingModeEnabled(false)
+                    seekPreview(slider.value.toLong())
                     scrubbing = false
                 }
             })
@@ -462,12 +467,10 @@ class ClipDialogFragment : CaptureSheetFragment() {
                 // every frame of the drag.
                 updateIntervalText()
                 if (fromUser) {
-                    // Once the storyboard exists it carries the live feedback, so the player is
-                    // left alone until the drag ends — seeking it per touch event is the
-                    // expensive part, and it's exactly what made scrubbing feel sluggish.
-                    if (storyboard == null) {
-                        seekPreview(if (movedStart) trimStartMs else trimEndMs)
-                    }
+                    // The full-size preview follows the handle being dragged. Exact seeks per touch
+                    // event were what made this sluggish, so they used to wait for the release;
+                    // in scrubbing mode (on for the drag) they are cheap enough to keep up.
+                    seekPreview(if (movedStart) trimStartMs else trimEndMs)
                     requestThumbnail(movedStart, resumeAfter = false)
                 }
             }
@@ -476,9 +479,13 @@ class ClipDialogFragment : CaptureSheetFragment() {
                     thumbnailJob?.cancel()
                     scrubbing = true
                     previewPlayer?.pause()
+                    previewPlayer?.setScrubbingModeEnabled(true)
                 }
 
                 override fun onStopTrackingTouch(slider: RangeSlider) {
+                    // Exact again before the release refines the thumbnail: the capture has to be
+                    // of the precise frame trimmed to, not an approximate one.
+                    previewPlayer?.setScrubbingModeEnabled(false)
                     requestThumbnail(movedStart, resumeAfter = true)
                     onOutputChanged()
                 }
@@ -560,6 +567,10 @@ class ClipDialogFragment : CaptureSheetFragment() {
     private fun requestThumbnail(atStart: Boolean, resumeAfter: Boolean) {
         val instant = showStoryboardFrame(atStart)
         if (instant && !resumeAfter) return
+        // Mid-drag the preview is in scrubbing mode, where a frame needn't be the one at the
+        // position reported: capturing then would file it under the wrong time. The preview shows
+        // the frame meanwhile; the release captures the exact one.
+        if (!resumeAfter && previewPlayer?.isScrubbingModeEnabled == true) return
         thumbnailJob?.cancel()
         thumbnailJob = viewLifecycleOwner.lifecycleScope.launch {
             if (!resumeAfter) delay(THUMBNAIL_DEBOUNCE_MS)

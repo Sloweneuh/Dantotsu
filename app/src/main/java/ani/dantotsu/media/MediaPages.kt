@@ -88,7 +88,7 @@ class MediaPanes(private val activity: FragmentActivity, private val binding: Ac
         }
         // The comment box belongs to the Comments pane, not across the list.
         binding.mediaViewPager.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-            val box = binding.commentMessageContainer
+            val box = binding.commentBox.root
             if (box.layoutParams.width == v.width) return@addOnLayoutChangeListener
             // Outside this layout pass, or the box's relayout runs a second one.
             box.post {

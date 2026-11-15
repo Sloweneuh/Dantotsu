@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The player's comments sheet: the comments list over the comment box. See PlayerCommentsSheet. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bottom_sheet_background_app"
+    android:orientation="vertical">
+
+    <View
+        android:layout_width="32dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp"
+        android:alpha="0.4"
+        android:background="@drawable/bg_top_banner_handle" />
+
+    <FrameLayout
+        android:id="@+id/playerCommentsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <include
+        android:id="@+id/commentBox"
+        layout="@layout/layout_comment_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+</LinearLayout>

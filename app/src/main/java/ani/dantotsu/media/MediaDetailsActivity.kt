@@ -83,7 +83,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.joery.animatedbottombar.AnimatedBottomBar
 
-class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener {
+class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener,
+    ani.dantotsu.media.comments.CommentsHost {
     /** MALSync's newest chapter or episode for this media and its source, once fetched. */
     private var liveMalSync: Pair<Int, String?>? = null
 
@@ -103,6 +104,10 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
     /** False when onCreate bailed out early (e.g. no media), leaving restored fragments without a bar. */
     val isNavBarReady: Boolean get() = ::navBar.isInitialized
+
+    override val commentBox get() = binding.commentBox
+    override val commentsNavBar get() = navBar
+    override val commentsReady get() = isNavBarReady
     var anime = true
     private var adult = false
     private var enterTransitionStarted = false
@@ -1287,7 +1292,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         val page = pageWindows.indexOf(selected).coerceAtLeast(0)
         if (viewPager.currentItem != page)
                 viewPager.post { viewPager.jumpTo(page) }
-        binding.commentInputLayout.isVisible = selected == 2
+        binding.commentBox.commentInputLayout.isVisible = selected == 2
         navBar.selectTabAt(tabWindows.indexOf(selected).coerceAtLeast(0))
         // Info alone: a bar with one tab is just noise.
         if (navBar.tabCount < 2) hideNavBar()
@@ -1300,7 +1305,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                             newTab: AnimatedBottomBar.Tab
                     ) {
                         selected = tabWindows[newIndex]
-                        binding.commentInputLayout.isVisible = selected == 2
+                        binding.commentBox.commentInputLayout.isVisible = selected == 2
                         viewPager.setCurrentItem(pageWindows.indexOf(selected), false)
                         queueSheet?.let {
                             it.setPageMode(queuePageMode(selected))

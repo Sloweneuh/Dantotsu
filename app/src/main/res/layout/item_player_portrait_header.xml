@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The top of the player's portrait panel: what is playing, its synopsis, and the actions that
+     leave the video controls when the phone is upright. See PlayerPortraitPanel. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="12dp">
+
+    <TextView
+        android:id="@+id/playerPortraitTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/poppins_bold"
+        android:maxLines="2"
+        android:textColor="?attr/colorOnBackground"
+        android:textSize="18sp"
+        tools:text="Steel Ball Run" />
+
+    <TextView
+        android:id="@+id/playerPortraitEpisode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:alpha="0.8"
+        android:ellipsize="end"
+        android:fontFamily="@font/poppins_semi_bold"
+        android:maxLines="2"
+        android:textColor="?attr/colorOnBackground"
+        android:textSize="14sp"
+        tools:text="Episode 3 · The Desert" />
+
+    <!-- Two lines, the rest a tap away. -->
+    <TextView
+        android:id="@+id/playerPortraitSynopsis"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:alpha="0.7"
+        android:background="?android:attr/selectableItemBackground"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textColor="?attr/colorOnBackground"
+        android:textSize="13sp"
+        android:visibility="gone"
+        tools:text="The riders cross the desert..."
+        tools:visibility="visible" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:clipToPadding="false"
+        android:paddingHorizontal="16dp"
+        android:scrollbars="none">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/playerPortraitActions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:chipSpacingHorizontal="8dp"
+            app:singleLine="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/playerChipList"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/player_add_to_list"
+                app:chipIcon="@drawable/ic_round_playlist_add_24"
+                app:chipIconTint="?attr/colorOnBackground" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/playerChipComments"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/comments"
+                app:chipIcon="@drawable/ic_round_forum_outline_24"
+                app:chipIconTint="?attr/colorOnBackground" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/playerChipShare"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/share"
+                app:chipIcon="@drawable/ic_round_share_24"
+                app:chipIconTint="?attr/colorOnBackground" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/playerChipDownload"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/download"
+                app:chipIcon="@drawable/ic_round_download_24"
+                app:chipIconTint="?attr/colorOnBackground" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/playerChipSubscribe"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/player_subscribe"
+                app:chipIcon="@drawable/ic_round_notifications_outline_24"
+                app:chipIconTint="?attr/colorOnBackground" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/playerChipClip"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/clip"
+                app:chipIcon="@drawable/ic_round_movie_edit_outline_24"
+                app:chipIconTint="?attr/colorOnBackground" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/playerChipMore"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/more"
+                app:chipIcon="@drawable/ic_round_more_vert_24"
+                app:chipIconTint="?attr/colorOnBackground" />
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
+
+    <TextView
+        android:id="@+id/playerPortraitEpisodesLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="12dp"
+        android:fontFamily="@font/poppins_bold"
+        android:text="@string/player_episodes"
+        android:textColor="?attr/colorOnBackground"
+        android:textSize="16sp" />
+</LinearLayout>

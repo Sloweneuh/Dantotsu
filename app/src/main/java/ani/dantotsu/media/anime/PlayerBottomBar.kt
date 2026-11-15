@@ -34,10 +34,11 @@ class PlayerBottomBar(playerView: PlayerView) {
 
     /** Most needed first: these are the last to move behind "more". */
     private val items = listOf(
+        item(R.id.exo_fullscreen, R.string.player_fullscreen, R.drawable.ic_round_fullscreen_24),
         item(R.id.exo_source, R.string.source, R.drawable.ic_source),
         item(R.id.exo_sub, R.string.subtitles, R.drawable.ic_round_subtitles_24),
         item(R.id.exo_audio, R.string.audio_tracks, R.drawable.ic_round_music_note_24),
-        item(R.id.exo_screen, R.string.player_resize, R.drawable.ic_round_fullscreen_24),
+        item(R.id.exo_screen, R.string.player_resize, R.drawable.ic_round_aspect_ratio_outline_24),
         item(R.id.exo_settings, R.string.settings, R.drawable.ic_round_video_settings_24),
         item(R.id.exo_pip, R.string.picture_in_picture, R.drawable.ic_round_picture_in_picture_alt_outline_24),
         item(R.id.exo_cast, R.string.player_cast, R.drawable.ic_round_cast_outline_24),

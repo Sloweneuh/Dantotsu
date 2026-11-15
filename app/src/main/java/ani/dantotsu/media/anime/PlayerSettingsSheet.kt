@@ -104,12 +104,20 @@ class PlayerSettingsSheet : BottomSheetDialogFragment() {
 
         bind(binding.playerPlaybackRows) { refresh ->
             homeActionRefresh = refresh
+            val speeds = player.speeds
             listOf(
+                // Through the speeds on offer, kept for the series like the speed button's.
+                SettingsRows.slider(ctx, R.string.speed, R.drawable.ic_round_slow_motion_video_24, SliderConfig(
+                    from = 0f, to = (speeds.size - 1).coerceAtLeast(1).toFloat(), stepSize = 1f,
+                    value = player.speedIndex.toFloat().coerceIn(0f, (speeds.size - 1).coerceAtLeast(1).toFloat()),
+                    onChange = { player.setSpeedIndex(it.roundToInt()) },
+                    format = { PlayerSpeedSheet.speedLabel(speeds.getOrNull(it.roundToInt()) ?: 1f) },
+                ), enabled = speeds.size > 1),
                 pref(PrefName.AutoPlay, R.string.auto_play_next_episode, R.drawable.ic_round_play_arrow_24),
                 pref(PrefName.NextEpisodeCountdown, R.string.next_episode_countdown, R.drawable.ic_round_schedule_outline_24),
                 pref(PrefName.SkipOutroToNext, R.string.skip_outro_to_next, R.drawable.ic_round_fast_forward_24,
                     R.string.skip_outro_to_next_desc),
-                pref(PrefName.AlwaysContinue, R.string.always_continue, R.drawable.ic_round_replay_10_24),
+                pref(PrefName.AlwaysContinue, R.string.always_continue, R.drawable.ic_round_restart_alt_24),
                 pref(PrefName.AutoSkipOPED, R.string.auto_skip_op_ed, R.drawable.ic_round_fast_forward_24) {
                     player.refreshSkipButton()
                 },

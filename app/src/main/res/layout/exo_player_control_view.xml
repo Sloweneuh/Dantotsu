@@ -290,7 +290,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:backgroundTint="#00FFFFFF"
-                        android:src="@drawable/ic_round_fullscreen_24"
+                        android:src="@drawable/ic_round_aspect_ratio_outline_24"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
@@ -302,6 +302,19 @@
                         android:backgroundTint="#00FFFFFF"
                         android:contentDescription="@string/more_options"
                         android:src="@drawable/ic_round_more_vert_tinted_24"
+                        android:visibility="gone"
+                        app:tint="#fff" />
+
+                    <!-- Fullscreen and back, for a phone that can show the player upright: the
+                         video alone in landscape, or above the episode list. See ExoplayerView's
+                         fullscreen handling. -->
+                    <ImageButton
+                        android:id="@+id/exo_fullscreen"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:backgroundTint="#00FFFFFF"
+                        android:contentDescription="@string/player_fullscreen"
+                        android:src="@drawable/ic_round_fullscreen_24"
                         android:visibility="gone"
                         app:tint="#fff" />
 

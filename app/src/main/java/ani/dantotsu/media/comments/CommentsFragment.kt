@@ -6,6 +6,7 @@ import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.media.manga.mangareader.ChapterLoaderDialog
 import android.content.res.ColorStateList
 import androidx.core.view.isVisible
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.activityViewModels
 import ani.dantotsu.getThemeColor
 import android.animation.ValueAnimator
@@ -34,7 +35,7 @@ import ani.dantotsu.connections.comments.CommentsAPI
 import ani.dantotsu.databinding.DialogEdittextBinding
 import ani.dantotsu.databinding.FragmentCommentsBinding
 import ani.dantotsu.loadImage
-import ani.dantotsu.media.MediaDetailsActivity
+import ani.dantotsu.databinding.LayoutCommentInputBinding
 import ani.dantotsu.setBaseline
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -54,16 +55,25 @@ import java.util.TimeZone
 
 @SuppressLint("ClickableViewAccessibility")
 class CommentsFragment : Fragment() {
-    private companion object {
-        const val MAX_COMMENT_LENGTH = 300
+    companion object {
+        private const val MAX_COMMENT_LENGTH = 300
 
         /** How far up a notified reply's chain is followed to its top-level comment. */
-        const val MAX_THREAD_HOPS = 10
+        private const val MAX_THREAD_HOPS = 10
+
+        /** Optional: the chapter or episode new comments are labelled with to begin with. */
+        const val ARG_POST_TAG = "postTag"
+
+        /** Optional: show the page's own title, for a host with nothing else naming it. */
+        const val ARG_SHOW_TITLE = "showTitle"
     }
 
     private val activityViewModel: ani.dantotsu.media.MediaDetailsViewModel by activityViewModels()
     lateinit var binding: FragmentCommentsBinding
-    lateinit var activity: MediaDetailsActivity
+    lateinit var activity: AppCompatActivity
+
+    /** The box comments are written in: the host's, so it outlives this fragment's view. */
+    private lateinit var box: LayoutCommentInputBinding
     private var interactionState = InteractionState.NONE
     private var commentWithInteraction: CommentItem? = null
     private val section = Section()
@@ -95,13 +105,12 @@ class CommentsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        activity = requireActivity() as MediaDetailsActivity
-        if (!activity.isNavBarReady) return
-
-        binding.commentsListContainer.setBaseline(
-            activity.navBar,
-            0
-        )
+        activity = requireActivity() as AppCompatActivity
+        // The details page's comments tab, or the player's comments sheet.
+        val host = (parentFragment as? CommentsHost) ?: (activity as? CommentsHost) ?: return
+        if (!host.commentsReady) return
+        box = host.commentBox
+        host.commentsNavBar?.let { binding.commentsListContainer.setBaseline(it, 0) }
 
         //get the media id from the intent
         val mediaId = arguments?.getInt("mediaId") ?: -1
@@ -115,10 +124,10 @@ class CommentsFragment : Fragment() {
 
         val markwon = buildMarkwon(activity, fragment = this@CommentsFragment)
 
-        activity.binding.commentUserAvatar.loadImage(Anilist.avatar)
+        box.commentUserAvatar.loadImage(Anilist.avatar)
         val markwonEditor = MarkwonEditor.create(markwon)
         markwonWatcher = MarkwonEditorTextWatcher.withProcess(markwonEditor).also {
-            activity.binding.commentInput.addTextChangedListener(it)
+            box.commentInput.addTextChangedListener(it)
         }
 
         binding.commentsRefresh.setOnRefreshListener {
@@ -126,7 +135,15 @@ class CommentsFragment : Fragment() {
                 loadAndDisplayComments()
                 binding.commentsRefresh.isRefreshing = false
             }
-            activity.binding.commentReplyToContainer.visibility = View.GONE
+            box.commentReplyToContainer.visibility = View.GONE
+        }
+
+        binding.commentsTitle.isVisible = arguments?.getBoolean(ARG_SHOW_TITLE) == true
+        arguments?.getInt(ARG_POST_TAG, -1)?.takeIf { it >= 0 }?.let {
+            tag = it
+            box.commentLabel.background = ResourcesCompat.getDrawable(
+                resources, R.drawable.ic_round_label_outline_24, null
+            )
         }
 
         binding.commentsList.adapter = adapter
@@ -145,7 +162,7 @@ class CommentsFragment : Fragment() {
             // Still signed out after trying (no AniList login, or the server refused it): reading
             // works for nobody then, and neither would writing.
             if (CommentsAPI.authToken == null) {
-                activity.binding.commentMessageContainer.visibility = View.GONE
+                box.root.visibility = View.GONE
             }
         }
 
@@ -174,7 +191,7 @@ class CommentsFragment : Fragment() {
                 if (totalPages > pagesLoaded) {
                     lifecycleScope.launch {
                         loadAndDisplayComments()
-                        activity.binding.commentReplyToContainer.visibility = View.GONE
+                        box.commentReplyToContainer.visibility = View.GONE
                     }
                 } else {
                     sortComments(sortOrder)
@@ -276,39 +293,39 @@ class CommentsFragment : Fragment() {
             }
 
             override fun afterTextChanged(s: android.text.Editable?) {
-                if ((activity.binding.commentInput.text.length) > 300) {
-                    activity.binding.commentInput.text.delete(
+                if ((box.commentInput.text.length) > 300) {
+                    box.commentInput.text.delete(
                         300,
-                        activity.binding.commentInput.text.length
+                        box.commentInput.text.length
                     )
                     snackString(getString(R.string.comment_too_long))
                 }
             }
-        }.also { activity.binding.commentInput.addTextChangedListener(it) }
+        }.also { box.commentInput.addTextChangedListener(it) }
 
         // Focusing the box brings in its tools — spoiler, GIF, tag, send — beside it. The box is a
         // weighted field, so the row makes room by itself; the transition animates the change.
-        activity.binding.commentInput.setOnFocusChangeListener { _, hasFocus ->
+        box.commentInput.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) return@setOnFocusChangeListener
-            TransitionManager.beginDelayedTransition(activity.binding.commentInputLayout)
-            activity.binding.commentSpoiler.visibility = View.VISIBLE
-            activity.binding.commentGif.isVisible = GifPickerBottomDialog.isAvailable
-            activity.binding.commentLabel.visibility = View.VISIBLE
-            activity.binding.commentSend.visibility = View.VISIBLE
+            TransitionManager.beginDelayedTransition(box.commentInputLayout)
+            box.commentSpoiler.visibility = View.VISIBLE
+            box.commentGif.isVisible = GifPickerBottomDialog.isAvailable
+            box.commentLabel.visibility = View.VISIBLE
+            box.commentSend.visibility = View.VISIBLE
         }
 
         // 3. Spoiler: the comment goes out wrapped in ||…||, which the comments render hidden.
         updateSpoilerButton()
-        activity.binding.commentSpoiler.setOnClickListener {
+        box.commentSpoiler.setOnClickListener {
             spoilerMode = !spoilerMode
             updateSpoilerButton()
         }
 
         // 5. GIF: Klipy's search, inserted as a markdown image the comments already render.
-        activity.binding.commentGif.setOnClickListener {
+        box.commentGif.setOnClickListener {
             GifPickerBottomDialog().apply {
                 onGifSelected = { url ->
-                    val input = this@CommentsFragment.activity.binding.commentInput
+                    val input = this@CommentsFragment.box.commentInput
                     val current = input.text.toString()
                     val gif = "![gif]($url)"
                     val text = if (current.isBlank()) gif else "$current\n$gif"
@@ -320,7 +337,7 @@ class CommentsFragment : Fragment() {
             }.show(childFragmentManager, "gifPicker")
         }
 
-        activity.binding.commentLabel.setOnClickListener {
+        box.commentLabel.setOnClickListener {
             //alert dialog to enter a number, with a cancel and ok button
             activity.customAlertDialog().apply {
                 val customView = DialogEdittextBinding.inflate(layoutInflater)
@@ -330,13 +347,13 @@ class CommentsFragment : Fragment() {
                     val text = customView.dialogEditText.text.toString()
                     tag = text.toIntOrNull()
                     if (tag == null) {
-                        activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
+                        box.commentLabel.background = ResourcesCompat.getDrawable(
                             resources,
                             R.drawable.ic_round_label_off_outline_24,
                             null
                         )
                     } else {
-                        activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
+                        box.commentLabel.background = ResourcesCompat.getDrawable(
                             resources,
                             R.drawable.ic_round_label_outline_24,
                             null
@@ -345,7 +362,7 @@ class CommentsFragment : Fragment() {
                 }
                 setNeutralButton(getString(R.string.comment_tag_clear)) {
                     tag = null
-                    activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
+                    box.commentLabel.background = ResourcesCompat.getDrawable(
                         resources,
                         R.drawable.ic_round_label_off_outline_24,
                         null
@@ -353,7 +370,7 @@ class CommentsFragment : Fragment() {
                 }
                 setNegButton(getString(R.string.cancel)) {
                     tag = null
-                    activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
+                    box.commentLabel.background = ResourcesCompat.getDrawable(
                         resources,
                         R.drawable.ic_round_label_off_outline_24,
                         null
@@ -363,7 +380,7 @@ class CommentsFragment : Fragment() {
             }
         }
 
-        activity.binding.commentSend.setOnClickListener {
+        box.commentSend.setOnClickListener {
             if (CommentsAPI.isBanned) {
                 snackString(R.string.banned_from_commenting)
                 return@setOnClickListener
@@ -385,7 +402,7 @@ class CommentsFragment : Fragment() {
      * times over, for views long gone.
      */
     override fun onDestroyView() {
-        (requireActivity() as? MediaDetailsActivity)?.binding?.let { b ->
+        if (::box.isInitialized) box.let { b ->
             markwonWatcher?.let { b.commentInput.removeTextChangedListener(it) }
             limitWatcher?.let { b.commentInput.removeTextChangedListener(it) }
             b.commentInput.onFocusChangeListener = null
@@ -398,7 +415,7 @@ class CommentsFragment : Fragment() {
     }
 
     private fun updateSpoilerButton() {
-        val button = activity.binding.commentSpoiler
+        val button = box.commentSpoiler
         button.alpha = if (spoilerMode) 1f else 0.6f
         button.setImageResource(if (spoilerMode) R.drawable.ic_round_visibility_off_outline_white_24 else R.drawable.ic_round_visibility_24)
         button.imageTintList = ColorStateList.valueOf(
@@ -668,7 +685,7 @@ class CommentsFragment : Fragment() {
                 }
             }
             loadAndDisplayComments()
-            activity.binding.commentReplyToContainer.visibility = View.GONE
+            box.commentReplyToContainer.visibility = View.GONE
         }
     }
 
@@ -692,19 +709,19 @@ class CommentsFragment : Fragment() {
         interactionState = InteractionState.NONE
         return when (oldState) {
             InteractionState.EDIT -> {
-                activity.binding.commentReplyToContainer.visibility = View.GONE
-                activity.binding.commentInput.setText("")
+                box.commentReplyToContainer.visibility = View.GONE
+                box.commentInput.setText("")
                 val imm = activity.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.hideSoftInputFromWindow(activity.binding.commentInput.windowToken, 0)
+                imm.hideSoftInputFromWindow(box.commentInput.windowToken, 0)
                 commentWithInteraction?.editing(false)
                 InteractionState.EDIT
             }
 
             InteractionState.REPLY -> {
-                activity.binding.commentReplyToContainer.visibility = View.GONE
-                activity.binding.commentInput.setText("")
+                box.commentReplyToContainer.visibility = View.GONE
+                box.commentInput.setText("")
                 val imm = activity.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.hideSoftInputFromWindow(activity.binding.commentInput.windowToken, 0)
+                imm.hideSoftInputFromWindow(box.commentInput.windowToken, 0)
                 commentWithInteraction?.replying(false)
                 InteractionState.REPLY
             }
@@ -723,11 +740,11 @@ class CommentsFragment : Fragment() {
     fun editCallback(comment: CommentItem) {
         if (resetOldState() == InteractionState.EDIT) return
         commentWithInteraction = comment
-        activity.binding.commentInput.setText(comment.comment.content)
-        activity.binding.commentInput.requestFocus()
-        activity.binding.commentInput.setSelection(activity.binding.commentInput.text.length)
+        box.commentInput.setText(comment.comment.content)
+        box.commentInput.requestFocus()
+        box.commentInput.setSelection(box.commentInput.text.length)
         val imm = activity.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.showSoftInput(activity.binding.commentInput, InputMethodManager.SHOW_IMPLICIT)
+        imm.showSoftInput(box.commentInput, InputMethodManager.SHOW_IMPLICIT)
         interactionState = InteractionState.EDIT
     }
 
@@ -739,26 +756,26 @@ class CommentsFragment : Fragment() {
     fun replyCallback(comment: CommentItem) {
         if (resetOldState() == InteractionState.REPLY) return
         commentWithInteraction = comment
-        activity.binding.commentReplyToContainer.visibility = View.VISIBLE
-        activity.binding.commentInput.requestFocus()
-        activity.binding.commentInput.setSelection(activity.binding.commentInput.text.length)
+        box.commentReplyToContainer.visibility = View.VISIBLE
+        box.commentInput.requestFocus()
+        box.commentInput.setSelection(box.commentInput.text.length)
         val imm = activity.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.showSoftInput(activity.binding.commentInput, InputMethodManager.SHOW_IMPLICIT)
+        imm.showSoftInput(box.commentInput, InputMethodManager.SHOW_IMPLICIT)
         interactionState = InteractionState.REPLY
 
     }
 
     fun replyTo(comment: CommentItem, username: String) {
         if (comment.isReplying) {
-            activity.binding.commentReplyToContainer.visibility = View.VISIBLE
-            activity.binding.commentReplyTo.text = getString(R.string.replying_to, username)
-            activity.binding.commentReplyToCancel.setOnClickListener {
+            box.commentReplyToContainer.visibility = View.VISIBLE
+            box.commentReplyTo.text = getString(R.string.replying_to, username)
+            box.commentReplyToCancel.setOnClickListener {
                 comment.replying(false)
                 replyCallback(comment)
-                activity.binding.commentReplyToContainer.visibility = View.GONE
+                box.commentReplyToContainer.visibility = View.GONE
             }
         } else {
-            activity.binding.commentReplyToContainer.visibility = View.GONE
+            box.commentReplyToContainer.visibility = View.GONE
         }
     }
 
@@ -811,7 +828,7 @@ class CommentsFragment : Fragment() {
     }
 
     private fun processComment() {
-        val typed = activity.binding.commentInput.text.toString()
+        val typed = box.commentInput.text.toString()
         if (typed.isBlank()) {
             snackString(getString(R.string.comment_empty))
             return
@@ -820,14 +837,14 @@ class CommentsFragment : Fragment() {
         spoilerMode = false
         updateSpoilerButton()
 
-        activity.binding.commentInput.text.clear()
+        box.commentInput.text.clear()
         lifecycleScope.launch {
             if (interactionState == InteractionState.EDIT) {
                 handleEditComment(commentText)
             } else {
                 handleNewComment(commentText)
                 tag = null
-                activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
+                box.commentLabel.background = ResourcesCompat.getDrawable(
                     resources,
                     R.drawable.ic_round_label_off_outline_24,
                     null
