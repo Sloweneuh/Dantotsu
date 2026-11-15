@@ -82,6 +82,10 @@ enum class InfoSectionKind(
     CATEGORY_RECOMMENDATIONS(
         "category_recommendations", R.string.category_recommendations, InfoSectionMerge.MEDIA
     ),
+    /** What the series' readers also follow: MangaBaka's readers-also-like, Comick's also-followed. */
+    READERS_ALSO_LIKE(
+        "readers_also_like", R.string.info_section_readers_also_like, InfoSectionMerge.MEDIA
+    ),
     /** Curated collections of titles: MAL and MangaBaka call theirs stacks, Comick lists. */
     STACKS("stacks", R.string.info_section_stacks_lists, InfoSectionMerge.ROW),
     REVIEWS("reviews", R.string.reviews, InfoSectionMerge.LIST),
@@ -129,6 +133,7 @@ enum class InfoSectionKind(
             QUELS -> R.string.info_section_desc_quels
             RELATIONS -> R.string.info_section_desc_relations
             RECOMMENDATIONS -> R.string.info_section_desc_recommendations
+            READERS_ALSO_LIKE -> R.string.info_section_desc_readers_also_like
             CATEGORY_RECOMMENDATIONS -> R.string.info_section_desc_category_recommendations
             STACKS -> R.string.info_section_desc_stacks
             REVIEWS -> R.string.info_section_desc_reviews
@@ -348,6 +353,7 @@ fun InfoTabContext.sectionsOf(source: InfoTabType): List<InfoSectionKind> {
                 )
                 ) + listOf(
             InfoSectionKind.GENRES, InfoSectionKind.TAGS, InfoSectionKind.RECOMMENDATIONS,
+        ) + (if (anime) emptyList() else listOf(InfoSectionKind.READERS_ALSO_LIKE)) + listOf(
             InfoSectionKind.STACKS, InfoSectionKind.REVIEWS, InfoSectionKind.COMMENTS,
         )
 
@@ -369,7 +375,7 @@ fun InfoTabContext.sectionsOf(source: InfoTabType): List<InfoSectionKind> {
             InfoSectionKind.SYNONYMS, InfoSectionKind.EXTERNAL_LINKS, InfoSectionKind.COVERS,
             InfoSectionKind.ANIME_ADAPTATION, InfoSectionKind.GENRES, InfoSectionKind.TAGS,
             InfoSectionKind.PUBLISHERS, InfoSectionKind.RELATIONS,
-            InfoSectionKind.RECOMMENDATIONS, InfoSectionKind.STACKS,
+            InfoSectionKind.RECOMMENDATIONS, InfoSectionKind.READERS_ALSO_LIKE, InfoSectionKind.STACKS,
         )
 
         InfoTabType.KITSU -> head + InfoSectionKind.SYNONYMS + InfoSectionKind.GENRES + (

@@ -213,6 +213,7 @@ object MangaBakaMediaRenderer {
                 addRecommendations(activity, scope, isAlive, contentHost, seriesId, reco)
             }
         }
+        ReadersAlsoLike.addMangaBaka(activity, scope, isAlive, contentHost, seriesId, reco?.media)
         if (contentHost.wantsInfoSection(InfoSectionKind.STACKS)) {
             contentHost.infoSection(InfoSectionKind.STACKS) {
                 MangaBakaStackUi.addSeriesStacks(

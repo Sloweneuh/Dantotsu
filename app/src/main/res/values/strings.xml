@@ -4337,4 +4337,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="chapter_end_missing">%1$d chapters are missing between these</string>
     <string name="chapter_end_last">This is the latest chapter</string>
     <string name="chapter_load_failed">Couldn\'t load chapter %1$s</string>
+    <string name="info_section_readers_also_like">Readers also like</string>
+    <string name="info_section_desc_readers_also_like">What readers of this series also follow, by how many lists they share.</string>
 </resources>

@@ -4215,4 +4215,6 @@
     <string name="chapter_end_missing">Il manque %1$d chapitres entre les deux</string>
     <string name="chapter_end_last">C\'est le dernier chapitre</string>
     <string name="chapter_load_failed">Impossible de charger le chapitre %1$s</string>
+    <string name="info_section_readers_also_like">Les lecteurs aiment aussi</string>
+    <string name="info_section_desc_readers_also_like">Ce que suivent aussi les lecteurs de cette série, selon les listes qu’ils partagent.</string>
 </resources>

@@ -1357,6 +1357,27 @@ object ComickApi {
      * @param hid The entry's HID
      * @return tags, or empty on failure
      */
+    /**
+     * Titles the readers of the one with [hid] also follow, most shared first. Keyed by hid, not
+     * slug: the slug form of the route answers 404.
+     */
+    suspend fun getAlsoFollowed(hid: String): List<ComickAlsoFollowed> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.newCall(request("https://api.comick.dev/comic/$hid/also-followed")).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick also-followed API error: ${response.code} for hid=$hid")
+                return@withContext emptyList()
+            }
+            val body = response.body.string()
+            if (body.isBlank()) return@withContext emptyList()
+            gson.fromJson(body, Array<ComickAlsoFollowed>::class.java)?.toList().orEmpty()
+                .filter { !it.hid.isNullOrBlank() && !it.slug.isNullOrBlank() }
+        } catch (e: Exception) {
+            Logger.log("Error fetching Comick also-followed for hid $hid: ${e.message}")
+            emptyList()
+        }
+    }
+
     suspend fun getComicTags(hid: String): List<ComickUserTag> = withContext(Dispatchers.IO) {
         try {
             val url = "https://api.comick.dev/comic-tags".toHttpUrlOrNull()?.newBuilder()

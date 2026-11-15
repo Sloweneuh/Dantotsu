@@ -742,6 +742,7 @@ class InfoTabEditorActivity : AppCompatActivity() {
                 listOf(
                     InfoSectionKind.REVIEWS, InfoSectionKind.STACKS, InfoSectionKind.NEWS,
                     InfoSectionKind.COMMENTS, InfoSectionKind.RECOMMENDATIONS,
+                    InfoSectionKind.READERS_ALSO_LIKE,
                 ),
                 InfoSourceMode.MERGE,
             ),

@@ -1686,6 +1686,15 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
+        // Readers also like — its slot claimed now, between recommendations and custom lists.
+        comic.hid?.takeIf { it.isNotBlank() }?.let { hid ->
+            val model: MediaDetailsViewModel by activityViewModels()
+            ReadersAlsoLike.addComick(
+                requireActivity() as androidx.appcompat.app.AppCompatActivity,
+                viewLifecycleOwner.lifecycleScope, { _binding != null }, parent, hid, model.getMedia().value,
+            )
+        }
+
         // Custom Lists — placeholder added synchronously so it sits between recommendations and reviews
         val comickHid = comic.hid
         if (comickHid.isNullOrBlank()) {

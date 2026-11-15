@@ -1027,6 +1027,44 @@ class ComickMediaActivity : AppCompatActivity() {
             }
         }
 
+        // Readers also like: Comick's also-followed, as Comick cards — on this page they open
+        // their own Comick page, so nothing needs resolving to AniList first.
+        comic.hid?.takeIf { it.isNotBlank() && !isAnimeMode }?.let { alsoHid ->
+            val alsoPlaceholder = android.widget.FrameLayout(this).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            parent.addInfoSection(InfoSectionKind.READERS_ALSO_LIKE, alsoPlaceholder)
+            lifecycleScope.launch {
+                val allowAdult = PrefManager.getVal<Boolean>(PrefName.AdultOnly)
+                val also = ComickApi.getAlsoFollowed(alsoHid)
+                    .filter { allowAdult || it.content_rating != "erotica" }
+                    .map {
+                        ComickListComic(
+                            title = it.title, slug = it.slug, hid = it.hid, last_chapter = null,
+                            md_titles = it.md_titles, md_covers = it.md_covers, content_rating = it.content_rating,
+                        )
+                    }
+                if (also.isEmpty() || isFinishing || isDestroyed) return@launch
+                ItemTitleRecyclerBinding.inflate(LayoutInflater.from(this@ComickMediaActivity), alsoPlaceholder, false).apply {
+                    itemTitle.setText(R.string.info_section_readers_also_like)
+                    val adapter = ComickListComicAdapter { rec ->
+                        startActivity(Intent(this@ComickMediaActivity, ComickMediaActivity::class.java)
+                            .putExtra(EXTRA_SLUG, rec.slug))
+                    }
+                    adapter.appendItems(also)
+                    itemRecycler.adapter = adapter
+                    itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(
+                        this@ComickMediaActivity, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false
+                    )
+                    itemMore.visibility = View.GONE
+                    alsoPlaceholder.addView(root)
+                }
+            }
+        }
+
         val hid = comic.hid
         if (!hid.isNullOrBlank()) {
             val customListsPlaceholder = android.widget.FrameLayout(this).apply {

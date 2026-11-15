@@ -791,3 +791,25 @@ data class ComickTitle(
 data class ComickTitleResponse(
     val data: ComickTitle? = null,
 )
+
+/**
+ * One title of `GET /comic/{hid}/also-followed`: followed by many of the same readers. No AniList
+ * or MangaUpdates link here; [ani.dantotsu.media.ReadersAlsoLike] resolves those.
+ */
+data class ComickAlsoFollowed(
+    val hid: String?,
+    val slug: String?,
+    val title: String?,
+    val md_titles: List<ComickAlternativeTitle>? = null,
+    val md_covers: List<ComickCover>? = null,
+    val content_rating: String? = null,
+    /** Readers following both this title and the one asked about. */
+    val shared_users: Int? = null,
+) : Serializable {
+    fun displayTitle(): String? = pickPreferredTitle(title, md_titles)
+
+    /** The first cover, as Comick hosts it. */
+    val coverUrl: String?
+        get() = md_covers?.firstNotNullOfOrNull { it.b2key?.takeIf { key -> key.isNotBlank() } }
+            ?.let { "https://meo.comick.pictures/$it" }
+}

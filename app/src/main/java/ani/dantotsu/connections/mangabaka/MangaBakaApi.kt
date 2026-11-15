@@ -677,6 +677,24 @@ object MangaBakaApi {
     } ?: emptyList()
 
     /**
+     * Series the readers of [seriesId] also read, via `GET /v1/series/{id}/readers-also-like`,
+     * strongest overlap first. Same entries as [getSimilar] (a score and the series), so the same
+     * model; the route also gives a rank and a shared-reader count, which aren't needed.
+     */
+    suspend fun getReadersAlsoLike(seriesId: Long, allowAdult: Boolean = true): List<SimilarItem> = tryWithSuspend {
+        val urlBuilder = "$API_URL/v1/series/$seriesId/readers-also-like".toHttpUrl().newBuilder()
+        if (!allowAdult) listOf("safe", "suggestive").forEach { urlBuilder.addQueryParameter("content_rating", it) }
+        val request = Request.Builder().url(urlBuilder.build()).get().build()
+        val response = execute(request)
+        val body = response.body?.string()
+        if (!response.isSuccessful || body.isNullOrBlank()) {
+            Logger.log("MangaBaka readers-also-like[$seriesId]: HTTP ${response.code}")
+            return@tryWithSuspend emptyList<SimilarItem>()
+        }
+        Mapper.json.decodeFromString<SimilarResponse>(body).data ?: emptyList()
+    } ?: emptyList()
+
+    /**
      * Related series via `GET /v1/series/{id}/relationships`. Public route, with each target
      * embedded. Parodies and cameos are left out: on a popular title they are dozens of doujin
      * edges, and they bury the sequels. Reading-order kinds come first.

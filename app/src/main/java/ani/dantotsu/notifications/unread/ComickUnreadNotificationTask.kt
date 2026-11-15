@@ -1120,7 +1120,8 @@ class ComickUnreadNotificationTask : Task {
         }
     }
 
-    private companion object {
+    // Internal: ReadersAlsoLike reads and fills the same link cache.
+    internal companion object {
         @Volatile
         var currentlyPerforming = false
 
