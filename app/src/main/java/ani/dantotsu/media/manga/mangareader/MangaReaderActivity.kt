@@ -953,6 +953,19 @@ class MangaReaderActivity : AppCompatActivity() {
 
     private val snapHelper = PagerSnapHelper()
 
+    /**
+     * Moves the paged layout's current page within itself, when it is a fit-width page taller than
+     * the screen (see [ImageAdapter.scrollWithinPage]); true if it moved, and the tap or key that
+     * asked shouldn't also turn the page.
+     */
+    private fun scrollCurrentPage(forward: Boolean): Boolean {
+        if (!fitsPageWidth) return false
+        val pager = binding.mangaReaderPager
+        val holder = (pager.getChildAt(0) as? RecyclerView)
+            ?.findViewHolderForAdapterPosition(pager.currentItem) ?: return false
+        return (imageAdapter as? ImageAdapter)?.scrollWithinPage(holder.itemView, forward) == true
+    }
+
     /** Goes on to the next chapter in reading order; set in onCreate, where chapters change. */
     private var openNextChapter: (() -> Unit)? = null
 
@@ -1462,10 +1475,10 @@ class MangaReaderActivity : AppCompatActivity() {
                 }
             }
             onVolumeUp = {
-                binding.mangaReaderPager.currentItem -= 1
+                if (!scrollCurrentPage(forward = false)) binding.mangaReaderPager.currentItem -= 1
             }
             onVolumeDown = {
-                binding.mangaReaderPager.currentItem += 1
+                if (!scrollCurrentPage(forward = true)) binding.mangaReaderPager.currentItem += 1
             }
         }
         startPageScan()
@@ -1596,6 +1609,8 @@ class MangaReaderActivity : AppCompatActivity() {
 
             // if pressLocation is left or right go to previous or next page (paged mode only)
             if (pressLocation == PressPos.LEFT) {
+                // A fit-width page first shows the rest of itself, then turns.
+                if (scrollCurrentPage(forward = false)) return
 
                 if (binding.mangaReaderPager.currentItem > 0) {
                     //if  the current images zoomed in, go back to normal before going to previous page
@@ -1607,6 +1622,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 }
 
             } else if (pressLocation == PressPos.RIGHT) {
+                if (scrollCurrentPage(forward = true)) return
                 val maxItems = binding.mangaReaderPager.adapter?.itemCount ?: 1
                 if (onChapterEndPage()) {
                     openNextChapter?.invoke()

@@ -538,6 +538,56 @@ class ExoplayerView :
         playerView.setTimeBarScrubbingEnabled(playerView.player == null || playerView.player is ExoPlayer)
     }
 
+    /**
+     * Starts the episode again after the app was killed in the background, from what
+     * [onSaveInstanceState] kept: the player's own state (the episode list, the stream) went with
+     * the process, so it can't simply carry on. The series is fetched again and its page opened
+     * with the episode set to play, the way a hand-off from another device opens one; it resumes
+     * where it was, the position having been saved as the player went. The main screen goes under
+     * it, so back leads where it always did.
+     *
+     * False when there is nothing to reopen — extension-only media can't be fetched again — and
+     * the caller goes to the main screen as before.
+     */
+    private fun reopenAfterRestore(state: Bundle?): Boolean {
+        val id = state?.getInt(STATE_MEDIA_ID, -1)?.takeIf { it >= 0 } ?: return false
+        val number = state.getString(STATE_EPISODE) ?: return false
+        lifecycleScope.launch {
+            val restored = withContext(Dispatchers.IO) {
+                runCatching {
+                    // A process brought back cold hasn't restored the session yet.
+                    if (Anilist.token == null) Anilist.getSavedToken()
+                    Anilist.query.getMedia(id, false, "ANIME")
+                }.getOrNull()
+            }
+            if (restored == null || isFinishing) {
+                if (!isFinishing) startMainActivity(this@ExoplayerView)
+                return@launch
+            }
+            PrefManager.setCustomVal("${id}_current_ep", number)
+            restored.cameFromContinue = true
+            val page = if (ani.dantotsu.tv.TvMode.isOn(this@ExoplayerView))
+                ani.dantotsu.tv.TvMediaActivity::class.java else ani.dantotsu.media.MediaDetailsActivity::class.java
+            val handoff = ani.dantotsu.connections.handoff.HandoffNavigator
+            val details = Intent(this@ExoplayerView, page)
+                .putExtra("media", restored as java.io.Serializable)
+                .putExtra(handoff.EXTRA_AUTO_START, true)
+                .putExtra(handoff.EXTRA_IS_ANIME, true)
+                .putExtra(handoff.EXTRA_NUMBER, number)
+                .putExtra(handoff.EXTRA_TITLE, state.getString(STATE_TITLE))
+                .putExtra(handoff.EXTRA_COVER, state.getString(STATE_COVER))
+                .apply {
+                    state.getString(STATE_SOURCE)?.let { putExtra(handoff.EXTRA_SOURCE, it) }
+                    state.getString(STATE_SERVER)?.let { putExtra(handoff.EXTRA_SERVER, it) }
+                }
+            val main = Intent(this@ExoplayerView, ani.dantotsu.MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            finishAffinity()
+            startActivities(arrayOf(main, details))
+        }
+        return true
+    }
+
     // region Resume notice
 
     private val hideResumedLater = Runnable { hideResumed() }
@@ -638,6 +688,14 @@ class ExoplayerView :
 
         /** The panel's width beside the video on a tablet held sideways, at most. */
         private const val SIDE_PANEL_WIDTH_DP = 380
+
+        // What onSaveInstanceState keeps for reopenAfterRestore.
+        private const val STATE_MEDIA_ID = "restoreMediaId"
+        private const val STATE_EPISODE = "restoreEpisode"
+        private const val STATE_TITLE = "restoreTitle"
+        private const val STATE_COVER = "restoreCover"
+        private const val STATE_SERVER = "restoreServer"
+        private const val STATE_SOURCE = "restoreSource"
 
         /** How long the "Resumed from …" notice stays up. */
         private const val RESUME_NOTICE_MS = 8_000L
@@ -1009,7 +1067,12 @@ class ExoplayerView :
         }).also { it.setUp() }
 
         // Handle Media
-        if (!initialized) return startMainActivity(this)
+        if (!initialized) {
+            // Nothing in memory: the app was killed in the background and this is the system
+            // bringing the player back. Open the episode again rather than leaving for the start.
+            if (!reopenAfterRestore(savedInstanceState)) startMainActivity(this)
+            return
+        }
         model.setMedia(media)
         title = media.userPreferredName
         episodes = media.anime?.episodes ?: return startMainActivity(this)
@@ -1934,6 +1997,21 @@ class ExoplayerView :
         }
         outState.putInt(playerFullscreen, isFullscreen)
         outState.putBoolean(playerOnPlay, isPlayerPlaying)
+        // What reopenAfterRestore needs to start the episode again should the process go.
+        if (initialized && media.id >= 0) {
+            val number = media.anime?.selectedEpisode
+            if (number != null) {
+                outState.putInt(STATE_MEDIA_ID, media.id)
+                outState.putString(STATE_EPISODE, number)
+                outState.putString(STATE_TITLE, media.userPreferredName)
+                outState.putString(STATE_COVER, media.cover)
+                outState.putString(STATE_SERVER, media.anime?.episodes?.get(number)?.selectedExtractor)
+                outState.putString(
+                    STATE_SOURCE, model.watchSources?.names?.getOrNull(media.selected?.sourceIndex ?: 0)
+                )
+                if (isInitialized) PrefManager.setCustomVal("${media.id}_$number", exoPlayer.currentPosition)
+            }
+        }
         super.onSaveInstanceState(outState)
     }
 

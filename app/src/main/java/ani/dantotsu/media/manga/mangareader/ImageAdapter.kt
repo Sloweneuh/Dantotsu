@@ -247,9 +247,32 @@ open class ImageAdapter(
 
     override fun getItemCount(): Int = pageItemCount + if (hasChapterEnd) 1 else 0
 
+    /**
+     * Moves a page taller than the screen (fit width) down — or, not [forward], up — by most of a
+     * screen, as a page turn would if there were no more of it to see. False when it is already at
+     * that end, or is no taller than the screen, and the page should turn instead.
+     */
+    fun scrollWithinPage(view: View, forward: Boolean): Boolean {
+        val controller = (view as? GestureFrameLayout)?.controller ?: return false
+        val state = controller.state.copy()
+        val area = android.graphics.RectF()
+        controller.stateController.getMovementArea(state, area)
+        // The page's top is at the area's bottom edge (no translation), its bottom at the top edge.
+        val step = view.height * SCROLL_STEP
+        val target = if (forward) (state.y - step).coerceAtLeast(area.top)
+        else (state.y + step).coerceAtMost(area.bottom)
+        if (kotlin.math.abs(target - state.y) < 1f) return false
+        state.translateTo(state.x, target)
+        controller.animateStateTo(state)
+        return true
+    }
+
     private companion object {
         const val TYPE_PAGE = 0
         const val TYPE_END = 1
+
+        /** How much of the screen [scrollWithinPage] moves by; a sliver stays to read on from. */
+        const val SCROLL_STEP = 0.8f
 
         /** Smart page fit widens a page that, whole on screen, would be narrower than this share. */
         const val SMART_FIT_MIN_WIDTH = 0.6f
