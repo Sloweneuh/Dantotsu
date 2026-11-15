@@ -140,11 +140,13 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             )
         }
 
-        SettingsRows.bindRebuilt(binding.novelControlsRows) {
+        SettingsRows.bindRebuilt(binding.novelControlsRows) { refresh ->
             listOf(
                 switch(R.string.volume_buttons, R.drawable.ic_round_touch_app_24,
                     settings.volumeButtons) { settings.volumeButtons = it },
-            )
+            ) + SettingsRows.tapZoneRows(requireContext(), ani.dantotsu.media.manga.mangareader.TapZones.NOVEL) {
+                refresh()
+            }
         }
     }
 

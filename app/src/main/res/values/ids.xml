@@ -23,6 +23,8 @@
       recycling clears them with it. See BaseImageAdapter.
     -->
     <item name="page_render_zoom" type="id" />
+    <!-- The page a paged view was last fitted for; a new one starts from the top (ImageAdapter). -->
+    <item name="page_fit_page" type="id" />
     <item name="page_zoom_listener" type="id" />
 
     <!-- Set on a ViewPager2 while ViewPager2.jumpTo moves it, so the shared-axis motion skips it. -->

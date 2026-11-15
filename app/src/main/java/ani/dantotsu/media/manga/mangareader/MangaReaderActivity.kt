@@ -137,8 +137,6 @@ import java.io.InvalidClassException
 import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
-import java.util.Timer
-import java.util.TimerTask
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -372,7 +370,6 @@ class MangaReaderActivity : AppCompatActivity() {
     internal var maxChapterPage = 0L
     internal var currentChapterPage = 0L
 
-    private var notchHeight: Int? = null
 
     private var imageAdapter: BaseImageAdapter? = null
     private var continuousAdapter: ContinuousChapterAdapter? = null
@@ -419,19 +416,8 @@ class MangaReaderActivity : AppCompatActivity() {
                 && defaultSettings.direction == CurrentReaderSettings.Directions.BOTTOM_TO_TOP
 
     override fun onAttachedToWindow() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && !PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) {
-            val displayCutout = window.decorView.rootWindowInsets.displayCutout
-            if (displayCutout != null) {
-                if (displayCutout.boundingRects.size > 0) {
-                    notchHeight = min(
-                        displayCutout.boundingRects[0].width(),
-                        displayCutout.boundingRects[0].height()
-                    )
-                    checkNotch()
-                }
-            }
-        }
         super.onAttachedToWindow()
+        checkNotch()
     }
     
     override fun onResume() {
@@ -468,10 +454,24 @@ class MangaReaderActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Keeps the controls clear of the camera cutout, on whichever edge it is: the top held
+     * upright, a side in landscape. This used to take the cutout's size as a top margin whatever
+     * the orientation, which in landscape left a gap above the top bar and the side controls (the
+     * vertical page slider among them) under the cutout. With the system bars showing, the window
+     * already keeps clear of it.
+     */
     private fun checkNotch() {
+        val cutout = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+            !PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)
+        ) window.decorView.rootWindowInsets?.displayCutout else null
         binding.mangaReaderTopLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            topMargin = notchHeight ?: return
+            topMargin = cutout?.safeInsetTop ?: 0
         }
+        binding.mangaReaderCont.updatePadding(
+            left = cutout?.safeInsetLeft ?: 0,
+            right = cutout?.safeInsetRight ?: 0,
+        )
     }
 
     private fun hideSystemBars() {
@@ -556,20 +556,13 @@ class MangaReaderActivity : AppCompatActivity() {
 
         hideSystemBars()
 
-        var pageSliderTimer = Timer()
+        val endSliding = Runnable {
+            sliding = false
+            handleController(false)
+        }
         fun pageSliderHide() {
-            pageSliderTimer.cancel()
-            pageSliderTimer.purge()
-            val timerTask: TimerTask = object : TimerTask() {
-                override fun run() {
-                    binding.mangaReaderCont.post {
-                        sliding = false
-                        handleController(false)
-                    }
-                }
-            }
-            pageSliderTimer = Timer()
-            pageSliderTimer.schedule(timerTask, 3000)
+            binding.mangaReaderCont.removeCallbacks(endSliding)
+            binding.mangaReaderCont.postDelayed(endSliding, 3000)
         }
 
         binding.mangaReaderSlider.addOnChangeListener { _, value, fromUser ->
@@ -710,8 +703,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 "${media.id}_${chaptersArr[currentChapterIndex]}",
                 imageNumberOf(currentChapterPage)
             )
-            ChapterLoaderDialog.newInstance(chapters[chaptersArr[index]]!!)
-                .show(supportFragmentManager, "dialog")
+            loadChapter(chapters[chaptersArr[index]]!!)
         }
 
         //ChapterSelector
@@ -865,6 +857,8 @@ class MangaReaderActivity : AppCompatActivity() {
             binding.mangaReaderNextChapter.performClick()
         }
         fun showGapWarningThenRun(targetIndex: Int, action: () -> Unit) {
+            // From the end-of-chapter page, which shows any gap already, it would be asked twice.
+            if (onChapterEndPage()) return action()
             val missing = countMissingChapters(currentChapterIndex, targetIndex)
             val isNext = targetIndex > currentChapterIndex
             if (missing > 0 && isNext) {
@@ -882,6 +876,15 @@ class MangaReaderActivity : AppCompatActivity() {
             } else {
                 action()
             }
+        }
+
+        // On to the next chapter in reading order, from the end-of-chapter page: its button, its
+        // forward tap zone. Whatever the direction the toolbar's buttons point.
+        openNextChapter = {
+            if (chaptersArr.size > currentChapterIndex + 1) showGapWarningThenRun(currentChapterIndex + 1) {
+                progress.beforeLeaving { change(currentChapterIndex + 1) }
+            }
+            else snackString(getString(R.string.next_chapter_not_found))
         }
 
         binding.mangaReaderNextChapter.setOnClickListener {
@@ -950,6 +953,93 @@ class MangaReaderActivity : AppCompatActivity() {
 
     private val snapHelper = PagerSnapHelper()
 
+    /** Goes on to the next chapter in reading order; set in onCreate, where chapters change. */
+    private var openNextChapter: (() -> Unit)? = null
+
+    /** Whether the end-of-chapter page is the one being looked at. */
+    fun onChapterEndPage(): Boolean {
+        val adapter = imageAdapter as? ImageAdapter ?: return false
+        if (isContinuousMultiChapter || !adapter.hasChapterEnd) return false
+        val last = adapter.itemCount - 1
+        return if (defaultSettings.layout == PAGED) binding.mangaReaderPager.currentItem == last
+        else (binding.mangaReaderRecycler.layoutManager as? LinearLayoutManager)
+            ?.findLastVisibleItemPosition() == last
+    }
+
+    /**
+     * The end-of-chapter page: the chapter just read, the next one and who scanlated it, how many
+     * are missing between them, and a button on. The last chapter there is says so instead.
+     */
+    fun bindChapterEnd(b: ani.dantotsu.databinding.ItemChapterEndBinding) {
+        b.chapterEndCurrent.text = getString(
+            R.string.chapter_transition_end, chaptersTitleArr.getOrNull(currentChapterIndex) ?: chapter.number
+        )
+        val nextIndex = currentChapterIndex + 1
+        val next = chaptersArr.getOrNull(nextIndex)?.let { chapters[it] }
+        b.chapterEndGroup.isVisible = next?.scanlator?.isNotBlank() == true
+        b.chapterEndGroup.text = next?.scanlator
+        b.chapterEndNextButton.isVisible = next != null
+        if (next == null) {
+            b.chapterEndNext.text = getString(R.string.chapter_end_last)
+            b.chapterEndGap.isVisible = false
+            return
+        }
+        b.chapterEndNext.text = getString(R.string.chapter_transition_next, chaptersTitleArr[nextIndex])
+        val missing = countMissingChapters(currentChapterIndex, nextIndex)
+        b.chapterEndGap.isVisible = missing > 0
+        b.chapterEndGap.text = if (missing == 1) getString(R.string.chapter_end_missing_one)
+        else getString(R.string.chapter_end_missing, missing)
+        b.chapterEndNextButton.setOnClickListener { openNextChapter?.invoke() }
+    }
+
+    private var chapterLoad: kotlinx.coroutines.Job? = null
+
+    /**
+     * Loads [next] where the reader is, a small card over it saying so, rather than in the loader
+     * sheet: the reader picks the chapter up once its images are in (getMangaChapter). A premium
+     * chapter is offered on the source's site instead.
+     */
+    private fun loadChapter(next: MangaChapter) {
+        if (ChapterLoaderDialog.isLocked(next)) {
+            ChapterLoaderDialog.showLocked(this, model, media, next)
+            return
+        }
+        chapterLoad?.cancel()
+        val card = binding.mangaReaderChapterLoading
+        val number = MediaNameAdapter.withoutChapterWord(next.number)
+        binding.mangaReaderChapterLoadingText.text = getString(R.string.loading_chap_number, number)
+        binding.mangaReaderChapterLoadingCancel.setOnClickListener {
+            chapterLoad?.cancel()
+            card.isVisible = false
+        }
+        card.isVisible = true
+        chapterLoad = lifecycleScope.launch {
+            val loaded = try {
+                withContext(Dispatchers.IO) { model.loadMangaChapterImages(next, media.selected!!) }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logError(e)
+                false
+            }
+            card.isVisible = false
+            if (!loaded) snackString(getString(R.string.chapter_load_failed, number))
+        }
+    }
+
+    /**
+     * Whether a paged page may be drawn wider than "the whole page on screen" allows: a fit-width
+     * page fit, in the paged layout read sideways (read up and down, panning within a page would
+     * fight the page turns). Pages are then decoded for the full width of the screen.
+     */
+    val fitsPageWidth: Boolean
+        get() = defaultSettings.layout == PAGED &&
+            (defaultSettings.direction == LEFT_TO_RIGHT || defaultSettings.direction == RIGHT_TO_LEFT) &&
+            defaultSettings.pageFit != CurrentReaderSettings.PageFits.SCREEN.ordinal
+
+    /** How much of the screen a volume or arrow key scrolls a scrolling layout by. */
+    private val KEY_SCROLL_FRACTION = 0.8f
+
     fun <T> dualPage(callback: () -> T): T? {
         return when (defaultSettings.dualPageMode) {
             No -> null
@@ -981,6 +1071,10 @@ class MangaReaderActivity : AppCompatActivity() {
         }
         watchProfiles()
 
+        // handleController only lays the slider out when the controls come up; a settings change
+        // made with them up has to reach it too. Posted: its size comes from the container's.
+        binding.mangaReaderSliderContainer.post { layoutSlider() }
+
         // Reset multi-chapter tracking state
         lastTrackedChapterIndex = -1
         multiChapterLoading = false
@@ -993,11 +1087,9 @@ class MangaReaderActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.AutoScrollEnabled, false)
         }
 
-        //true colors
-        SubsamplingScaleImageView.setPreferredBitmapConfig(
-            if (defaultSettings.trueColors) Bitmap.Config.ARGB_8888
-            else Bitmap.Config.RGB_565
-        )
+        // Every page reaches its view already decoded, in full 32-bit colour; there is no bitmap
+        // format left to choose (the old "True colours" switch only ever set one for decodes
+        // SubsamplingScaleImageView did itself, and it does none).
 
         //keep screen On
         if (defaultSettings.keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -1256,7 +1348,8 @@ class MangaReaderActivity : AppCompatActivity() {
 
                 addOnScrollListener(object : RecyclerView.OnScrollListener() {
                     override fun onScrolled(v: RecyclerView, dx: Int, dy: Int) {
-                        prefetcher?.warmAfter(mostVisibleItemPosition(v, manager), preloadAmount)
+                        val visible = mostVisibleItemPosition(v, manager)
+                        prefetcher?.warmAfter(visible, preloadAmount)
                         if (isContinuousMultiChapter) {
                             handleContinuousMultiChapterScroll(v, manager)
                         } else {
@@ -1273,9 +1366,7 @@ class MangaReaderActivity : AppCompatActivity() {
                                     handleController(true)
                                 } else if (!autoscrollOn) handleController(false)
                             }
-                            updatePageNumber(
-                                mostVisibleItemPosition(v, manager).toLong() * (dualPage { 2 }
-                                    ?: 1) + 1)
+                            updatePageNumber(visible.toLong() * (dualPage { 2 } ?: 1) + 1)
                         }
                         scheduleAutoTranslation()
                         super.onScrolled(v, dx, dy)
@@ -1291,18 +1382,20 @@ class MangaReaderActivity : AppCompatActivity() {
                     else null
                 )
 
+                // Most of a screen at a time, whatever its size: a fixed 500 px was a nudge on a
+                // tablet and nearly a page on a small phone. A sliver stays in view to read on from.
                 onVolumeUp = {
                     if ((defaultSettings.direction == TOP_TO_BOTTOM || defaultSettings.direction == BOTTOM_TO_TOP))
-                        smoothScrollBy(0, -500)
+                        smoothScrollBy(0, -(height * KEY_SCROLL_FRACTION).toInt())
                     else
-                        smoothScrollBy(-500, 0)
+                        smoothScrollBy(-(width * KEY_SCROLL_FRACTION).toInt(), 0)
                 }
 
                 onVolumeDown = {
                     if ((defaultSettings.direction == TOP_TO_BOTTOM || defaultSettings.direction == BOTTOM_TO_TOP))
-                        smoothScrollBy(0, 500)
+                        smoothScrollBy(0, (height * KEY_SCROLL_FRACTION).toInt())
                     else
-                        smoothScrollBy(500, 0)
+                        smoothScrollBy((width * KEY_SCROLL_FRACTION).toInt(), 0)
                 }
 
                 val startPosition = if (!isContinuousMultiChapter) {
@@ -1424,21 +1517,20 @@ class MangaReaderActivity : AppCompatActivity() {
     }
 
     private val overshoot = OvershootInterpolator(1.4f)
+
+    /** How far the bars slide as they come and go: a distance, not a pixel count. */
+    private val chromeSlide get() = 48f * resources.displayMetrics.density
     private var controllerDuration by Delegates.notNull<Long>()
-    private var goneTimer = Timer()
-    fun gone() {
-        goneTimer.cancel()
-        goneTimer.purge()
-        val timerTask: TimerTask = object : TimerTask() {
-            override fun run() {
-                if (!isContVisible) binding.mangaReaderCont.post {
-                    binding.mangaReaderCont.visibility = View.GONE
-                    isAnimating = false
-                }
-            }
+    private val hideControls = Runnable {
+        if (!isContVisible) {
+            binding.mangaReaderCont.visibility = View.GONE
+            isAnimating = false
         }
-        goneTimer = Timer()
-        goneTimer.schedule(timerTask, controllerDuration)
+    }
+
+    fun gone() {
+        binding.mangaReaderCont.removeCallbacks(hideControls)
+        binding.mangaReaderCont.postDelayed(hideControls, controllerDuration)
     }
 
     enum class PressPos {
@@ -1447,6 +1539,37 @@ class MangaReaderActivity : AppCompatActivity() {
 
     /** The page filters; see [ReaderPageFilters]. */
     fun applyPageFilters() = ReaderPageFilters.apply(binding)
+
+    /** The page slider set up as the settings say: hidden, or along the bottom or the side. */
+    private fun layoutSlider() {
+        if (defaultSettings.horizontalScrollBar) {
+            binding.mangaReaderSliderContainer.updateLayoutParams {
+                height = ViewGroup.LayoutParams.WRAP_CONTENT
+                width = ViewGroup.LayoutParams.WRAP_CONTENT
+            }
+            binding.mangaReaderSlider.apply {
+                updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    width = ViewGroup.LayoutParams.MATCH_PARENT
+                }
+                rotation = 0f
+            }
+        } else {
+            binding.mangaReaderSliderContainer.updateLayoutParams {
+                height = ViewGroup.LayoutParams.MATCH_PARENT
+                width = 48f.px
+            }
+            binding.mangaReaderSlider.apply {
+                updateLayoutParams {
+                    width = binding.mangaReaderSliderContainer.height - 16f.px
+                }
+                rotation = 90f
+            }
+        }
+        binding.mangaReaderSliderContainer.visibility =
+            if (defaultSettings.hideScrollBar) View.GONE else View.VISIBLE
+        binding.mangaReaderSlider.layoutDirection =
+            if (directionRLBT) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+    }
 
     fun handleController(shouldShow: Boolean? = null, event: MotionEvent? = null) {
         var pressLocation = PressPos.CENTER
@@ -1485,6 +1608,10 @@ class MangaReaderActivity : AppCompatActivity() {
 
             } else if (pressLocation == PressPos.RIGHT) {
                 val maxItems = binding.mangaReaderPager.adapter?.itemCount ?: 1
+                if (onChapterEndPage()) {
+                    openNextChapter?.invoke()
+                    return
+                }
                 if (binding.mangaReaderPager.currentItem < maxItems - 1) {
                     //if  the current images zoomed in, go back to normal before going to next page
                     if (imageAdapter?.isZoomed() == true) {
@@ -1496,75 +1623,14 @@ class MangaReaderActivity : AppCompatActivity() {
                 }
             }
 
+            // The scroll listener calls this on every frame; with nothing to change, it must not
+            // touch the layout — every call used to lay the slider out again.
+            if (shouldShow != null && shouldShow == isContVisible) return
             if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) {
                 hideSystemBars()
                 checkNotch()
             }
-            // Hide the scrollbar completely
-            if (defaultSettings.hideScrollBar) {
-                binding.mangaReaderSliderContainer.visibility = View.GONE
-            } else {
-                if (defaultSettings.horizontalScrollBar) {
-                    binding.mangaReaderSliderContainer.updateLayoutParams {
-                        height = ViewGroup.LayoutParams.WRAP_CONTENT
-                        width = ViewGroup.LayoutParams.WRAP_CONTENT
-                    }
-
-                    binding.mangaReaderSlider.apply {
-                        updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                            width = ViewGroup.LayoutParams.MATCH_PARENT
-                        }
-                        rotation = 0f
-                    }
-
-                } else {
-                    binding.mangaReaderSliderContainer.updateLayoutParams {
-                        height = ViewGroup.LayoutParams.MATCH_PARENT
-                        width = 48f.px
-                    }
-
-                    binding.mangaReaderSlider.apply {
-                        updateLayoutParams {
-                            width = binding.mangaReaderSliderContainer.height - 16f.px
-                        }
-                        rotation = 90f
-                    }
-                }
-                binding.mangaReaderSliderContainer.visibility = View.VISIBLE
-            }
-            //horizontal scrollbar
-            if (defaultSettings.horizontalScrollBar) {
-                binding.mangaReaderSliderContainer.updateLayoutParams {
-                    height = ViewGroup.LayoutParams.WRAP_CONTENT
-                    width = ViewGroup.LayoutParams.WRAP_CONTENT
-                }
-
-                binding.mangaReaderSlider.apply {
-                    updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                        width = ViewGroup.LayoutParams.MATCH_PARENT
-                    }
-                    rotation = 0f
-                }
-
-            } else {
-                binding.mangaReaderSliderContainer.updateLayoutParams {
-                    height = ViewGroup.LayoutParams.MATCH_PARENT
-                    width = 48f.px
-                }
-
-                binding.mangaReaderSlider.apply {
-                    updateLayoutParams {
-                        width = binding.mangaReaderSliderContainer.height - 16f.px
-                    }
-                    rotation = 90f
-                }
-            }
-            binding.mangaReaderSlider.layoutDirection =
-                if (directionRLBT)
-                    View.LAYOUT_DIRECTION_RTL
-                else
-                    View.LAYOUT_DIRECTION_LTR
-            if (shouldShow != null && shouldShow == isContVisible) return
+            layoutSlider()
             shouldShow?.apply { isContVisible = !this }
             if (isContVisible) {
                 isContVisible = false
@@ -1576,10 +1642,10 @@ class MangaReaderActivity : AppCompatActivity() {
                         binding.mangaReaderBottomLayout,
                         "translationY",
                         0f,
-                        128f
+                        chromeSlide
                     )
                         .apply { interpolator = overshoot;duration = controllerDuration;start() }
-                    ObjectAnimator.ofFloat(binding.mangaReaderTopLayout, "translationY", 0f, -128f)
+                    ObjectAnimator.ofFloat(binding.mangaReaderTopLayout, "translationY", 0f, -chromeSlide)
                         .apply { interpolator = overshoot;duration = controllerDuration;start() }
                 }
                 gone()
@@ -1588,9 +1654,9 @@ class MangaReaderActivity : AppCompatActivity() {
                 binding.mangaReaderCont.visibility = View.VISIBLE
                 ObjectAnimator.ofFloat(binding.mangaReaderCont, "alpha", 0f, 1f)
                     .setDuration(controllerDuration).start()
-                ObjectAnimator.ofFloat(binding.mangaReaderTopLayout, "translationY", -128f, 0f)
+                ObjectAnimator.ofFloat(binding.mangaReaderTopLayout, "translationY", -chromeSlide, 0f)
                     .apply { interpolator = overshoot;duration = controllerDuration;start() }
-                ObjectAnimator.ofFloat(binding.mangaReaderBottomLayout, "translationY", 128f, 0f)
+                ObjectAnimator.ofFloat(binding.mangaReaderBottomLayout, "translationY", chromeSlide, 0f)
                     .apply { interpolator = overshoot;duration = controllerDuration;start() }
             }
         }
@@ -1638,6 +1704,9 @@ class MangaReaderActivity : AppCompatActivity() {
         if (directionPagedBT) {
             page = maxChapterPage - pageNumber + 1
         }
+        // The end-of-chapter page comes after the last: it reads as the last, and is never saved
+        // as a page past the end.
+        if (maxChapterPage > 0) page = page.coerceIn(1, maxChapterPage)
         if (currentChapterPage != page) {
             currentChapterPage = page
             savePage(page)

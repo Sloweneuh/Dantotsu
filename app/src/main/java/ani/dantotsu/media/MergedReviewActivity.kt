@@ -30,8 +30,14 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import java.io.Serializable
 
-/** What a source hands a custom tab so its arrow can open a page of several sources' items together. */
-sealed interface MergedFeed
+/**
+ * What a source hands a custom tab so its arrow can open a page of several sources' items together.
+ *
+ * Deliberately not sealed: its implementations live in other files (StackFeed), and Kotlin's
+ * incremental compiler intermittently rejected that as "extending sealed classes from a different
+ * module" — a failure only a clean rebuild cleared. Nothing switches over it exhaustively.
+ */
+interface MergedFeed
 
 /** Where one source's reviews come from, for a page that shows several sources' together. */
 sealed class ReviewFeed : MergedFeed, Serializable {

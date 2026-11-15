@@ -73,6 +73,12 @@ abstract class BaseImageAdapter(
     /** How many positions there are: real pages if known, images otherwise. */
     val pageCount get() = pages?.size ?: images.size
 
+    /**
+     * How many positions hold pages: [pageCount], or pairs of pages side by side. What follows is
+     * not a page (see ImageAdapter's end of chapter), and nothing that counts pages counts it.
+     */
+    open val pageItemCount: Int get() = pageCount
+
     /** The page shown at [position], used to tie loads to pages rather than to positions. */
     open fun pageKey(position: Int): Any? =
         if (pages != null) pageAt(position) else images.getOrNull(position)
@@ -144,7 +150,7 @@ abstract class BaseImageAdapter(
     fun pageGaps(position: Int): Pair<Int, Int> {
         val gap = 16f.px
         if (!activity.smartSpacing) return 0 to gap
-        val trailing = if (position >= itemCount - 1) gap else 0
+        val trailing = if (position >= pageItemCount - 1) gap else 0
         if (position <= 0 || activity.knownLongStrip) return 0 to trailing
         val before = pageUrl(position - 1)
         val after = pageUrl(position)
@@ -199,6 +205,8 @@ abstract class BaseImageAdapter(
      */
     protected fun refreshNextGap(position: Int) {
         if (!activity.smartSpacing || settings.layout == CurrentReaderSettings.Layouts.PAGED) return
+        // The last page's neighbour is the end-of-chapter block, which has no gap to judge.
+        if (position + 1 >= pageItemCount) return
         val next = recycler?.findViewHolderForAdapterPosition(position + 1)?.itemView ?: return
         val (leading, trailing) = pageGaps(position + 1)
         setPageGaps(next, settings.direction, leading, trailing)
@@ -490,8 +498,12 @@ abstract class BaseImageAdapter(
                 // A continuous page fills the width and scrolls on past the bottom, so its height
                 // must not constrain it. A paged one is fitted whole, and in a landscape window
                 // it is the height that decides how wide it actually lands.
+                // Nor a paged one that may be fitted to the width (see fitsPageWidth): decoded for
+                // the height alone, it would be stretched to the width and come out soft.
                 val viewportH =
-                    if (wholeWidth || reader?.defaultSettings?.layout == CurrentReaderSettings.Layouts.CONTINUOUS) null
+                    if (wholeWidth || reader?.defaultSettings?.layout == CurrentReaderSettings.Layouts.CONTINUOUS ||
+                        reader?.fitsPageWidth == true
+                    ) null
                     else decor?.height?.takeIf { it > 0 } ?: dm.heightPixels
                 // The image's own width, before any of the scaling below. Smart spacing groups
                 // stitched images by it: decoded, every image comes out at the reader's width, and
@@ -503,7 +515,7 @@ abstract class BaseImageAdapter(
                     // cache, no refetch, and filtered the same way — which is the whole reason
                     // this beats letting the GPU stretch what it already has.
                     if (zoom > 1f) {
-                        renderZoomed(link.url, transforms, viewportW, viewportH, zoom)
+                        this@loadBitmap.renderZoomed(link.url, transforms, viewportW, viewportH, zoom)
                             ?.let { return@withContext it }
                     }
                     // Downloaded PDF chapters: render the requested page on demand.
@@ -631,56 +643,123 @@ abstract class BaseImageAdapter(
         /**
          * The page re-read at the size a zoom is showing it at, or null when it cannot be.
          *
-         * Only the encoded bytes make this worth doing: they still hold every pixel the source
+         * Only the encoded image makes this worth doing: it still holds every pixel the source
          * had, so a zoom can be answered with real detail instead of a magnified copy of the
-         * fitted bitmap. Nothing is refetched — a page whose bytes have been evicted simply
-         * returns null and the caller carries on with the bitmap it already has.
+         * fitted bitmap. Nothing is refetched: an extension page whose bytes have been evicted
+         * simply returns null and the caller carries on with the bitmap it already has. A
+         * downloaded page is read again from its file.
          *
          * Capped at both the source's own resolution (past which there is nothing further to
          * show) and a pixel ceiling, so holding a deeply zoomed page cannot cost more than a
-         * couple of ordinary ones.
+         * couple of ordinary ones. Rendered in half steps of zoom (2, 2.5, 3...), so pinching a
+         * little further reuses the render rather than decoding another one.
          */
-        private fun renderZoomed(
+        private fun Context.renderZoomed(
             url: String,
             transforms: List<BitmapTransformation>,
             viewportWidth: Int,
             viewportHeight: Int?,
             zoom: Float
         ): Bitmap? {
-            if (transforms.isNotEmpty()) return null
+            // Cropping borders can simply be done again on the bigger render. A source's own
+            // transform can't be relied on to give the same result at another size.
+            if (transforms.any { it !is RemoveBordersTransformation }) return null
             val cache = uy.kohesive.injekt.Injekt.get<MangaCache>()
-            val bytes = cache.getPageBytes(url) ?: return null
+            val bytes = cache.getPageBytes(url)
+                ?: File(url).takeIf { it.isFile }?.let { runCatching { it.readBytes() }.getOrNull() }
+                ?: return null
 
             val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+            val sourceWidth = bounds.outWidth
+            val sourceHeight = bounds.outHeight
+            if (sourceWidth <= 0 || sourceHeight <= 0) return null
 
-            val fitted = fittedWidth(bounds.outWidth, bounds.outHeight, viewportWidth, viewportHeight)
-            val wanted = (fitted * zoom).toInt()
-                .coerceAtMost(bounds.outWidth)
+            val fitted = fittedWidth(sourceWidth, sourceHeight, viewportWidth, viewportHeight)
+            val step = kotlin.math.ceil(zoom * 2f) / 2f
+            val ceilingWidth = sqrt(MAX_ZOOMED_PIXELS.toDouble() * sourceWidth / sourceHeight).toInt()
+            val wanted = (fitted * step).toInt()
+                .coerceAtMost(sourceWidth)
                 .coerceAtMost(MAX_ZOOMED_WIDTH)
+                .coerceAtMost(ceilingWidth)
             // Nothing to gain over what the fitted render already produced.
             if (wanted <= fitted) return null
 
-            val key = "$url|zoom$wanted"
-            cache.getBitmap(key)?.takeIf { !it.isRecycled }?.let { return it }
+            val key = buildBitmapCacheKey(url, transforms) + "|zoom$wanted"
+            cache.getZoomBitmap(key)?.takeIf { !it.isRecycled }?.let { return it }
 
+            val decoded = decodeAtWidth(bytes, sourceWidth, sourceHeight, wanted) ?: return null
+            val processed = if (transforms.isEmpty()) decoded else Glide.with(this)
+                .asBitmap()
+                .load(decoded)
+                // Glide's own memory cache would hold a second copy of a very large bitmap.
+                .skipMemoryCache(true)
+                .transform(*transforms.toTypedArray())
+                .submit()
+                .get()
+            cache.putZoomBitmap(key, processed)
+            return processed
+        }
+
+        /**
+         * The image in [bytes] decoded to [width] wide, filtered all the way down.
+         *
+         * Small enough to hold whole, it is decoded and scaled down in steps. Otherwise it is read
+         * in bands at full resolution, each scaled down on its own into the result: getting it
+         * under the ceiling with inSampleSize instead would keep every Nth pixel of a PNG, and
+         * point-sampling a screentone is the moire [MangaCache]'s sampling comment describes,
+         * baked in for good exactly where a zoom goes looking for detail.
+         */
+        private fun decodeAtWidth(bytes: ByteArray, sourceWidth: Int, sourceHeight: Int, width: Int): Bitmap? {
+            val height = (sourceHeight.toLong() * width / sourceWidth).toInt().coerceAtLeast(1)
             val options = android.graphics.BitmapFactory.Options().apply {
-                // Only ever sampled down to the ceiling, and averaged the rest of the way by
-                // downsampleBitmap — sampling is not a resize, see MangaCache.
-                var sample = 1
-                while ((bounds.outWidth.toLong() / sample) * (bounds.outHeight.toLong() / sample) >
-                    MAX_ZOOMED_PIXELS
-                ) sample *= 2
-                inSampleSize = sample
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             }
-            val decoded = android.graphics.BitmapFactory
-                .decodeByteArray(bytes, 0, bytes.size, options) ?: return null
-            val scaled = downsampleBitmap(decoded, wanted, Int.MAX_VALUE / wanted, wanted, null)
-            if (scaled !== decoded) decoded.recycle()
-            cache.putBitmap(key, scaled)
-            return scaled
+            if (sourceWidth.toLong() * sourceHeight <= MAX_ZOOMED_PIXELS) {
+                val decoded = android.graphics.BitmapFactory
+                    .decodeByteArray(bytes, 0, bytes.size, options) ?: return null
+                val scaled = scaleFiltered(decoded, width, height)
+                if (scaled !== decoded) decoded.recycle()
+                return scaled
+            }
+
+            val region = runCatching {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    android.graphics.BitmapRegionDecoder.newInstance(bytes, 0, bytes.size)
+                } else {
+                    @Suppress("DEPRECATION")
+                    android.graphics.BitmapRegionDecoder.newInstance(bytes, 0, bytes.size, false)
+                }
+            }.getOrNull() ?: return null
+            val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            try {
+                val canvas = Canvas(out)
+                val bandRows = (BAND_PIXELS / sourceWidth).toInt().coerceAtLeast(1)
+                var top = 0
+                while (top < sourceHeight) {
+                    val bottom = minOf(sourceHeight, top + bandRows)
+                    // Band edges land on whole rows of the result, so the bands meet exactly.
+                    val outTop = (top.toLong() * height / sourceHeight).toInt()
+                    val outBottom = (bottom.toLong() * height / sourceHeight).toInt()
+                    if (outBottom > outTop) {
+                        val band = region.decodeRegion(
+                            android.graphics.Rect(0, top, sourceWidth, bottom), options
+                        )
+                        if (band == null) {
+                            out.recycle()
+                            return null
+                        }
+                        val scaled = scaleFiltered(band, width, outBottom - outTop)
+                        canvas.drawBitmap(scaled, 0f, outTop.toFloat(), null)
+                        if (scaled !== band) scaled.recycle()
+                        band.recycle()
+                    }
+                    top = bottom
+                }
+                return out
+            } finally {
+                region.recycle()
+            }
         }
 
         /** The width a page lands at once fitted into the viewport, mirroring [downsampleBitmap]. */
@@ -764,7 +843,15 @@ abstract class BaseImageAdapter(
 
             val targetWidth = (bitmap.width * scale).toInt().coerceAtLeast(1)
             val targetHeight = (bitmap.height * scale).toInt().coerceAtLeast(1)
+            return scaleFiltered(bitmap, targetWidth, targetHeight)
+        }
 
+        /**
+         * [bitmap] scaled down to [targetWidth] x [targetHeight] without aliasing; [bitmap] itself
+         * when it is that size already. Never recycles [bitmap]: the caller owns it.
+         */
+        private fun scaleFiltered(bitmap: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
+            if (bitmap.width == targetWidth && bitmap.height == targetHeight) return bitmap
             // Halve while that still overshoots the target. A halving step samples exactly the 2×2
             // block it replaces, so it averages the full footprint; going straight to the target
             // in one jump does not, once the factor passes 2×. Stopping while the remainder is
@@ -802,6 +889,9 @@ abstract class BaseImageAdapter(
         /** Ceiling on a zoomed render, in both width and total pixels. */
         private const val MAX_ZOOMED_WIDTH = 4096
         private const val MAX_ZOOMED_PIXELS = 12L * 1024 * 1024
+
+        /** Source pixels read per band by [decodeAtWidth]: 16 MB at a time, whatever the page. */
+        private const val BAND_PIXELS = 4L * 1024 * 1024
 
         fun mergeBitmap(bitmap1: Bitmap, bitmap2: Bitmap, scale: Boolean = false): Bitmap {
             val height = if (bitmap1.height > bitmap2.height) bitmap1.height else bitmap2.height

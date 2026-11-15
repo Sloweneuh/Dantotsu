@@ -66,5 +66,5 @@ class DualPageAdapter(
         } else bitmap1
     }
 
-    override fun getItemCount(): Int = pagePairs?.size ?: imagePairs.size
+    override val pageItemCount: Int get() = pagePairs?.size ?: imagePairs.size
 }

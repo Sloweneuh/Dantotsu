@@ -138,6 +138,15 @@ class ReaderSettingsActivity : AppCompatActivity() {
                     PrefManager.setVal(PrefName.Direction, defaultSettings.direction.ordinal)
                     refresh()
                 },
+                choice(R.string.page_fit, R.drawable.ic_round_fit_screen_24,
+                    SettingsRows.pageFitLabel(this@ReaderSettingsActivity, defaultSettings.pageFit),
+                    SettingsRows.pageFitOptions(this@ReaderSettingsActivity),
+                    defaultSettings.pageFit,
+                ) { i ->
+                    defaultSettings.pageFit = i
+                    PrefManager.setVal(PrefName.PageFitReader, i)
+                    refresh()
+                },
                 choice(R.string.dual_page, R.drawable.ic_round_import_contacts_24,
                     "${defaultSettings.dualPageMode}\n${getString(R.string.dual_page_info)}",
                     dualOptions(),
@@ -167,11 +176,6 @@ class ReaderSettingsActivity : AppCompatActivity() {
         // Clamped to the slider's range: a stored speed from an older range can't sit off its ends.
         val autoscrollSpeed = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed).coerceIn(0.5f, 10f)
         bind(binding.readerMangaDisplayRows, listOf(
-            row(R.string.true_colors, R.drawable.ic_round_high_quality_24, defaultSettings.trueColors,
-                R.string.true_colors_info) {
-                defaultSettings.trueColors = it
-                PrefManager.setVal(PrefName.TrueColors, it)
-            },
             row(R.string.image_rotation, R.drawable.ic_round_screen_rotation_alt_24, defaultSettings.rotation) {
                 defaultSettings.rotation = it
                 PrefManager.setVal(PrefName.Rotation, it)
@@ -355,7 +359,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
             },
         ))
 
-        bind(binding.readerNovelControlsRows, listOf(
+        bindRebuilt(binding.readerNovelControlsRows) { refresh -> listOf(
             row(R.string.volume_buttons, R.drawable.ic_round_touch_app_24, defaultSettingsLN.volumeButtons) {
                 defaultSettingsLN.volumeButtons = it
                 PrefManager.setVal(PrefName.VolumeButtonsNovel, it)
@@ -370,7 +374,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                         .show(supportFragmentManager, NovelTtsSettingsBottomSheet.TAG)
                 },
             ),
-        ))
+        ) + SettingsRows.tapZoneRows(this, ani.dantotsu.media.manga.mangareader.TapZones.NOVEL) { refresh() } }
 
         bind(binding.readerGeneralRows, listOf(
             row(R.string.source_info, R.drawable.ic_round_info_24, PrefManager.getVal(PrefName.ShowSource)) {

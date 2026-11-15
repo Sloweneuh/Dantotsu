@@ -80,6 +80,16 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                     activity.applySettings()
                     refreshAll()
                 },
+                SettingsRows.choice(ctx, R.string.page_fit, R.drawable.ic_round_fit_screen_24,
+                    SettingsRows.pageFitLabel(ctx, settings.pageFit), SettingsRows.pageFitOptions(ctx),
+                    settings.pageFit,
+                    visible = settings.layout == Layouts.PAGED &&
+                        (settings.direction == Directions.LEFT_TO_RIGHT ||
+                            settings.direction == Directions.RIGHT_TO_LEFT)) { i ->
+                    settings.pageFit = i
+                    activity.applySettings()
+                    refreshAll()
+                },
                 SettingsRows.choice(ctx, R.string.dual_page, R.drawable.ic_round_import_contacts_24,
                     "${settings.dualPageMode}\n${getString(R.string.dual_page_info)}",
                     SettingsRows.dualOptions(), settings.dualPageMode.ordinal,
@@ -105,8 +115,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         // What is shown, and how the screen behaves.
         bind(binding.readerDisplayRows) {
             listOf(
-                switch(R.string.true_colors, R.drawable.ic_round_high_quality_24, settings.trueColors,
-                    R.string.true_colors_info) { settings.trueColors = it },
                 switch(R.string.image_rotation, R.drawable.ic_round_screen_rotation_alt_24,
                     settings.rotation) { settings.rotation = it },
                 switch(R.string.crop_borders, R.drawable.ic_round_auto_awesome_24,

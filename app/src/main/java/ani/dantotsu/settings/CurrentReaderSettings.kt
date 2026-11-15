@@ -11,8 +11,12 @@ data class CurrentReaderSettings(
         ?: Layouts.CONTINUOUS,
     var dualPageMode: DualPageModes = DualPageModes[PrefManager.getVal(PrefName.DualPageModeReader)]
         ?: DualPageModes.Automatic,
+    /**
+     * How a page fills the screen in the paged layout read sideways; a [PageFits] ordinal. An Int,
+     * not the enum: a file saved before it existed reads it as 0, fit screen, as pages always were.
+     */
+    var pageFit: Int = PrefManager.getVal(PrefName.PageFitReader),
     var overScrollMode: Boolean = PrefManager.getVal(PrefName.OverScrollMode),
-    var trueColors: Boolean = PrefManager.getVal(PrefName.TrueColors),
     var rotation: Boolean = PrefManager.getVal(PrefName.Rotation),
     var padding: Boolean = PrefManager.getVal(PrefName.Padding),
     var hideScrollBar: Boolean = PrefManager.getVal(PrefName.HideScrollBar),
@@ -72,6 +76,21 @@ data class CurrentReaderSettings(
 
         companion object {
             operator fun get(value: Int) = values().firstOrNull { it.ordinal == value }
+        }
+    }
+
+    enum class PageFits {
+        /** The whole page on screen, as it always was. */
+        SCREEN,
+
+        /** The page as wide as the screen, scrolled down within. */
+        WIDTH,
+
+        /** Fit width where the whole page would be a narrow strip (a page held sideways). */
+        SMART;
+
+        companion object {
+            operator fun get(value: Int) = entries.firstOrNull { it.ordinal == value } ?: SCREEN
         }
     }
 

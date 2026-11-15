@@ -45,6 +45,9 @@ class TapZoneEditorActivity : AppCompatActivity() {
     private lateinit var binding: ActivityTapZoneEditorBinding
     private lateinit var saved: String
 
+    /** Whose boxes these are: the manga reader's, or the novel reader's. */
+    private val prefs by lazy { TapZones.prefsFor(intent.getStringExtra(EXTRA_READER)) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
@@ -53,7 +56,7 @@ class TapZoneEditorActivity : AppCompatActivity() {
         hideSystemBarsExtendView()
 
         val zones = binding.tapZoneBoxes
-        saved = TapZones.encode(TapZones.parse(PrefManager.getVal(PrefName.ReaderCustomTapZones)))
+        saved = TapZones.encode(TapZones.parse(PrefManager.getVal(prefs.custom)))
         zones.setBoxes(TapZones.parse(savedInstanceState?.getString(STATE_BOXES) ?: saved))
 
         // Clear of a camera cutout; the system bars stay hidden, as in the reader.
@@ -91,7 +94,10 @@ class TapZoneEditorActivity : AppCompatActivity() {
         }
 
         binding.tapZonePresets.setOnClickListener { anchor ->
-            val presets = listOf(
+            // The novel reader's own strips first when editing its zones, so they can be got back.
+            val presets = listOfNotNull(
+                (R.string.reader_tap_zones_novel_default to TapZones.parse(TapZones.NOVEL_DEFAULT))
+                    .takeIf { prefs === TapZones.NOVEL },
                 R.string.reader_tap_zones_edges to TapZones.EDGES,
                 R.string.reader_tap_zones_thirds to TapZones.THIRDS,
                 R.string.reader_tap_zones_l to TapZones.L_SHAPE,
@@ -115,7 +121,7 @@ class TapZoneEditorActivity : AppCompatActivity() {
         binding.tapZoneFlip.setOnClickListener { zones.cycleSelected() }
         binding.tapZoneDelete.setOnClickListener { zones.deleteSelected() }
         binding.tapZoneSave.setOnClickListener {
-            PrefManager.setVal(PrefName.ReaderCustomTapZones, TapZones.encode(zones.boxes()))
+            PrefManager.setVal(prefs.custom, TapZones.encode(zones.boxes()))
             finish()
         }
 
@@ -143,8 +149,11 @@ class TapZoneEditorActivity : AppCompatActivity() {
         outState.putString(STATE_BOXES, TapZones.encode(binding.tapZoneBoxes.boxes()))
     }
 
-    private companion object {
-        const val STATE_BOXES = "boxes"
+    companion object {
+        private const val STATE_BOXES = "boxes"
+
+        /** Which reader's zones to edit: a [TapZones.Prefs.key]; the manga reader's if absent. */
+        const val EXTRA_READER = "reader"
     }
 }
 

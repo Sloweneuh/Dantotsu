@@ -3,6 +3,7 @@ package ani.dantotsu.media.manga.mangareader
 import android.animation.ObjectAnimator
 import android.graphics.Bitmap
 import android.graphics.PointF
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,13 +11,18 @@ import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
+import ani.dantotsu.databinding.ItemChapterEndBinding
 import ani.dantotsu.databinding.ItemImageBinding
 import ani.dantotsu.media.manga.MangaChapter
+import ani.dantotsu.settings.CurrentReaderSettings
+import ani.dantotsu.settings.CurrentReaderSettings.Directions.BOTTOM_TO_TOP
 import ani.dantotsu.settings.CurrentReaderSettings.Directions.LEFT_TO_RIGHT
 import ani.dantotsu.settings.CurrentReaderSettings.Directions.RIGHT_TO_LEFT
 import ani.dantotsu.settings.CurrentReaderSettings.Layouts.PAGED
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import com.alexvasilkov.gestures.Settings
+import com.alexvasilkov.gestures.views.GestureFrameLayout
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.ImageViewState
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
@@ -28,7 +34,35 @@ open class ImageAdapter(
     pageMap: ChapterPageMap? = null,
 ) : BaseImageAdapter(activity, chapter, pageMap) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
+    /**
+     * Whether the chapter ends on a page of its own: what was read, what comes next, missing
+     * chapters, and the way on (see MangaReaderActivity.bindChapterEnd). Not in the paged layout read
+     * bottom to top, whose pages run backwards from the end.
+     */
+    val hasChapterEnd = !(settings.layout == PAGED && settings.direction == BOTTOM_TO_TOP)
+
+    /** Whether [position] is that end-of-chapter page rather than a page of the chapter. */
+    fun isChapterEnd(position: Int) = hasChapterEnd && position >= pageItemCount
+
+    override fun getItemViewType(position: Int) = if (isChapterEnd(position)) TYPE_END else TYPE_PAGE
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        if (viewType == TYPE_END) {
+            val end = ItemChapterEndBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            val horizontal = settings.direction == LEFT_TO_RIGHT || settings.direction == RIGHT_TO_LEFT
+            end.root.layoutParams = when {
+                // A page like the others: the whole screen.
+                settings.layout == PAGED -> RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                // In a strip, a block across it, as long as it needs.
+                horizontal -> RecyclerView.LayoutParams(parent.width, ViewGroup.LayoutParams.MATCH_PARENT)
+                else -> RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }
+            return ChapterEndViewHolder(end)
+        }
         val binding = ItemImageBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         if (settings.layout == PAGED) {
             binding.root.layoutParams = RecyclerView.LayoutParams(
@@ -40,6 +74,28 @@ open class ImageAdapter(
     }
 
     inner class ImageViewHolder(binding: ItemImageBinding) : RecyclerView.ViewHolder(binding.root)
+
+    inner class ChapterEndViewHolder(val binding: ItemChapterEndBinding) : RecyclerView.ViewHolder(binding.root)
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        if (holder !is ChapterEndViewHolder) return super.onBindViewHolder(holder, position)
+        activity.bindChapterEnd(holder.binding)
+        // Paged, a tap here goes through the reader's tap zones like a tap on any page: forward
+        // goes on to the next chapter. Scrolling, the reader's own detector already has the taps.
+        if (settings.layout == PAGED) {
+            val detector = androidx.core.view.GestureDetectorCompat(
+                holder.itemView.context,
+                object : ani.dantotsu.GesturesListener() {
+                    override fun onSingleClick(event: android.view.MotionEvent) =
+                        activity.handleController(event = event)
+                },
+            )
+            holder.itemView.setOnTouchListener { _, event ->
+                detector.onTouchEvent(event)
+                true
+            }
+        }
+    }
 
     private val failedPages = FailedPageTracker(
         pageAt = { position -> pageKey(position) },
@@ -122,9 +178,37 @@ open class ImageAdapter(
                 }
             }
 
+        // Page fit, in the paged layout: a page fitted to the width is laid out as tall as that
+        // makes it, and panned down within; otherwise it fits the screen, as it always did.
+        val fitWidth = settings.layout == PAGED && activity.fitsPageWidth && when (
+            CurrentReaderSettings.PageFits[settings.pageFit]
+        ) {
+            CurrentReaderSettings.PageFits.WIDTH -> true
+            // A page whole on screen narrower than this share of it reads as a strip: widen it.
+            CurrentReaderSettings.PageFits.SMART ->
+                viewportHeight.toFloat() * fittedW / fittedH < viewportWidth * SMART_FIT_MIN_WIDTH
+            CurrentReaderSettings.PageFits.SCREEN -> false
+        }
+        val content = imageView.parent as View
+        val gestures = (parent as? GestureFrameLayout)?.controller
+        val tallHeight = (viewportWidth.toLong() * fittedH / fittedW).toInt()
+        if (settings.layout == PAGED) {
+            val panned = fitWidth && tallHeight > viewportHeight
+            if (panned) sHeight = tallHeight
+            content.updateLayoutParams {
+                height = if (panned) tallHeight else ViewGroup.LayoutParams.MATCH_PARENT
+            }
+            gestures?.settings?.apply {
+                // Fitted by its width and started from the top, where a page is read from.
+                fitMethod = if (panned) Settings.Fit.HORIZONTAL else Settings.Fit.INSIDE
+                gravity = if (panned) Gravity.TOP or Gravity.CENTER_HORIZONTAL else Gravity.CENTER
+            }
+        }
+
         val scaleX = sWidth * 1f / bitmap.width
         val scaleY = sHeight * 1f / bitmap.height
         val scale = when {
+            settings.layout == PAGED && fitWidth -> scaleX
             settings.layout == PAGED -> minOf(scaleX, scaleY)
             settings.direction != LEFT_TO_RIGHT && settings.direction != RIGHT_TO_LEFT -> scaleX
             else -> scaleY
@@ -141,6 +225,14 @@ open class ImageAdapter(
             ImageViewState(scale, PointF(bitmap.width / 2f, bitmap.height / 2f), 0)
         )
 
+        // The content's new size and fit only take once laid out; then it starts at the top.
+        // Only for a page new to this view: a zoom's re-render lands here too, and must not throw
+        // the reader back to the top of a page they were zoomed into.
+        if (settings.layout == PAGED && content.getTag(R.id.page_fit_page) != page) {
+            content.setTag(R.id.page_fit_page, page)
+            content.post { gestures?.resetState() }
+        }
+
         if (!quiet) ObjectAnimator.ofFloat(parent, "alpha", 0f, 1f)
             .setDuration((400 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong())
             .start()
@@ -153,7 +245,15 @@ open class ImageAdapter(
         return true
     }
 
-    override fun getItemCount(): Int = pageCount
+    override fun getItemCount(): Int = pageItemCount + if (hasChapterEnd) 1 else 0
+
+    private companion object {
+        const val TYPE_PAGE = 0
+        const val TYPE_END = 1
+
+        /** Smart page fit widens a page that, whole on screen, would be narrower than this share. */
+        const val SMART_FIT_MIN_WIDTH = 0.6f
+    }
 
     override fun isZoomed(): Boolean {
         val imageView =

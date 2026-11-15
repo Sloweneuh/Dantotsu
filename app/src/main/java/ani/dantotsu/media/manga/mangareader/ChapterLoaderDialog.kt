@@ -53,33 +53,9 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
 
         model.getMedia().observe(viewLifecycleOwner) { m ->
             if (m != null && !loaded) {
-                // If chapter title/number contains a lock emoji, show premium dialog instead of loading
-                val hasLock = (chp.title?.contains("🔒") == true) || (chp.number.contains("🔒"))
-                if (hasLock) {
-                    val parser = model.mangaReadSources?.get(m.selected!!.sourceIndex) as? DynamicMangaParser
-                    val sourceName = parser?.name
-                        ?: (parser?.extension?.sources?.getOrNull(parser.sourceLanguage)?.name ?: getString(R.string.open_in_browser))
-
-                    requireContext().customAlertDialog().apply {
-                        setTitle(getString(R.string.premium_chapter_title))
-                        setMessage(getString(R.string.premium_chapter_message, sourceName))
-                        setPosButton(R.string.open_in_browser) {
-                            // Try to open chapter in browser
-                            if (parser != null) {
-                                val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? HttpSource
-                                if (httpSource != null) {
-                                    try {
-                                        val url = httpSource.getChapterUrl(chp.sChapter)
-                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
-                                        startActivity(intent)
-                                    } catch (_: Exception) {
-                                    }
-                                }
-                            }
-                        }
-                        setNegButton(R.string.cancel)
-                        show()
-                    }
+                // A premium chapter can't be read here; offer the source's page instead.
+                if (isLocked(chp)) {
+                    showLocked(requireContext(), model, m, chp)
                     dismiss()
                     return@observe
                 }
@@ -128,6 +104,41 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
     companion object {
         fun newInstance(next: MangaChapter, launch: Boolean = false) = ChapterLoaderDialog().apply {
             arguments = bundleOf("next" to next as Serializable, "launch" to launch)
+        }
+
+        /** A chapter the source marks as premium: a lock in its title or number. */
+        fun isLocked(chp: MangaChapter) =
+            chp.title?.contains("🔒") == true || chp.number.contains("🔒")
+
+        /** Says [chp] is premium, and offers to open it on the source's site. */
+        fun showLocked(
+            context: android.content.Context,
+            model: MediaDetailsViewModel,
+            media: ani.dantotsu.media.Media,
+            chp: MangaChapter,
+        ) {
+            val parser = model.mangaReadSources?.get(media.selected!!.sourceIndex) as? DynamicMangaParser
+            val sourceName = parser?.name
+                ?: (parser?.extension?.sources?.getOrNull(parser.sourceLanguage)?.name
+                    ?: context.getString(R.string.open_in_browser))
+            context.customAlertDialog().apply {
+                setTitle(context.getString(R.string.premium_chapter_title))
+                setMessage(context.getString(R.string.premium_chapter_message, sourceName))
+                setPosButton(R.string.open_in_browser) {
+                    val httpSource = parser?.extension?.sources?.getOrNull(parser.sourceLanguage) as? HttpSource
+                    if (httpSource != null) {
+                        try {
+                            val url = httpSource.getChapterUrl(chp.sChapter)
+                            context.startActivity(
+                                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                            )
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+                setNegButton(R.string.cancel)
+                show()
+            }
         }
 
         fun showProgressPopupIfNecessary(

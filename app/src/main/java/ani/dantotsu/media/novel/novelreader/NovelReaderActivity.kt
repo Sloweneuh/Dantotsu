@@ -2,6 +2,7 @@ package ani.dantotsu.media.novel.novelreader
 
 import android.animation.ObjectAnimator
 import ani.dantotsu.media.MediaType
+import ani.dantotsu.media.manga.mangareader.MangaReaderActivity
 import ani.dantotsu.media.history.WatchHistory
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -91,8 +92,6 @@ import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.util.Locale
-import java.util.Timer
-import java.util.TimerTask
 import kotlin.math.roundToInt
 import kotlin.math.min
 import kotlin.properties.Delegates
@@ -136,12 +135,6 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
          * plain book and clears any session left over from a previous read.
          */
         const val EXTRA_LN_SESSION = "lnreader_session"
-
-        /** Width of each page-turning strip, as a percentage of the reader's width. */
-        private const val PAGE_TAP_EDGE = 15
-
-        /** How much of the top and bottom is left alone, as a percentage of the reader's height. */
-        private const val PAGE_TAP_VERTICAL_MARGIN = 20
 
         /** How far through counts as having read the chapter, matching the reader's own rounding. */
         private const val FINISHED_FRACTION = 0.99
@@ -1651,39 +1644,33 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
     // region Handle Controls
     private var isContVisible = false
     private var isAnimating = false
-    private var goneTimer = Timer()
     private var controllerDuration by Delegates.notNull<Long>()
     private val overshoot = OvershootInterpolator(1.4f)
 
-    fun gone() {
-        goneTimer.cancel()
-        goneTimer.purge()
-        val timerTask: TimerTask = object : TimerTask() {
-            override fun run() {
-                if (!isContVisible) binding.novelReaderCont.post {
-                    binding.novelReaderCont.visibility = View.GONE
-                    isAnimating = false
-                }
-            }
+    /** How far the bars slide as they come and go: a distance, not a pixel count. */
+    private val chromeSlide get() = 48f * resources.displayMetrics.density
+
+    private val hideControls = Runnable {
+        if (!isContVisible) {
+            binding.novelReaderCont.visibility = View.GONE
+            isAnimating = false
         }
-        goneTimer = Timer()
-        goneTimer.schedule(timerTask, controllerDuration)
+    }
+
+    fun gone() {
+        binding.novelReaderCont.removeCallbacks(hideControls)
+        binding.novelReaderCont.postDelayed(hideControls, controllerDuration)
     }
 
     /**
-     * What a single tap on the page means.
-     *
-     * Two narrow strips down the left and right edges turn pages; everything else brings the
-     * controls up. The strips are kept deliberately small, and stop short of the top and bottom of
-     * the screen, because reaching the controls is the more common thing to want and the bars are
-     * what a tap up there or down there is aiming for.
+     * What a single tap on the page means, by the novel reader's tap zones (TapZones.NOVEL, set up
+     * like the manga reader's): forward, back, or the controls. By default they are the reader's
+     * old layout — a narrow strip down each side, clear of the top and bottom, which a tap there is
+     * reaching for the bars from.
      *
      * Measured against the reader view rather than the display: the touch arrives in the view's own
      * coordinates, so anything else can put the boundary in the wrong place — and does, on any
      * window that is not exactly the size of the screen.
-     *
-     * Paged layout only. A scrolled book has no pages to turn, so there every tap is for the
-     * controls.
      */
     private fun handleTap(event: MotionEvent) {
         // With the controls already up, a tap puts them away rather than turning a page. Otherwise
@@ -1692,23 +1679,18 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             handleController()
             return
         }
-
-        val width = binding.bookReader.width
-        val height = binding.bookReader.height
-        val edge = width * PAGE_TAP_EDGE / 100
-        val margin = height * PAGE_TAP_VERTICAL_MARGIN / 100
-        val inStrip = event.y > margin && event.y < height - margin
         val paged = defaultSettings.layout == CurrentNovelReaderSettings.Layouts.PAGED
-        when {
-            !inStrip -> handleController()
-            // Moving to the next chapter is not paging, so it belongs to both layouts: a scrolled
-            // chapter has nothing left to scroll at its end but the novel still goes on.
-            // Forward belongs to both layouts: paged it turns a page, scrolled it scrolls on, and
-            // at the end of either it moves to the next chapter.
-            event.x > width - edge -> pageForward()
-            !paged -> handleController()
-            event.x < edge -> binding.bookReader.prev()
-            else -> handleController()
+        val side = ani.dantotsu.media.manga.mangareader.TapZones.sideAt(
+            event.x.toInt(), event.y.toInt(), binding.bookReader.width, binding.bookReader.height,
+            ani.dantotsu.media.manga.mangareader.TapZones.NOVEL,
+        )
+        when (side) {
+            // Forward belongs to both layouts: paged it turns a page, scrolled it scrolls on, and at
+            // the end of either it moves to the next chapter.
+            MangaReaderActivity.PressPos.RIGHT -> pageForward()
+            // A scrolled book has no page to go back to; there it is a tap for the controls.
+            MangaReaderActivity.PressPos.LEFT -> if (paged) binding.bookReader.prev() else handleController()
+            MangaReaderActivity.PressPos.CENTER -> handleController()
         }
     }
 
@@ -1727,9 +1709,9 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
                 isAnimating = true
                 ObjectAnimator.ofFloat(binding.novelReaderCont, "alpha", 1f, 0f)
                     .setDuration(controllerDuration).start()
-                ObjectAnimator.ofFloat(binding.novelReaderBottomCont, "translationY", 0f, 128f)
+                ObjectAnimator.ofFloat(binding.novelReaderBottomCont, "translationY", 0f, chromeSlide)
                     .apply { interpolator = overshoot;duration = controllerDuration;start() }
-                ObjectAnimator.ofFloat(binding.novelReaderTopLayout, "translationY", 0f, -128f)
+                ObjectAnimator.ofFloat(binding.novelReaderTopLayout, "translationY", 0f, -chromeSlide)
                     .apply { interpolator = overshoot;duration = controllerDuration;start() }
             }
             gone()
@@ -1738,9 +1720,9 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             binding.novelReaderCont.visibility = View.VISIBLE
             ObjectAnimator.ofFloat(binding.novelReaderCont, "alpha", 0f, 1f)
                 .setDuration(controllerDuration).start()
-            ObjectAnimator.ofFloat(binding.novelReaderTopLayout, "translationY", -128f, 0f)
+            ObjectAnimator.ofFloat(binding.novelReaderTopLayout, "translationY", -chromeSlide, 0f)
                 .apply { interpolator = overshoot;duration = controllerDuration;start() }
-            ObjectAnimator.ofFloat(binding.novelReaderBottomCont, "translationY", 128f, 0f)
+            ObjectAnimator.ofFloat(binding.novelReaderBottomCont, "translationY", chromeSlide, 0f)
                 .apply { interpolator = overshoot;duration = controllerDuration;start() }
         }
     }

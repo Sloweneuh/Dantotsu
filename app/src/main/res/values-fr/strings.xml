@@ -709,7 +709,6 @@
     <string name="auto_detect_webtoon">Détection auto des Webtoons</string>
     <string name="horizontal_scroll_bar">Barre de défilement horizontale</string>
     <string name="dual_page">Double page</string>
-    <string name="true_colors">Vraies couleurs</string>
     <string name="image_rotation">Rotation d\'image</string>
     <string name="hide_page_numbers">Masquer les numéros de page</string>
     <string name="sort_by_title">Trier par titre</string>
@@ -1607,7 +1606,6 @@
     <string name="delete_custom_list_confirm">Êtes-vous sûr de vouloir supprimer %1$s ?</string>
     <string name="auto_detect_webtoon_info">Si le Manga ne vient pas du Japon, le lecteur utilisera par défaut les paramètres de lecture Webtoon</string>
     <string name="dual_page_info">Affiche 2 images sur 1 page, aura l\'air bizarre si les images n\'ont pas la même taille</string>
-    <string name="true_colors_info">(Mode couleur 32 bits) Réduit le banding sur les images, peut affecter les performances.</string>
     <string name="wrap_images_info">Surtout utile pour les grands appareils, supprime l\'espace entre les images, s\'il existe.</string>
     <string name="search_timeout">La recherche a expiré. Cette source peut être lente sur votre réseau.</string>
     <string name="search_cancelled">Recherche annulée.</string>
@@ -2850,7 +2848,6 @@
     <string name="search_kw_use_additional_codec">ffmpeg décodeur</string>
     <string name="search_kw_auto_detect_webtoon">webtoon vertical défilement auto détecter</string>
     <string name="search_kw_over_scroll">overscroll fin chapitre balayage glisser</string>
-    <string name="search_kw_true_colors">couleur précis exact affichage afficher rendu</string>
     <string name="search_kw_image_rotation">pivoter rotation image page</string>
     <string name="search_kw_crop_borders">bordure découper espace blanc rogner recadrer</string>
     <string name="search_kw_spaced_pages">marge interne espace écart pages</string>
@@ -4204,4 +4201,18 @@
     <string name="player_show_less">Afficher moins</string>
     <string name="player_resumed_from">Reprise à %1$s</string>
     <string name="player_start_over">Reprendre au début</string>
+    <!-- Manga reader, page fit -->
+    <string name="page_fit">Ajustement de la page</string>
+    <string name="page_fit_info">Mise en page par pages, lecture horizontale. Intelligent ajuste à la largeur quand la page entière ne serait qu\'une bande étroite</string>
+    <string name="page_fit_screen">Ajuster à l\'écran</string>
+    <string name="page_fit_width">Ajuster à la largeur</string>
+    <string name="page_fit_smart">Intelligent</string>
+    <string name="search_kw_page_fit">page ajuster largeur écran zoom paysage échelle</string>
+    <string name="reader_tap_zones_novel_default">Par défaut (romans)</string>
+    <!-- Manga reader, end of chapter -->
+    <string name="chapter_end_next">Chapitre suivant</string>
+    <string name="chapter_end_missing_one">Il manque un chapitre entre les deux</string>
+    <string name="chapter_end_missing">Il manque %1$d chapitres entre les deux</string>
+    <string name="chapter_end_last">C\'est le dernier chapitre</string>
+    <string name="chapter_load_failed">Impossible de charger le chapitre %1$s</string>
 </resources>

@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.media.manga.mangareader.TapZoneEditorActivity
+import ani.dantotsu.media.manga.mangareader.TapZones
 import ani.dantotsu.media.novel.novelreader.NovelFontPicker
 import ani.dantotsu.media.novel.novelreader.NovelFonts
 import ani.dantotsu.settings.saving.PrefManager
@@ -117,24 +118,31 @@ object SettingsRows {
      * Where a tap turns the page in the paged layout, and whether the sides are swapped. Global
      * preferences, read at each tap; [refresh] rebuilds the list so the chosen layout shows.
      */
-    fun tapZoneRows(context: Context, refresh: () -> Unit): List<Settings> {
+    fun tapZoneRows(
+        context: Context,
+        prefs: TapZones.Prefs = TapZones.MANGA,
+        refresh: () -> Unit,
+    ): List<Settings> {
         val names = listOf(
             R.string.reader_tap_zones_edges, R.string.reader_tap_zones_thirds,
             R.string.reader_tap_zones_l, R.string.reader_tap_zones_off,
             R.string.reader_tap_zones_custom,
         ).map { context.getString(it) }.toTypedArray()
-        val current = PrefManager.getVal<Int>(PrefName.ReaderTapZones).coerceIn(0, names.size - 1)
+        val current = PrefManager.getVal<Int>(prefs.layout).coerceIn(0, names.size - 1)
+        // The manga reader only reads them in its paged layout; the novel's go for both of its.
+        val novel = prefs === TapZones.NOVEL
         return listOf(
             Settings(
                 type = 1,
                 name = context.getString(R.string.reader_tap_zones),
-                desc = context.getString(R.string.reader_tap_zones_paged_only, names[current]),
+                desc = if (novel) names[current]
+                    else context.getString(R.string.reader_tap_zones_paged_only, names[current]),
                 icon = R.drawable.ic_round_grid_view_24,
                 onClick = {
                     context.customAlertDialog().apply {
                         setTitle(R.string.reader_tap_zones)
                         singleChoiceItems(names, current) { i ->
-                            PrefManager.setVal(PrefName.ReaderTapZones, i)
+                            PrefManager.setVal(prefs.layout, i)
                             refresh()
                         }
                         show()
@@ -150,12 +158,15 @@ object SettingsRows {
                 icon = R.drawable.ic_round_grid_view_24,
                 isVisible = current == 4,
                 onClick = {
-                    context.startActivity(Intent(context, TapZoneEditorActivity::class.java))
+                    context.startActivity(
+                        Intent(context, TapZoneEditorActivity::class.java)
+                            .putExtra(TapZoneEditorActivity.EXTRA_READER, prefs.key)
+                    )
                 },
             ),
             switch(context, R.string.reader_tap_zones_invert, R.drawable.ic_round_touch_app_24,
-                PrefManager.getVal(PrefName.ReaderTapZonesInverted), enabled = current != 3) {
-                PrefManager.setVal(PrefName.ReaderTapZonesInverted, it)
+                PrefManager.getVal(prefs.inverted), enabled = current != 3) {
+                PrefManager.setVal(prefs.inverted, it)
             },
         )
     }
@@ -208,6 +219,21 @@ object SettingsRows {
     }
 
     /** Dual page's three modes, in DualPageModes order. */
+    /** Fit screen, fit width, smart: see [CurrentReaderSettings.PageFits]. */
+    fun pageFitOptions(context: Context) = listOf(
+        ChoiceOption(R.drawable.ic_round_fit_screen_24, context.getString(R.string.page_fit_screen)),
+        ChoiceOption(R.drawable.ic_round_width_full_24, context.getString(R.string.page_fit_width)),
+        ChoiceOption(R.drawable.ic_round_auto_awesome_24, context.getString(R.string.page_fit_smart)),
+    )
+
+    fun pageFitLabel(context: Context, fit: Int) = context.getString(
+        when (CurrentReaderSettings.PageFits[fit]) {
+            CurrentReaderSettings.PageFits.SCREEN -> R.string.page_fit_screen
+            CurrentReaderSettings.PageFits.WIDTH -> R.string.page_fit_width
+            CurrentReaderSettings.PageFits.SMART -> R.string.page_fit_smart
+        }
+    ) + "\n" + context.getString(R.string.page_fit_info)
+
     fun dualOptions() = CurrentReaderSettings.DualPageModes.entries.map { mode ->
         ChoiceOption(
             when (mode) {

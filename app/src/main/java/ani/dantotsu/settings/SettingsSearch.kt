@@ -458,8 +458,6 @@ object SettingsSearch {
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.over_scroll, R.string.manga_and_reader, IC_READER, keywordsRes = R.string.search_kw_over_scroll)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.true_colors, R.string.manga_and_reader, IC_READER, keywordsRes = R.string.search_kw_true_colors)
-
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.image_rotation, R.string.manga_and_reader, IC_READER, keywordsRes = R.string.search_kw_image_rotation)
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.crop_borders, R.string.manga_and_reader, IC_READER, keywordsRes = R.string.search_kw_crop_borders)
@@ -492,6 +490,7 @@ object SettingsSearch {
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.direction, R.string.manga_and_reader, IC_READER, keywordsRes = R.string.search_kw_direction)
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.dual_page, R.string.manga_and_reader, IC_READER, keywordsRes = R.string.search_kw_dual_page)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.page_fit, R.string.manga_and_reader, IC_READER, keywordsRes = R.string.search_kw_page_fit)
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.source_info, R.string.manga_and_reader, IC_READER, keywordsRes = R.string.search_kw_source_info)
 

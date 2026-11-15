@@ -794,8 +794,6 @@
     <string name="horizontal_scroll_bar">Horizontal Scroll Bar</string>
     <string name="dual_page">Dual Page</string>
     <string name="dual_page_info">Shows 2 Images in 1 page, will look weird if the images aren\'t the same size</string>
-    <string name="true_colors">True Colors</string>
-    <string name="true_colors_info">(32-bit color Mode) Reduces Banding on the images, may affect performance.</string>
     <string name="image_rotation">Image Rotation</string>
     <string name="hide_page_numbers">Hide Page Numbers</string>
     <string name="sort_by_title">Sort by Title</string>
@@ -2995,7 +2993,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_use_additional_codec">ffmpeg decoder</string>
     <string name="search_kw_auto_detect_webtoon">webtoon vertical scroll auto detect</string>
     <string name="search_kw_over_scroll">overscroll end chapter swipe</string>
-    <string name="search_kw_true_colors">color accurate display rendering</string>
     <string name="search_kw_image_rotation">rotate image page</string>
     <string name="search_kw_crop_borders">border trim whitespace crop</string>
     <string name="search_kw_spaced_pages">padding gap pages margin</string>
@@ -4326,4 +4323,18 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="player_show_less">Show less</string>
     <string name="player_resumed_from">Resumed from %1$s</string>
     <string name="player_start_over">Start over</string>
+    <!-- Manga reader, page fit -->
+    <string name="page_fit">Page fit</string>
+    <string name="page_fit_info">Paged layout read sideways. Smart fits the width when the whole page would be a narrow strip</string>
+    <string name="page_fit_screen">Fit screen</string>
+    <string name="page_fit_width">Fit width</string>
+    <string name="page_fit_smart">Smart</string>
+    <string name="search_kw_page_fit">page fit width screen zoom landscape scale</string>
+    <string name="reader_tap_zones_novel_default">Novel default</string>
+    <!-- Manga reader, end of chapter -->
+    <string name="chapter_end_next">Next chapter</string>
+    <string name="chapter_end_missing_one">A chapter is missing between these</string>
+    <string name="chapter_end_missing">%1$d chapters are missing between these</string>
+    <string name="chapter_end_last">This is the latest chapter</string>
+    <string name="chapter_load_failed">Couldn\'t load chapter %1$s</string>
 </resources>

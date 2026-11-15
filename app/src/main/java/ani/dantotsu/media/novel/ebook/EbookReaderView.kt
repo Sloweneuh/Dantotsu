@@ -25,13 +25,13 @@ import java.io.FileOutputStream
 
 
 /**
- * The ebook reader: foliate-js (assets/ebook-reader) in a WebView, the book served to it from a
- * local file server. Forked from VipulOG/ebook-reader 0.1.6, archived upstream, so that the bridge
+ * The ebook reader: foliate-js (assets/ebook-reader) in a WebView, the book served to it through
+ * [WebViewAssetLoader] from the app's cache — never over a socket, which any app or device on the
+ * network could reach too. Forked from VipulOG/ebook-reader 0.1.6, archived upstream, so that the bridge
  * can be fixed and extended here; the app's additions are setExtraStyles, highlightSentence, search and bookmarks.
  */
 @Suppress("MemberVisibilityCanBePrivate", "unused")
 class EbookReaderView : WebView {
-    private val fileServer: FileServer = FileServer()
     private var listener: EbookReaderEventListener? = null
     private val scope = CoroutineScope(Main)
 
@@ -56,12 +56,6 @@ class EbookReaderView : WebView {
     }
 
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        fileServer.stop()
-    }
-
-
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebViewSettings() {
         settings.javaScriptEnabled = true
@@ -69,6 +63,11 @@ class EbookReaderView : WebView {
 
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
+            // The open book, and only that folder: the page can't name any other file.
+            .addPathHandler(
+                BOOK_PATH,
+                WebViewAssetLoader.InternalStoragePathHandler(context, bookDir().apply { mkdirs() })
+            )
             .build()
 
         webViewClient = object : WebViewClientCompat() {
@@ -79,8 +78,9 @@ class EbookReaderView : WebView {
                 val url = request.url
                 val sanitizedUrl = Uri.parse(url.toString().replace("blob:", ""))
                 if (!sanitizedUrl.host.equals(domain, ignoreCase = true)) {
-                    val intent = Intent(Intent.ACTION_VIEW, url)
-                    view.context.startActivity(intent)
+                    // A book's links can be any scheme at all; one nothing on the device opens
+                    // is ignored rather than crashing the reader.
+                    runCatching { view.context.startActivity(Intent(Intent.ACTION_VIEW, url)) }
                     return true
                 }
                 return super.shouldOverrideUrlLoading(view, request)
@@ -130,35 +130,28 @@ class EbookReaderView : WebView {
 
 
     suspend fun openBook(uri: Uri) {
-        val fileName = "book.epub"
-        val outputFile = File("${context.cacheDir}/ebookreader", fileName)
-        val url = outputFile.toURI().toString()
-
-        if (!outputFile.exists()) outputFile.parentFile?.mkdirs()
+        val outputFile = File(bookDir(), BOOK_FILE)
         withContext(IO) {
+            outputFile.parentFile?.mkdirs()
             context.contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(outputFile).use { output ->
-                    val buffer = ByteArray(1024)
-                    var read: Int
-                    while (input.read(buffer).also { read = it } != -1) {
-                        output.write(buffer, 0, read)
-                    }
-                    output.flush()
-                }
+                FileOutputStream(outputFile).use { output -> input.copyTo(output, COPY_BUFFER) }
             }
         }
 
         // A new page: it has none of the extra styles until they are sent again.
         sentExtraCss = null
-        val bookUrl = "http://localhost:${fileServer.listeningPort}/?url=$url"
+        // The query only makes each open a new url, so nothing can hand back the previous book.
+        val bookUrl = "https://$domain$BOOK_PATH$BOOK_FILE?v=${System.currentTimeMillis()}"
         val uriBuilder = Uri.parse(readerUrl).buildUpon().appendQueryParameter("url", bookUrl)
         val bookReaderUrl = uriBuilder.build().toString()
         loadUrl(bookReaderUrl)
     }
 
+    private fun bookDir() = File(context.cacheDir, "ebookreader")
+
 
     fun goto(locator: String) {
-        processJavascript("goto('$locator')")
+        processJavascript("goto(${org.json.JSONObject.quote(locator)})")
     }
 
 
@@ -365,5 +358,11 @@ class EbookReaderView : WebView {
                 listener?.onTextSelectionModeChange(false)
             }
         }
+    }
+
+    private companion object {
+        const val BOOK_PATH = "/book/"
+        const val BOOK_FILE = "book.epub"
+        const val COPY_BUFFER = 64 * 1024
     }
 }

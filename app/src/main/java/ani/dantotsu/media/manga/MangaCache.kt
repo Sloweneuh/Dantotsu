@@ -202,6 +202,26 @@ class MangaCache {
     }
 
     /**
+     * Pages decoded again for a zoom (see BaseImageAdapter.renderZoomed), apart from [bitmapCache]:
+     * one can be up to 48 MB, and sharing a cache, two or three of them pushed every ordinary page
+     * out — so scrolling on after a zoom meant decoding the whole neighbourhood again. Small on
+     * purpose: a zoom is on the page being read, and the one before it is rarely wanted back.
+     */
+    private val zoomCache = object : LruCache<String, Bitmap>(
+        (minOf(Runtime.getRuntime().maxMemory() / 8, 96L * 1024 * 1024) / 1024).toInt()
+    ) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
+    }
+
+    @Synchronized
+    fun getZoomBitmap(key: String): Bitmap? = zoomCache.get(key)
+
+    @Synchronized
+    fun putZoomBitmap(key: String, bitmap: Bitmap) {
+        zoomCache.put(key, bitmap)
+    }
+
+    /**
      * The pages as downloaded, still encoded.
      *
      * A decoded page is one resolution for ever, so zooming into it can only stretch what is
@@ -254,6 +274,7 @@ class MangaCache {
     fun evictBitmaps() {
         bitmapCache.evictAll()
         pageBytesCache.evictAll()
+        zoomCache.evictAll()
     }
 
     @Synchronized
@@ -261,6 +282,7 @@ class MangaCache {
         imageDataCache.evictAll()
         bitmapCache.evictAll()
         pageBytesCache.evictAll()
+        zoomCache.evictAll()
     }
 
     fun size(): Int = imageDataCache.size()

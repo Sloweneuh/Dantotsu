@@ -15,6 +15,33 @@ import java.util.Locale
  */
 object TapZones {
 
+    /**
+     * One reader's tap-zone preferences: the layout picked, whether its sides are swapped, and the
+     * custom boxes. The manga and novel readers each have their own, so a page of a comic and a page
+     * of text can be tapped through differently.
+     */
+    class Prefs(
+        val layout: PrefName,
+        val inverted: PrefName,
+        val custom: PrefName,
+        /** What the custom boxes go back to when reset. */
+        val defaultBoxes: String,
+        /** For the editor's intent: which set to edit. */
+        val key: String,
+    )
+
+    val MANGA = Prefs(
+        PrefName.ReaderTapZones, PrefName.ReaderTapZonesInverted, PrefName.ReaderCustomTapZones,
+        DEFAULT, "manga",
+    )
+
+    val NOVEL = Prefs(
+        PrefName.NovelTapZones, PrefName.NovelTapZonesInverted, PrefName.NovelCustomTapZones,
+        NOVEL_DEFAULT, "novel",
+    )
+
+    fun prefsFor(key: String?) = if (key == NOVEL.key) NOVEL else MANGA
+
     enum class Zone(val code: Char) { BACK('B'), FORWARD('F'), MENU('M') }
 
     data class Box(val zone: Zone, val left: Float, val top: Float, val right: Float, val bottom: Float) {
@@ -79,9 +106,9 @@ object TapZones {
      *    as back and forward rather than sides, whatever the direction.
      * Inverted (ReaderTapZonesInverted) swaps the two sides.
      */
-    fun sideAt(x: Int, y: Int, w: Int, h: Int): PressPos {
+    fun sideAt(x: Int, y: Int, w: Int, h: Int, prefs: Prefs = MANGA): PressPos {
         if (w <= 0 || h <= 0) return PressPos.CENTER
-        val side = when (PrefManager.getVal<Int>(PrefName.ReaderTapZones)) {
+        val side = when (PrefManager.getVal<Int>(prefs.layout)) {
             1 -> when {
                 x < w / 3 -> PressPos.LEFT
                 x > w - w / 3 -> PressPos.RIGHT
@@ -97,7 +124,7 @@ object TapZones {
             3 -> PressPos.CENTER
             4 -> when (
                 zoneAt(
-                    parse(PrefManager.getVal(PrefName.ReaderCustomTapZones)),
+                    parse(PrefManager.getVal(prefs.custom)),
                     x.toFloat() / w, y.toFloat() / h,
                 )
             ) {
@@ -112,13 +139,21 @@ object TapZones {
                 else -> PressPos.CENTER
             }
         }
-        if (!PrefManager.getVal<Boolean>(PrefName.ReaderTapZonesInverted)) return side
+        if (!PrefManager.getVal<Boolean>(prefs.inverted)) return side
         return when (side) {
             PressPos.LEFT -> PressPos.RIGHT
             PressPos.RIGHT -> PressPos.LEFT
             PressPos.CENTER -> PressPos.CENTER
         }
     }
+
+    /**
+     * NovelCustomTapZones' default, and the novel reader's layout as it always was: a strip down
+     * each side, 15% wide, kept clear of the top and bottom fifths, where a tap is reaching for the
+     * bars; everywhere else opens them.
+     */
+    const val NOVEL_DEFAULT = "M:0.0000,0.0000,1.0000,1.0000;B:0.0000,0.2000,0.1500,0.8000;" +
+        "F:0.8500,0.2000,1.0000,0.8000"
 
     /** ReaderCustomTapZones' default: [EDGES]. */
     const val DEFAULT = "M:0.0000,0.0000,1.0000,0.1000;B:0.0000,0.1000,0.2000,1.0000;" +

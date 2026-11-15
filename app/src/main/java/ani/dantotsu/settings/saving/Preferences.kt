@@ -363,14 +363,19 @@ enum class PrefName(val data: Pref) {
     ReaderTapZonesInverted(Pref(Location.Reader, Boolean::class, false)),
     // The custom layout's boxes; see TapZones. Starts as the Edges layout.
     ReaderCustomTapZones(Pref(Location.Reader, String::class, ani.dantotsu.media.manga.mangareader.TapZones.DEFAULT)),
+    /** The novel reader's own; see TapZones.NOVEL. Custom (4) by default, set to its old strips. */
+    NovelTapZones(Pref(Location.Reader, Int::class, 4)),
+    NovelTapZonesInverted(Pref(Location.Reader, Boolean::class, false)),
+    NovelCustomTapZones(Pref(Location.Reader, String::class, ani.dantotsu.media.manga.mangareader.TapZones.NOVEL_DEFAULT)),
     AskIndividualReader(Pref(Location.Reader, Boolean::class, true)),
     ChapterZeroReader(Pref(Location.Reader, Boolean::class, true)),
     UpdateForHReader(Pref(Location.Reader, Boolean::class, false)),
     Direction(Pref(Location.Reader, Int::class, 0)),
     LayoutReader(Pref(Location.Reader, Int::class, 2)),
     DualPageModeReader(Pref(Location.Reader, Int::class, 1)),
+    /** See CurrentReaderSettings.PageFits: 0 fit screen, 1 fit width, 2 smart. */
+    PageFitReader(Pref(Location.Reader, Int::class, 0)),
     OverScrollMode(Pref(Location.Reader, Boolean::class, true)),
-    TrueColors(Pref(Location.Reader, Boolean::class, false)),
     Rotation(Pref(Location.Reader, Boolean::class, true)),
     Padding(Pref(Location.Reader, Boolean::class, true)),
     SmartPadding(Pref(Location.Reader, Boolean::class, true)),

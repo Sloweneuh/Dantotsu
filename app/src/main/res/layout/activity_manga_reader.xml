@@ -574,4 +574,52 @@
         app:outlineColor="#A9000000"
         app:outlineWidth="1"
         tools:text="1/10" />
+
+    <!-- A chapter loading, in place of the old loader sheet: on top of everything, so it shows
+         whatever the reader is doing, with a way to call it off. See MangaReaderActivity.loadChapter. -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/mangaReaderChapterLoading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        app:cardBackgroundColor="#E6101010"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="20dp"
+            android:paddingEnd="8dp">
+
+            <ani.dantotsu.others.MaterialProgressBar
+                style="?android:attr/progressBarStyle"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:indeterminate="true" />
+
+            <TextView
+                android:id="@+id/mangaReaderChapterLoadingText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:textColor="@android:color/white"
+                android:textSize="14sp"
+                tools:text="Loading Chapter 13" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/mangaReaderChapterLoadingCancel"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/cancel"
+                android:textColor="@android:color/white" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 </FrameLayout>

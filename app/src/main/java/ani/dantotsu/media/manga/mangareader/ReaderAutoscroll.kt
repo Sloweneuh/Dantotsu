@@ -7,8 +7,6 @@ import ani.dantotsu.settings.CurrentReaderSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
-import java.util.Timer
-import java.util.TimerTask
 
 /**
  * The reader's autoscroll: a smooth scroll tied to the display's frames in the continuous layout,
@@ -19,7 +17,20 @@ class ReaderAutoscroll(private val activity: MangaReaderActivity) {
     var isOn = false
         private set
 
-    private var timer: Timer? = null
+    /** The paged layout's page turn, run on the pager at [pageInterval]. */
+    private var pageInterval = 0L
+    private val turnPage = object : Runnable {
+        override fun run() {
+            if (!isOn) return
+            val pager = activity.binding.mangaReaderPager
+            if (activity.directionRLBT) {
+                if (pager.currentItem > 0) pager.currentItem = pager.currentItem - 1
+            } else if (pager.currentItem < (pager.adapter?.itemCount?.minus(1) ?: 0)) {
+                pager.currentItem = pager.currentItem + 1
+            }
+            pager.postDelayed(this, pageInterval)
+        }
+    }
     private var lastFrameNanos = 0L
     private var accumulatedPx = 0f
 
@@ -56,30 +67,12 @@ class ReaderAutoscroll(private val activity: MangaReaderActivity) {
         isOn = true
         val binding = activity.binding
         binding.mangaReaderAutoscroll.setImageResource(R.drawable.ic_round_pause_24)
-        timer?.cancel()
+        activity.binding.mangaReaderPager.removeCallbacks(turnPage)
         val speed = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)
         if (activity.defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) {
             // Higher `speed` -> faster. Use a tighter base so max values are noticeably faster.
-            val interval = (1000L / maxOf(0.1f, speed)).toLong()
-            timer = Timer().apply {
-                scheduleAtFixedRate(object : TimerTask() {
-                    override fun run() {
-                        val pager = binding.mangaReaderPager
-                        pager.post {
-                            try {
-                                if (activity.directionRLBT) {
-                                    if (pager.currentItem > 0) pager.currentItem = pager.currentItem - 1
-                                } else {
-                                    if (pager.currentItem < (pager.adapter?.itemCount?.minus(1) ?: 0)) {
-                                        pager.currentItem = pager.currentItem + 1
-                                    }
-                                }
-                            } catch (_: Exception) {
-                            }
-                        }
-                    }
-                }, interval, interval)
-            }
+            pageInterval = (1000L / maxOf(0.1f, speed)).toLong()
+            activity.binding.mangaReaderPager.postDelayed(turnPage, pageInterval)
         } else {
             // Continuous: vsync-tied smooth scroll via Choreographer
             lastFrameNanos = 0L
@@ -98,15 +91,13 @@ class ReaderAutoscroll(private val activity: MangaReaderActivity) {
         PrefManager.setVal(PrefName.AutoScrollSpeed, newSpeed)
         // Paged mode uses a timer interval, so must restart; continuous reads the speed every frame.
         if (isOn && activity.defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) {
-            timer?.cancel()
             start()
         }
     }
 
     /** Stops the timer and the frame callback, leaving the button alone; for the reader closing. */
     fun release() {
-        timer?.cancel()
-        timer = null
+        activity.binding.mangaReaderPager.removeCallbacks(turnPage)
         Choreographer.getInstance().removeFrameCallback(frameCallback)
         lastFrameNanos = 0L
         accumulatedPx = 0f
