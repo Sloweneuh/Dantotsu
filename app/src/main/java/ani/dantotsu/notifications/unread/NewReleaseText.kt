@@ -28,8 +28,9 @@ internal fun Context.newReleaseText(number: String, unreadCount: Int, isAnime: B
 internal fun pruneNotified(notified: MutableSet<String>, progressById: Map<String, Int>) {
     notified.retainAll { key ->
         val id = key.substringBeforeLast(':')
-        val chapter = key.substringAfterLast(':').toIntOrNull() ?: return@retainAll false
+        // Split chapters ("60.2", Comick's) are kept while their whole chapter isn't read past.
+        val chapter = key.substringAfterLast(':').toDoubleOrNull() ?: return@retainAll false
         val progress = progressById[id] ?: return@retainAll false
-        chapter > progress
+        chapter >= progress + if (key.substringAfterLast(':').contains('.')) 0 else 1
     }
 }

@@ -1006,18 +1006,32 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 val passedSource = intent.getStringExtra("source")?.takeIf { it.isNotBlank() && !anyIgnored }
                 val passedLastChapter = if (anyIgnored) -1 else intent.getIntExtra("lastChapter", -1)
                 val candidates = mutableListOf<Pair<Int, String?>>()
+                // MALSync passing on what it read on Comick gives way to Comick's own answer, when
+                // there is one: asked directly, it has the chapter as Comick numbers it now and the
+                // group that uploaded it, where MALSync's copy can lag behind.
+                val comickProvider = ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK
+                val comickAnswer: Pair<Int, String?>? = if (ignores.isIgnored(comickProvider, target)) null
+                else liveComick ?: ani.dantotsu.connections.ReleaseSourceAnswers.get(comickProvider, target)
+                    ?.let { it.latest to (it.source ?: "Comick") }
+                fun addMalSync(answer: Pair<Int, String?>) {
+                    val viaComick = answer.second?.trim()?.equals("comick", ignoreCase = true) == true
+                    if (viaComick && comickAnswer != null) {
+                        if (comickAnswer !in candidates) candidates += comickAnswer
+                    } else candidates += answer
+                }
                 if (passedLastChapter > 0) {
                     candidates += passedLastChapter to passedSource
                 } else if (passedSource == null) {
                     val cache = ani.dantotsu.notifications.unread.UnreadCache
                     cache.cachedInfo()[media.id]
-                        ?.let { candidates += it.lastChapter to it.source.takeIf { s -> s.isNotBlank() } }
+                        ?.let { addMalSync(it.lastChapter to it.source.takeIf { s -> s.isNotBlank() }) }
                     cache.cachedComick()
                         .filter { (it.anilistMedia?.id ?: it.anilistId) == media.id }
                         .maxByOrNull { it.latestChapter }
                         ?.let { candidates += it.latestChapter to it.source }
                 }
                 liveComick?.takeUnless { ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target) }
+                    ?.takeIf { it !in candidates }
                     ?.let { candidates += it }
 
                 fun renderLatest() {
@@ -1063,7 +1077,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     // Already asked on this visit: a redraw (a list edit, a source toggled in the
                     // sheet) doesn't ask again.
                     if (!ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC, target)) {
-                        candidates += known
+                        addMalSync(known)
                         renderLatest()
                     }
                 } else if (!malSyncAsking && isOnline(this) && media.userStatus != "COMPLETED" &&

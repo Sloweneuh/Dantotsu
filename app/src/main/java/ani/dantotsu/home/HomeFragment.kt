@@ -276,7 +276,9 @@ class HomeFragment : Fragment() {
                 (al?.id ?: entry.anilistId)?.let { continueById?.get(it)?.userProgress } ?: 0,
                 mu?.let { muById?.get(it.id)?.userChapter } ?: 0,
             )
-            if (entry.latestChapter <= progress) return@forEach
+            // A newer part of the split chapter being read is unread at the same whole number,
+            // until the tracker is past it.
+            if (entry.latestChapter < progress || (entry.latestChapter == progress && !entry.split)) return@forEach
             items += when {
                 al != null -> al.copy().also { it.userProgress = progress }
                 mu != null -> mu.copy(userChapter = progress)

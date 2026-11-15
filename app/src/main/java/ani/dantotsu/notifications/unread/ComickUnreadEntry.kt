@@ -43,6 +43,13 @@ data class ComickUnreadEntry(
      * on AniList since the check still counts. Null in entries cached before it was kept.
      */
     val anilistId: Int? = null,
+    /**
+     * [latestChapter] is a newer part of the split chapter [progress] is in (progress 60.1 on
+     * Comick, 60.2 out): unread although the whole numbers are equal. False in older entries.
+     */
+    val split: Boolean = false,
+    /** [latestChapter] as Comick numbers it, kept for a [split] one ("60.2") so it reads as that. */
+    val latestExact: String? = null,
 ) : Serializable {
 
     /** The id this title's unread info is keyed by in the row, matching what it is shown as. */
@@ -57,7 +64,11 @@ data class ComickUnreadEntry(
         source = source,
         userProgress = progress,
         latestChapterAt = latestChapterAt,
+        lastChapterLabel = latestLabel,
     )
+
+    /** The newest chapter as the row shows it: exactly, for a split one. */
+    val latestLabel: String? get() = latestExact?.takeIf { split }
 
     companion object {
         // Pinned: see UnreadChapterStore.

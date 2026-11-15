@@ -95,7 +95,10 @@ internal object ReleaseRetraction {
 
     /** "<id>:<chapter>" keys, as every check's "already announced" set stores them. */
     fun parseKey(key: String): Pair<String, Int>? {
-        val chapter = key.substringAfterLast(':', "").toIntOrNull() ?: return null
+        // A split chapter's key ("60.2", Comick) counts as the whole chapter it belongs to.
+        val text = key.substringAfterLast(':', "")
+        val chapter = text.toIntOrNull() ?: text.toDoubleOrNull()?.let { kotlin.math.floor(it).toInt() }
+            ?: return null
         return key.substringBeforeLast(':') to chapter
     }
 }

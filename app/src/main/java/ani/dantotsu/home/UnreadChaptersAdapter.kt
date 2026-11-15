@@ -170,7 +170,7 @@ class UnreadChaptersAdapter(
 
             val totalChapters = media.manga?.totalChapters ?: "~"
             itemCompactTotal.text = if (info.lastChapter > 0) {
-                " | ${info.lastChapter} | $totalChapters"
+                " | ${info.lastChapterLabel ?: info.lastChapter} | $totalChapters"
             } else {
                 " | $totalChapters"
             }
@@ -283,7 +283,7 @@ class UnreadChaptersAdapter(
             val totalChapters = media.manga?.totalChapters ?: "~"
             itemUserProgressLarge.text = (info.userProgress).toString()
             itemProgressSeparator.visibility = View.VISIBLE
-            itemCompactTotal.text = if (info.lastChapter > 0) "${info.lastChapter} | $totalChapters" else "$totalChapters"
+            itemCompactTotal.text = if (info.lastChapter > 0) "${info.lastChapterLabel ?: info.lastChapter} | $totalChapters" else "$totalChapters"
             itemTotal.text = ""
 
             // Synopsis preview (strip HTML) and make it scrollable
@@ -428,8 +428,11 @@ class UnreadChaptersAdapter(
             val userChapter = item.userChapter
             itemCompactUserProgress.text = userChapter?.toString() ?: "~"
             val latest = MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), malSync?.lastChapter)
-            val showLatest = latest != null && latest > 0 && (userChapter == null || latest > userChapter)
-            itemCompactTotal.text = if (showLatest) " | $latest | ~" else " | ~"
+            val split = malSync?.lastChapterLabel != null && latest == malSync.lastChapter
+            val showLatest = latest != null && latest > 0 &&
+                (userChapter == null || latest > userChapter || (split && latest == userChapter))
+            val shown = if (split) malSync?.lastChapterLabel else latest?.toString()
+            itemCompactTotal.text = if (showLatest) " | $shown | ~" else " | ~"
 
             // No dot here, unlike [bindMuLargeView] — this row's layout has no view for one, not
             // because the status is unknown. It is known: [MUDetailsCache] carries it now.
@@ -546,7 +549,8 @@ class UnreadChaptersAdapter(
             itemUserProgressLarge.text = userChapter?.toString() ?: "~"
             itemProgressSeparator.visibility = View.VISIBLE
             val latest = MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), malSync?.lastChapter)
-            itemCompactTotal.text = latest?.toString() ?: "??"
+            itemCompactTotal.text = malSync?.lastChapterLabel?.takeIf { latest == malSync.lastChapter }
+                ?: latest?.toString() ?: "??"
             itemTotal.text = " " + root.context.getString(R.string.chapter_plural)
 
             // Badge: MU logo alone, or the MALSync source behind it — see [bindMuCompactView].
@@ -619,7 +623,7 @@ class UnreadChaptersAdapter(
             itemCompactImage.loadImage(item.coverUrl)
             itemCompactTitle.text = item.title
             itemCompactUserProgress.text = item.progress.toString()
-            itemCompactTotal.text = " | ${item.latestChapter} | ~"
+            itemCompactTotal.text = " | ${item.latestLabel ?: item.latestChapter} | ~"
             // The releasing dot, as an AniList row has it; this layout has no hiatus variant.
             itemCompactScoreContainer.visibility =
                 if (isReleasingStatus(item.publicationStatus)) View.VISIBLE else View.GONE
@@ -652,7 +656,7 @@ class UnreadChaptersAdapter(
             itemCompactSynopsis.text = ""
             itemUserProgressLarge.text = item.progress.toString()
             itemProgressSeparator.visibility = View.VISIBLE
-            itemCompactTotal.text = item.latestChapter.toString()
+            itemCompactTotal.text = item.latestLabel ?: item.latestChapter.toString()
             itemTotal.text = " " + root.context.getString(R.string.chapter_plural)
             bindComickScore(itemCompactScoreBG, itemCompactScore, itemCompactLanguageBG, item)
             itemCompactSourceBadge.visibility = View.GONE

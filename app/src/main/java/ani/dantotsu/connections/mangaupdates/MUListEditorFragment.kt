@@ -55,8 +55,9 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
 
         // Hide Anilist-only fields
         binding.mediaListScoreLayout.visibility = View.GONE
-        binding.mediaListStartLayout.visibility = View.GONE
-        binding.mediaListEndLayout.visibility = View.GONE
+        // MangaUpdates keeps no start or end dates: their whole group goes, not just the fields,
+        // or it stays as an empty card.
+        binding.mediaListDatesSection.visibility = View.GONE
 
         // The "Other" section's controls are all AniList-only.
         binding.mediaListExpandable?.isVisible = false

@@ -131,11 +131,40 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     private var knownChapter: Int? = null
     private var knownSource: String? = null
 
-    private fun offerKnownChapter(chapter: Int?, source: String?) {
-        if (chapter == null || chapter <= (knownChapter ?: 0)) return
+    /**
+     * Offers a newest chapter: the highest wins. Except that MALSync passing on what it read on
+     * Comick ([fromMalSync], its source "Comick") gives way to Comick's own answer ([fromComick]),
+     * higher or not: asked directly, Comick has the chapter as it numbers it now, and the group.
+     */
+    private fun offerKnownChapter(
+        chapter: Int?,
+        source: String?,
+        fromMalSync: Boolean = false,
+        fromComick: Boolean = false,
+    ) {
+        if (chapter == null) return
+        val relayedComick = fromMalSync && source?.trim()?.equals("comick", ignoreCase = true) == true
+        if (fromComick) {
+            comickAnswered = true
+            if (knownViaMalSyncComick) {
+                knownChapter = chapter
+                knownSource = source
+                knownViaMalSyncComick = false
+                return
+            }
+        }
+        if (relayedComick && comickAnswered) return
+        if (chapter <= (knownChapter ?: 0)) return
         knownChapter = chapter
         knownSource = source
+        knownViaMalSyncComick = relayedComick
     }
+
+    /** Whether Comick itself has answered for this series; see [offerKnownChapter]. */
+    private var comickAnswered = false
+
+    /** Whether [knownChapter] is MALSync's copy of Comick's; see [offerKnownChapter]. */
+    private var knownViaMalSyncComick = false
 
     /** Seeds [knownChapter] from the intent, then from the MangaUpdates and Comick unread caches. */
     private fun loadKnownChapter() {
@@ -149,10 +178,17 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         if (passed > 0) offerKnownChapter(passed, intent.getStringExtra("source"))
         try {
             ani.dantotsu.notifications.unread.UnreadCache.cachedMuInfo()[muMediaKey(muMedia.id)]
-                ?.let { offerKnownChapter(it.lastChapter, it.source) }
+                ?.let { offerKnownChapter(it.lastChapter, it.source, fromMalSync = true) }
             ani.dantotsu.notifications.unread.UnreadCache.cachedComick()
                 .firstOrNull { it.muMedia?.id == muMedia.id }
-                ?.let { offerKnownChapter(it.latestChapter, it.source) }
+                ?.let { offerKnownChapter(it.latestChapter, it.source, fromComick = true) }
+            // Comick's last answer for the series, behind or not: enough to stand in for MALSync's
+            // copy of it.
+            if (!ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(
+                    ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)
+            ) ani.dantotsu.connections.ReleaseSourceAnswers
+                .get(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)
+                ?.let { offerKnownChapter(it.latest, it.source ?: "Comick", fromComick = true) }
         } catch (_: Exception) {
         }
     }
@@ -182,7 +218,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 liveComickSource = group
                 if (ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)) return@withContext
                 val before = knownChapter
-                offerKnownChapter(last, "Comick")
+                offerKnownChapter(last, "Comick", fromComick = true)
                 if (knownChapter != before) progress()
             }
         }
@@ -287,10 +323,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             intent.removeExtra("source")
             knownChapter = null
             knownSource = null
+            comickAnswered = false
+            knownViaMalSyncComick = false
             if (muMedia.listId != 2) loadKnownChapter()
             liveComickChapter?.let { last ->
                 if (!ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, ani.dantotsu.connections.ReleaseSourceIgnores.mu(muMedia.id))) {
-                    offerKnownChapter(last, "Comick")
+                    offerKnownChapter(last, "Comick", fromComick = true)
                 }
             }
             progress()

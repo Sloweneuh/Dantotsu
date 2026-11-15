@@ -59,7 +59,12 @@ data class UnreadChapterInfo(
      * For anime entries: the MALSync language ID the episode count was read for (e.g. "en/dub"),
      * so the notification can show "English Dub" in place of the streaming source. Null for manga.
      */
-    val language: String? = null
+    val language: String? = null,
+    /**
+     * [lastChapter] as it should read, when the whole number doesn't say it: a split chapter Comick
+     * found ("60.2"). Null otherwise, and in anything stored before.
+     */
+    val lastChapterLabel: String? = null,
 ) : Serializable {
     companion object {
         // Pinned so adding a field stays a backward-compatible change for anything already

@@ -71,10 +71,14 @@ object NotificationReadState {
 
     fun keyOf(store: SubscriptionStore) = "$PREFIX_SUBSCRIPTION${store.mediaId}:${store.time}"
 
-    fun keyOf(store: UnreadChapterStore) = chapterKey(store.mediaId, store.lastChapter)
+    fun keyOf(store: UnreadChapterStore) =
+        store.lastChapterExact?.let { chapterKey(store.mediaId, it) } ?: chapterKey(store.mediaId, store.lastChapter)
 
     /** Same id space as [UnreadChapterStore.mediaId]: AniList id, or `muMediaKey` for MangaUpdates. */
     fun chapterKey(mediaId: Int, chapter: Int) = "$PREFIX_CHAPTER$mediaId:$chapter"
+
+    /** A split chapter's ("60.2"): its own key, so it isn't taken as the part before it, read. */
+    fun chapterKey(mediaId: Int, chapter: String) = "$PREFIX_CHAPTER$mediaId:$chapter"
 
     private fun anilistId(key: String): Int? =
         if (key.startsWith(ANILIST_PREFIX)) key.substringAfterLast(':').toIntOrNull() else null
@@ -274,7 +278,8 @@ object NotificationReadState {
         val parts = key.removePrefix(PREFIX_CHAPTER).split(':')
         if (parts.size != 2) return null
         val mediaId = parts[0].toIntOrNull() ?: return null
-        val chapter = parts[1].toIntOrNull() ?: return null
+        val chapter = parts[1].toIntOrNull()
+            ?: parts[1].toDoubleOrNull()?.let { kotlin.math.floor(it).toInt() } ?: return null
         return mediaId to chapter
     }
 }

@@ -21,6 +21,11 @@ data class UnreadChapterStore(
     // entries, which may resolve to a MangaUpdates series or Comick's own page instead. A link
     // [ani.dantotsu.openLinkInApp] understands. Null for every other source.
     val link: String? = null,
+    /**
+     * The chapter as the source numbers it, when that isn't [lastChapter] itself: a split chapter
+     * Comick announced ("60.2"). Null for every whole chapter, and in entries stored before.
+     */
+    val lastChapterExact: String? = null,
 ) : Serializable {
     companion object {
         // Pinned, like every other stored class. Java derives this from the class shape when it

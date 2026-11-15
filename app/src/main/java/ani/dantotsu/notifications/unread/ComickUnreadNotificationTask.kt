@@ -113,6 +113,12 @@ class ComickUnreadNotificationTask : Task {
         val userChapter: Int,
         /** [latestChapter] as Comick numbers it ("13.5") — what "Mark as read" records. */
         val latestExact: String,
+        /**
+         * A newer part of the split chapter the saved progress is in (60.1 read, 60.2 out): new
+         * although the whole numbers are equal. Its keys then carry [latestExact], or the part
+         * before it, announced under the same whole chapter, would stand in for it.
+         */
+        val split: Boolean = false,
         val link: String,
         /** Notification id, and the id the entry is stored under in the notification list. */
         val notifId: Int,
@@ -144,6 +150,9 @@ class ComickUnreadNotificationTask : Task {
                 ?: muSeriesId?.let(ReleaseSourceIgnores::mu)
                 ?: ReleaseSourceIgnores.comick(entry.hid)
 
+        /** The chapter announcement keys are made of: the exact number for a split, else whole. */
+        val keyChapter: String get() = if (split) latestExact else latestChapter.toString()
+
         fun toEntry() = ComickUnreadEntry(
             hid = entry.hid,
             slug = entry.slug,
@@ -167,6 +176,8 @@ class ComickUnreadNotificationTask : Task {
             publicationStatus = entry.publicationStatusWord,
             bayesianRating = entry.bayesian_rating,
             anilistId = anilistId,
+            split = split,
+            latestExact = latestExact.takeIf { split },
         )
     }
 
@@ -232,7 +243,7 @@ class ComickUnreadNotificationTask : Task {
         // Announced already, but shown as something else now — converted from MangaUpdates to
         // AniList since — so the notification still out moves over to the new id, by its old one.
         val moved = unread.mapNotNull { item ->
-            val keys = item.seriesHids.map { "$it:${item.latestChapter}" }
+            val keys = item.seriesHids.map { "$it:${item.keyChapter}" }
             if (keys.none { it in notified }) return@mapNotNull null
             val oldId = keys.firstNotNullOfOrNull { announcedIds[it] } ?: return@mapNotNull null
             if (oldId == item.notifId) null else item to oldId
@@ -246,13 +257,15 @@ class ComickUnreadNotificationTask : Task {
         // AniList or MangaUpdates check having announced it: a run where that check had no answer
         // for the title (MALSync rate-limited, say) left it to this one, which announced it again.
         val newItems = unread.filter { item ->
-            val keys = item.seriesHids.map { "$it:${item.latestChapter}" }
-            val elsewhere = item.anilistId?.let { "$it:${item.latestChapter}" in anilistNotified } == true ||
-                item.muSeriesIds.any { "$it:${item.latestChapter}" in muNotified }
+            val keys = item.seriesHids.map { "$it:${item.keyChapter}" }
+            // The other checks announce whole chapters only; a part was never theirs to announce.
+            val elsewhere = !item.split && (
+                item.anilistId?.let { "$it:${item.latestChapter}" in anilistNotified } == true ||
+                    item.muSeriesIds.any { "$it:${item.latestChapter}" in muNotified })
             (keys.none { it in notified } && !elsewhere).also { notified += keys }
         }
         (newItems + moved.map { it.first }).forEach { item ->
-            item.seriesHids.forEach { announcedIds["$it:${item.latestChapter}"] = item.notifId }
+            item.seriesHids.forEach { announcedIds["$it:${item.keyChapter}"] = item.notifId }
         }
         announcedIds.keys.retainAll(notified)
         // What this check marked announced for the other two, released where their own count is
@@ -267,7 +280,7 @@ class ComickUnreadNotificationTask : Task {
                 if ((muKnownLatest[id] ?: Int.MIN_VALUE) < item.latestChapter) muNotified -= "$id:${item.latestChapter}"
             }
         }
-        newItems.forEach { item ->
+        newItems.filterNot { it.split }.forEach { item ->
             item.anilistId?.let { anilistNotified += "$it:${item.latestChapter}" }
             item.muSeriesIds.forEach { muNotified += "$it:${item.latestChapter}" }
         }
@@ -562,7 +575,7 @@ class ComickUnreadNotificationTask : Task {
                 Logger.log("ComickUnreadNotificationTask: ${entry.hid} is $trackerStatus on $trackerName, skipping")
                 return@mapNotNull null
             }
-            Candidate(entry, links, floor(saved).toInt(), media, muEntry)
+            Candidate(entry, links, floor(saved).toInt(), media, muEntry, saved)
         }
 
         val latestByHid = HashMap<String, Int>()
@@ -582,7 +595,7 @@ class ComickUnreadNotificationTask : Task {
             val known = listOfNotNull(links.anilistId?.let { anilistKnownLatest[it] })
                 .plus(links.mangaUpdatesIds.mapNotNull { muKnownLatest[it] })
                 .maxOrNull()
-            (known == null || b.latestWhole > known).also { ahead ->
+            (known == null || b.latestWhole > known || b.split).also { ahead ->
                 if (!ahead) Logger.log(
                     "ComickUnreadNotificationTask: ${b.candidate.entry.hid} ch ${b.latestWhole} already known " +
                         "to the AniList/MangaUpdates check ($known), leaving it there"
@@ -601,7 +614,7 @@ class ComickUnreadNotificationTask : Task {
                 ?: Int.MIN_VALUE)
         }
 
-        val items = behind.map { (candidate, latest, latestExact, group, latestAt) ->
+        val items = behind.map { (candidate, latest, latestExact, group, latestAt, split) ->
             val (entry, links, userChapter, media, muEntry) = candidate
             // Shown as the list it's tracked on: a title with an AniList media but kept only on
             // the MangaUpdates lists (not yet moved over) is the MangaUpdates series — opened,
@@ -626,6 +639,7 @@ class ComickUnreadNotificationTask : Task {
                 latestChapter = latest,
                 userChapter = userChapter,
                 latestExact = latestExact,
+                split = split,
                 link = link,
                 // The id the AniList or MangaUpdates check posts the series under, so this
                 // replaces rather than stacks on its older notification; otherwise one derived
@@ -651,7 +665,9 @@ class ComickUnreadNotificationTask : Task {
             // whichever is furthest along.
             .groupBy { it.notifId }
             .map { (_, sameSeries) ->
-                val best = sameSeries.maxBy { it.latestChapter }
+                val best = sameSeries.maxWith(
+                    compareBy({ it.latestChapter }, { it.latestExact.toDoubleOrNull() ?: 0.0 })
+                )
                 best.copy(seriesHids = sameSeries.map { it.entry.hid }.distinct())
             }
         return UnreadResult(items, savedByHid, latestByHid)
@@ -667,7 +683,15 @@ class ComickUnreadNotificationTask : Task {
         val savedWhole: Int,
         val anilistMedia: Media?,
         val muEntry: MUMedia?,
-    )
+        /**
+         * The saved chapter exactly: Comick's own progress can be a split chapter (60.1) where the
+         * trackers only count whole ones.
+         */
+        val savedExact: Double = savedWhole.toDouble(),
+    ) {
+        /** The saved chapter is part of a split one: the series is being read in parts. */
+        val readingSplit get() = savedExact % 1.0 != 0.0
+    }
 
     private data class Behind(
         val candidate: Candidate,
@@ -676,6 +700,8 @@ class ComickUnreadNotificationTask : Task {
         /** The scanlation group(s) that uploaded [latestExact], when Comick names any. */
         val group: String?,
         val latestAt: Long?,
+        /** See [UnreadItem.split]. */
+        val split: Boolean = false,
     )
 
     /**
@@ -701,7 +727,8 @@ class ComickUnreadNotificationTask : Task {
                 // ever rules a title out — the chapter list below has the final say.
                 val hid = candidate.entry.hid
                 val listed = candidate.entry.last_released_number?.toDoubleOrNull()
-                if (listed != null && floor(listed).toInt() <= candidate.savedWhole) {
+                val newerPart = listed != null && candidate.readingSplit && listed > candidate.savedExact
+                if (listed != null && floor(listed).toInt() <= candidate.savedWhole && !newerPart) {
                     // In every language, so the newest one counted is no later than this either.
                     synchronized(latestByHid) { latestByHid[hid] = floor(listed).toInt() }
                     return@async null
@@ -720,17 +747,21 @@ class ComickUnreadNotificationTask : Task {
                 }
                 val latestText = chapter.chap?.trim() ?: return@async null
                 val latest = latestText.toDoubleOrNull() ?: return@async null
-                // Whole chapters only, as everywhere else new chapters are counted: a ".5" extra
-                // past the saved chapter doesn't announce itself.
+                // Whole chapters, as everywhere else new chapters are counted: a ".5" extra past
+                // the saved chapter doesn't announce itself. Except where the saved chapter is a
+                // part itself (60.1 read on Comick, whatever AniList's whole 60 says): there the
+                // series comes in parts, and a newer one (60.2) is a new chapter.
                 val latestWhole = floor(latest).toInt()
                 synchronized(latestByHid) { latestByHid[hid] = latestWhole }
-                if (latestWhole <= candidate.savedWhole) return@async null
+                val split = latestWhole == candidate.savedWhole && candidate.readingSplit &&
+                    latest > candidate.savedExact
+                if (latestWhole <= candidate.savedWhole && !split) return@async null
                 val group = chapter.group_name.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }
                     .distinct().joinToString(", ").ifEmpty { null }
                 val latestAt = chapter.created_at?.let {
                     runCatching { OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull()
                 }
-                Behind(candidate, latestWhole, latestText, group, latestAt)
+                Behind(candidate, latestWhole, latestText, group, latestAt, split)
             }
         }.awaitAll().filterNotNull()
     }
@@ -876,7 +907,7 @@ class ComickUnreadNotificationTask : Task {
         val canWrite = Comick.canWrite()
 
         items.forEach { item ->
-            val unreadCount = item.latestChapter - item.userChapter
+            val unreadCount = (item.latestChapter - item.userChapter).coerceAtLeast(1)
             val title = item.title
             val genericLabel = context.getString(R.string.notification_new_chapter_title)
             // The exact number ("13.5"); the count stays in whole chapters.
@@ -884,7 +915,8 @@ class ComickUnreadNotificationTask : Task {
             val sourceText = context.getString(R.string.notification_source_subtext, item.source)
             val plainBodyText = "$chapterText · $sourceText"
 
-            val readKey = NotificationReadState.chapterKey(item.notifId, item.latestChapter)
+            val readKey = if (item.split) NotificationReadState.chapterKey(item.notifId, item.latestExact)
+            else NotificationReadState.chapterKey(item.notifId, item.latestChapter)
             val intent = (inAppIntentForLink(context, item.link) ?: return@forEach).apply {
                 putExtra(NotificationReadState.EXTRA_KEY, readKey)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -1012,19 +1044,23 @@ class ComickUnreadNotificationTask : Task {
         }
 
         items.forEach { item ->
-            val exists = newStore.any { it.mediaId == item.notifId && it.lastChapter == item.latestChapter }
+            val exact = item.latestExact.takeIf { item.split }
+            val exists = newStore.any {
+                it.mediaId == item.notifId && it.lastChapter == item.latestChapter && it.lastChapterExact == exact
+            }
             if (!exists) {
                 newStore.add(
                     UnreadChapterStore(
                         mediaId = item.notifId,
                         mediaName = item.title,
                         lastChapter = item.latestChapter,
-                        unreadCount = item.latestChapter - item.userChapter,
+                        unreadCount = (item.latestChapter - item.userChapter).coerceAtLeast(1),
                         source = item.source,
                         image = item.coverUrl,
                         banner = item.coverUrl,
                         time = System.currentTimeMillis(),
                         link = item.link,
+                        lastChapterExact = exact,
                     )
                 )
             }
@@ -1033,7 +1069,10 @@ class ComickUnreadNotificationTask : Task {
         PrefManager.setVal(PrefName.UnreadChapterNotificationStore, newStore)
         NotificationReadState.reconcileChapters(newStore)
         NotificationReadState.markUnread(
-            items.map { NotificationReadState.chapterKey(it.notifId, it.latestChapter) }
+            items.map {
+                if (it.split) NotificationReadState.chapterKey(it.notifId, it.latestExact)
+                else NotificationReadState.chapterKey(it.notifId, it.latestChapter)
+            }
         )
     }
 
