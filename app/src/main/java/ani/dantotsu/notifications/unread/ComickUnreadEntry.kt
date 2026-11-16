@@ -26,7 +26,7 @@ data class ComickUnreadEntry(
     /** The furthest saved chapter over Comick, AniList and MangaUpdates. */
     val progress: Int,
     val latestChapter: Int,
-    /** The scanlation group of [latestChapter], else "Comick". */
+    /** The scanlation group of [latestChapter], else "No group" (older entries: "Comick"). */
     val source: String,
     val latestChapterAt: Long?,
     /** The notification id, also the key [UnreadCache.removeEntry] is given on "Mark as read". */
@@ -48,7 +48,7 @@ data class ComickUnreadEntry(
      * Comick, 60.2 out): unread although the whole numbers are equal. False in older entries.
      */
     val split: Boolean = false,
-    /** [latestChapter] as Comick numbers it, kept for a [split] one ("60.2") so it reads as that. */
+    /** [latestChapter] as Comick numbers it, kept for a part of one ("60.2") so it reads as that. */
     val latestExact: String? = null,
     /**
      * [progress] as Comick numbers it, kept when it's part of a split chapter ("45.1") so it reads
@@ -80,8 +80,8 @@ data class ComickUnreadEntry(
     fun progressLabel(shown: Int = progress): String? =
         progressExact?.takeIf { it.toDoubleOrNull()?.let { exact -> kotlin.math.floor(exact).toInt() } == shown }
 
-    /** The newest chapter as the row shows it: exactly, for a split one. */
-    val latestLabel: String? get() = latestExact?.takeIf { split }
+    /** The newest chapter as the row shows it: exactly, for a part of one ("37.1"). */
+    val latestLabel: String? get() = latestExact?.takeIf { e -> e.toDoubleOrNull()?.let { it % 1.0 != 0.0 } == true }
 
     companion object {
         // Pinned: see UnreadChapterStore.

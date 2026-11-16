@@ -80,9 +80,17 @@ object ReleaseSourceIgnores {
     fun groupTitle(context: android.content.Context, group: String): String =
         if (group.equals(NO_GROUP, ignoreCase = true)) context.getString(R.string.release_source_no_group) else group
 
-    /** Splits Comick's "Group A, Group B" into its groups, which are ignored one by one. */
+    /**
+     * Splits Comick's "Group A, Group B" into its groups, which are ignored one by one. An upload
+     * naming none — shown as "No group", in older answers as "Comick" — has no groups.
+     */
     fun groupsOf(source: String?): List<String> = source.orEmpty().split(',')
-        .map { it.trim() }.filter { it.isNotEmpty() && !it.equals("Comick", ignoreCase = true) }
+        .map { it.trim() }.filter { it.isNotEmpty() && !isNoGroup(it) }
+
+    private fun isNoGroup(name: String): Boolean =
+        name.equals("Comick", ignoreCase = true) || name.equals("No group", ignoreCase = true) ||
+            name.equals("Sans groupe", ignoreCase = true) ||
+            name.equals(ani.dantotsu.getAppString(R.string.release_source_no_group), ignoreCase = true)
 
     /** Whether anything at all is still ignored for [target]: a provider or a group. */
     private fun Set<String>.anyFor(target: String) =
@@ -352,19 +360,33 @@ object ReleaseSourceIgnores {
  */
 object ReleaseSourceAnswers {
 
-    data class Answer(val latest: Int, val source: String?, val at: Long)
+    /** [exact]: [latest] as the provider numbers it, when it's a part of a split chapter ("37.1"). */
+    data class Answer(val latest: Int, val source: String?, val at: Long, val exact: String? = null)
+
+    /** [exact] when it's a part of [latest] the whole number doesn't say; else null. */
+    private fun splitOf(latest: Int, exact: String?): String? = exact?.trim()?.takeIf { e ->
+        e.toDoubleOrNull()?.let { it % 1.0 != 0.0 && kotlin.math.floor(it).toInt() == latest } == true
+    }
 
     private fun key(provider: ReleaseSourceIgnores.Provider, target: String) =
         "release_answer_${provider.key}_$target"
 
-    /** Stores [answers] (series target → newest chapter and its source) for [provider], in one write. */
-    fun record(provider: ReleaseSourceIgnores.Provider, answers: Map<String, Pair<Int, String?>>) {
+    /**
+     * Stores [answers] (series target → newest chapter and its source) for [provider], in one write.
+     * [exact] has a chapter's own number where it's part of a split one, stored in its place.
+     */
+    fun record(
+        provider: ReleaseSourceIgnores.Provider,
+        answers: Map<String, Pair<Int, String?>>,
+        exact: Map<String, String> = emptyMap(),
+    ) {
         if (answers.isEmpty()) return
         val now = System.currentTimeMillis()
         try {
             PrefManager.applyCustomVals(
                 sets = answers.entries.associate { (target, answer) ->
-                    key(provider, target) to "${answer.first}|$now|${answer.second.orEmpty()}"
+                    val number = splitOf(answer.first, exact[target]) ?: answer.first.toString()
+                    key(provider, target) to "$number|$now|${answer.second.orEmpty()}"
                 }
             )
         } catch (e: Exception) {
@@ -372,8 +394,8 @@ object ReleaseSourceAnswers {
         }
     }
 
-    fun record(provider: ReleaseSourceIgnores.Provider, target: String, latest: Int, source: String?) =
-        record(provider, mapOf(target to (latest to source)))
+    fun record(provider: ReleaseSourceIgnores.Provider, target: String, latest: Int, source: String?, exact: String? = null) =
+        record(provider, mapOf(target to (latest to source)), listOfNotNull(exact?.let { target to it }).toMap())
 
     /** Moves [from]'s answers to [to], where [to] has none — a series converted to AniList. */
     fun move(from: String, to: String) {
@@ -390,8 +412,9 @@ object ReleaseSourceAnswers {
         val raw = PrefManager.getNullableCustomVal(key(provider, target), null, String::class.java)
             ?: return null
         val parts = raw.split('|', limit = 3)
-        val latest = parts.getOrNull(0)?.toIntOrNull() ?: return null
+        val number = parts.getOrNull(0)?.toDoubleOrNull() ?: return null
+        val latest = kotlin.math.floor(number).toInt()
         val at = parts.getOrNull(1)?.toLongOrNull() ?: 0L
-        return Answer(latest, parts.getOrNull(2)?.takeIf { it.isNotBlank() }, at)
+        return Answer(latest, parts.getOrNull(2)?.takeIf { it.isNotBlank() }, at, splitOf(latest, parts[0]))
     }
 }

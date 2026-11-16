@@ -1055,7 +1055,7 @@ class MangaUpdatesInfoFragment : Fragment() {
 
                 val chapterText = buildString {
                     latest.volume?.let { append("Vol.$it ") }
-                    append("Chapter ${latest.chapter ?: "?"}")
+                    append("Chapter ${latest.chapterLabel ?: "?"}")
                 }
                 b.itemChapterNumber.text = chapterText
 

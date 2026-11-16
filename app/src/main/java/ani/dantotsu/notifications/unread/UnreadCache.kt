@@ -144,21 +144,41 @@ object UnreadCache {
      * and a list the row doesn't consult — a title shown as its MangaUpdates series, read on
      * AniList — stayed on the row as unread until that check next ran.
      */
-    fun raiseComickProgress(hid: String, progress: Int) {
+    fun raiseComickProgress(hid: String, progress: String) =
+        raiseComick("Comick $hid", progress) { it.hid == hid }
+
+    /** [raiseComickProgress] for the titles shown as (or tied to) media [id], read in the app. */
+    fun raiseComickProgressFor(id: Int, progress: String) =
+        raiseComick("media $id", progress) { it.rowKey == id || (it.anilistMedia?.id ?: it.anilistId) == id }
+
+    /**
+     * [progress] exactly as read ("45.2"): a part of a split chapter moves the saved part, and
+     * drops a title whose newest part it reaches.
+     */
+    private fun raiseComick(label: String, progress: String, match: (ComickUnreadEntry) -> Boolean) {
         try {
+            val exact = progress.trim().toDoubleOrNull()?.takeIf { it > 0 } ?: return
+            val whole = kotlin.math.floor(exact).toInt()
+            val part = progress.trim().takeIf { exact % 1.0 != 0.0 }
             val cached = rawComick()
             var changed = false
             val updated = cached.mapNotNull { entry ->
-                if (entry.hid != hid || progress <= entry.progress) return@mapNotNull entry
+                if (!match(entry)) return@mapNotNull entry
+                val saved = entry.progressLabel()?.toDoubleOrNull() ?: entry.progress.toDouble()
+                if (exact <= saved) return@mapNotNull entry
                 changed = true
-                entry.copy(progress = progress).takeIf { it.latestChapter > progress }
+                val raised = entry.copy(progress = maxOf(entry.progress, whole), progressExact = part)
+                raised.takeIf {
+                    it.latestChapter > it.progress ||
+                        (it.split && it.latestChapter == it.progress && (it.latestExact?.toDoubleOrNull() ?: 0.0) > exact)
+                }
             }
             if (!changed) return
             PrefManager.setCustomVal("cached_comick_unread", ArrayList(updated))
-            Logger.log("UnreadCache: Comick $hid read to $progress (${cached.size - updated.size} dropped)")
+            Logger.log("UnreadCache: $label read to $progress (${cached.size - updated.size} dropped)")
             (App.instance ?: App.context)?.let(::broadcastUpdate)
         } catch (e: Exception) {
-            Logger.log("UnreadCache: Failed to raise Comick progress for $hid: ${e.message}")
+            Logger.log("UnreadCache: Failed to raise Comick progress for $label: ${e.message}")
         }
     }
 

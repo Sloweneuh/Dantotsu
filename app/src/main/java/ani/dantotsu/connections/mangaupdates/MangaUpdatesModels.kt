@@ -394,7 +394,27 @@ data class MUReleaseRecord(
     val groups: List<MUReleaseGroupInfo>? = null,
     @SerialName("release_date") val releaseDate: String? = null,
     @SerialName("time_added") val timeAdded: MUTimestamp? = null
-)
+) {
+    /** [chapter] with its parts numbered as everywhere else in the app: see [muChapterLabel]. */
+    val chapterLabel: String? get() = muChapterLabel(chapter)
+}
+
+private val MU_PART = Regex("""^(\d+)\s*([a-zA-Z])$""")
+
+/**
+ * MangaUpdates' chapter number with a part letter numbered as a split chapter, the way Comick and
+ * the chapter list number them: "26a" → "26.1", "26b" → "26.2"; each end of a range likewise
+ * ("25-26a" → "25-26.1"). Anything else is left as MangaUpdates wrote it.
+ */
+fun muChapterLabel(raw: String?): String? {
+    val text = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    return text.split('-').joinToString("-") { side ->
+        val part = side.trim()
+        MU_PART.matchEntire(part)?.let { m ->
+            "${m.groupValues[1]}.${m.groupValues[2].lowercase()[0] - 'a' + 1}"
+        } ?: part
+    }
+}
 
 @Serializable
 data class MUReleaseGroupInfo(

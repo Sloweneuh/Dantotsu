@@ -219,7 +219,7 @@ class MuUnreadNotificationTask : Task {
             .getOrNull().orEmpty()
         // The release for this chapter ("12", or a range like "10-12" ending on it); else the newest.
         val release = releases.firstOrNull { r ->
-            r.chapter?.substringAfterLast('-')?.trim()?.toDoubleOrNull()?.toInt() == chapter
+            r.chapterLabel?.substringAfterLast('-')?.trim()?.toDoubleOrNull()?.toInt() == chapter
         } ?: releases.firstOrNull()
         return release?.groups.orEmpty().mapNotNull { it.name?.trim()?.takeIf { n -> n.isNotEmpty() } }
             .distinct().joinToString(", ").ifEmpty { null }

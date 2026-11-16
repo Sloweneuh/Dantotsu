@@ -1051,10 +1051,22 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     else ani.dantotsu.notifications.unread.UnreadCache.cachedComick()
                         .filter { (it.anilistMedia?.id ?: it.anilistId) == media.id }
                         .maxByOrNull { it.latestChapter }
-                    val progressSplit = (liveComickProgressSplit ?: cachedComick?.progressExact)
-                        ?.takeIf { media.userStatus != null && wholeOf(it) == userProgress }
-                    val latestSplit = (if (liveComick != null) liveComickLatestSplit else cachedComick?.latestLabel)
+                    // Also what was read here since, which Comick's answers can lag behind.
+                    val progressSplit = ani.dantotsu.notifications.unread.SplitProgress
+                        .label(media.id, userProgress, liveComickProgressSplit)
+                        ?.takeIf { media.userStatus != null }
+                    // Comick's newest as it numbers it: live, else the unread check's split, else its
+                    // last answer. Past another source's whole number of the same chapter (37.1 over
+                    // MALSync's 37), so Comick is the newest then, and the source named below.
+                    val comickAnswered = if (comickIgnored) null
+                    else ani.dantotsu.connections.ReleaseSourceAnswers.get(comickProvider, target)
+                    val latestSplit = (if (liveComick != null) liveComickLatestSplit else
+                        cachedComick?.latestLabel ?: comickAnswered?.exact)
                         ?.takeIf { !comickIgnored && wholeOf(it) == best?.first }
+                    val splitSource = latestSplit?.let {
+                        liveComick?.second ?: cachedComick?.source?.takeIf { cachedComick.latestChapter == best?.first }
+                            ?: comickAnswered?.source ?: getString(R.string.release_source_comick)
+                    }
                     val latest = best?.first?.takeIf {
                         it > userProgress || (latestSplit != null && it == userProgress &&
                             latestSplit.toDouble() > (progressSplit?.toDouble() ?: userProgress.toDouble()))
@@ -1083,7 +1095,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     // Where to read it, while there is something unread; otherwise only the source
                     // the page was explicitly opened for.
                     val source = if (latest != null) {
-                        best?.second ?: getString(R.string.notification_unknown_source)
+                        splitSource ?: best?.second ?: getString(R.string.notification_unknown_source)
                     } else passedSource
                     binding.mediaUnreadSource?.isVisible = source != null
                     if (source != null) {
@@ -1152,6 +1164,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                         ?.entry?.progress?.number?.trim()
                         ?.takeIf { n -> n.toDoubleOrNull()?.let { it % 1.0 != 0.0 } == true }
                 }.getOrNull()
+                // Kept for the chapter list too, which reads where a split chapter is at from there.
+                ani.dantotsu.notifications.unread.SplitProgress.record(media.id, progressSplit)
                 // With its uploader, as the Comick tab shows it.
                 val latest = comickLatestExactFor(comic.hid, comic.last_chapter, target)
                 if (latest == null) {
@@ -1165,13 +1179,13 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 val last = latest.whole
                 val group = latest.group
                 ani.dantotsu.connections.ReleaseSourceAnswers.record(
-                    ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target, last, group,
+                    ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target, last, group, latest.exact,
                 )
                 withContext(Dispatchers.Main) {
                     if (isDestroyed) return@withContext
                     liveComickProgressSplit = progressSplit
                     liveComickLatestSplit = latest.splitLabel
-                    liveComick = last to (group ?: "Comick")
+                    liveComick = last to (group ?: getString(R.string.release_source_no_group))
                     if (!ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)) {
                         total()
                     }
@@ -1212,11 +1226,15 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     ?.takeUnless { ignores.isChapterIgnored(ignores.groupsOf(it.source), groups) }
                 val live = liveComick
                 rows += if (live != null && live.first >= maxOf(comick?.latestChapter ?: 0, answer?.latest ?: 0)) {
-                    ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, live.first, live.second)
+                    ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, live.first, live.second, liveComickLatestSplit)
                 } else if (comick != null && comick.latestChapter >= (answer?.latest ?: 0)) {
-                    ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, comick.latestChapter, comick.source)
+                    // A split newest part (37.1) as Comick numbers it: the cached entry keeps it only
+                    // for one the account is reading in parts, the last answer otherwise.
+                    val label = comick.latestLabel
+                        ?: answer?.exact?.takeIf { answer.latest == comick.latestChapter }
+                    ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, comick.latestChapter, comick.source, label)
                 } else {
-                    ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, answer?.latest, answer?.source)
+                    ReleaseSourcesSheet.Row(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, answer?.latest, answer?.source, answer?.exact)
                 }
             }
             val series = ani.dantotsu.connections.ReleaseSourceIgnores.Series(target, media.userPreferredName, media.cover)

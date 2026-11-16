@@ -53,6 +53,15 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
     // unchanged, same round trip this function always did before sourceVolume existed.
     val volume = sourceVolume ?: media.userVolume
 
+    // A part of a split chapter ("45.2") is kept here: the trackers only take its whole number, so
+    // the media page, chapter list and home row would otherwise go on showing the part before.
+    if (media.anime == null) {
+        ani.dantotsu.notifications.unread.SplitProgress.record(
+            media.id, number,
+            listOfNotNull(media.muSeriesId?.let { ani.dantotsu.connections.mangaupdates.muMediaKey(it) }),
+        )
+    }
+
     // The mirror writes (MAL, MangaBaka, cloud sync) are fired and forgotten — they run on their
     // own scope so a caller that awaits this function (a notification "mark as read" action) waits
     // only for the primary tracker write, not for every mirror round trip behind it.

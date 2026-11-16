@@ -22,8 +22,11 @@ import ani.dantotsu.settings.ReleaseSourceIgnoresSheet
  */
 object ReleaseSourcesSheet {
 
-    /** One provider and its current answer; [latest] null when it has said nothing yet. */
-    data class Row(val provider: Provider, val latest: Int?, val source: String? = null)
+    /**
+     * One provider and its current answer; [latest] null when it has said nothing yet. [label] is
+     * [latest] as the provider numbers it, when that's a part of a split chapter ("37.1").
+     */
+    data class Row(val provider: Provider, val latest: Int?, val source: String? = null, val label: String? = null)
 
     fun show(
         activity: FragmentActivity,
@@ -55,7 +58,7 @@ object ReleaseSourcesSheet {
                 b.releaseSourceName.setText(row.provider.title)
                 val value = row.latest?.let {
                     val number = activity.getString(
-                        if (anime) R.string.episode_num else R.string.chapter_num, it.toString()
+                        if (anime) R.string.episode_num else R.string.chapter_num, row.label ?: it.toString()
                     )
                     row.source?.takeIf { s -> s.isNotBlank() }?.let { s -> "$number · $s" } ?: number
                 } ?: activity.getString(R.string.release_source_none)
@@ -198,8 +201,9 @@ object ReleaseSourcesSheet {
 }
 
 /**
- * The scanlation group(s) behind Comick's newest chapter of [hid], as the Comick tab names them —
- * or null when Comick names none or can't be asked. Blocking network: call off the main thread.
+ * The scanlation group(s) behind Comick's newest chapter of [hid], as the Comick tab names them
+ * ("No group" when it names none) — or null when Comick can't be asked. Blocking network: call
+ * off the main thread.
  */
 suspend fun comickGroupOf(hid: String?, nearChapter: Double?): String? {
     if (hid.isNullOrBlank()) return null
@@ -209,10 +213,12 @@ suspend fun comickGroupOf(hid: String?, nearChapter: Double?): String? {
     return groupLabel(latest.group_name)
 }
 
-private fun groupLabel(groups: List<String>?): String? =
+/** A chapter's group(s) as a source: "No group" for an upload naming none, not Comick itself. */
+private fun groupLabel(groups: List<String>?): String =
     groups?.filter { it.isNotBlank() }?.joinToString(", ")
         ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
         ?.takeIf { it.isNotBlank() }
+        ?: ani.dantotsu.getAppString(ani.dantotsu.R.string.release_source_no_group)
 
 /**
  * Comick's newest chapter of [hid] as the page for [target] believes it, with the group(s) that

@@ -156,6 +156,15 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             ContextCompat.RECEIVER_EXPORTED
         )
 
+        // Where a split chapter is read to can land after the list is drawn (the media page's live
+        // Comick lookup is slow): redraw the continue card and the dimmed rows in place.
+        ani.dantotsu.notifications.unread.SplitProgress.changes.observe(viewLifecycleOwner) { id ->
+            if (!::chapterAdapter.isInitialized || !::headerAdapter.isInitialized) return@observe
+            if (!::media.isInitialized || media.id != id) return@observe
+            headerAdapter.refreshContinue()
+            chapterAdapter.refreshReadState()
+        }
+
         binding.mediaSourceRecycler.updatePadding(bottom = binding.mediaSourceRecycler.paddingBottom + navBarHeight)
         screenWidth = resources.displayMetrics.widthPixels.dp
 

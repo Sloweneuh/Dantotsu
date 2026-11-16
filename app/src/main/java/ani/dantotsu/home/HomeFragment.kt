@@ -320,6 +320,15 @@ class HomeFragment : Fragment() {
                     else -> info?.lastChapter ?: 0
                 }
             },
+            // A part of the same chapter (Comick's 37.1) beats another half's whole 37.
+            exact = { (item, info) ->
+                val whole = when (item) {
+                    is MUMedia -> MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), info?.lastChapter) ?: 0
+                    else -> info?.lastChapter ?: 0
+                }
+                info?.lastChapterLabel?.toDoubleOrNull()?.takeIf { kotlin.math.floor(it).toInt() == whole }
+                    ?: whole.toDouble()
+            },
         )
         // The other halves' info for what they kept; Comick's for what it won, which may share a
         // key with a dropped AniList entry and has to be the one drawn beside it.

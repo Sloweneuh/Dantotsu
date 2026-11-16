@@ -33,12 +33,20 @@ object UnreadDedup {
      * [items] with one per [key], the one with the highest [latest]; on a tie the earlier one, so
      * callers list their preferred source first. Kept in the order each series first appears.
      */
-    fun <T> keepHighest(items: List<T>, key: (T) -> String, latest: (T) -> Int): List<T> {
+    fun <T> keepHighest(
+        items: List<T>,
+        key: (T) -> String,
+        latest: (T) -> Int,
+        /** The newest chapter exactly, breaking a tie on [latest]: Comick's 37.1 over another's 37. */
+        exact: (T) -> Double = { latest(it).toDouble() },
+    ): List<T> {
         val best = LinkedHashMap<String, T>()
         items.forEach { item ->
             val k = key(item)
             val current = best[k]
-            if (current == null || latest(item) > latest(current)) best[k] = item
+            if (current == null || latest(item) > latest(current) ||
+                (latest(item) == latest(current) && exact(item) > exact(current))
+            ) best[k] = item
         }
         return best.values.toList()
     }

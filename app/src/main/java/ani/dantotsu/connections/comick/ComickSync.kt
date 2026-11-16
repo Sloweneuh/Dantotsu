@@ -10,7 +10,6 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.math.floor
 
 /**
  * One-way list synchronisation to Comick (manga and anime).
@@ -276,9 +275,7 @@ object ComickSync {
                 return@also
             }
             // The home row's cached copy too, which otherwise waits for the next Comick check.
-            if (!isAnime) sendProgress?.toDoubleOrNull()?.let {
-                UnreadCache.raiseComickProgress(hid, floor(it).toInt())
-            }
+            if (!isAnime) sendProgress?.let { UnreadCache.raiseComickProgress(hid, it) }
             // What was written, so the bulk sync's snapshot doesn't go stale under it.
             snapshot?.second?.let { library ->
                 val before = followed ?: ComickLibraryEntry(hid = hid)

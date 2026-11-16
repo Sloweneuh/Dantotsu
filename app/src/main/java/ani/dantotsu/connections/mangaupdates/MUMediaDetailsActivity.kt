@@ -207,10 +207,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         lifecycleScope.launch(Dispatchers.IO) {
             // A hand pick Comick now links to this series itself is an automatic match.
             comic.slug?.let { ani.dantotsu.connections.comick.ComickMatches.retireIfLinked(it, comic.links) }
-            val (last, group) = ani.dantotsu.media.comickLatestFor(comic.hid, comic.last_chapter, target)
+            val latest = ani.dantotsu.media.comickLatestExactFor(comic.hid, comic.last_chapter, target)
                 ?: return@launch
+            val last = latest.whole
+            val group = latest.group
             ani.dantotsu.connections.ReleaseSourceAnswers.record(
-                ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target, last, group,
+                ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target, last, group, latest.exact,
             )
             withContext(Dispatchers.Main) {
                 if (isDestroyed) return@withContext
@@ -303,6 +305,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK,
                 comickBest?.first,
                 comickBest?.second,
+                // As Comick numbers it, when that's a part of a split chapter (37.1).
+                comick?.latestLabel?.takeIf { comick.latestChapter == comickBest?.first }
+                    ?: comickAnswer?.exact?.takeIf { comickAnswer.latest == comickBest?.first },
             ),
         )
         val series = ani.dantotsu.connections.ReleaseSourceIgnores.Series(target, muMedia.title, muMedia.coverUrl, muMedia.id)

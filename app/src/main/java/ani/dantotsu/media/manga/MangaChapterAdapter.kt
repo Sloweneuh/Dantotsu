@@ -50,6 +50,9 @@ class MangaChapterAdapter(
 
         /** Payload marker for a selection-highlight-only change. */
         private const val PAYLOAD_SELECTION = "selection"
+
+        /** Payload marker for a read-state-only change: the dim over read chapters. */
+        private const val PAYLOAD_READ_STATE = "read_state"
     }
 
     /**
@@ -524,6 +527,11 @@ class MangaChapterAdapter(
             holder.bind(item.chapter)
             return
         }
+        if (payloads.isNotEmpty() && payloads.all { it == PAYLOAD_READ_STATE }) {
+            val item = arr.getOrNull(position) as? MangaChapterListItem.Chapter ?: return
+            bindReadCover(holder, item.chapter)
+            return
+        }
         if (payloads.isNotEmpty() && payloads.all { it == PAYLOAD_SELECTION }) {
             val item = arr.getOrNull(position) as? MangaChapterListItem.Chapter ?: return
             holder.itemView.bindSelectionTint(item.chapter.uniqueNumber() in selection, animate = true)
@@ -556,13 +564,7 @@ class MangaChapterAdapter(
                 val parsedNumber = MediaNameAdapter.findChapterNumber(ep.number)?.toInt()
                 binding.itemEpisodeNumber.text = parsedNumber?.toString() ?: ep.number
 
-                if (media.userProgress != null) {
-                    if ((MediaNameAdapter.findChapterNumber(ep.number) ?: 9999f) <= media.userProgress!!.toFloat()) {
-                        binding.itemEpisodeViewedCover.visibility = View.VISIBLE
-                    } else {
-                        binding.itemEpisodeViewedCover.visibility = View.GONE
-                    }
-                }
+                bindReadCover(holder, ep)
                 holder.itemView.bindSelectionTint(ep.uniqueNumber() in selection, animate = false)
             }
 
@@ -592,13 +594,47 @@ class MangaChapterAdapter(
 
                 // Read chapters are dimmed; the eye icon is left off, the dim says it.
                 binding.itemEpisodeViewed.visibility = View.GONE
-                binding.itemEpisodeViewedCover.visibility =
-                    if (media.userProgress != null &&
-                        (MediaNameAdapter.findChapterNumber(ep.number) ?: 9999f) <= media.userProgress!!.toFloat()
-                    ) View.VISIBLE else View.GONE
+                bindReadCover(holder, ep)
                 holder.itemView.bindSelectionTint(ep.uniqueNumber() in selection, animate = false)
             }
         }
+    }
+
+    /** Dims [ep] when it's read ([readUpTo]). */
+    private fun bindReadCover(holder: RecyclerView.ViewHolder, ep: MangaChapter) {
+        val cover = when (holder) {
+            is ChapterCompactViewHolder -> holder.binding.itemEpisodeViewedCover
+            is ChapterListViewHolder -> holder.binding.itemEpisodeViewedCover
+            else -> return
+        }
+        val read = (MediaNameAdapter.findChapterNumber(ep.number) ?: 9999f) <= (readUpTo() ?: -1f)
+        cover.visibility = if (read) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Redraws which chapters are dimmed as read, in place: no entrance animation, no crossfade, so
+     * a late answer (Comick's live progress) lands without the list flashing.
+     */
+    fun refreshReadState() {
+        if (arr.isNotEmpty()) notifyItemRangeChanged(0, arr.size, PAYLOAD_READ_STATE)
+    }
+
+    private var readUpToKey: Pair<Int?, Int>? = null
+    private var readUpToCached: Float? = null
+
+    /**
+     * How far the list counts as read: the tracker's whole chapter — or, read into a split chapter
+     * (45.1 on Comick where AniList counts 45), that part, so the parts after it aren't dimmed.
+     */
+    private fun readUpTo(): Float? {
+        val key = media.userProgress to ani.dantotsu.notifications.unread.SplitProgress.version
+        if (key != readUpToKey) {
+            readUpToKey = key
+            readUpToCached = media.userProgress?.let { whole ->
+                (ani.dantotsu.notifications.unread.SplitProgress.exact(media.id, whole) ?: whole.toDouble()).toFloat()
+            }
+        }
+        return readUpToCached
     }
 
     fun updateType(t: Int) {

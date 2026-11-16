@@ -622,34 +622,70 @@ class MangaReadAdapter(
         _binding?.sourceTitle?.setText(R.string.chaps)
     }
 
-    fun handleChapters() {
+    /**
+     * Redraws the continue card alone, for when where the series is read to changed under an
+     * already drawn list — Comick's live answer for a split chapter landing late, say.
+     */
+    fun refreshContinue() {
+        val binding = _binding ?: return
+        if (media.manga?.chapters == null) return
+        bindContinue(binding, filteredChapters())
+    }
 
-        val binding = _binding
-        if (binding != null) {
-            if (media.manga?.chapters != null) {
-                val anilistEp = (media.userProgress ?: 0).plus(1)
-                val appEp = PrefManager.getNullableCustomVal(
-                    "${media.id}_current_chp",
-                    null,
-                    String::class.java
-                )
-                    ?.toIntOrNull() ?: 1
-                val continueNumber = (if (anilistEp > appEp) anilistEp else appEp).toString()
-                val filteredChapters = media.manga.chapters!!.filter { chapter ->
-                    if (mangaReadSources[media.selected!!.sourceIndex] is OfflineMangaParser) {
-                        true
-                    } else {
-                        chapter.value.scanlator !in hiddenScanlators
-                    }
-                }
-                val formattedChapters = filteredChapters.map {
-                    MediaNameAdapter.findChapterNumber(it.value.number)?.toInt()
-                        ?.toString() to it.key
-                }
-                if (formattedChapters.any { it.first == continueNumber }) {
-                    var continueEp =
-                        media.manga.chapters!![formattedChapters.first { it.first == continueNumber }.second]
-                    binding.sourceContinue.visibility = View.VISIBLE
+    /** The source's chapters, less those of hidden scanlators (all of them when offline). */
+    private fun filteredChapters(): Map<String, MangaChapter> =
+        media.manga!!.chapters!!.filter { chapter ->
+            if (mangaReadSources[media.selected!!.sourceIndex] is OfflineMangaParser) {
+                true
+            } else {
+                chapter.value.scanlator !in hiddenScanlators
+            }
+        }
+
+    /** The continue card: the chapter after the one read to, when the list has it. */
+    private fun bindContinue(binding: ItemMediaSourceBinding, filteredChapters: Map<String, MangaChapter>) {
+        val anilistEp = (media.userProgress ?: 0).plus(1)
+        val appEp = PrefManager.getNullableCustomVal(
+            "${media.id}_current_chp",
+            null,
+            String::class.java
+        )
+            ?.toIntOrNull() ?: 1
+        val continueNumber = (if (anilistEp > appEp) anilistEp else appEp).toString()
+        val formattedChapters = filteredChapters.map {
+            MediaNameAdapter.findChapterNumber(it.value.number)?.toInt()
+                ?.toString() to it.key
+        }
+        // Read into a split chapter (45.1 on Comick, where AniList counts 45): its next part
+        // out (45.2) is the one to continue with, before the next whole chapter.
+        val splitRead = ani.dantotsu.notifications.unread.SplitProgress
+            .exact(media.id, media.userProgress)?.toFloat()
+        val splitNextKey = splitRead?.let { read ->
+            filteredChapters.mapNotNull { (key, chapter) ->
+                MediaNameAdapter.findChapterNumber(chapter.number)
+                    ?.takeIf { it > read && it.toInt() == read.toInt() }?.let { it to key }
+            }.minByOrNull { it.first }?.second
+        }
+        val continueKey = splitNextKey
+            ?: formattedChapters.firstOrNull { it.first == continueNumber }?.second
+        if (continueKey != null) {
+            var continueEp = media.manga!!.chapters!![continueKey]
+            binding.sourceContinue.visibility = View.VISIBLE
+            handleProgress(
+                binding.itemMediaProgressCont,
+                binding.itemMediaProgress,
+                binding.itemMediaProgressEmpty,
+                media.id,
+                continueEp!!.number
+            )
+            val currPage = PrefManager.getNullableCustomVal("${media.id}_${continueEp!!.number}", null, Long::class.java)
+            val maxPage = PrefManager.getNullableCustomVal("${media.id}_${continueEp!!.number}_max", null, Long::class.java)
+            if (splitNextKey == null && currPage != null && maxPage != null && maxPage > 0 && currPage >= maxPage - 1) {
+                val numberPlusOne =
+                    formattedChapters.indexOfFirst { it.first?.toIntOrNull() == continueNumber.toInt() + 1 }
+                if (numberPlusOne != -1) {
+                    continueEp =
+                        media.manga!!.chapters!![formattedChapters[numberPlusOne].second]
                     handleProgress(
                         binding.itemMediaProgressCont,
                         binding.itemMediaProgress,
@@ -657,56 +693,50 @@ class MangaReadAdapter(
                         media.id,
                         continueEp!!.number
                     )
-                    val currPage = PrefManager.getNullableCustomVal("${media.id}_${continueEp!!.number}", null, Long::class.java)
-                    val maxPage = PrefManager.getNullableCustomVal("${media.id}_${continueEp!!.number}_max", null, Long::class.java)
-                    if (currPage != null && maxPage != null && maxPage > 0 && currPage >= maxPage - 1) {
-                        val numberPlusOne =
-                            formattedChapters.indexOfFirst { it.first?.toIntOrNull() == continueNumber.toInt() + 1 }
-                        if (numberPlusOne != -1) {
-                            continueEp =
-                                media.manga.chapters!![formattedChapters[numberPlusOne].second]
-                            handleProgress(
-                                binding.itemMediaProgressCont,
-                                binding.itemMediaProgress,
-                                binding.itemMediaProgressEmpty,
-                                media.id,
-                                continueEp!!.number
-                            )
-                        }
-                    }
-                    binding.itemMediaImage.loadImage(art)
-                    val chapterNumber = continueEp!!.number
-                    val chapterTitle = continueEp!!.title
-                        ?.trim()
-                        ?.takeUnless {
-                            it.isBlank() ||
-                                    it.equals("null", ignoreCase = true) ||
-                                    it.equals(chapterNumber.trim(), ignoreCase = true)
-                        }
-                    binding.mediaSourceContinueText.setLines(2)
-                    val chapterInfo = if (chapterTitle != null) {
-                        "${chapterNumber}: ${chapterTitle}"
-                    } else {
-                        chapterNumber
-                    }
-                    binding.mediaSourceContinueText.text =
-                        currActivity()!!.getString(
-                            R.string.continue_reading_chapter,
-                            chapterInfo
-                        )
-                    binding.sourceContinue.setOnClickListener {
-                        fragment.onMangaChapterClick(continueEp)
-                    }
-                    if (fragment.continueEp) {
-                        if ((binding.itemMediaProgress.layoutParams as LinearLayout.LayoutParams).weight < 0.8f) {
-                            binding.sourceContinue.performClick()
-                            fragment.continueEp = false
-                        }
-
-                    }
-                } else {
-                    binding.sourceContinue.visibility = View.GONE
                 }
+            }
+            binding.itemMediaImage.loadImage(art)
+            val chapterNumber = continueEp!!.number
+            val chapterTitle = continueEp!!.title
+                ?.trim()
+                ?.takeUnless {
+                    it.isBlank() ||
+                            it.equals("null", ignoreCase = true) ||
+                            it.equals(chapterNumber.trim(), ignoreCase = true)
+                }
+            binding.mediaSourceContinueText.setLines(2)
+            val chapterInfo = if (chapterTitle != null) {
+                "${chapterNumber}: ${chapterTitle}"
+            } else {
+                chapterNumber
+            }
+            binding.mediaSourceContinueText.text =
+                currActivity()!!.getString(
+                    R.string.continue_reading_chapter,
+                    chapterInfo
+                )
+            binding.sourceContinue.setOnClickListener {
+                fragment.onMangaChapterClick(continueEp)
+            }
+            if (fragment.continueEp) {
+                if ((binding.itemMediaProgress.layoutParams as LinearLayout.LayoutParams).weight < 0.8f) {
+                    binding.sourceContinue.performClick()
+                    fragment.continueEp = false
+                }
+
+            }
+        } else {
+            binding.sourceContinue.visibility = View.GONE
+        }
+    }
+
+    fun handleChapters() {
+
+        val binding = _binding
+        if (binding != null) {
+            if (media.manga?.chapters != null) {
+                val filteredChapters = filteredChapters()
+                bindContinue(binding, filteredChapters)
 
                 binding.sourceProgressBar.visibility = View.GONE
 

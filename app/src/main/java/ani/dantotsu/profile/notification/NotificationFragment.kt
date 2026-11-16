@@ -279,6 +279,11 @@ class NotificationFragment : Fragment() {
             newestFirst,
             key = { "${it.type}|" + (muByKey[it.mediaId]?.let(keys::mu) ?: keys.anilist(it.mediaId)) },
             latest = { it.lastChapter },
+            // A part of the same chapter (Comick's 37.1) beats another check's whole 37.
+            exact = { n ->
+                n.lastChapterExact?.toDoubleOrNull()?.takeIf { kotlin.math.floor(it).toInt() == n.lastChapter }
+                    ?: n.lastChapter.toDouble()
+            },
         )
             .map {
                 // Format with HTML for better styling - each on separate line

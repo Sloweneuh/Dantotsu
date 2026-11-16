@@ -179,7 +179,8 @@ class ComickUnreadNotificationTask : Task {
             bayesianRating = entry.bayesian_rating,
             anilistId = anilistId,
             split = split,
-            latestExact = latestExact.takeIf { split },
+            // Kept for any part (37.1), so it reads as that and beats another source's whole 37.
+            latestExact = latestExact.takeIf { e -> e.toDoubleOrNull()?.let { it % 1.0 != 0.0 } == true },
             progressExact = progressExact,
         )
     }
@@ -582,16 +583,22 @@ class ComickUnreadNotificationTask : Task {
         }
 
         val latestByHid = HashMap<String, Int>()
-        val behind = titlesBehind(candidates, latestByHid).also {
+        val exactByHid = HashMap<String, String>()
+        val behind = titlesBehind(candidates, latestByHid, exactByHid).also {
             // Every title's newest chapter, behind or not, under each page it can be shown on —
             // for the release sources sheet.
             val answers = HashMap<String, Pair<Int, String?>>()
+            val exact = HashMap<String, String>()
             candidates.forEach { c ->
                 val latest = latestByHid[c.entry.hid] ?: return@forEach
-                c.links.anilistId?.let { answers[ReleaseSourceIgnores.anilist(it)] = latest to null }
-                c.links.mangaUpdatesIds.forEach { answers[ReleaseSourceIgnores.mu(it)] = latest to null }
+                val targets = listOfNotNull(c.links.anilistId?.let(ReleaseSourceIgnores::anilist)) +
+                    c.links.mangaUpdatesIds.map(ReleaseSourceIgnores::mu)
+                targets.forEach { target ->
+                    answers[target] = latest to null
+                    exactByHid[c.entry.hid]?.let { exact[target] = it }
+                }
             }
-            ani.dantotsu.connections.ReleaseSourceAnswers.record(ReleaseSourceIgnores.Provider.COMICK, answers)
+            ani.dantotsu.connections.ReleaseSourceAnswers.record(ReleaseSourceIgnores.Provider.COMICK, answers, exact)
         }.filter { b ->
             val links = b.candidate.links
             // The newest chapter the AniList or MangaUpdates check already knows for this title.
@@ -655,7 +662,8 @@ class ComickUnreadNotificationTask : Task {
                 coverUrl = shownMedia?.cover ?: muEntry?.coverUrl
                     ?: (muEntry?.id ?: links.muSeriesId)?.let { MUDetailsCache.get(it)?.coverUrl }
                     ?: entry.cover_url?.takeIf { it.isNotBlank() } ?: links.coverUrl,
-                source = group ?: SOURCE,
+                // An upload naming no group is no group's, not Comick's own.
+                source = group ?: ani.dantotsu.getAppString(ani.dantotsu.R.string.release_source_no_group),
                 latestChapterAt = latestAt,
                 anilistMedia = shownMedia,
                 muListEntry = muEntry,
@@ -722,6 +730,8 @@ class ComickUnreadNotificationTask : Task {
          * behind or not; a failed lookup leaves its title out. See [retractions].
          */
         latestByHid: MutableMap<String, Int>,
+        /** The newest chapter as Comick numbers it ("37.1"), where the catalog was asked. */
+        exactByHid: MutableMap<String, String>,
     ): List<Behind> = coroutineScope {
         val slots = Semaphore(2)
         candidates.map { candidate ->
@@ -734,7 +744,10 @@ class ComickUnreadNotificationTask : Task {
                 val newerPart = listed != null && candidate.readingSplit && listed > candidate.savedExact
                 if (listed != null && floor(listed).toInt() <= candidate.savedWhole && !newerPart) {
                     // In every language, so the newest one counted is no later than this either.
-                    synchronized(latestByHid) { latestByHid[hid] = floor(listed).toInt() }
+                    synchronized(latestByHid) {
+                        latestByHid[hid] = floor(listed).toInt()
+                        candidate.entry.last_released_number?.trim()?.let { exactByHid[hid] = it }
+                    }
                     return@async null
                 }
                 // Past what the groups ignored for this title uploaded: on any page it's shown as.
@@ -756,7 +769,10 @@ class ComickUnreadNotificationTask : Task {
                 // part itself (60.1 read on Comick, whatever AniList's whole 60 says): there the
                 // series comes in parts, and a newer one (60.2) is a new chapter.
                 val latestWhole = floor(latest).toInt()
-                synchronized(latestByHid) { latestByHid[hid] = latestWhole }
+                synchronized(latestByHid) {
+                    latestByHid[hid] = latestWhole
+                    exactByHid[hid] = latestText
+                }
                 val split = latestWhole == candidate.savedWhole && candidate.readingSplit &&
                     latest > candidate.savedExact
                 if (latestWhole <= candidate.savedWhole && !split) return@async null
@@ -1128,8 +1144,6 @@ class ComickUnreadNotificationTask : Task {
     internal companion object {
         @Volatile
         var currentlyPerforming = false
-
-        const val SOURCE = "Comick"
 
         /** The AniList and MangaUpdates checks' "already announced" sets. */
         const val ANILIST_NOTIFIED_KEY = "notified_unread_chapters"
