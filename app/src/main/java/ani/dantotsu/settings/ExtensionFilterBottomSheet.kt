@@ -106,9 +106,14 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
             dismiss()
         }
         binding.extensionFilterReset.setOnClickListener {
-            resetAndRender(fl)
+            // Built anew from the source, as Mihon resets: some only load their lists then.
+            val fresh = (activity as? ExtensionBrowseActivity)?.freshFilters()
+            if (fresh != null) {
+                filters = fresh
+                render(fresh)
+            } else filters?.let { resetAndRender(it) }
         }
-        binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog(fl) }
+        binding.savedFiltersButton.setOnClickListener { filters?.let { showSavedFiltersDialog(it) } }
 
         val browseActivity = requireActivity() as ExtensionBrowseActivity
         val activeFilterCount = browseActivity.activeFilterCount()
@@ -201,11 +206,20 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
     private fun render(fl: Any) {
         binding.extensionFilterContainer.removeAllViews()
         sectionFilters.clear()
+        sectionCards.clear()
+        pendingRenders.clear()
+        pairDefaults(fl)
         when (fl) {
             is FilterList -> renderSections(fl.list, binding.extensionFilterContainer)
             is AnimeFilterList -> renderAnimeSections(fl.list, binding.extensionFilterContainer)
         }
+        // A card's line is first worked out as it's created, before its filters are tracked: done
+        // again now they are, so the sheet opens on what's already applied ("3 selected").
+        sectionCards.forEach { it.refreshSummary() }
     }
+
+    /** Every section card rendered, to bring their closed-card lines up to date in one go. */
+    private val sectionCards = mutableListOf<Xpandable>()
 
     private fun renderSections(filters: List<Filter<*>>, root: LinearLayout) {
         // Every non-header/group filter lives inside a collapsible section. A Header
@@ -223,14 +237,15 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                     val inner = createSection(root, f.name, searchable = children.size > SEARCH_THRESHOLD)
                     children.forEach { child ->
                         if (child is Filter<*>) {
-                            renderFilter(child, inner)
+                            later(inner) { renderFilter(child, inner) }
                             track(inner, child)
                         }
                     }
                 }
                 else -> {
-                    renderFilter(f, current)
-                    track(current, f)
+                    val section = current
+                    later(section) { renderFilter(f, section) }
+                    track(section, f)
                 }
             }
         }
@@ -250,14 +265,15 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                     val inner = createSection(root, f.name, searchable = children.size > SEARCH_THRESHOLD)
                     children.forEach { child ->
                         if (child is AnimeFilter<*>) {
-                            renderAnimeFilter(child, inner)
+                            later(inner) { renderAnimeFilter(child, inner) }
                             track(inner, child)
                         }
                     }
                 }
                 else -> {
-                    renderAnimeFilter(f, current)
-                    track(current, f)
+                    val section = current
+                    later(section) { renderAnimeFilter(f, section) }
+                    track(section, f)
                 }
             }
         }
@@ -271,8 +287,65 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
         sectionFilters.getOrPut(section) { mutableListOf() }.add(filter)
     }
 
-    /** Whether a filter is away from its default; sorting is not counted, being an order not a filter. */
-    private fun isSet(f: Any?): Boolean = when (f) {
+    /**
+     * A section's controls, built the first time it opens rather than with the sheet: a source with
+     * hundreds of genres and tags (MangaDot) otherwise held the sheet back for over a second.
+     */
+    private val pendingRenders = java.util.IdentityHashMap<LinearLayout, MutableList<() -> Unit>>()
+
+    private fun later(section: LinearLayout, render: () -> Unit) {
+        pendingRenders.getOrPut(section) { mutableListOf() }.add(render)
+    }
+
+    /**
+     * Each filter's counterpart in the source's own defaults. A source can start some away from
+     * "any" (MangaDot excludes content ratings its settings hide): those aren't a choice made here,
+     * and the active chips don't count them either.
+     */
+    private val defaultsOf = java.util.IdentityHashMap<Any, Any>()
+
+    private fun pairDefaults(fl: Any) {
+        defaultsOf.clear()
+        val defaults = (activity as? ExtensionBrowseActivity)?.defaultFilterList()
+        fun pair(current: List<*>, default: List<*>?) {
+            current.forEachIndexed { i, f ->
+                val d = default?.getOrNull(i)
+                // Matched by position, kept only where it's plainly the same filter.
+                if (f == null || d == null || f.javaClass != d.javaClass) return@forEachIndexed
+                if ((f as? Filter<*>)?.name != (d as? Filter<*>)?.name ||
+                    (f as? AnimeFilter<*>)?.name != (d as? AnimeFilter<*>)?.name
+                ) return@forEachIndexed
+                defaultsOf[f] = d
+                when (f) {
+                    is Filter.Group<*> -> pair(f.state as? List<*> ?: emptyList<Any>(), (d as Filter.Group<*>).state as? List<*>)
+                    is AnimeFilter.Group<*> -> pair(f.state as? List<*> ?: emptyList<Any>(), (d as AnimeFilter.Group<*>).state as? List<*>)
+                }
+            }
+        }
+        when {
+            fl is FilterList && defaults is FilterList -> pair(fl.list, defaults.list)
+            fl is AnimeFilterList && defaults is AnimeFilterList -> pair(fl.list, defaults.list)
+        }
+    }
+
+    /**
+     * Whether a filter is away from its default — the source's own where known ([defaultsOf]);
+     * sorting is not counted, being an order not a filter.
+     */
+    private fun isSet(f: Any?): Boolean {
+        val d = f?.let { defaultsOf[it] }
+        return when {
+            f is Filter.Group<*> -> (f.state as? List<*>)?.any { isSet(it) } == true
+            f is AnimeFilter.Group<*> -> (f.state as? List<*>)?.any { isSet(it) } == true
+            f is Filter.Sort || f is AnimeFilter.Sort -> false
+            f is Filter<*> && d is Filter<*> -> f.state != d.state
+            f is AnimeFilter<*> && d is AnimeFilter<*> -> f.state != d.state
+            else -> isSetFromEmpty(f)
+        }
+    }
+
+    /** [isSet] for a filter with no known default: away from "any". */
+    private fun isSetFromEmpty(f: Any?): Boolean = when (f) {
         is Filter.Select<*> -> f.state != 0
         is Filter.Text -> f.state.isNotBlank()
         is Filter.CheckBox -> f.state
@@ -354,6 +427,8 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
         }
         card.addView(content)
         root.addView(card)
+        sectionCards += card
+        card.beforeExpand = { pendingRenders.remove(content)?.forEach { it() } }
         card.summarizeWhenClosed {
             FilterSummary.choices(ctx, sectionFilters[content].orEmpty().count { isSet(it) })
         }
@@ -416,7 +491,10 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                 val children = f.state as? List<*> ?: emptyList<Any>()
                 val inner = createSection(parent, f.name, searchable = children.size > SEARCH_THRESHOLD)
                 children.forEach { child ->
-                    if (child is Filter<*>) renderFilter(child, inner)
+                    if (child is Filter<*>) {
+                        later(inner) { renderFilter(child, inner) }
+                        track(inner, child)
+                    }
                 }
             }
             else -> Unit
@@ -468,7 +546,10 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                 val children = f.state as? List<*> ?: emptyList<Any>()
                 val inner = createSection(parent, f.name, searchable = children.size > SEARCH_THRESHOLD)
                 children.forEach { child ->
-                    if (child is AnimeFilter<*>) renderAnimeFilter(child, inner)
+                    if (child is AnimeFilter<*>) {
+                        later(inner) { renderAnimeFilter(child, inner) }
+                        track(inner, child)
+                    }
                 }
             }
             else -> Unit

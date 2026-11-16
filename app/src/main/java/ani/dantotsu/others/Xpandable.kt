@@ -43,6 +43,12 @@ class Xpandable @JvmOverloads constructor(
     private var summaryText: CharSequence? = null
     private var iconRes: Int = 0
 
+    /**
+     * Run just before the card opens, ahead of measuring its body: a card can fill its body then
+     * rather than up front (a long filter list, built only for the sections actually opened).
+     */
+    var beforeExpand: (() -> Unit)? = null
+
     /** Whether opening this card closes its siblings; see the `accordion` attribute. */
     var accordion: Boolean = false
 
@@ -183,6 +189,7 @@ class Xpandable @JvmOverloads constructor(
         setBodyPadding(expanded)
 
         headerView.setOnClickListener {
+            if (!expanded) beforeExpand?.invoke()
             expanded = !expanded
             persist()
             // Before the animation, so it grows or shrinks to the header as it will end up.
@@ -342,6 +349,7 @@ class Xpandable @JvmOverloads constructor(
      */
     fun expand() {
         if (expanded) return
+        beforeExpand?.invoke()
         expanded = true
         persist()
         refreshSummary()

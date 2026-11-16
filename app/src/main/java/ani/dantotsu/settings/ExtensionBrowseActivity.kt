@@ -512,6 +512,12 @@ class ExtensionBrowseActivity : AppCompatActivity() {
 
     fun activeFilterCount(): Int = buildActiveFilterChips().size
 
+    /** The source's untouched filters, FilterList or AnimeFilterList, for comparing against. */
+    fun defaultFilterList(): Any? {
+        ensureDefaultFilters()
+        return defaultFilters
+    }
+
     /** The source's untouched filters, in [SavedFiltersStore]'s snapshot form. */
     fun defaultFilterStates(): List<Any?>? {
         ensureDefaultFilters()
@@ -701,7 +707,31 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         binding.extensionBrowseActiveFilterChips.isVisible = chips.isNotEmpty()
     }
 
+    /**
+     * The source's filters built anew, as Mihon's Reset does: a source that loads its lists later
+     * (MangaDot's genres and tags: "Tap 'Reset' to load filters") only offers them on a rebuild.
+     * Null for a novel plugin, whose filters reset in place.
+     */
+    fun freshFilters(): Any? = when {
+        animeExtension != null ->
+            (animeExtension!!.sources.getOrNull(sourceIndex) as? AnimeCatalogueSource)?.getFilterList()
+        mangaExtension != null ->
+            (mangaExtension!!.sources.getOrNull(sourceIndex) as? CatalogueSource)?.getFilterList()
+        else -> null
+    }?.also {
+        // The defaults the chips compare against have to have the same shape as what's applied.
+        defaultFilters = null
+    }
+
     private fun ensureDefaultFilters() {
+        // A list that changed shape since (filters loaded after the first build) has its defaults
+        // built again: they're compared position by position.
+        val stale = when (val d = defaultFilters) {
+            is FilterList -> (currentFilters as? FilterList)?.let { it.list.size != d.list.size } == true
+            is AnimeFilterList -> (currentFilters as? AnimeFilterList)?.let { it.list.size != d.list.size } == true
+            else -> false
+        }
+        if (stale) defaultFilters = null
         if (defaultFilters != null) return
         defaultFilters = when {
             animeExtension != null ->
