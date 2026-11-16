@@ -65,6 +65,11 @@ data class UnreadChapterInfo(
      * found ("60.2"). Null otherwise, and in anything stored before.
      */
     val lastChapterLabel: String? = null,
+    /**
+     * [userProgress] as it should read, when the whole number doesn't say it: the part of a split
+     * chapter Comick's progress is at ("45.1" for 45). Null otherwise, and in anything stored before.
+     */
+    val userProgressLabel: String? = null,
 ) : Serializable {
     companion object {
         // Pinned so adding a field stays a backward-compatible change for anything already

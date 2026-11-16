@@ -119,6 +119,8 @@ class ComickUnreadNotificationTask : Task {
          * before it, announced under the same whole chapter, would stand in for it.
          */
         val split: Boolean = false,
+        /** The saved chapter as Comick numbers it, when it's part of a split one ("45.1"). */
+        val progressExact: String? = null,
         val link: String,
         /** Notification id, and the id the entry is stored under in the notification list. */
         val notifId: Int,
@@ -178,6 +180,7 @@ class ComickUnreadNotificationTask : Task {
             anilistId = anilistId,
             split = split,
             latestExact = latestExact.takeIf { split },
+            progressExact = progressExact,
         )
     }
 
@@ -640,6 +643,7 @@ class ComickUnreadNotificationTask : Task {
                 userChapter = userChapter,
                 latestExact = latestExact,
                 split = split,
+                progressExact = entry.progress?.number?.trim()?.takeIf { candidate.readingSplit },
                 link = link,
                 // The id the AniList or MangaUpdates check posts the series under, so this
                 // replaces rather than stacks on its older notification; otherwise one derived

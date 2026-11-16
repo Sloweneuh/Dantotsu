@@ -220,7 +220,18 @@ private fun groupLabel(groups: List<String>?): String? =
  * the newest anyone else uploaded. Null when there's none or Comick can't be asked. Blocking
  * network: call off the main thread.
  */
-suspend fun comickLatestFor(hid: String?, lastChapter: Double?, target: String): Pair<Int, String?>? {
+suspend fun comickLatestFor(hid: String?, lastChapter: Double?, target: String): Pair<Int, String?>? =
+    comickLatestExactFor(hid, lastChapter, target)?.let { it.whole to it.group }
+
+/** Comick's newest chapter: whole, as the trackers count, and [exact] as Comick numbers it ("45.2"). */
+data class ComickLatest(val whole: Int, val group: String?, val exact: String) {
+    /** [exact] when it's a part of [whole] the whole number doesn't say. */
+    val splitLabel: String? get() = exact.takeIf { e -> e.toDoubleOrNull()?.let { it % 1.0 != 0.0 } == true }
+}
+
+/** [comickLatestFor], with the chapter's exact number. */
+suspend fun comickLatestExactFor(hid: String?, lastChapter: Double?, target: String): ComickLatest? {
+    fun exactOf(n: Double) = if (n % 1.0 == 0.0) n.toInt().toString() else n.toString()
     val ignored = ReleaseSourceIgnores.comickGroups(target)
     if (ignored.isEmpty()) {
         // The catalog's number can lag: it follows the latest upload, so a re-upload of an old
@@ -232,14 +243,15 @@ suspend fun comickLatestFor(hid: String?, lastChapter: Double?, target: String):
         val newestNumber = newest?.chap?.toDoubleOrNull()
         if (newest != null && newestNumber != null && newestNumber.toInt() > 0 &&
             newestNumber.toInt() > (lastChapter?.toInt() ?: 0)
-        ) return newestNumber.toInt() to groupLabel(newest.group_name)
+        ) return ComickLatest(newestNumber.toInt(), groupLabel(newest.group_name), exactOf(newestNumber))
         val last = lastChapter?.toInt()?.takeIf { it > 0 } ?: return null
-        return last to comickGroupOf(hid, lastChapter)
+        return ComickLatest(last, comickGroupOf(hid, lastChapter), exactOf(lastChapter))
     }
     if (hid.isNullOrBlank()) return null
     val chapter = runCatching {
         ani.dantotsu.connections.comick.ComickApi.getLatestChapter(hid, ignoredGroups = ignored)
     }.getOrNull() ?: return null
-    val last = chapter.chap?.toDoubleOrNull()?.toInt()?.takeIf { it > 0 } ?: return null
-    return last to groupLabel(chapter.group_name)
+    val number = chapter.chap?.toDoubleOrNull() ?: return null
+    val last = number.toInt().takeIf { it > 0 } ?: return null
+    return ComickLatest(last, groupLabel(chapter.group_name), exactOf(number))
 }

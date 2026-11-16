@@ -50,6 +50,11 @@ data class ComickUnreadEntry(
     val split: Boolean = false,
     /** [latestChapter] as Comick numbers it, kept for a [split] one ("60.2") so it reads as that. */
     val latestExact: String? = null,
+    /**
+     * [progress] as Comick numbers it, kept when it's part of a split chapter ("45.1") so it reads
+     * as that. Null otherwise, and in older entries.
+     */
+    val progressExact: String? = null,
 ) : Serializable {
 
     /** The id this title's unread info is keyed by in the row, matching what it is shown as. */
@@ -65,7 +70,15 @@ data class ComickUnreadEntry(
         userProgress = progress,
         latestChapterAt = latestChapterAt,
         lastChapterLabel = latestLabel,
+        userProgressLabel = progressLabel(progress),
     )
+
+    /**
+     * The saved chapter as the row shows it: Comick's exact part of a split chapter while [shown]
+     * (the progress the row has, maybe saved on AniList since) is still that whole chapter.
+     */
+    fun progressLabel(shown: Int = progress): String? =
+        progressExact?.takeIf { it.toDoubleOrNull()?.let { exact -> kotlin.math.floor(exact).toInt() } == shown }
 
     /** The newest chapter as the row shows it: exactly, for a split one. */
     val latestLabel: String? get() = latestExact?.takeIf { split }

@@ -93,6 +93,10 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     private var comickAsked = false
     /** The series' Comick entry, once found: its groups are listed in the sources sheet. */
     private var liveComickHid: String? = null
+    /** Comick's newest chapter exactly, when it's part of a split one ("45.2"). */
+    private var liveComickLatestSplit: String? = null
+    /** The account's Comick progress exactly, when it's part of a split chapter ("45.1"). */
+    private var liveComickProgressSplit: String? = null
     private var malSyncAsking = false
 
     lateinit var launcher: LauncherWrapper
@@ -1038,13 +1042,31 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     val userProgress = media.userProgress ?: 0
                     var best: Pair<Int, String?>? = null
                     candidates.forEach { if (best == null || it.first > best!!.first) best = it }
-                    val latest = best?.first?.takeIf { it > userProgress }
+                    // Split chapters, Comick's: where the account is in one (45.1 while AniList
+                    // counts 45) and a newer part out at the newest whole number (45.2). Live from
+                    // this visit, else the last unread check's.
+                    fun wholeOf(label: String?) = label?.toDoubleOrNull()?.let { kotlin.math.floor(it).toInt() }
+                    val comickIgnored = ignores.isIgnored(comickProvider, target)
+                    val cachedComick = if (comickIgnored) null
+                    else ani.dantotsu.notifications.unread.UnreadCache.cachedComick()
+                        .filter { (it.anilistMedia?.id ?: it.anilistId) == media.id }
+                        .maxByOrNull { it.latestChapter }
+                    val progressSplit = (liveComickProgressSplit ?: cachedComick?.progressExact)
+                        ?.takeIf { media.userStatus != null && wholeOf(it) == userProgress }
+                    val latestSplit = (if (liveComick != null) liveComickLatestSplit else cachedComick?.latestLabel)
+                        ?.takeIf { !comickIgnored && wholeOf(it) == best?.first }
+                    val latest = best?.first?.takeIf {
+                        it > userProgress || (latestSplit != null && it == userProgress &&
+                            latestSplit.toDouble() > (progressSplit?.toDouble() ?: userProgress.toDouble()))
+                    }
                     val white = getThemeColor(com.google.android.material.R.attr.colorOnBackground)
                     val colorSecondary = getThemeColor(com.google.android.material.R.attr.colorSecondary)
                     binding.mediaTotal.text = SpannableStringBuilder().apply {
                         if (media.userStatus != null) {
                             append(getString(R.string.read_num))
                             bold { color(colorSecondary) { append("${media.userProgress}") } }
+                            // "Read 45 (45.1)": AniList's count, then the part Comick has read to.
+                            progressSplit?.let { bold { color(colorSecondary) { append(" ($it)") } } }
                             append(getString(R.string.chapters_out_of))
                         } else {
                             append(getString(R.string.chapters_total_of))
@@ -1052,7 +1074,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                         // The latest released chapter, like nextAiringEpisode for anime — only while
                         // there is something left to read.
                         if (latest != null) {
-                            bold { color(white) { append("$latest") } }
+                            bold { color(white) { append(latestSplit ?: "$latest") } }
                             append(" / ")
                         }
                         bold { color(white) { append("${media.manga!!.totalChapters ?: "??"}") } }
@@ -1122,13 +1144,33 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 // A hand pick Comick now links to this media itself is an automatic match.
                 ani.dantotsu.connections.comick.ComickMatches.retireIfLinked(slug, comic.links)
                 val target = ani.dantotsu.connections.ReleaseSourceIgnores.anilist(media.id)
+                // Where the account is in a split chapter ("45.1" where AniList counts 45), for the
+                // progress line. Only Comick knows; the trackers keep whole numbers.
+                val progressSplit = if (!ani.dantotsu.connections.comick.Comick.getSavedToken()) null else runCatching {
+                    (comic.hid?.let { ani.dantotsu.connections.comick.Comick.getEntry(it) }
+                        as? ani.dantotsu.connections.comick.Comick.EntryLookup.Followed)
+                        ?.entry?.progress?.number?.trim()
+                        ?.takeIf { n -> n.toDoubleOrNull()?.let { it % 1.0 != 0.0 } == true }
+                }.getOrNull()
                 // With its uploader, as the Comick tab shows it.
-                val (last, group) = comickLatestFor(comic.hid, comic.last_chapter, target) ?: return@launch
+                val latest = comickLatestExactFor(comic.hid, comic.last_chapter, target)
+                if (latest == null) {
+                    if (progressSplit != null) withContext(Dispatchers.Main) {
+                        if (isDestroyed) return@withContext
+                        liveComickProgressSplit = progressSplit
+                        total()
+                    }
+                    return@launch
+                }
+                val last = latest.whole
+                val group = latest.group
                 ani.dantotsu.connections.ReleaseSourceAnswers.record(
                     ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target, last, group,
                 )
                 withContext(Dispatchers.Main) {
                     if (isDestroyed) return@withContext
+                    liveComickProgressSplit = progressSplit
+                    liveComickLatestSplit = latest.splitLabel
                     liveComick = last to (group ?: "Comick")
                     if (!ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)) {
                         total()

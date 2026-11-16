@@ -166,7 +166,7 @@ class UnreadChaptersAdapter(
             itemCompactTitle.text = media.userPreferredName
 
             // Set progress text in format: progress | lastEp | totalChapters (or ~)
-            itemCompactUserProgress.text = info.userProgress.toString()
+            itemCompactUserProgress.text = info.userProgressLabel ?: info.userProgress.toString()
 
             val totalChapters = media.manga?.totalChapters ?: "~"
             itemCompactTotal.text = if (info.lastChapter > 0) {
@@ -281,7 +281,7 @@ class UnreadChaptersAdapter(
 
             // Set progress info - show: userProgress / (lastChapter | totalChapters)
             val totalChapters = media.manga?.totalChapters ?: "~"
-            itemUserProgressLarge.text = (info.userProgress).toString()
+            itemUserProgressLarge.text = info.userProgressLabel ?: info.userProgress.toString()
             itemProgressSeparator.visibility = View.VISIBLE
             itemCompactTotal.text = if (info.lastChapter > 0) "${info.lastChapterLabel ?: info.lastChapter} | $totalChapters" else "$totalChapters"
             itemTotal.text = ""
@@ -426,7 +426,8 @@ class UnreadChaptersAdapter(
 
             val malSync = malSyncInfoFor(item)
             val userChapter = item.userChapter
-            itemCompactUserProgress.text = userChapter?.toString() ?: "~"
+            itemCompactUserProgress.text = malSync?.userProgressLabel?.takeIf { userChapter == malSync.userProgress }
+                ?: userChapter?.toString() ?: "~"
             val latest = MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), malSync?.lastChapter)
             val split = malSync?.lastChapterLabel != null && latest == malSync.lastChapter
             val showLatest = latest != null && latest > 0 &&
@@ -546,7 +547,8 @@ class UnreadChaptersAdapter(
 
             val malSync = malSyncInfoFor(item)
             val userChapter = item.userChapter
-            itemUserProgressLarge.text = userChapter?.toString() ?: "~"
+            itemUserProgressLarge.text = malSync?.userProgressLabel?.takeIf { userChapter == malSync.userProgress }
+                ?: userChapter?.toString() ?: "~"
             itemProgressSeparator.visibility = View.VISIBLE
             val latest = MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), malSync?.lastChapter)
             itemCompactTotal.text = malSync?.lastChapterLabel?.takeIf { latest == malSync.lastChapter }
@@ -622,7 +624,7 @@ class UnreadChaptersAdapter(
         binding.apply {
             itemCompactImage.loadImage(item.coverUrl)
             itemCompactTitle.text = item.title
-            itemCompactUserProgress.text = item.progress.toString()
+            itemCompactUserProgress.text = item.progressLabel() ?: item.progress.toString()
             itemCompactTotal.text = " | ${item.latestLabel ?: item.latestChapter} | ~"
             // The releasing dot, as an AniList row has it; this layout has no hiatus variant.
             itemCompactScoreContainer.visibility =
@@ -654,7 +656,7 @@ class UnreadChaptersAdapter(
             itemCompactType.visibility = View.GONE
             itemCompactStatus.visibility = View.GONE
             itemCompactSynopsis.text = ""
-            itemUserProgressLarge.text = item.progress.toString()
+            itemUserProgressLarge.text = item.progressLabel() ?: item.progress.toString()
             itemProgressSeparator.visibility = View.VISIBLE
             itemCompactTotal.text = item.latestLabel ?: item.latestChapter.toString()
             itemTotal.text = " " + root.context.getString(R.string.chapter_plural)
