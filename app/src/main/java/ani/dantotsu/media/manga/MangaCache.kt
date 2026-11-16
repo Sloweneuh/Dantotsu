@@ -16,6 +16,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import tachiyomi.decoder.ImageDecoder
 import uy.kohesive.injekt.Injekt
@@ -55,9 +56,17 @@ data class ImageData(
                     ?.let { runCatching { decodeImage(it, maxWidth, maxHeight) }.getOrNull() }
                     ?.let { return@withContext it }
 
-                val response = httpSource.getImage(page)
-                Logger.log("Response: ${response.code} - ${response.message}")
-                val bytes = response.body.bytes()
+                // One download per page however many ask at once: opening a chapter, the page on
+                // screen, the smart-pages scan and the prefetcher can all want the same page, and
+                // fetched side by side it came in last, sharing the connection with its own copies.
+                val download: suspend () -> ByteArray = {
+                    httpSource.getImage(page).use { response ->
+                        Logger.log("Response: ${response.code} - ${response.message}")
+                        response.body.bytes()
+                    }
+                }
+                val bytes = cacheKey?.let { Injekt.get<MangaCache>().downloadOnce(it, download) }
+                    ?: download()
                 // Kept encoded as well as decoded, so re-reading this page at a higher
                 // resolution when it is zoomed costs a decode rather than another download.
                 cacheKey?.let {
@@ -231,6 +240,28 @@ class MangaCache {
      */
     private val pageBytesCache = object : LruCache<String, ByteArray>(32 * 1024) {
         override fun sizeOf(key: String, value: ByteArray): Int = value.size / 1024
+    }
+
+    /** Downloads in flight, by page: see [downloadOnce]. */
+    private val downloads = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<ByteArray>>()
+
+    /** Its own scope, so one caller giving up (its view recycled) doesn't cancel it for the rest. */
+    private val downloadScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + Dispatchers.IO
+    )
+
+    /**
+     * [fetch]es page [key] once for everyone asking while it is in flight. The first caller starts
+     * it; the others wait on the same download rather than starting their own.
+     */
+    suspend fun downloadOnce(key: String, fetch: suspend () -> ByteArray): ByteArray {
+        // Lazy, so the map holds it before it can finish and remove itself.
+        val job = downloads.computeIfAbsent(key) {
+            downloadScope.async(start = kotlinx.coroutines.CoroutineStart.LAZY) { fetch() }
+        }
+        job.invokeOnCompletion { downloads.remove(key, job) }
+        job.start()
+        return job.await()
     }
 
     @Synchronized

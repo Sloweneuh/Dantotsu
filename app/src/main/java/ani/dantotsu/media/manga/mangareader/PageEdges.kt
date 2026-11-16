@@ -91,6 +91,13 @@ object PageEdges {
          * page — 1125 and 1225 wide in one chapter, say — would otherwise look like one.
          */
         val sourceWidth: Int = width,
+        /**
+         * breadth[y]: the share of the width that changes between row y and row y + 1 (or y + 2,
+         * whichever is more), leaving out columns that are blank paper on both sides. Two pages
+         * meeting change nearly all the way across; a sharp line inside a drawing leaves most of
+         * the picture carrying straight on. See [cutsThroughDrawing].
+         */
+        val breadth: FloatArray = FloatArray(0),
     ) {
         val ratio get() = height.toFloat() / width
 
@@ -199,7 +206,7 @@ object PageEdges {
         bitmap.getPixels(cols, 0, BAND, w - BAND, 0, BAND, h)
         val right = edge(transpose(cols, BAND, h), h, BAND, reverse = true)
         val rows2 = rowJumps(bitmap)
-        Profile(w, h, top, bottom, left, right, rows2.jumps, rows2.jumps2, rows2.colors, rows2.spread, sourceWidth)
+        Profile(w, h, top, bottom, left, right, rows2.jumps, rows2.jumps2, rows2.colors, rows2.spread, sourceWidth, rows2.breadth)
     }.getOrNull()
 
     private class Rows(
@@ -207,6 +214,7 @@ object PageEdges {
         val jumps2: FloatArray,
         val colors: FloatArray,
         val spread: FloatArray,
+        val breadth: FloatArray,
     )
 
     /**
@@ -220,6 +228,7 @@ object PageEdges {
         val jumps2 = FloatArray(maxOf(0, h - 2))
         val colors = FloatArray(h * 3)
         val spread = FloatArray(h)
+        val breadth = FloatArray(h - 1)
         val px = IntArray(w * READ_BAND)
         var older = FloatArray(SAMPLES)
         var previous = FloatArray(SAMPLES)
@@ -250,8 +259,15 @@ object PageEdges {
                 colors[y * 3 + 2] = blue.toFloat() / w
                 val lumaMean = lumaSum / w
                 spread[y] = sqrt(maxOf(0.0, lumaSq / w - lumaMean * lumaMean)).toFloat()
-                if (y > 0) jumps[y - 1] = difference(previous, current).toFloat()
-                if (y > 1) jumps2[y - 2] = difference(older, current).toFloat()
+                if (y > 0) {
+                    jumps[y - 1] = difference(previous, current).toFloat()
+                    breadth[y - 1] = changedShare(previous, current)
+                }
+                if (y > 1) {
+                    jumps2[y - 2] = difference(older, current).toFloat()
+                    // A break a downscale blended into the row between: full strength two apart.
+                    breadth[y - 2] = maxOf(breadth[y - 2], changedShare(older, current))
+                }
                 val recycled = older
                 older = previous
                 previous = current
@@ -259,7 +275,62 @@ object PageEdges {
             }
             y0 += n
         }
-        return Rows(jumps, jumps2, colors, spread)
+        return Rows(jumps, jumps2, colors, spread, breadth)
+    }
+
+    /**
+     * The share of [a]'s and [b]'s buckets that differ clearly, among those that aren't blank paper
+     * (or solid black) on both — a page's margins say nothing either way. 1 when too few are left
+     * to tell, which keeps the break.
+     */
+    private fun changedShare(a: FloatArray, b: FloatArray): Float {
+        var counted = 0
+        var changed = 0
+        for (i in a.indices) {
+            val d = abs(a[i] - b[i])
+            val flat = d < FLAT_SAME && ((a[i] >= FLAT_LIGHT && b[i] >= FLAT_LIGHT) || (a[i] <= FLAT_DARK && b[i] <= FLAT_DARK))
+            if (flat) continue
+            counted++
+            if (d >= CHANGED_LUMA) changed++
+        }
+        return if (counted < MIN_COUNTED_BUCKETS) 1f else changed.toFloat() / counted
+    }
+
+    /**
+     * Whether a break at [row] of [profile] would go through a drawing: the rows either side are
+     * not two pages meeting — the change doesn't run across the picture ([Profile.breadth]) — nor
+     * is there a plain band (a margin, a gutter, of any colour) on either side of it. Two pages
+     * meeting do one or the other, borderless ones included: unrelated pictures don't line up.
+     */
+    fun cutsThroughDrawing(profile: Profile, row: Int): Boolean {
+        val breadth = profile.breadth
+        if (breadth.isEmpty()) return false
+        val widest = (row - 2..row).filter { it in breadth.indices }.maxOfOrNull { breadth[it] } ?: return false
+        if (widest >= BREAK_BREADTH) return false
+        val band = maxOf(3, profile.width / 150)
+        fun plain(from: Int, to: Int) = from >= 0 && to < profile.height &&
+            (from..to).all { profile.rowSpread[it] < PLAIN_SPREAD }
+        return !(plain(row - band, row - 1) || plain(row, row + band - 1))
+    }
+
+    /** [result] without the breaks that would cut through a drawing ([cutsThroughDrawing]). */
+    private fun withoutDrawingCuts(url: String, self: Profile, result: Breaks): Breaks {
+        if (result.positions.isEmpty()) return result
+        val keep = result.positions.indices.filter { !cutsThroughDrawing(self, result.positions[it].roundToInt()) }
+        if (keep.size == result.positions.size) return result
+        android.util.Log.d(
+            "SmartPages",
+            "dropped breaks through a drawing in ${url.takeLast(30)}: " +
+                result.positions.indices.filter { it !in keep }.map { result.positions[it].roundToInt() }
+        )
+        return Breaks(
+            result.width, result.height,
+            keep.map { result.rows[it] }.toIntArray(),
+            result.atStart, result.stitched,
+            positions = keep.map { result.positions[it] }.toFloatArray(),
+            period = result.period,
+            divided = result.divided,
+        )
     }
 
     /**
@@ -447,7 +518,7 @@ object PageEdges {
         }
         val result = if (!worthJudging(urls, index, self)) {
             Breaks(self.width, self.height, IntArray(0), atStart = false, stitched = false)
-        } else judge(urls, index, self)
+        } else withoutDrawingCuts(url, self, judge(urls, index, self))
         val changed = !result.sameAs(breaks[url])
         breaks[url] = result
         if (fromReader) reported[url] = result
@@ -512,6 +583,17 @@ object PageEdges {
             windowSeams,
             blank.copyOfRange(from, minOf(blank.size, to + 1)),
         )?.takeIf { agreesWithChapter(urls, run, self, it) }
+        // A chapter of one page per image, and this one taller: a page with a banner or credits
+        // stitched on. Only a period of the pages' own height can be right there; anything else
+        // was read off panel borders (976 rows in a chapter of 939-row pages, cutting a sliver
+        // through the banner's text and another off the page's foot).
+        singlePageHeight(urls, self)?.let { pageHeight ->
+            val tall = self.height > pageHeight * (1 + EXTRA_MIN_SHARE) &&
+                self.height < pageHeight * (1 + EXTRA_MAX_SHARE)
+            if (tall && (found == null || abs(found.period - pageHeight) > pageHeight * CHAPTER_PERIOD_SHARE)) {
+                return pageWithExtra(self, pageHeight)
+            }
+        }
         if (found == null) {
             continued(urls, run, first, start, jumps, self)?.let { return it }
             divide(urls, run, first, last, start, total, jumps, self, ::walled)?.let { return it }
@@ -633,6 +715,58 @@ object PageEdges {
         val agrees = abs(found.period - chapter) <= chapter * CHAPTER_PERIOD_SHARE
         if (!agrees) android.util.Log.d("SmartPages", "period ${found.period} rejected: the chapter's is $chapter")
         return agrees
+    }
+
+    /**
+     * The height (in [self]'s rows) every page of a chapter of one page per image has: most of its
+     * other images of [self]'s width are one height, to within a row or two, and a page's shape.
+     * Null when the chapter isn't like that — stitched strips cut at random heights, mixed sizes.
+     */
+    private fun singlePageHeight(urls: List<String?>, self: Profile): Float? {
+        val heights = urls.filterNotNull().mapNotNull { url ->
+            profiles[url]?.takeIf {
+                it !== self && !it.isSliver && abs(it.sourceWidth - self.sourceWidth) <= self.sourceWidth * SAME_BREADTH
+            }?.let { it.height.toFloat() * self.width / it.width }
+        }.sorted()
+        if (heights.size < SINGLE_PAGE_MIN_IMAGES) return null
+        val median = heights[heights.size / 2]
+        val alike = heights.count { abs(it - median) <= maxOf(2f, median * SINGLE_PAGE_SLACK) }
+        if (alike * 4 < heights.size * 3) return null
+        return median.takeIf { it / self.width in MIN_PAGE_RATIO..MAX_PAGE_RATIO }
+    }
+
+    /**
+     * [self], a page [pageHeight] rows tall with something else stitched above or below it: one
+     * break, where the page starts (the extra on top) or ends (the extra below) — whichever of the
+     * two is the more abrupt row. None when neither is: better uncut than cut through a drawing.
+     */
+    private fun pageWithExtra(self: Profile, pageHeight: Float): Breaks {
+        val extra = self.height - pageHeight
+        fun candidate(y: Float): Pair<Float, Float> {
+            // The pages are all one height, so the seam is exactly here when this row is a sharp
+            // one itself — not the sharper row a few off it: a banner's own bottom stripe ended
+            // up on top of the page below it.
+            val exact = (y.roundToInt() - 1).coerceIn(0, self.jumps.size - 1)
+            (exact - 1..exact + 1).filter { it in self.jumps.indices }
+                .maxByOrNull { self.jumps[it] }
+                ?.takeIf { self.jumps[it] >= MIN_BREAK_JUMP }
+                ?.let { return (it + 1f) to self.jumps[it] }
+            val row = snapToEdge(self.jumps, y.roundToInt() - 1, SNAP * 2)
+            val idx = (row.roundToInt() - 1).coerceIn(0, self.jumps.size - 1)
+            return row to self.jumps[idx]
+        }
+        val best = listOf(candidate(extra), candidate(pageHeight)).maxBy { it.second }
+        android.util.Log.d("SmartPages", "page with extra: page $pageHeight of ${self.height} rows, break at ${best.first} (jump ${best.second})")
+        val rows = if (best.second >= MIN_BREAK_JUMP) floatArrayOf(best.first) else FloatArray(0)
+        return Breaks(
+            self.width, self.height,
+            rows.map { it.roundToInt() }.toIntArray(),
+            atStart = false,
+            // Not stitched pages: each side of the break is its own page, whatever its height.
+            stitched = false,
+            positions = rows,
+            divided = true,
+        )
     }
 
     /**
@@ -1292,4 +1426,33 @@ object PageEdges {
 
     /** Relative breadth difference still counted as the same width. */
     private const val SAME_BREADTH = 0.02f
+
+    /** Luminance two buckets differ by to count as changed; see [changedShare]. */
+    private const val CHANGED_LUMA = 32f
+
+    /** Buckets this close, and both this light or this dark, are blank paper (or solid black). */
+    private const val FLAT_SAME = 8f
+    private const val FLAT_LIGHT = 230f
+    private const val FLAT_DARK = 25f
+
+    /** Fewer buckets with something in them than this, and a row can't be told apart: kept. */
+    private const val MIN_COUNTED_BUCKETS = 6
+
+    /** Share of the picture that must change across a break for two pages to be meeting there. */
+    private const val BREAK_BREADTH = 0.5f
+
+    /** A row this even across is plain — a margin or a gutter of any colour. */
+    private const val PLAIN_SPREAD = 12f
+
+    /** Images of a chapter of one page per image it takes to tell its page height; see [singlePageHeight]. */
+    private const val SINGLE_PAGE_MIN_IMAGES = 4
+
+    /** How far a page of such a chapter may be off the others' height. */
+    private const val SINGLE_PAGE_SLACK = 0.005f
+
+    /** How much taller than a page an image must be to hold a page and an extra; see [pageWithExtra]. */
+    private const val EXTRA_MIN_SHARE = 0.05f
+
+    /** ...and at most: past this it is more than one page plus an extra. */
+    private const val EXTRA_MAX_SHARE = 0.6f
 }

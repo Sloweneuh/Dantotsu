@@ -380,6 +380,34 @@ class MangaReaderActivity : AppCompatActivity() {
      */
     private var prefetcher: PagePrefetcher? = null
 
+    /**
+     * Completed once the page the reader opened on is on screen. The background work — the smart
+     * pages scan, the prefetcher — waits for it ([awaitOpeningPage]): started alongside, it fetched
+     * four pages at once and the one being looked at came in last.
+     */
+    private var openingPage = kotlinx.coroutines.CompletableDeferred<Unit>()
+
+    /**
+     * The image(s) the reader opens on. Sources can allow as little as one download a second
+     * (MangaFire's image servers), so whichever page asks first gets the first slot: the page
+     * below the opening one did, and the opening one came a second or two after it.
+     */
+    @Volatile
+    private var openingUrls: Set<String> = emptySet()
+
+    /** Whether [url] is (one of) the image(s) the reader opens on; anything, when unknown. */
+    fun isOpening(url: String): Boolean = openingUrls.isEmpty() || url in openingUrls
+
+    /** [url] was decoded: the opening image lets everything else download. */
+    fun noteDecoded(url: String) {
+        if (isOpening(url)) openingPage.complete(Unit)
+    }
+
+    /** Waits for the opening page to show — but not for ever, should it fail to load. */
+    suspend fun awaitOpeningPage() {
+        kotlinx.coroutines.withTimeoutOrNull(OPENING_PAGE_HEAD_START_MS) { openingPage.await() }
+    }
+
     /** Paged mode's stand-in for [prefetcher], made only when "retry all" has pages to fetch. */
     private var pagedWarmer: PagePrefetcher? = null
 
@@ -1068,6 +1096,8 @@ class MangaReaderActivity : AppCompatActivity() {
 
     @SuppressLint("ClickableViewAccessibility")
     fun applySettings() {
+        // A chapter opening (or the reader rebuilt): its first page goes ahead of the rest again.
+        if (openingPage.isCompleted) openingPage = kotlinx.coroutines.CompletableDeferred()
 
         saveReaderSettings("${media.id}_current_settings", defaultSettings)
         applyPageFilters()
@@ -1117,6 +1147,10 @@ class MangaReaderActivity : AppCompatActivity() {
         binding.mangaReaderPager.unregisterOnPageChangeCallback(pageChangeCallback)
 
         currentChapterPage = savedPage()
+        // The image the saved page starts in, and its pair in a two-page spread.
+        openingUrls = (0 until (dualPage { 2 } ?: 1)).mapNotNull { i ->
+            chapter.images().getOrNull((currentChapterPage - 1 + i).toInt())?.url?.url?.takeIf { it.isNotEmpty() }
+        }.toSet()
         val pageMap = activePageMap
 
         val chapImages = if (directionPagedBT) {
@@ -2295,3 +2329,6 @@ class MangaReaderActivity : AppCompatActivity() {
         binding.mangaReaderGroup.isVisible = group != null && binding.mangaReaderSource.isVisible
     }
 }
+
+/** How long the background page work holds back for the opening page before starting anyway. */
+private const val OPENING_PAGE_HEAD_START_MS = 3_000L

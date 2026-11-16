@@ -63,7 +63,8 @@ import kotlinx.coroutines.launch
 
 
 class MangaReadAdapter(
-    private val media: Media,
+    /** Swapped for AniList's full details when the tab started on the page's own; see MangaReadFragment. */
+    var media: Media,
     private val fragment: MangaReadFragment,
     private val mangaReadSources: MangaReadSources
 ) : RecyclerView.Adapter<MangaReadAdapter.ViewHolder>() {

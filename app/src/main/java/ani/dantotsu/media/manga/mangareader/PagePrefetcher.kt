@@ -107,6 +107,8 @@ class PagePrefetcher(
     }
 
     private suspend fun drain() {
+        // The opening page first: fetched alongside the pages after it, it came in last.
+        activity.awaitOpeningPage()
         while (true) {
             val (url, image) = nextWanted() ?: run { exhausted = true; return }
             val bitmap = with(activity) {

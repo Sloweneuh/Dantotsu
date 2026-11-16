@@ -582,6 +582,10 @@ abstract class BaseImageAdapter(
                         mangaCache.getBitmap(cacheKey)?.takeIf { !it.isRecycled }
                             ?.let { return@withContext it }
 
+                        // Not downloaded yet: the opening page has the source to itself first.
+                        if (reader != null && !reader.isOpening(link.url) && mangaCache.getPageBytes(link.url) == null) {
+                            reader.awaitOpeningPage()
+                        }
                         ani.dantotsu.util.Logger.log("Using extension client for: ${link.url}")
                         val rawBitmap =
                             imageData.fetchAndProcessImage(
@@ -616,6 +620,7 @@ abstract class BaseImageAdapter(
                     }
 
                     // Fallback to standard Glide for plain remote URLs
+                    if (reader != null && !reader.isOpening(link.url)) reader.awaitOpeningPage()
                     val decoded = Glide.with(this@loadBitmap)
                         .asBitmap()
                         .load(GlideUrl(link.url) { link.headers })
@@ -630,6 +635,7 @@ abstract class BaseImageAdapter(
                     sourceWidth = decoded.width
                     return@withContext downsampleBitmap(decoded, maxW, maxH, viewportW, viewportH)
                 }.also { bitmap ->
+                    if (bitmap != null) reader?.noteDecoded(link.url)
                     // Profiled while it is at hand — the prefetcher's decodes included, so the
                     // page before is usually known by the time smart spacing needs it. A zoomed
                     // render is the same page, already profiled at its fitted size.

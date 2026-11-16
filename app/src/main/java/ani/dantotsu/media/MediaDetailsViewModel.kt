@@ -539,6 +539,14 @@ class MediaDetailsViewModel : ViewModel() {
     private var loading = false
 
     private val media: MutableLiveData<Media> = MutableLiveData<Media>(null)
+
+    /**
+     * The media the page was opened with, before AniList's full details ([getMedia]) arrive. Enough
+     * for the read tab to start on a source it has already matched: under AniList's rate limit the
+     * details can take several seconds, and the chapter list waited for them for nothing.
+     */
+    @Volatile
+    var previewMedia: Media? = null
     fun getMedia(): LiveData<Media> = media
     suspend fun loadMedia(m: Media) {
         if (!loading) {

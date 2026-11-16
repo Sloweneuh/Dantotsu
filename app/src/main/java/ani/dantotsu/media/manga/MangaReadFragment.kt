@@ -227,8 +227,42 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             }
         }
 
+        // Started on the media the page was opened with when its source is already matched, rather
+        // than waiting on AniList's full details: rate-limited, those took 7 s and more to come.
+        // Without a saved match the auto-search needs every title AniList knows, so it waits.
+        if (model.getMedia().value == null) model.previewMedia
+            ?.takeIf { it.format == "MANGA" || it.format == "ONE SHOT" }
+            ?.let { preview ->
+                lifecycleScope.launch {
+                    val sources = if (preview.isAdult) HMangaSources else MangaSources
+                    val index = model.loadSelected(preview).sourceIndex
+                    val saved = withContext(Dispatchers.IO) {
+                        runCatching { sources.get(index).loadSavedShowResponse(preview.id) }.getOrNull()
+                    }
+                    if (saved != null && !loaded && model.getMedia().value == null && _binding != null) {
+                        startedOnPreview = true
+                        onMedia(preview)
+                    }
+                }
+            }
+
         model.getMedia().observe(viewLifecycleOwner) {
-            if (it != null) {
+            if (it != null) onMedia(it)
+        }
+
+        model.getMangaChapters().observe(viewLifecycleOwner) { _ ->
+            updateChapters()
+        }
+    }
+
+    /** Set while the tab runs on [MediaDetailsViewModel.previewMedia], until the full details come. */
+    private var startedOnPreview = false
+
+    private fun onMedia(it: Media) {
+        run {
+            run {
+                val fromPreview = startedOnPreview && loaded
+                startedOnPreview = false
                 media = it
                 progress = View.GONE
                 binding.mediaInfoProgressBar.visibility = progress
@@ -314,6 +348,13 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                             }
                         }
                         loaded = true
+                    } else if (fromPreview) {
+                        // The full details for the media the tab started on: everything moves
+                        // onto them, the chapter list already loaded included.
+                        headerAdapter.media = it
+                        chapterAdapter.media = it
+                        headerAdapter.updateArt(it)
+                        updateChapters()
                     } else {
                         headerAdapter.updateArt(it)
                         reload()
@@ -328,10 +369,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                         getString(R.string.not_supported, media.format ?: "")
                 }
             }
-        }
-
-        model.getMangaChapters().observe(viewLifecycleOwner) { _ ->
-            updateChapters()
         }
     }
 

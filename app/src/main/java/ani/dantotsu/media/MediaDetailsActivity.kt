@@ -178,6 +178,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
     private fun setUpWithMedia(initialMedia: Media) {
         var media = initialMedia
+        model.previewMedia = initialMedia
         if (media.name == "No media found") {
             snackString(media.name)
             onBackPressedDispatcher.onBackPressed()

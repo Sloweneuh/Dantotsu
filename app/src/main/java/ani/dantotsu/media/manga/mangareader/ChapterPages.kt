@@ -196,6 +196,8 @@ object ChapterPages {
         preferJoin: Boolean,
         onDone: (ChapterPageMap) -> Unit,
     ): Job = activity.lifecycleScope.launch {
+        // The page being looked at first: this decodes the whole chapter, two at a time.
+        activity.awaitOpeningPage()
         android.util.Log.d("SmartPages", "scan start: ${images.size} images")
         val permits = Semaphore(2)
         val decoded = images.map { image ->
