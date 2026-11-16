@@ -4217,4 +4217,32 @@
     <string name="chapter_load_failed">Impossible de charger le chapitre %1$s</string>
     <string name="info_section_readers_also_like">Les lecteurs aiment aussi</string>
     <string name="info_section_desc_readers_also_like">Ce que suivent aussi les lecteurs de cette série, selon les listes qu’ils partagent.</string>
+    <!-- MangaBaka stack search -->
+    <string name="stack_search_sort">Trier</string>
+    <string name="stack_search_kind">Type</string>
+    <string name="stack_search_spoilers">Spoilers</string>
+    <string name="stack_search_size">Nombre de séries</string>
+    <string name="stack_search_updated">Dernière mise à jour</string>
+    <string name="stack_search_size_any">Indifférent</string>
+    <string name="stack_search_size_range">%1$d–%2$d</string>
+    <string name="stack_search_size_at_least">%1$d+</string>
+    <string name="stack_search_size_at_most">Jusqu\'à %1$d</string>
+    <string name="stack_sort_trending_7d">Tendances de la semaine</string>
+    <string name="stack_sort_trending_30d">Tendances du mois</string>
+    <string name="stack_sort_most_series">Le plus de séries</string>
+    <string name="stack_sort_fewest_series">Le moins de séries</string>
+    <string name="stack_sort_name">Nom</string>
+    <string name="stack_kind_personal">Personnelle</string>
+    <string name="stack_kind_community">Communautaire</string>
+    <string name="stack_kind_official">Officielle</string>
+    <string name="stack_updated_any">Peu importe</string>
+    <string name="stack_updated_week">Semaine passée</string>
+    <string name="stack_updated_month">Mois passé</string>
+    <string name="stack_updated_year">Année passée</string>
+    <plurals name="stack_search_filters">
+        <item quantity="one">%1$d filtre</item>
+        <item quantity="many">%1$d filtres</item>
+        <item quantity="other">%1$d filtres</item>
+    </plurals>
+    <string name="pref_saved_stack_search_filters">Filtres de recherche de piles enregistrés</string>
 </resources>

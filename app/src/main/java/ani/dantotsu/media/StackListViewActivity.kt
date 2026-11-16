@@ -45,7 +45,7 @@ sealed interface StackFeed : MergedFeed {
  * followed stacks, plus a button to start a new one. A custom tab's merged stacks ([mergedIntent])
  * can be both at once, and skip the tabs and filters, which only apply to MangaBaka's.
  */
-class StackListViewActivity : AppCompatActivity() {
+class StackListViewActivity : AppCompatActivity(), StackSearchSheet.Host {
     private lateinit var binding: ActivityMediaListViewBinding
 
     /** What the adapters draw. MangaBaka pages are appended to it in place. */
@@ -61,8 +61,14 @@ class StackListViewActivity : AppCompatActivity() {
     private var nextPage = 1
     private var hasMore = false
     private var loadJob: Job? = null
-    private var sort = MangaBakaStacks.SeriesSort.VOTES
-    private var spoilers = MangaBakaStacks.Spoilers.INCLUDE
+    /** The stack search's filters, for one series' stacks and the "All" tab; see [StackSearchSheet]. */
+    private var search = MangaBakaStacks.StackSearch()
+
+    /** What [search] goes back to on Reset: one series' stacks start by votes, all of them by trending. */
+    private val searchDefaults: MangaBakaStacks.StackSearch
+        get() = if (seriesId != null) MangaBakaStacks.StackSearch(sort = MangaBakaStacks.StackSort.VOTES)
+        else MangaBakaStacks.StackSearch()
+
 
     private var merged = false
 
@@ -153,8 +159,19 @@ class StackListViewActivity : AppCompatActivity() {
     private fun buildAdapter() {
         binding.mediaRecyclerView.adapter =
             if (mode == 1) StackListAdapter(stacks, isAnime) else StackAdapter(stacks, isAnime)
-        binding.mediaRecyclerView.layoutManager =
-            GridLayoutManager(this, if (mode == 1) listColumns(this) else (screenWidth / 120f).toInt())
+        val recycler = binding.mediaRecyclerView
+        val density = resources.displayMetrics.density
+        if (mode == 1) {
+            recycler.setPaddingRelative((20 * density).toInt(), recycler.paddingTop, (20 * density).toInt(), recycler.paddingBottom)
+            recycler.layoutManager = GridLayoutManager(this, listColumns(this))
+        } else {
+            // Cards keep their full width, so the back covers' tips clear the next card's: as many
+            // columns as fit the screen, the rest left as padding either side to centre the grid.
+            val columns = (screenWidth / STACK_CELL_DP).toInt().coerceAtLeast(1)
+            val side = ((screenWidth - columns * STACK_CELL_DP) / 2 * density).toInt().coerceAtLeast(0)
+            recycler.setPaddingRelative(side, recycler.paddingTop, side, recycler.paddingBottom)
+            recycler.layoutManager = GridLayoutManager(this, columns)
+        }
     }
 
     // ---- MangaBaka ----
@@ -162,6 +179,7 @@ class StackListViewActivity : AppCompatActivity() {
     private fun setUpMangaBaka() {
         seriesId = intent.getLongExtra(EXTRA_SERIES_ID, -1L).takeIf { it > 0 }
         tab = if (seriesId != null) Tab.SERIES else Tab.ALL
+        search = searchDefaults
         binding.mediaRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 val lm = recyclerView.layoutManager as? GridLayoutManager ?: return
@@ -199,70 +217,77 @@ class StackListViewActivity : AppCompatActivity() {
     }
 
     /**
-     * One series' stacks get the series route's own filters — sort order and spoiler handling — in
-     * place of the global tabs, which live behind the search screen's "MangaBaka Stacks" tile.
+     * One series' stacks: the filters are behind the top bar's filter button as on every other list
+     * screen, the chips only those applied. The global tabs live behind the search screen's
+     * "MangaBaka Stacks" tile.
      */
     private fun buildSeriesFilters() {
+        binding.mediaFilterChipGroup.removeAllViews()
+        updateFilterButton()
+        updateSearchChips()
+    }
+
+    /**
+     * The applied filters as chips, after the tabs if any: tapping one takes it away, as the stack
+     * screen's own filter chips do. Each is looked up again when tapped, an earlier tap having
+     * already changed the search.
+     */
+    private fun updateSearchChips() {
         val group = binding.mediaFilterChipGroup
-        group.removeAllViews()
-        group.isSingleSelection = false
-        group.isSelectionRequired = false
-        val sortChips = ArrayList<Chip>()
-        val spoilerChips = ArrayList<Chip>()
-        fun refresh() {
-            sortChips.forEach { it.isChecked = it.tag == sort }
-            spoilerChips.forEach { it.isChecked = it.tag == spoilers }
-        }
-        MangaBakaStacks.SeriesSort.entries.forEach { option ->
-            sortChips += Chip(this).apply {
-                setText(sortLabel(option))
-                tag = option
-                isCheckable = true
-                setOnClickListener {
-                    if (sort != option) {
-                        sort = option
-                        reload()
-                    }
-                    refresh()
+        (0 until group.childCount).map { group.getChildAt(it) }.filter { it.tag == SEARCH_CHIP_TAG }
+            .forEach { group.removeView(it) }
+        val chips = if (tab == Tab.SERIES || tab == Tab.ALL) {
+            StackSearchSheet.activeChips(this, search, searchDefaults)
+        } else emptyList()
+        chips.forEach { (label, _) ->
+            group.addView(Chip(this).apply {
+                tag = SEARCH_CHIP_TAG
+                text = label
+                isCheckable = false
+                isCloseIconVisible = true
+                chipBackgroundColor = ContextCompat.getColorStateList(context, R.color.chip_background_color)
+                chipStrokeColor = android.content.res.ColorStateList.valueOf(
+                    getThemeColor(com.google.android.material.R.attr.colorPrimaryContainer)
+                )
+                setTextAppearance(R.style.Suffix)
+                textSize = 14f
+                val remove = {
+                    StackSearchSheet.activeChips(this@StackListViewActivity, search, searchDefaults)
+                        .firstOrNull { it.first == label }?.let { onStackSearch(it.second) }
+                    Unit
                 }
-            }
+                setOnClickListener { remove() }
+                setOnCloseIconClickListener { remove() }
+            })
         }
-        MangaBakaStacks.Spoilers.entries.forEach { option ->
-            spoilerChips += Chip(this).apply {
-                setText(spoilerLabel(option))
-                tag = option
-                isCheckable = true
-                setOnClickListener {
-                    if (spoilers != option) {
-                        spoilers = option
-                        reload()
-                    }
-                    refresh()
-                }
-            }
-        }
-        sortChips.forEach { group.addView(it) }
-        // A thin rule between the two filters, so they read as two choices rather than one.
-        group.addView(View(this).apply {
-            layoutParams = ViewGroup.LayoutParams(1f.px, 24f.px)
-            setBackgroundColor(getThemeColor(com.google.android.material.R.attr.colorOutline))
-        })
-        spoilerChips.forEach { group.addView(it) }
-        refresh()
-        binding.mediaFilterChipsScroll.visibility = View.VISIBLE
+        binding.mediaFilterChipsScroll.visibility =
+            if (group.childCount > 0) View.VISIBLE else View.GONE
     }
 
-    private fun sortLabel(sort: MangaBakaStacks.SeriesSort) = when (sort) {
-        MangaBakaStacks.SeriesSort.VOTES -> R.string.stack_sort_votes
-        MangaBakaStacks.SeriesSort.SAVES -> R.string.stack_sort_saves
-        MangaBakaStacks.SeriesSort.UPDATED -> R.string.stack_sort_updated
-        MangaBakaStacks.SeriesSort.NEWEST -> R.string.stack_sort_newest
+    override fun openStackSearchManageFilters() {
+        val items = StackSearchSheet.activeChips(this, search, searchDefaults).map { (label, without) ->
+            ActiveFilterChip(label) { onStackSearch(without) }
+        }
+        ManageFiltersDialog.show(this, items) { onStackSearch(searchDefaults) }
     }
 
-    private fun spoilerLabel(spoilers: MangaBakaStacks.Spoilers) = when (spoilers) {
-        MangaBakaStacks.Spoilers.INCLUDE -> R.string.stack_spoilers_include
-        MangaBakaStacks.Spoilers.EXCLUDE -> R.string.stack_spoilers_exclude
-        MangaBakaStacks.Spoilers.ONLY -> R.string.stack_spoilers_only
+    /** The top bar's filter button, as MediaListViewActivity's: it opens [StackSearchSheet]. */
+    private fun updateFilterButton() {
+        binding.listFilter.setOnClickListener {
+            if (supportFragmentManager.findFragmentByTag(StackSearchSheet.TAG) == null) {
+                StackSearchSheet.newInstance(search, searchDefaults)
+                    .show(supportFragmentManager, StackSearchSheet.TAG)
+            }
+        }
+        // Only the search tabs have filters.
+        binding.listFilter.visibility = if (tab == Tab.SERIES || tab == Tab.ALL) View.VISIBLE else View.GONE
+    }
+
+    override fun onStackSearch(search: MangaBakaStacks.StackSearch) {
+        if (search == this.search) return
+        this.search = search
+        updateSearchChips()
+        reload()
     }
 
     private fun buildTabs(loggedIn: Boolean) {
@@ -285,13 +310,16 @@ class StackListViewActivity : AppCompatActivity() {
                 setOnClickListener {
                     if (tab != t) {
                         tab = t
+                        updateFilterButton()
+                        updateSearchChips()
                         reload()
                     }
                     isChecked = true
                 }
             })
         }
-        binding.mediaFilterChipsScroll.visibility = View.VISIBLE
+        updateFilterButton()
+        updateSearchChips()
     }
 
     private fun reload() {
@@ -311,10 +339,8 @@ class StackListViewActivity : AppCompatActivity() {
         loadJob = lifecycleScope.launch {
             val requested = tab
             val result = when (requested) {
-                Tab.SERIES -> MangaBakaStacks.getSeriesStacks(
-                    seriesId ?: return@launch, page, MangaBakaStacks.PAGE_LIMIT, sort, spoilers,
-                )
-                Tab.ALL -> MangaBakaStacks.browse(page, limit = MangaBakaStacks.PAGE_LIMIT)
+                Tab.SERIES -> MangaBakaStacks.search(search, seriesId ?: return@launch, page)
+                Tab.ALL -> MangaBakaStacks.search(search, page = page)
                 Tab.FEATURED -> MangaBakaStacks.browse(page, featured = true, limit = MangaBakaStacks.PAGE_LIMIT)
                 Tab.MINE -> MangaBakaStacks.getMyStacks(page)
                 Tab.SAVED -> MangaBakaStacks.getSavedStacks(page)
@@ -353,6 +379,16 @@ class StackListViewActivity : AppCompatActivity() {
     }
 
     companion object {
+        /**
+         * A compact stack card's width, dp: its 108dp cover box and name, plus the 14dp either side
+         * its padding leaves past its negative margins — room for the back covers' tips, which lean
+         * out past the box. Columns are as many of these as fit.
+         */
+        private const val STACK_CELL_DP = 136f
+
+        /** Marks the applied-filter chips in the chip row, apart from the tabs. */
+        private const val SEARCH_CHIP_TAG = "stackSearchChip"
+
         var passedStacks: ArrayList<out InterestStack>? = null
 
         private const val EXTRA_MANGABAKA = "mangabaka"

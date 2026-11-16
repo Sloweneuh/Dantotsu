@@ -10,11 +10,14 @@ interface InterestStack {
     /** The stack's web page; long-pressing a card opens it. */
     val url: String
     val name: String
-    /** Cover URLs in stack order; the cards fan out the first three. */
+    /** Cover URLs in stack order; the cards show the first three, the first in front. */
     val covers: List<String>
     val entries: Int
     /** HTML for MAL, Markdown for MangaBaka; null when the row doesn't carry it. */
     val description: String?
     /** Set for a MangaBaka stack, whose entries are fetched by id rather than scraped from [url]. */
     val mangaBakaId: Long? get() = null
+
+    /** Who made it, shown as "by …" under the title; null where the source doesn't say. */
+    val ownerName: String? get() = null
 }

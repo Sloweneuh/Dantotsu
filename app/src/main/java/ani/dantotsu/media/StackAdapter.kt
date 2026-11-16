@@ -32,8 +32,11 @@ class StackAdapter(private val items: List<InterestStack>, private val isAnime: 
         val ctx = holder.itemView.context
         StackCoverCollage.bind(holder.coversContainer, item.covers, item.entries)
         holder.title.text = item.name
-        holder.userProgress.text = item.entries.toString()
-        holder.total?.text = ctx.getString(R.string.stack_entries_suffix)
+        // The count is on the covers now, as a pill; the line under the title says who made it.
+        holder.userProgress.text = ""
+        holder.userProgress.visibility = android.view.View.GONE
+        holder.total?.text = item.ownerName?.let { ctx.getString(R.string.stack_by_owner, it) }.orEmpty()
+        holder.total?.visibility = if (item.ownerName != null) android.view.View.VISIBLE else android.view.View.GONE
 
         // Click: open the internal list view, which resolves the stack's entries itself
         holder.itemView.setOnClickListener {

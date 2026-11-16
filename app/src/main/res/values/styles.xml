@@ -229,4 +229,14 @@
         <item name="android:textSize">15sp</item>
     </style>
 
+    <!-- A section heading in the stack search sheet (bottom_sheet_stack_search). -->
+    <style name="StackSearchHeading">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">16dp</item>
+        <item name="android:layout_marginBottom">4dp</item>
+        <item name="android:fontFamily">@font/poppins_semi_bold</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textSize">15sp</item>
+    </style>
 </resources>

@@ -4339,4 +4339,31 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="chapter_load_failed">Couldn\'t load chapter %1$s</string>
     <string name="info_section_readers_also_like">Readers also like</string>
     <string name="info_section_desc_readers_also_like">What readers of this series also follow, by how many lists they share.</string>
+    <!-- MangaBaka stack search -->
+    <string name="stack_search_sort">Sort</string>
+    <string name="stack_search_kind">Kind</string>
+    <string name="stack_search_spoilers">Spoilers</string>
+    <string name="stack_search_size">Number of series</string>
+    <string name="stack_search_updated">Last updated</string>
+    <string name="stack_search_size_any">Any</string>
+    <string name="stack_search_size_range">%1$d–%2$d</string>
+    <string name="stack_search_size_at_least">%1$d+</string>
+    <string name="stack_search_size_at_most">Up to %1$d</string>
+    <string name="stack_sort_trending_7d">Trending this week</string>
+    <string name="stack_sort_trending_30d">Trending this month</string>
+    <string name="stack_sort_most_series">Most series</string>
+    <string name="stack_sort_fewest_series">Fewest series</string>
+    <string name="stack_sort_name">Name</string>
+    <string name="stack_kind_personal">Personal</string>
+    <string name="stack_kind_community">Community</string>
+    <string name="stack_kind_official">Official</string>
+    <string name="stack_updated_any">Any time</string>
+    <string name="stack_updated_week">Past week</string>
+    <string name="stack_updated_month">Past month</string>
+    <string name="stack_updated_year">Past year</string>
+    <plurals name="stack_search_filters">
+        <item quantity="one">%1$d filter</item>
+        <item quantity="other">%1$d filters</item>
+    </plurals>
+    <string name="pref_saved_stack_search_filters">Saved stack search filters</string>
 </resources>

@@ -784,6 +784,7 @@ object BackupTree {
         PrefName.MangaUpdatesNotificationsEnabled.name to R.string.pref_mu_notifications,
         PrefName.SavedComickListFilters.name to R.string.pref_saved_comick_filters,
         PrefName.SavedStackFilters.name to R.string.pref_saved_stack_filters,
+        PrefName.SavedStackSearchFilters.name to R.string.pref_saved_stack_search_filters,
         PrefName.SavedMangaBakaFilters.name to R.string.pref_saved_mangabaka_filters,
         PrefName.SavedKitsuFilters.name to R.string.pref_saved_kitsu_filters,
         PrefName.SearchStyle.name to R.string.pref_search_style,

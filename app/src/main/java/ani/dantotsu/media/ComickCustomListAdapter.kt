@@ -32,47 +32,33 @@ class ComickListStack(private val list: ComickCustomList) : InterestStack {
     }
 }
 
+/**
+ * Comick lists as stack cards, the same card MangaBaka and MAL stacks use: the one cover the list
+ * has (Comick names no other titles for a list), its size as a pill.
+ */
 class ComickCustomListAdapter(
     private val lists: List<ComickCustomList>,
     private val onItemClick: (ComickCustomList) -> Unit
 ) : RecyclerView.Adapter<ComickCustomListAdapter.ViewHolder>() {
 
-    inner class ViewHolder(val binding: ItemMediaCompactBinding) : RecyclerView.ViewHolder(binding.root)
+    inner class ViewHolder(val binding: ani.dantotsu.databinding.ItemStackCompactBinding) :
+        RecyclerView.ViewHolder(binding.root)
 
     override fun getItemCount() = lists.size
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-        ViewHolder(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback())
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
+        ani.dantotsu.databinding.ItemStackCompactBinding
+            .inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback()
+    )
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val list = lists[position]
         val b = holder.binding
-
-        val coverUrl = list.cover?.let { "https://meo.comick.pictures/$it" }
-        if (coverUrl != null) {
-            b.itemCompactImage.scaleType = ImageView.ScaleType.CENTER_CROP
-            b.itemCompactImage.loadImage(coverUrl)
-        } else {
-            b.itemCompactImage.scaleType = ImageView.ScaleType.CENTER
-            b.itemCompactImage.setImageResource(R.drawable.ic_round_view_list_24)
-        }
-
+        val stack = ComickListStack(list)
+        StackCoverCollage.bind(b.itemStackCoversContainer, stack.covers, stack.entries)
         b.itemCompactTitle.text = list.title ?: list.slug ?: b.root.context.getString(R.string.unknown)
-        b.itemCompactTitle.maxLines = 2
-
-        val count = list.follows_count
-        if (count != null) {
-            b.itemCompactProgressContainer.visibility = View.VISIBLE
-            b.itemCompactUserProgress.text = b.root.context.getString(R.string.comick_list_comics_count, count)
-            b.itemCompactTotal.visibility = View.GONE
-        } else {
-            b.itemCompactProgressContainer.visibility = View.GONE
-        }
-
-        b.itemCompactScoreBG.visibility = View.GONE
-        b.itemCompactOngoing.visibility = View.GONE
+        b.itemCompactProgressContainer.visibility = View.GONE
         b.itemCompactType.visibility = View.GONE
-
         b.root.setSafeOnClickListener { onItemClick(list) }
     }
 }

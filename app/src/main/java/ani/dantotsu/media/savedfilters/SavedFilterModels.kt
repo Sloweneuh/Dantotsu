@@ -10,6 +10,7 @@ import ani.dantotsu.connections.anilist.MangaBakaSearchResults
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.kitsu.KitsuApi
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
+import ani.dantotsu.connections.mangabaka.MangaBakaStacks
 import ani.dantotsu.currContext
 import ani.dantotsu.media.user.ListFilters
 import java.io.Serializable
@@ -689,5 +690,53 @@ data class SavedExtensionFilterBundle(
 ) : Serializable {
     companion object {
         private const val serialVersionUID: Long = 1L
+    }
+}
+
+/**
+ * A saved MangaBaka stack search ([MangaBakaStacks.StackSearch]).
+ * Held as plain names rather than the enums, so renaming one doesn't break what's stored: a name
+ * no longer known falls back to the default.
+ */
+data class SavedStackSearchFilter(
+    val name: String = "",
+    val sort: String = "",
+    val kinds: List<String> = emptyList(),
+    val spoilers: String = "",
+    val minEntries: Int? = null,
+    val maxEntries: Int? = null,
+    val updated: String = "",
+) : Serializable {
+    companion object {
+        private const val serialVersionUID: Long = 1L
+
+        fun of(name: String, search: MangaBakaStacks.StackSearch) =
+            SavedStackSearchFilter(
+                name = name,
+                sort = search.sort.name,
+                kinds = search.kinds.map { it.name },
+                spoilers = search.spoilers.name,
+                minEntries = search.minEntries,
+                maxEntries = search.maxEntries,
+                updated = search.updated.name,
+            )
+    }
+
+    fun toSearch(): MangaBakaStacks.StackSearch {
+        val default = MangaBakaStacks.StackSearch()
+        return MangaBakaStacks.StackSearch(
+            sort = MangaBakaStacks.StackSort.entries.firstOrNull { it.name == sort } ?: default.sort,
+            kinds = MangaBakaStacks.StackKind.entries.filter { it.name in kinds }.toSet(),
+            spoilers = MangaBakaStacks.Spoilers.entries.firstOrNull { it.name == spoilers } ?: default.spoilers,
+            minEntries = minEntries,
+            maxEntries = maxEntries,
+            updated = MangaBakaStacks.StackUpdated.entries.firstOrNull { it.name == updated } ?: default.updated,
+        )
+    }
+
+    /** Every filter it sets, its sort included, as the saved filters dialog lists them. */
+    fun chips(): List<String> {
+        val context = currContext() ?: return emptyList()
+        return ani.dantotsu.media.StackSearchSheet.activeChips(context, toSearch(), defaults = null).map { it.first }
     }
 }

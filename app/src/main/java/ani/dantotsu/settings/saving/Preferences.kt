@@ -13,6 +13,7 @@ import ani.dantotsu.media.savedfilters.SavedExtensionFilterBundle
 import ani.dantotsu.media.savedfilters.SavedListFilter
 import ani.dantotsu.media.savedfilters.SavedMUFilter
 import ani.dantotsu.media.savedfilters.SavedStackFilter
+import ani.dantotsu.media.savedfilters.SavedStackSearchFilter
 import ani.dantotsu.notifications.comment.CommentStore
 import ani.dantotsu.notifications.subscription.SubscriptionStore
 import ani.dantotsu.notifications.unread.UnreadChapterStore
@@ -93,6 +94,7 @@ enum class PrefName(val data: Pref) {
     SavedMangaBakaFilters(Pref(Location.General, List::class, listOf<SavedMangaBakaFilter>())),
     SavedComickListFilters(Pref(Location.General, List::class, listOf<SavedComickListFilter>())),
     SavedStackFilters(Pref(Location.General, List::class, listOf<SavedStackFilter>())),
+    SavedStackSearchFilters(Pref(Location.General, List::class, listOf<SavedStackSearchFilter>())),
     SavedListFilters(Pref(Location.General, List::class, listOf<SavedListFilter>())),
     SavedExtensionFilters(Pref(Location.General, List::class, listOf<SavedExtensionFilterBundle>())),
     NovelSourcesOrder(Pref(Location.General, List::class, listOf<String>())),

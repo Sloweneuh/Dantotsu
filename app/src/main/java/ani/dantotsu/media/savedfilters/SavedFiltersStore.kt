@@ -193,6 +193,30 @@ object SavedFiltersStore {
         PrefManager.setVal(PrefName.SavedStackFilters, all.toList())
     }
 
+    // ---- MangaBaka stack search presets ----
+
+    fun loadStackSearch(): List<SavedStackSearchFilter> =
+        PrefManager.getVal<List<SavedStackSearchFilter>>(PrefName.SavedStackSearchFilters)
+
+    fun saveStackSearch(preset: SavedStackSearchFilter) {
+        val all = loadStackSearch().toMutableList()
+        all.removeAll { it.name == preset.name }
+        all.add(preset)
+        PrefManager.setVal(PrefName.SavedStackSearchFilters, all.toList())
+    }
+
+    fun deleteStackSearch(name: String) {
+        PrefManager.setVal(PrefName.SavedStackSearchFilters, loadStackSearch().filter { it.name != name })
+    }
+
+    fun renameStackSearch(oldName: String, newName: String) {
+        val all = loadStackSearch().toMutableList()
+        val idx = all.indexOfFirst { it.name == oldName }
+        if (idx < 0) return
+        all[idx] = all[idx].copy(name = newName)
+        PrefManager.setVal(PrefName.SavedStackSearchFilters, all.toList())
+    }
+
     // ---- User list filter presets (split per anime/manga) ----
 
     fun loadList(isAnime: Boolean): List<SavedListFilter> =

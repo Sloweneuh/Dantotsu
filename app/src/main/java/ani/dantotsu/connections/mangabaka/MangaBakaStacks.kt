@@ -52,11 +52,62 @@ object MangaBakaStacks {
         NEWEST("first_published_at_desc"),
     }
 
-    /** How `GET /v2/series/{id}/stacks` treats stacks marked `is_spoiler`. */
-    enum class Spoilers(val value: String) {
-        INCLUDE("include"),
-        EXCLUDE("exclude"),
-        ONLY("only"),
+    /** How a stack listing treats stacks marked `is_spoiler`. */
+    enum class Spoilers(val value: String, @androidx.annotation.StringRes val label: Int) {
+        INCLUDE("include", ani.dantotsu.R.string.stack_spoilers_include),
+        EXCLUDE("exclude", ani.dantotsu.R.string.stack_spoilers_exclude),
+        ONLY("only", ani.dantotsu.R.string.stack_spoilers_only),
+    }
+
+    /** Sort keys of `GET /v2/stacks/search`. Trending counts other readers' votes, saves and follows. */
+    enum class StackSort(val value: String, @androidx.annotation.StringRes val label: Int) {
+        TRENDING_7D("trending_7d", ani.dantotsu.R.string.stack_sort_trending_7d),
+        TRENDING_30D("trending_30d", ani.dantotsu.R.string.stack_sort_trending_30d),
+        VOTES("vote_count_desc", ani.dantotsu.R.string.stack_sort_votes),
+        SAVES("save_count_desc", ani.dantotsu.R.string.stack_sort_saves),
+        UPDATED("updated_at_desc", ani.dantotsu.R.string.stack_sort_updated),
+        NEWEST("first_published_at_desc", ani.dantotsu.R.string.stack_sort_newest),
+        MOST_SERIES("entry_count_desc", ani.dantotsu.R.string.stack_sort_most_series),
+        FEWEST_SERIES("entry_count_asc", ani.dantotsu.R.string.stack_sort_fewest_series),
+        NAME("name_asc", ani.dantotsu.R.string.stack_sort_name),
+    }
+
+    /** Who a stack is from: a reader's own, open to the community, or MangaBaka's. */
+    enum class StackKind(val value: String, @androidx.annotation.StringRes val label: Int) {
+        PERSONAL("personal", ani.dantotsu.R.string.stack_kind_personal),
+        COMMUNITY("community", ani.dantotsu.R.string.stack_kind_community),
+        OFFICIAL("official", ani.dantotsu.R.string.stack_kind_official),
+    }
+
+    /** How recently a stack must have changed. */
+    enum class StackUpdated(val days: Int?, @androidx.annotation.StringRes val label: Int) {
+        ANY(null, ani.dantotsu.R.string.stack_updated_any),
+        WEEK(7, ani.dantotsu.R.string.stack_updated_week),
+        MONTH(30, ani.dantotsu.R.string.stack_updated_month),
+        YEAR(365, ani.dantotsu.R.string.stack_updated_year),
+    }
+
+    /** What [search] asks for: the filters of `GET /v2/stacks/search` the app offers. */
+    data class StackSearch(
+        val sort: StackSort = StackSort.TRENDING_7D,
+        /** Empty for every kind. */
+        val kinds: Set<StackKind> = emptySet(),
+        // Spoiler stacks are listed by default; the cards badge them so they can be skipped.
+        val spoilers: Spoilers = Spoilers.INCLUDE,
+        val minEntries: Int? = null,
+        val maxEntries: Int? = null,
+        val updated: StackUpdated = StackUpdated.ANY,
+    ) : java.io.Serializable {
+        /** How many filters besides the sort are set, for the chip that opens them. */
+        val activeFilters: Int
+            get() = listOf(
+                kinds.isNotEmpty(), spoilers != Spoilers.INCLUDE,
+                minEntries != null || maxEntries != null, updated != StackUpdated.ANY,
+            ).count { it }
+
+        private companion object {
+            private const val serialVersionUID = 1L
+        }
     }
 
     /** Outcome of a call that can fail in a way the user should hear about. */
@@ -88,6 +139,27 @@ object MangaBakaStacks {
             .addQueryParameter("spoilers", spoilers.value),
         page, limit, authed = false,
     )
+
+    /**
+     * Public stacks by [search]'s filters (`GET /v2/stacks/search`), only those holding [seriesId]
+     * when given. No text query: the user didn't want one for stacks.
+     */
+    suspend fun search(search: StackSearch, seriesId: Long? = null, page: Int = 1, limit: Int = PAGE_LIMIT): StackPage? =
+        getPage(
+            "$API_URL/v2/stacks/search".toHttpUrl().newBuilder().apply {
+                addQueryParameter("sort_by", search.sort.value)
+                addQueryParameter("spoilers", search.spoilers.value)
+                seriesId?.let { addQueryParameter("series_id", it.toString()) }
+                search.kinds.forEach { addQueryParameter("kind", it.value) }
+                search.minEntries?.let { addQueryParameter("entries_lower", it.toString()) }
+                search.maxEntries?.let { addQueryParameter("entries_upper", it.toString()) }
+                search.updated.days?.let { days ->
+                    val since = java.time.Instant.now().minus(java.time.Duration.ofDays(days.toLong()))
+                    addQueryParameter("updated_after", since.toString())
+                }
+            },
+            page, limit, authed = false,
+        )
 
     /** Every public stack, newest first; [featured] limits it to staff picks (`GET /v2/stacks`). */
     suspend fun browse(page: Int = 1, featured: Boolean = false, limit: Int = 24): StackPage? = getPage(
@@ -444,6 +516,7 @@ object MangaBakaStacks {
         override val covers: List<String> get() = coverList.orEmpty().mapNotNull { it.cover?.thumbUrl() }
         override val entries: Int get() = entryCount
         override val mangaBakaId: Long get() = id
+        override val ownerName: String? get() = owner?.name?.takeIf { it.isNotBlank() }
 
         /** Whether the logged-in user made this stack. */
         val isMine: Boolean
