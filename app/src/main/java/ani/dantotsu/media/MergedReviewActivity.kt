@@ -103,8 +103,7 @@ class MergedReviewActivity : AppCompatActivity() {
             return
         }
 
-        binding.followerGrid.visibility = View.GONE
-        binding.followerList.visibility = View.GONE
+        binding.followerViewToggle.visibility = View.GONE
         binding.followFilterButton.visibility = View.GONE
         binding.listTitle.text = getString(R.string.reviews)
         binding.listRecyclerView.adapter = adapter

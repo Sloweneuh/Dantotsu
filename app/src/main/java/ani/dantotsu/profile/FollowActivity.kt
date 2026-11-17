@@ -1,5 +1,6 @@
 package ani.dantotsu.profile
 
+import ani.dantotsu.others.setViewModeIcon
 import ani.dantotsu.px
 import androidx.recyclerview.widget.RecyclerView
 import android.graphics.Rect
@@ -9,7 +10,6 @@ import android.os.Bundle
 import android.text.SpannableString
 import android.view.View
 import android.view.ViewGroup.MarginLayoutParams
-import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
@@ -35,7 +35,7 @@ class FollowActivity : AppCompatActivity() {
     private lateinit var binding: ActivityFollowBinding
     val adapter = GroupieAdapter()
     var users: List<User>? = null
-    private lateinit var selected: ImageButton
+    private var layoutType = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,12 +47,9 @@ class FollowActivity : AppCompatActivity() {
             bottomMargin = navBarHeight
         }
         setContentView(binding.root)
-        val layoutType = PrefManager.getVal<Int>(PrefName.FollowerLayout)
-        selected = getSelected(layoutType)
+        layoutType = if (PrefManager.getVal<Int>(PrefName.FollowerLayout) == 1) 1 else 0
         binding.followFilterButton.visibility = View.GONE
-        binding.followerGrid.alpha = 0.33f
-        binding.followerList.alpha = 0.33f
-        selected(selected)
+        binding.followerViewToggle.setViewModeIcon(showingGrid = layoutType == 1)
         binding.listRecyclerView.layoutManager = LinearLayoutManager(
             this,
             LinearLayoutManager.VERTICAL,
@@ -79,14 +76,10 @@ class FollowActivity : AppCompatActivity() {
                 binding.listProgressBar.visibility = View.GONE
             }
         }
-        binding.followerList.setOnClickListener {
-            selected(it as ImageButton)
-            PrefManager.setVal(PrefName.FollowerLayout, 0)
-            fillList()
-        }
-        binding.followerGrid.setOnClickListener {
-            selected(it as ImageButton)
-            PrefManager.setVal(PrefName.FollowerLayout, 1)
+        binding.followerViewToggle.setOnClickListener {
+            layoutType = if (layoutType == 1) 0 else 1
+            binding.followerViewToggle.setViewModeIcon(showingGrid = layoutType == 1, animate = true)
+            PrefManager.setVal(PrefName.FollowerLayout, layoutType)
             fillList()
         }
         binding.followSwipeRefresh.setOnRefreshListener {
@@ -104,13 +97,13 @@ class FollowActivity : AppCompatActivity() {
                     outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State
                 ) {
                     val columns = (parent.layoutManager as? GridLayoutManager)?.spanCount ?: 1
-                    if (getLayoutType(selected) != 0 || columns < 2) return
+                    if (layoutType != 0 || columns < 2) return
                     outRect.left = 4f.px
                     outRect.right = 4f.px
                 }
             })
         }
-        binding.listRecyclerView.layoutManager = when (getLayoutType(selected)) {
+        binding.listRecyclerView.layoutManager = when (layoutType) {
             0 -> GridLayoutManager(this, listColumns(this))
             1 -> GridLayoutManager(
                 this,
@@ -123,7 +116,7 @@ class FollowActivity : AppCompatActivity() {
         }
         users?.forEach { user ->
             val username = SpannableString(user.name ?: "Unknown")
-            if (getLayoutType(selected) == 0) {
+            if (layoutType == 0) {
                 adapter.add(
                     FollowerItem(
                         false,
@@ -144,28 +137,6 @@ class FollowActivity : AppCompatActivity() {
                     ) { onUserClick(it) }
                 )
             }
-        }
-    }
-
-    fun selected(it: ImageButton) {
-        selected.alpha = 0.33f
-        selected = it
-        selected.alpha = 1f
-    }
-
-    private fun getSelected(pos: Int): ImageButton {
-        return when (pos) {
-            0 -> binding.followerList
-            1 -> binding.followerGrid
-            else -> binding.followerList
-        }
-    }
-
-    private fun getLayoutType(it: ImageButton): Int {
-        return when (it) {
-            binding.followerList -> 0
-            binding.followerGrid -> 1
-            else -> 0
         }
     }
 

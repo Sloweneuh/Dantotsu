@@ -16,6 +16,7 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.HORIZONTAL
+import ani.dantotsu.others.setViewModeIcon
 import ani.dantotsu.App.Companion.context
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
@@ -66,17 +67,7 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             throw IllegalArgumentException("Invalid search type (wrong adapter)")
         }
 
-        when (activity.style) {
-            0 -> {
-                binding.searchResultGrid.alpha = 1f
-                binding.searchResultList.alpha = 0.33f
-            }
-
-            1 -> {
-                binding.searchResultList.alpha = 1f
-                binding.searchResultGrid.alpha = 0.33f
-            }
-        }
+        binding.searchResultViewToggle.setViewModeIcon(showingGrid = activity.style == 0)
 
         // Was aniMangaResult.type, the AniList wire value ("ANIME"/"MANGA") — untranslated.
         binding.searchBar.hint = activity.searchType.hint(binding.root.context)
@@ -248,18 +239,11 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
         }
         binding.searchBar.setEndIconOnClickListener { searchTitle() }
 
-        binding.searchResultGrid.setOnClickListener {
-            it.alpha = 1f
-            binding.searchResultList.alpha = 0.33f
-            activity.style = 0
-            PrefManager.setVal(PrefName.SearchStyle, 0)
-            activity.recycler()
-        }
-        binding.searchResultList.setOnClickListener {
-            it.alpha = 1f
-            binding.searchResultGrid.alpha = 0.33f
-            activity.style = 1
-            PrefManager.setVal(PrefName.SearchStyle, 1)
+        binding.searchResultViewToggle.setOnClickListener {
+            val style = if (activity.style == 0) 1 else 0
+            binding.searchResultViewToggle.setViewModeIcon(showingGrid = style == 0, animate = true)
+            activity.style = style
+            PrefManager.setVal(PrefName.SearchStyle, style)
             activity.recycler()
         }
 

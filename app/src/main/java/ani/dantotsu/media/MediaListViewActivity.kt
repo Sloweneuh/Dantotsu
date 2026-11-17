@@ -6,7 +6,6 @@ import android.text.util.Linkify
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -16,6 +15,7 @@ import androidx.core.text.HtmlCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import ani.dantotsu.others.setViewModeIcon
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.buildMarkwon
@@ -85,7 +85,6 @@ class MediaListViewActivity : AppCompatActivity(), StackFilterHost {
     override var stackFilter = SavedStackFilter()
         private set
     private var screenWidth = 0f
-    private lateinit var mediaViewButton: ImageView
 
     // Set only when this list is a "Recommended" carousel's full list, so cards can badge
     // entries whose type differs from the media the recommendations came from.
@@ -142,12 +141,8 @@ class MediaListViewActivity : AppCompatActivity(), StackFilterHost {
         }
 
         currentMode = PrefManager.getCustomVal("mediaView", 0)
-        mediaViewButton = if (currentMode == 1) binding.mediaList else binding.mediaGrid
-        // Selected button fully opaque, the other at ~33%
-        binding.mediaList.imageAlpha = if (currentMode == 1) 255 else 84
-        binding.mediaGrid.imageAlpha = if (currentMode == 1) 84 else 255
-        binding.mediaList.setOnClickListener { changeView(1, binding.mediaList) }
-        binding.mediaGrid.setOnClickListener { changeView(0, binding.mediaGrid) }
+        binding.mediaViewToggle.setViewModeIcon(showingGrid = currentMode != 1)
+        binding.mediaViewToggle.setOnClickListener { changeView(if (currentMode == 1) 0 else 1) }
 
         val stackUrl = intent.getStringExtra("stackUrl")
         // A MangaBaka stack comes by id, or as a mangabaka.org/stacks/{id}-{slug} link.
@@ -620,11 +615,9 @@ class MediaListViewActivity : AppCompatActivity(), StackFilterHost {
         )
     }
 
-    private fun changeView(mode: Int, current: ImageView) {
-        mediaViewButton.imageAlpha = 84
-        mediaViewButton = current
-        current.imageAlpha = 255
+    private fun changeView(mode: Int) {
         currentMode = mode
+        binding.mediaViewToggle.setViewModeIcon(showingGrid = mode != 1, animate = true)
         PrefManager.setCustomVal("mediaView", mode)
         buildAdapter(mode)
     }

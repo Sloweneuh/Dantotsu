@@ -64,8 +64,7 @@ class MediaNewsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.followFilterButton.visibility = View.GONE
-        binding.followerGrid.visibility = View.GONE
-        binding.followerList.visibility = View.GONE
+        binding.followerViewToggle.visibility = View.GONE
         binding.followSwipeRefresh.isEnabled = false
         binding.listTitle.setText(R.string.news)
         binding.listBack.enableSettingsLongPress()

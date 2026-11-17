@@ -143,14 +143,12 @@ class ComickListActivity : AppCompatActivity() {
         window.navigationBarColor = primaryColor
         binding.listAppBar.setBackgroundColor(primaryColor)
 
-        binding.mediaList.visibility = View.GONE
-
-        // Filter button
-        binding.mediaGrid.visibility = View.VISIBLE
-        binding.mediaGrid.setImageResource(R.drawable.ic_round_filter_alt_24)
-        binding.mediaGrid.isClickable = true
-        binding.mediaGrid.isFocusable = true
-        binding.mediaGrid.setOnClickListener {
+        // Filter button (in the view toggle's slot)
+        binding.mediaViewToggle.visibility = View.VISIBLE
+        binding.mediaViewToggle.setImageResource(R.drawable.ic_round_filter_alt_24)
+        binding.mediaViewToggle.isClickable = true
+        binding.mediaViewToggle.isFocusable = true
+        binding.mediaViewToggle.setOnClickListener {
             ComickListFilterBottomSheet.newInstance()
                 .show(supportFragmentManager, "ComickListFilter")
         }

@@ -11,6 +11,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import ani.dantotsu.others.setViewModeIcon
 import ani.dantotsu.R
 import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.mangabaka.MangaBaka
@@ -118,10 +119,8 @@ class StackListViewActivity : AppCompatActivity(), StackSearchSheet.Host {
         isMangaBaka = intent.getBooleanExtra(EXTRA_MANGABAKA, false)
 
         mode = PrefManager.getCustomVal("mediaView", 0)
-        binding.mediaList.alpha = if (mode == 1) 1f else 0.33f
-        binding.mediaGrid.alpha = if (mode == 1) 0.33f else 1f
-        binding.mediaList.setOnClickListener { changeView(1) }
-        binding.mediaGrid.setOnClickListener { changeView(0) }
+        binding.mediaViewToggle.setViewModeIcon(showingGrid = mode != 1)
+        binding.mediaViewToggle.setOnClickListener { changeView(if (mode == 1) 0 else 1) }
 
         binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener { finish() }
@@ -150,8 +149,7 @@ class StackListViewActivity : AppCompatActivity(), StackSearchSheet.Host {
 
     private fun changeView(newMode: Int) {
         mode = newMode
-        binding.mediaList.alpha = if (mode == 1) 1f else 0.33f
-        binding.mediaGrid.alpha = if (mode == 1) 0.33f else 1f
+        binding.mediaViewToggle.setViewModeIcon(showingGrid = mode != 1, animate = true)
         PrefManager.setCustomVal("mediaView", mode)
         buildAdapter()
     }

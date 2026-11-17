@@ -86,20 +86,11 @@
                     tools:ignore="ImageContrastCheck" />
 
                 <ImageView
-                    android:id="@+id/mediaList"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:id="@+id/mediaViewToggle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:layout_gravity="center_vertical"
-                    android:padding="8dp"
-                    app:srcCompat="@drawable/ic_round_view_list_24"
-                    app:tint="?attr/colorOnBackground"
-                    tools:ignore="ContentDescription,ImageContrastCheck" />
-
-                <ImageView
-                    android:id="@+id/mediaGrid"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:layout_gravity="end"
+                    android:background="?android:attr/selectableItemBackground"
                     android:padding="8dp"
                     android:layout_marginEnd="8dp"
                     app:srcCompat="@drawable/ic_round_grid_view_24"

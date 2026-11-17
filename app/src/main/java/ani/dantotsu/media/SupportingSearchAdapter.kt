@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import ani.dantotsu.others.setViewModeIcon
 import ani.dantotsu.App.Companion.context
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.AniMangaSearchResults
@@ -63,33 +64,16 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
         binding.searchByImage.visibility = View.GONE
 
         if (isSupportingList(type)) {
-            when (activity.supportStyle) {
-                0 -> {
-                    binding.searchResultGrid.alpha = 1f
-                    binding.searchResultList.alpha = 0.33f
-                }
-                else -> {
-                    binding.searchResultList.alpha = 1f
-                    binding.searchResultGrid.alpha = 0.33f
-                }
-            }
-            binding.searchResultGrid.setOnClickListener {
-                it.alpha = 1f
-                binding.searchResultList.alpha = 0.33f
-                activity.supportStyle = 0
-                PrefManager.setVal(PrefName.SearchStyleSupporting, 0)
-                activity.recyclerSupporting()
-            }
-            binding.searchResultList.setOnClickListener {
-                it.alpha = 1f
-                binding.searchResultGrid.alpha = 0.33f
-                activity.supportStyle = 1
-                PrefManager.setVal(PrefName.SearchStyleSupporting, 1)
+            binding.searchResultViewToggle.setViewModeIcon(showingGrid = activity.supportStyle == 0)
+            binding.searchResultViewToggle.setOnClickListener {
+                val style = if (activity.supportStyle == 0) 1 else 0
+                binding.searchResultViewToggle.setViewModeIcon(showingGrid = style == 0, animate = true)
+                activity.supportStyle = style
+                PrefManager.setVal(PrefName.SearchStyleSupporting, style)
                 activity.recyclerSupporting()
             }
         } else {
-            binding.searchResultGrid.visibility = View.GONE
-            binding.searchResultList.visibility = View.GONE
+            binding.searchResultViewToggle.visibility = View.GONE
         }
 
         if (hasFilterSheet(type)) {

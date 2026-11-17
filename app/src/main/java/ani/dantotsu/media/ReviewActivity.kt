@@ -53,8 +53,7 @@ class ReviewActivity : AppCompatActivity() {
             finish()
             return
         }
-        binding.followerGrid.visibility = View.GONE
-        binding.followerList.visibility = View.GONE
+        binding.followerViewToggle.visibility = View.GONE
         binding.followFilterButton.setImageResource(R.drawable.ic_round_add_24)
         binding.followFilterButton.setOnClickListener {
             ContextCompat.startActivity(
