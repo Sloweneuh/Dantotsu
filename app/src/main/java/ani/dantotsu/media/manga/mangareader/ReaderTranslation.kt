@@ -33,9 +33,6 @@ import ani.dantotsu.parsers.MangaImage
 import ani.dantotsu.parsers.OfflineMangaParser
 import ani.dantotsu.px
 import ani.dantotsu.settings.CurrentReaderSettings
-import ani.dantotsu.settings.CurrentReaderSettings.Directions.BOTTOM_TO_TOP
-import ani.dantotsu.settings.CurrentReaderSettings.Directions.TOP_TO_BOTTOM
-import ani.dantotsu.settings.CurrentReaderSettings.Layouts.PAGED
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.choiceBottomSheet
@@ -43,6 +40,7 @@ import ani.dantotsu.util.customAlertDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 import uy.kohesive.injekt.api.get
 
 /**
@@ -60,6 +58,9 @@ private const val AUTO_FAILURE_LIMIT = 3
 /** Outline of a box the reader drew by hand. See [MangaReaderActivity.drawBoxes]. */
 private const val DRAWN_BOX_COLOR = 0xFF2196F3.toInt()
 
+/** Keeps box ids apart between the images of one page; see [ReaderTranslation.projected]. */
+private const val PLACEMENT_ID_STRIDE = 100_000
+
 /**
  * Machine translation in the manga reader: the long-press page menu, drawing boxes over text the
  * page pass missed, translating a page on request or automatically as pages come into view, and
@@ -75,17 +76,28 @@ class ReaderTranslation(private val activity: MangaReaderActivity) {
      */
     fun showPageActions(
         pos: Int,
+        adapterPosition: Int,
         img1: MangaImage,
         img2: MangaImage?,
         callback: ((ImageViewDialog) -> Unit)?,
     ) {
-        val done = TranslatedPages[img1.url.url] != null
+        // Every image the page is drawn from: a real page made of slices, or a pair side by side,
+        // is translated image by image and each image's boxes moved onto the page.
+        val images = pagesAtPosition(adapterPosition).ifEmpty { listOfNotNull(img1, img2) }
+        val done = images.all { TranslatedPages[it.url.url] != null }
+        val anyDone = images.any { TranslatedPages[it.url.url] != null }
+        // Boxes are drawn over one image at a time, so a page of several offers one entry each.
+        val drawEntries = if (images.size == 1) {
+            listOf(activity.getString(R.string.mtl_draw_boxes) to { drawBoxes(pos, images[0]) })
+        } else images.mapIndexed { i, image ->
+            activity.getString(R.string.mtl_draw_boxes_part, i + 1, images.size) to { drawBoxes(pos, image) }
+        }
         val actions = listOfNotNull(
             activity.getString(
                 if (done) R.string.mtl_retranslate_page else R.string.mtl_translate_page,
-            ) to { translatePage(pos, img1) },
-            (activity.getString(R.string.mtl_hide_translation) to { hideTranslation(img1) }).takeIf { done },
-            activity.getString(R.string.mtl_draw_boxes) to { drawBoxes(pos, img1) },
+            ) to { translatePage(pos, images) },
+            (activity.getString(R.string.mtl_hide_translation) to { hideTranslation(images) }).takeIf { anyDone },
+        ) + drawEntries + listOf(
             activity.getString(R.string.view_image) to { activity.showImageDialog(pos, img1, img2, callback) },
         )
         activity.choiceBottomSheet(
@@ -95,8 +107,8 @@ class ReaderTranslation(private val activity: MangaReaderActivity) {
         ) { index -> actions[index].second() }
     }
 
-    private fun hideTranslation(image: MangaImage) {
-        TranslatedPages.remove(image.url.url)
+    private fun hideTranslation(images: List<MangaImage>) {
+        images.forEach { TranslatedPages.remove(it.url.url) }
         refreshTranslationOverlays()
     }
 
@@ -280,7 +292,7 @@ class ReaderTranslation(private val activity: MangaReaderActivity) {
                         key,
                         drawn.map { (id, rect) -> DrawnRegion(rect, id in trusted) },
                     )
-                    translatePage(pos, image)
+                    translatePage(pos, listOf(image))
                 }
                 setNeutralButton(R.string.mtl_draw_boxes_remove)
                 setNegButton(R.string.cancel)
@@ -393,26 +405,35 @@ class ReaderTranslation(private val activity: MangaReaderActivity) {
      * re-fetch — and the recognizer sees exactly the pixels the reader is showing, transforms and
      * all, rather than a differently-processed copy.
      */
-    private fun translatePage(pos: Int, image: MangaImage) {
+    private fun translatePage(pos: Int, images: List<MangaImage>) {
         if (!mtlSettings().ready()) {
             snackString(activity.getString(R.string.mtl_needs_key))
             return
         }
+        if (images.isEmpty()) return
         snackString(activity.getString(R.string.mtl_translating, pos + 1))
         activity.lifecycleScope.launch {
-            runTranslation(image)
-                .onSuccess { page ->
-                    if (page == null) {
-                        snackString(activity.getString(R.string.mtl_nothing_found))
-                        return@onSuccess
+            // Each image the page is drawn from, one after another; each shows as soon as it's in.
+            var found = false
+            var failure: Throwable? = null
+            for (image in images) {
+                runTranslation(image)
+                    .onSuccess { page ->
+                        if (page == null) return@onSuccess
+                        found = true
+                        TranslatedPages.put(image.url.url, page)
+                        refreshTranslationOverlays()
                     }
-                    TranslatedPages.put(image.url.url, page)
-                    refreshTranslationOverlays()
-                }
-                .onFailure {
-                    Logger.log("MTL page translation failed: ${it.stackTraceToString()}")
-                    snackString(it.message ?: activity.getString(R.string.mtl_failed))
-                }
+                    .onFailure {
+                        Logger.log("MTL page translation failed: ${it.stackTraceToString()}")
+                        if (failure == null) failure = it
+                    }
+            }
+            val failed = failure
+            when {
+                failed != null -> snackString(failed.message ?: activity.getString(R.string.mtl_failed))
+                !found -> snackString(activity.getString(R.string.mtl_nothing_found))
+            }
         }
     }
 
@@ -436,40 +457,77 @@ class ReaderTranslation(private val activity: MangaReaderActivity) {
      * Only in a continuous layout, because only there are two images two slices of one drawing. In
      * a paged layout they are two pages: no bubble crosses between them, and handing the recognizer
      * the neighbour's edge would only give the merger a chance to join text that has nothing to do
-     * with itself.
+     * with itself. For the same reason a seam smart spacing found to be a real page edge isn't
+     * read across either.
+     *
+     * The neighbours are the chapter's own images either side, not what the reader shows next to
+     * it: a page drawn from slices, or a transition between chapters, may sit between those.
      */
     private suspend fun seamNeighbours(image: MangaImage): Pair<Bitmap?, Bitmap?> {
         if (!mtlSettings().stitch) return null to null
         if (activity.defaultSettings.layout != CurrentReaderSettings.Layouts.CONTINUOUS) return null to null
-        val pages = readerPages()
-        val index = pages.indexOfFirst { it.url.url == image.url.url }
+        val (images, map) = chapterImagesOf(image.url.url) ?: return null to null
+        val index = images.indexOfFirst { it.url.url == image.url.url }
         if (index < 0) return null to null
-        suspend fun at(position: Int): Bitmap? = pages.getOrNull(position)
+        suspend fun at(position: Int): Bitmap? = images.getOrNull(position)
             ?.let { activity.loadBitmap(it.url, activity.pageTransforms(it)) }
-        return at(index - 1) to at(index + 1)
+        val before = if (index > 0 && !realPageEdge(images, map, index - 1)) at(index - 1) else null
+        val after = if (index + 1 < images.size && !realPageEdge(images, map, index)) at(index + 1) else null
+        return before to after
     }
 
-    /** Every page the reader currently has in its adapter, in reading order. */
-    private fun readerPages(): List<MangaImage> =
+    /** The images of the chapter image [url] is in, and its real pages when it is read by them. */
+    private fun chapterImagesOf(url: String): Pair<List<MangaImage>, ChapterPageMap?>? =
         when (val adapter = activity.readerAdapter()) {
-            is ContinuousChapterAdapter -> adapter.items.mapNotNull {
-                (it as? ContinuousChapterAdapter.ReaderItem.Image)?.takeIf { !it.composed }?.image
-            }
-
-            is BaseImageAdapter -> adapter.images
-            else -> emptyList()
+            is ContinuousChapterAdapter -> adapter.chapterOf(url)?.let { it.images() to adapter.pageMapOf(it) }
+            is BaseImageAdapter -> adapter.chapterImages to adapter.pageMap
+            else -> null
         }
 
-    /** The page or pages one adapter position is showing. */
+    /**
+     * Whether smart spacing found the seam between images [first] and [first] + 1 to be a real page
+     * edge — what puts a gap there. The real pages say for certain once known; until then, the same
+     * judgement the gaps are made by. A seam nothing has judged is read across, as before.
+     */
+    private fun realPageEdge(images: List<MangaImage>, map: ChapterPageMap?, first: Int): Boolean {
+        if (map != null) {
+            val end = map.pageOf(first, 0.9999f)
+            val start = map.pageOf(first + 1, 0f)
+            return end != start && map.pages.getOrNull(start)?.joinedToPrevious != true
+        }
+        if (!activity.smartSpacing || activity.knownLongStrip) return false
+        val next = images[first + 1].url.url
+        if (PageEdges.breaksFor(next)?.atStart == true) return true
+        val before = PageEdges.get(images[first].url.url) ?: return false
+        val after = PageEdges.get(next) ?: return false
+        return PageEdges.shouldSpace(before, after, activity.defaultSettings.direction, activity.preferJoinedPages)
+    }
+
+    /** Every image one adapter position is drawn from. */
     private fun pagesAtPosition(position: Int): List<MangaImage> =
         when (val adapter = activity.readerAdapter()) {
             is BaseImageAdapter -> adapter.translatableAt(position)
-            is ContinuousChapterAdapter -> listOfNotNull(
-                (adapter.items.getOrNull(position) as? ContinuousChapterAdapter.ReaderItem.Image)
-                    ?.takeIf { !it.composed }?.image,
-            )
+            is ContinuousChapterAdapter -> {
+                val item = adapter.items.getOrNull(position) as? ContinuousChapterAdapter.ReaderItem.Image
+                when {
+                    item == null -> emptyList()
+                    item.composed -> item.page!!.slices.mapNotNull { item.imageOf(it) }.distinct()
+                    else -> listOf(item.image)
+                }
+            }
 
             else -> emptyList()
+        }
+
+    /** The image at [position] when it is shown whole and alone, its boxes needing no moving. */
+    private fun plainImageAt(position: Int): MangaImage? =
+        when (val adapter = activity.readerAdapter()) {
+            is BaseImageAdapter -> adapter.plainImageAt(position)
+            is ContinuousChapterAdapter ->
+                (adapter.items.getOrNull(position) as? ContinuousChapterAdapter.ReaderItem.Image)
+                    ?.takeIf { !it.composed }?.image
+
+            else -> null
         }
 
     /**
@@ -619,7 +677,10 @@ class ReaderTranslation(private val activity: MangaReaderActivity) {
      * decoded bitmap and re-run the load for a change that only concerns a sibling view.
      */
     fun refreshTranslationOverlays() {
-        val recycler = activity.binding.mangaReaderRecycler
+        // The paged layout's pages live in the pager's own RecyclerView, not the scrolling one.
+        val recycler = if (activity.usingPager) {
+            activity.binding.mangaReaderPager.getChildAt(0) as? RecyclerView ?: return
+        } else activity.binding.mangaReaderRecycler
         for (i in 0 until recycler.childCount) {
             val child = recycler.getChildAt(i) ?: continue
             val holder = recycler.getChildViewHolder(child) ?: continue
@@ -629,7 +690,9 @@ class ReaderTranslation(private val activity: MangaReaderActivity) {
 
     /**
      * [blocks] moved down past whatever page-break gaps [PageEdges.withGaps] drew above them, when
-     * the page is a strip of stitched pages shown with gaps; [blocks] as they are otherwise.
+     * the bitmap on [itemView] was actually drawn with them ([PageLayout.gapped] — not re-derived
+     * from the settings, which an out-of-memory fallback to the gapless bitmap would contradict);
+     * [blocks] as they are otherwise. A block a break runs through grows by the gaps inside it.
      */
     private fun stripGapShifted(
         url: String,
@@ -637,29 +700,65 @@ class ReaderTranslation(private val activity: MangaReaderActivity) {
         pageWidth: Int,
         itemView: View,
     ): List<ani.dantotsu.media.manga.translation.PaintedBlock> {
-        if (!activity.smartSpacing || activity.knownLongStrip || activity.defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) return blocks
-        if (activity.defaultSettings.direction != TOP_TO_BOTTOM && activity.defaultSettings.direction != BOTTOM_TO_TOP) {
-            return blocks
-        }
+        if (!PageLayout.gapped(itemView)) return blocks
         val viewportWidth = BaseImageAdapter.pageViewport(itemView).first.takeIf { it > 0 }
             ?: return blocks
         val gap = (16f.px * pageWidth / viewportWidth.toFloat()).toInt()
         return blocks.map { block ->
-            val shift = PageEdges.gapShift(url, block.rect.top, pageWidth, gap)
-            if (shift == 0) block
-            else block.copy(rect = android.graphics.Rect(block.rect).apply { offset(0, shift) })
+            val top = PageEdges.gapShift(url, block.rect.top, pageWidth, gap)
+            val bottom = PageEdges.gapShift(url, block.rect.bottom, pageWidth, gap)
+            if (top == 0 && bottom == 0) block
+            else block.copy(
+                rect = Rect(block.rect.left, block.rect.top + top, block.rect.right, block.rect.bottom + bottom)
+            )
         }
     }
+
+    /**
+     * The translations of every image [layout] places, moved to where it drew them. A box goes with
+     * the slice its centre falls in. Ids are made unique per placement: the painter caches each
+     * block's set text by id.
+     */
+    private fun projected(layout: PageLayout): List<ani.dantotsu.media.manga.translation.PaintedBlock> =
+        layout.placements.flatMapIndexed { i, placement ->
+            val page = TranslatedPages[placement.url] ?: return@flatMapIndexed emptyList()
+            val top = placement.from * page.pageHeight
+            val bottom = placement.to * page.pageHeight
+            if (bottom <= top || page.pageWidth <= 0) return@flatMapIndexed emptyList()
+            val dest = placement.dest
+            val sx = dest.width() / page.pageWidth
+            val sy = dest.height() / (bottom - top)
+            page.blocks
+                .filter { it.rect.exactCenterY().let { y -> y >= top && y < bottom } }
+                .map { block ->
+                    block.copy(
+                        id = i * PLACEMENT_ID_STRIDE + block.id,
+                        rect = Rect(
+                            (dest.left + block.rect.left * sx).roundToInt(),
+                            (dest.top + (block.rect.top - top) * sy).roundToInt(),
+                            (dest.left + block.rect.right * sx).roundToInt(),
+                            (dest.top + (block.rect.bottom - top) * sy).roundToInt(),
+                        ),
+                    )
+                }
+        }
 
     /** Puts the stored translation for whatever page [itemView] is showing onto its overlay. */
     fun applyTranslationOverlay(itemView: View, position: Int) {
         val overlay = itemView.findViewById<TranslationOverlayView>(R.id.imgProgTranslation)
             ?: return
-        val image = pagesAtPosition(position).firstOrNull()
-        val page = image?.let { TranslatedPages[it.url.url] }
-        if (page == null) overlay.clear() else overlay.setBlocks(
-            stripGapShifted(image.url.url, page.blocks, page.pageWidth, itemView), page.pageWidth
-        )
+        val layout = PageLayout.on(itemView)
+        if (layout != null) {
+            val blocks = projected(layout)
+            if (blocks.isEmpty()) overlay.clear() else overlay.setBlocks(blocks, layout.width)
+        } else {
+            // A page drawn from several images has nothing to show until its layout is in.
+            val image = plainImageAt(position)
+            val page = image?.let { TranslatedPages[it.url.url] }
+            if (page == null) overlay.clear() else overlay.setBlocks(
+                stripGapShifted(image.url.url, page.blocks, page.pageWidth, itemView), page.pageWidth
+            )
+        }
         // A page arriving on screen is the event automatic translation waits for, and this runs for
         // every one of them whether or not it has a translation yet.
         scheduleAutoTranslation()

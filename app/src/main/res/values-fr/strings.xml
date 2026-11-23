@@ -3053,6 +3053,7 @@
     <string name="mtl_retranslate_page">Traduire à nouveau cette page</string>
     <string name="mtl_hide_translation">Masquer la traduction</string>
     <string name="mtl_draw_boxes">Encadrer le texte manqué</string>
+    <string name="mtl_draw_boxes_part">Encadrer le texte manqué (image %1$d sur %2$d)</string>
     <string name="mtl_draw_boxes_title">Page %1$d — encadrer le texte</string>
     <string name="mtl_draw_boxes_hint">Encadrez le texte manqué ou déplacez un cadre. Deux doigts pour défiler.</string>
     <string name="mtl_draw_boxes_reading_page">Lecture de la page…</string>

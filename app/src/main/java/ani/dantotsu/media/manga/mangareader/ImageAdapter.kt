@@ -125,6 +125,8 @@ open class ImageAdapter(
         // Claim the view for this page; whatever starts later on the same view supersedes it.
         val load = parent.beginPageLoad(page)
         if (!quiet) {
+            PageLayout.attach(parent, null)
+            PageLayout.markGapped(parent, false)
             imageView.recycle()
             imageView.visibility = View.GONE
             errorLayout.visibility = View.GONE
@@ -154,6 +156,9 @@ open class ImageAdapter(
         // can be judged like any other page's.
         pageUrl(position)?.let { if (pageAt(position)?.single == false) PageEdges.record(it, decoded) }
         val bitmap = withStripGaps(activity, pageUrl(position), decoded, parent)
+        // What the overlay has to know to put translations where this bitmap drew their images.
+        PageLayout.attach(parent, PageLayout.of(decoded))
+        PageLayout.markGapped(parent, bitmap !== decoded)
 
         val (viewportWidth, viewportHeight) = pageViewport(parent)
         var sWidth = viewportWidth

@@ -106,6 +106,11 @@ object ChapterPages {
             android.util.Log.d("SmartPages", "image $i ${u.takeLast(30)} ${p.width}x${p.height} stitched=${b.stitched} atStart=${b.atStart} rows=${b.rows.toList()}")
         }
 
+        val filled = fillMissedBreaks(profiles, breaks)
+
+        // Pages cut into equal strips, read off the whole chapter at once; see [PageEdges.pieceRuns].
+        val pieces = PageEdges.pieceRuns(profiles, breaks.map { it.stitched }, preferJoin)
+
         val pages = mutableListOf<ChapterPage>()
         var slices = mutableListOf<PageSlice>()
         var height = 0f
@@ -120,7 +125,7 @@ object ChapterPages {
             val profile = profiles[i]
             // Each piece of the image: where it starts and ends, in rows. A break mid-row leaves
             // that row out of both pages, since it holds a little of each.
-            val kept = breaks[i].positions.filter {
+            val kept = (breaks[i].positions.toList() + filled[i].orEmpty()).sorted().filter {
                 !PageEdges.sameColouredBackdrop(profile, it.roundToInt())
             }
             val ends = kept.map { p ->
@@ -139,6 +144,9 @@ object ChapterPages {
                 val sameRun = breaks[i].stitched && breaks[i - 1].stitched &&
                         abs(previous.sourceWidth - profile.sourceWidth) <= profile.sourceWidth * 0.02f
                 when {
+                    // One of a page's equal strips: a page starts here, or it carries on.
+                    pieces[i] == true -> { close(); joined = false }
+                    pieces[i] == false -> Unit
                     // A stitched page break right on the seam.
                     breaks[i].atStart -> { close(); joined = false }
                     // Stitched pages run on across a seam with no break on it.
@@ -183,6 +191,60 @@ object ChapterPages {
         }
         close()
         return ChapterPageMap(pages, urls.size)
+    }
+
+    /** How far off a whole number of pages two breaks may be, as a share of the page height. */
+    private const val FILL_TOLERANCE = 0.01f
+
+    /**
+     * Page breaks a run of stitched images is missing, by image index: rows in that image's profile.
+     *
+     * Stitched pages are all one height, so two confirmed breaks a whole number of pages apart have
+     * a page edge at every page height between them, whether or not one could be confirmed there —
+     * two plain margins meeting, or artwork drawn across, show no abrupt row for [PageEdges.judgeRun]
+     * to find. Read along the whole chapter as one strip; only filled in between confirmed breaks,
+     * never guessed past either end of a run.
+     */
+    private fun fillMissedBreaks(
+        profiles: List<PageEdges.Profile>,
+        breaks: List<PageEdges.Breaks>,
+    ): Map<Int, List<Float>> {
+        val out = HashMap<Int, MutableList<Float>>()
+        var i = 0
+        while (i < profiles.size) {
+            val period = breaks[i].period
+            if (!breaks[i].stitched || period <= 0f) {
+                i++
+                continue
+            }
+            // The run: consecutive stitched images whose pages are this height.
+            val starts = ArrayList<Float>()
+            var end = i
+            var y = 0f
+            while (end < profiles.size && breaks[end].stitched &&
+                abs(breaks[end].period - period) <= period * FILL_TOLERANCE
+            ) {
+                starts += y
+                y += profiles[end].height
+                end++
+            }
+            val found = (i until end).flatMap { n -> breaks[n].positions.map { starts[n - i] + it } }.sorted()
+            for ((a, b) in found.zipWithNext()) {
+                val pages = ((b - a) / period).roundToInt()
+                if (pages < 2 || abs(b - a - pages * period) > period * FILL_TOLERANCE * pages) continue
+                val step = (b - a) / pages
+                for (p in 1 until pages) {
+                    val at = a + p * step
+                    val n = (i until end).last { starts[it - i] <= at }
+                    val row = at - starts[n - i]
+                    if (row < 1f || row > profiles[n].height - 1f) continue
+                    out.getOrPut(n) { mutableListOf() } += row
+                    android.util.Log.d("SmartPages", "filled missed break: image $n row ${row.roundToInt()} (period $period)")
+                }
+            }
+            i = end
+        }
+        return out
     }
 
     /**
@@ -231,7 +293,7 @@ object ChapterPages {
      * Draws [page]: its slices of [bitmaps] (one per slice, in order) stacked top to bottom at the
      * widest one's width. A plain page is its image as it is.
      */
-    fun compose(page: ChapterPage, bitmaps: List<Bitmap>): Bitmap? {
+    fun compose(page: ChapterPage, bitmaps: List<Bitmap>, urls: List<String>): Bitmap? {
         if (page.single) return bitmaps.firstOrNull()
         val width = bitmaps.maxOf { it.width }
         val parts = page.slices.zip(bitmaps).map { (slice, bitmap) ->
@@ -245,10 +307,21 @@ object ChapterPages {
             val canvas = Canvas(out)
             val paint = Paint(Paint.FILTER_BITMAP_FLAG)
             var y = 0
-            for ((bitmap, source, height) in parts) {
+            val placements = ArrayList<PagePlacement>(parts.size)
+            parts.forEachIndexed { i, (bitmap, source, height) ->
                 canvas.drawBitmap(bitmap, source, Rect(0, y, width, y + height), paint)
+                val slice = page.slices[i]
+                urls.getOrNull(slice.image)?.let { url ->
+                    placements += PagePlacement(
+                        url,
+                        source.top / bitmap.height.toFloat(),
+                        source.bottom / bitmap.height.toFloat(),
+                        android.graphics.RectF(0f, y.toFloat(), width.toFloat(), (y + height).toFloat()),
+                    )
+                }
                 y += height
             }
+            PageLayout.record(out, PageLayout(width, placements))
             out
         } catch (e: OutOfMemoryError) {
             null

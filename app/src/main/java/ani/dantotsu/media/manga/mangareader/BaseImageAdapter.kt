@@ -47,10 +47,11 @@ abstract class BaseImageAdapter(
      * The chapter's real pages, when they differ from its images (see [ChapterPages]). Each
      * position is then one real page, drawn from whatever slices of images it is made of.
      */
-    pageMap: ChapterPageMap? = null,
+    /** The chapter's real pages, when it is read by them; see [ChapterPages]. */
+    val pageMap: ChapterPageMap? = null,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     val settings get() = activity.defaultSettings
-    protected val chapterImages = chapter.images()
+    val chapterImages = chapter.images()
     var images = chapterImages
     private val chapterPages = pageMap?.pages
     protected var pages = chapterPages
@@ -98,14 +99,17 @@ abstract class BaseImageAdapter(
         else pagesAt(position).singleOrNull()?.url?.url
 
     /**
-     * The images whose translations belong over [position]. A page drawn from slices has none: a
-     * translation is laid out over the whole image it was read from.
+     * The images whose translations belong over [position]: every image the page is drawn from.
+     * Translations are kept per image, and one drawn from slices has each image's boxes moved to
+     * where its slice went (see [PageLayout]).
      */
-    open fun translatableAt(position: Int): List<MangaImage> =
-        if (pages != null) listOfNotNull(plainImageAt(position)) else pagesAt(position)
+    open fun translatableAt(position: Int): List<MangaImage> = pagesAt(position)
 
-    /** The image of a plain page at [position] — the only kind a translation can be laid over. */
-    fun plainImageAt(position: Int): MangaImage? =
+    /**
+     * The image at [position] when it is shown whole and alone — the one case where a translation's
+     * boxes go over the page exactly as they were read, with no [PageLayout] to move them.
+     */
+    open fun plainImageAt(position: Int): MangaImage? =
         if (pages != null) pageAt(position)?.takeIf { it.single }
             ?.let { chapterImages.getOrNull(it.slices[0].image) }
         else pagesAt(position).singleOrNull()
@@ -130,7 +134,7 @@ abstract class BaseImageAdapter(
             ) ?: return null
         }
         if (page.single) return bitmaps.first()
-        return withContext(Dispatchers.Default) { ChapterPages.compose(page, bitmaps) }
+        return withContext(Dispatchers.Default) { ChapterPages.compose(page, bitmaps, urls) }
     }
 
     protected var recycler: RecyclerView? = null
@@ -304,6 +308,8 @@ abstract class BaseImageAdapter(
         // Cleared with the pixels it belonged to. A holder returning to the pool still holding one
         // page's translation would flash it over whichever page reuses the view.
         holder.itemView.findViewById<TranslationOverlayView>(R.id.imgProgTranslation)?.clear()
+        PageLayout.attach(holder.itemView, null)
+        PageLayout.markGapped(holder.itemView, false)
         holder.itemView.tag = null
     }
 

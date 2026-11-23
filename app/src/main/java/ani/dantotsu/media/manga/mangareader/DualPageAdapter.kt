@@ -28,8 +28,11 @@ class DualPageAdapter(
             .distinct()
         else imagePairs.getOrNull(position)?.let { listOfNotNull(it.first, it.second) }.orEmpty()
 
-    override fun translatableAt(position: Int): List<MangaImage> =
-        if (pagePairs != null) emptyList() else pagesAt(position)
+    /** Only a page left alone at the end, shown whole, is a plain image. */
+    override fun plainImageAt(position: Int): MangaImage? =
+        if (pagePairs != null) pagePairs.getOrNull(position)?.takeIf { it.second == null }
+            ?.first?.takeIf { it.single }?.let { chapterImages.getOrNull(it.slices[0].image) }
+        else imagePairs.getOrNull(position)?.takeIf { it.second == null }?.first
 
     /** A merged pair has no single page edge to judge. */
     override fun pageUrl(position: Int): String? = null
@@ -40,9 +43,10 @@ class DualPageAdapter(
             val zoom = renderZoomOf(parent)
             val bitmap1 = composePage(first, null, zoom) ?: return null
             val bitmap2 = second?.let { composePage(it, null, zoom) ?: return null }
+            fun layoutOf(page: ChapterPage, bitmap: Bitmap) = PageLayout.of(bitmap)
+                ?: PageLayout.whole(chapterImages[page.slices[0].image].url.url, bitmap)
             return if (bitmap2 != null) {
-                if (settings.direction != LEFT_TO_RIGHT) mergeBitmap(bitmap2, bitmap1)
-                else mergeBitmap(bitmap1, bitmap2)
+                merged(bitmap1, layoutOf(first, bitmap1), bitmap2, layoutOf(second, bitmap2))
             } else bitmap1
         }
         val pages = imagePairs
@@ -60,10 +64,32 @@ class DualPageAdapter(
         }
 
         return if (bitmap2 != null) {
-            if (settings.direction != LEFT_TO_RIGHT)
-                mergeBitmap(bitmap2, bitmap1)
-            else mergeBitmap(bitmap1, bitmap2)
+            merged(
+                bitmap1, PageLayout.whole(link1.url, bitmap1),
+                bitmap2, PageLayout.whole(img2.url.url, bitmap2),
+            )
         } else bitmap1
+    }
+
+    /**
+     * The pair side by side in reading order, with a [PageLayout] saying where each page's images
+     * went — [mergeBitmap] centres the shorter page vertically — so their translations land on them.
+     */
+    private fun merged(bitmap1: Bitmap, layout1: PageLayout, bitmap2: Bitmap, layout2: PageLayout): Bitmap {
+        val rtl = settings.direction != LEFT_TO_RIGHT
+        val (left, leftLayout) = if (rtl) bitmap2 to layout2 else bitmap1 to layout1
+        val (right, rightLayout) = if (rtl) bitmap1 to layout1 else bitmap2 to layout2
+        val out = mergeBitmap(left, right)
+        val height = maxOf(left.height, right.height).toFloat()
+        PageLayout.record(
+            out,
+            PageLayout(
+                out.width,
+                PageLayout.shifted(leftLayout, 0f, (height - left.height) / 2) +
+                    PageLayout.shifted(rightLayout, left.width.toFloat(), (height - right.height) / 2),
+            ),
+        )
+        return out
     }
 
     override val pageItemCount: Int get() = pagePairs?.size ?: imagePairs.size

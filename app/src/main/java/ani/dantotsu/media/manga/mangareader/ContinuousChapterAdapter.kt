@@ -127,6 +127,15 @@ class ContinuousChapterAdapter(
     /** The page at [position], or null when that position holds a transition or a boundary. */
     private fun imageItemAt(position: Int) = items.getOrNull(position) as? ReaderItem.Image
 
+    /** [chapter]'s real pages, when it is read by them. */
+    fun pageMapOf(chapter: MangaChapter): ChapterPageMap? =
+        pageMapFor(chapter)?.takeIf { it.imageCount == chapter.images().size }
+
+    /** The loaded chapter image [url] belongs to. */
+    fun chapterOf(url: String): MangaChapter? = items.firstNotNullOfOrNull { item ->
+        (item as? ReaderItem.Image)?.chapter?.takeIf { c -> c.images().any { it.url.url == url } }
+    }
+
     private var recycler: RecyclerView? = null
 
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
@@ -620,7 +629,9 @@ class ContinuousChapterAdapter(
                 )
             } ?: return null
         }
-        return withContext(Dispatchers.Default) { ChapterPages.compose(page, bitmaps) }
+        return withContext(Dispatchers.Default) {
+            ChapterPages.compose(page, bitmaps, item.chapter.images().map { it.url.url })
+        }
     }
 
     /**
@@ -639,6 +650,8 @@ class ContinuousChapterAdapter(
         // Claim the view for this page; whatever starts later on the same view supersedes it.
         val load = parent.beginPageLoad(item)
         if (!quiet) {
+            PageLayout.attach(parent, null)
+            PageLayout.markGapped(parent, false)
             imageView.recycle()
             imageView.visibility = View.GONE
             errorLayout.visibility = View.GONE
@@ -681,6 +694,9 @@ class ContinuousChapterAdapter(
         // can be judged like any other page's.
         if (item.composed) PageEdges.record(item.key, decoded)
         val bitmap = withStripGaps(activity, item.key, decoded, parent)
+        // What the overlay has to know to put translations where this bitmap drew their images.
+        PageLayout.attach(parent, PageLayout.of(decoded))
+        PageLayout.markGapped(parent, bitmap !== decoded)
 
         // A zoomed re-render hands back a larger bitmap of the same page. The layout below must
         // not grow with it — the page occupies the same slot in the strip either way — so sizing
@@ -769,6 +785,11 @@ class ContinuousChapterAdapter(
         if (holder !is ImageViewHolder) return
         holder.itemView.findViewById<SubsamplingScaleImageView>(R.id.imgProgImageNoGestures)
             ?.recycle()
+        // A pooled view mustn't flash one page's translation over the next page it shows.
+        holder.itemView.findViewById<ani.dantotsu.media.manga.translation.TranslationOverlayView>(R.id.imgProgTranslation)
+            ?.clear()
+        PageLayout.attach(holder.itemView, null)
+        PageLayout.markGapped(holder.itemView, false)
         holder.itemView.tag = null
     }
 

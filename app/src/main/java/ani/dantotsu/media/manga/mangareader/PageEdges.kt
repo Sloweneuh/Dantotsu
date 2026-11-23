@@ -1279,6 +1279,137 @@ object PageEdges {
         return true
     }
 
+    /**
+     * Pages a source cut into a fixed number of equal strips — every page three 661×315 images, say
+     * — found across a whole chapter: for each image whose top seam it settles, true when a page
+     * starts there and false when the image carries on the page above. Images it can't settle are
+     * left out, to be judged seam by seam as before.
+     *
+     * Seam by seam, such a chapter can't be read: its pages are drawn to the edge, so a page edge is
+     * artwork meeting artwork just like a cut through a page, and about half the edges came out as
+     * joins — each one then dragging the page grouping one strip out of line. [judgeRun] can't find
+     * the period either, reaching only a few images either side. Taken over the whole run, though,
+     * the pattern is plain: [k] strips make a page shape, and one seam in every [k] is a far sharper
+     * change than the rest. The phase is chosen by that average, and only when it stands out — a
+     * webtoon cut into equal chunks has no such seam and keeps the old judgement.
+     */
+    fun pieceRuns(profiles: List<Profile>, stitched: List<Boolean>, preferJoin: Boolean): Map<Int, Boolean> {
+        if (preferJoin) return emptyMap()
+        fun piece(i: Int) = !stitched[i] && !profiles[i].isSliver && profiles[i].ratio <= MAX_PIECE_RATIO
+        fun sameWidth(a: Profile, b: Profile) =
+            abs(a.sourceWidth - b.sourceWidth) <= a.sourceWidth * SAME_BREADTH &&
+                abs(a.width - b.width) <= a.width * SAME_BREADTH
+        val out = HashMap<Int, Boolean>()
+        var start = 0
+        while (start < profiles.size) {
+            if (!piece(start)) {
+                start++
+                continue
+            }
+            var end = start + 1
+            while (end < profiles.size && piece(end) && sameWidth(profiles[start], profiles[end])) end++
+            judgePieces(profiles, start, end)?.let { out.putAll(it) }
+            start = end
+        }
+        return out
+    }
+
+    /** [pieceRuns] for the run of images [from] until [until]; null when it finds no pages there. */
+    private fun judgePieces(profiles: List<Profile>, from: Int, until: Int): Map<Int, Boolean>? {
+        val count = until - from
+        val ratios = (from until until).map { profiles[it].ratio }
+        val median = ratios.sorted()[count / 2]
+        if (ratios.any { abs(it - median) > median * PIECE_UNIFORMITY }) return null
+        val k = (2..MAX_PIECES)
+            .filter { it * median in MIN_PAGE_RATIO..MAX_PAGE_RATIO }
+            .minByOrNull { abs(it * median - TYPICAL_PAGE_RATIO) } ?: return null
+        if (count < k * MIN_PIECE_PAGES) return null
+
+        // How much a seam looks like a page edge, 0–1: a picture changing far more across the cut
+        // than from row to row (the bounds [CONTINUOUS_STEP_RATIO] was measured against), or two
+        // margins meeting. A cut through one drawing scores near nothing.
+        fun edgeScore(i: Int): Double {
+            val above = profiles[i - 1].bottom
+            val below = profiles[i].top
+            return when {
+                !above.detailed && !below.detailed -> 0.6
+                above.detailed && below.detailed -> {
+                    val jump = difference(above.samples, below.samples)
+                    val step = maxOf((above.step + below.step) / 2, 1.0)
+                    ((jump / step - PIECE_CUT_RATIO) / (PIECE_EDGE_RATIO - PIECE_CUT_RATIO)).coerceIn(0.0, 1.0)
+                }
+                else -> 0.4
+            }
+        }
+        val sums = DoubleArray(k)
+        val counts = IntArray(k)
+        for (i in from + 1 until until) {
+            sums[i % k] += edgeScore(i)
+            counts[i % k]++
+        }
+        val means = DoubleArray(k) { if (counts[it] == 0) 0.0 else sums[it] / counts[it] }
+        val phase = means.indices.maxBy { means[it] }
+        val runnerUp = means.indices.filter { it != phase }.maxOf { means[it] }
+        android.util.Log.d(
+            "SmartPages",
+            "pieces $from..${until - 1}: k=$k ratio=${"%.3f".format(median)} phase=$phase " +
+                "means=${means.joinToString { "%.2f".format(it) }}"
+        )
+        if (means[phase] - runnerUp < PIECE_PHASE_MARGIN) return null
+
+        // A source cutting each page top-down into fixed-height strips leaves the last one short —
+        // 315, 315, 312 — so a short strip marks the end of a page outright, irregular pages
+        // included: a three-strip cover followed by a two-strip page puts no edge where the phase
+        // alone would, through the cover. Trusted when the short strips agree with the phase.
+        val full = (from until until).maxOf { profiles[it].height }
+        val ends = (from until until - 1).filter { profiles[it].height <= full - REMAINDER_ROWS }
+        val endsAgree = ends.size >= MIN_PIECE_PAGES &&
+            ends.count { (it + 1) % k == phase } >= ends.size * REMAINDER_AGREEMENT
+        val endSeams = if (endsAgree) ends.map { it + 1 }.toSet() else emptySet()
+        android.util.Log.d("SmartPages", "pieces $from..${until - 1}: page ends from short strips=$endsAgree (${ends.size})")
+
+        val out = HashMap<Int, Boolean>()
+        var last = from
+        for (i in from + 1 until until) {
+            // Going by short strips, a page with none to end it is one cut exactly into k: it ends
+            // after k. Otherwise every k-th seam, on the phase.
+            val edge = if (endsAgree) i in endSeams || i - last >= k else i % k == phase
+            out[i] = edge
+            if (edge) last = i
+        }
+        return out
+    }
+
+    /** Length/breadth past which an image is too tall to be one of several strips of a page. */
+    private const val MAX_PIECE_RATIO = 0.85f // MAX_PAGE_RATIO / 2
+
+    /** How far a strip's shape may stray from the run's for the run to count as equal strips. */
+    private const val PIECE_UNIFORMITY = 0.1f
+
+    /** Most strips a page is taken to be cut into. */
+    private const val MAX_PIECES = 5
+
+    /** What a manga page's height over width usually is; picks the strip count when two fit. */
+    private const val TYPICAL_PAGE_RATIO = 1.42f
+
+    /** Whole pages a run must hold before its pattern is trusted. */
+    private const val MIN_PIECE_PAGES = 4
+
+    /** Jump-over-step at and below which a seam reads as a cut through one drawing... */
+    private const val PIECE_CUT_RATIO = 1.3
+
+    /** ...and at and above which as a page edge (see [CONTINUOUS_STEP_RATIO]). */
+    private const val PIECE_EDGE_RATIO = 2.4
+
+    /** How far the page-edge seams' mean score must clear every other phase's. */
+    private const val PIECE_PHASE_MARGIN = 0.2
+
+    /** Rows short of the run's full strip height that make a strip a page's last (remainder) one. */
+    private const val REMAINDER_ROWS = 2
+
+    /** Share of the short strips that must end a page where the phase puts one, to be believed. */
+    private const val REMAINDER_AGREEMENT = 0.8
+
     /** Pixel lines per edge band. */
     private const val BAND = 3
 

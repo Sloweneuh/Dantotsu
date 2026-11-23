@@ -1310,19 +1310,19 @@ class MangaReaderActivity : AppCompatActivity() {
                                         chapter.dualPages().getOrNull(pos) ?: return@dualPage false
                                     val nextPage = page.second
                                     if (defaultSettings.direction != LEFT_TO_RIGHT && nextPage != null)
-                                        onImageLongClicked(pos * 2, nextPage, page.first, callback)
+                                        onImageLongClicked(pos * 2, nextPage, page.first, pos, callback)
                                     else
-                                        onImageLongClicked(pos * 2, page.first, nextPage, callback)
+                                        onImageLongClicked(pos * 2, page.first, nextPage, pos, callback)
                                 } ?: onImageLongClicked(
                                     pos,
                                     imageAdapter?.pagesAt(pos)?.firstOrNull() ?: return@let false,
                                     null,
-                                    callback
+                                    callback = callback
                                 )
                             } else {
                                 val item = continuousAdapter?.items?.getOrNull(pos)
                                 if (item is ContinuousChapterAdapter.ReaderItem.Image) {
-                                    onImageLongClicked(pos, item.image, null, callback)
+                                    onImageLongClicked(pos, item.image, null, callback = callback)
                                 } else false
                             }
                         }
@@ -2220,13 +2220,15 @@ class MangaReaderActivity : AppCompatActivity() {
         pos: Int,
         img1: MangaImage,
         img2: MangaImage?,
-        callback: ((ImageViewDialog) -> Unit)? = null
+        /** The adapter position pressed, where [pos] is a page number that differs from it. */
+        adapterPosition: Int = pos,
+        callback: ((ImageViewDialog) -> Unit)? = null,
     ): Boolean {
         if (!defaultSettings.longClickImage) return false
         // With translation on, a long press is no longer only "show me this image" — so it asks
         // rather than assuming, and only when there is a second thing worth offering.
         if (PageTranslationPipeline.enabled()) {
-            translation.showPageActions(pos, img1, img2, callback)
+            translation.showPageActions(pos, adapterPosition, img1, img2, callback)
             return true
         }
         showImageDialog(pos, img1, img2, callback)
