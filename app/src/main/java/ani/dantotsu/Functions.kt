@@ -1270,6 +1270,7 @@ fun buildMarkwon(
                 )
             }
             plugin.addHandler(AlignTagHandler())
+            plugin.addHandler(SpoilerPlugin.AniListSpoilerTagHandler())
         })
         .usePlugin(GlideImagesPlugin.create(object : GlideImagesPlugin.GlideStore {
 

@@ -206,10 +206,12 @@ class AuthorActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener
             if (author.dateOfBirth != null) "${getString(R.string.birthday)} ${author.dateOfBirth}" else ""
         val homeTown =
             if (author.homeTown != null) "${getString(R.string.hometown)} ${author.homeTown}" else ""
+        val height =
+            if (author.height != null) "${getString(R.string.height)} ${author.height}" else ""
         val dod =
             if (author.dateOfDeath != null) "${getString(R.string.date_of_death)} ${author.dateOfDeath}" else ""
 
-        return "$age $yearsActive $dob $homeTown $dod"
+        return "$age $yearsActive $dob $homeTown $height $dod"
     }
 
 

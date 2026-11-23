@@ -350,7 +350,7 @@ class AnilistMutations {
                     mediaId
                     mediaType
                     summary
-                    body(asHtml: true)
+                    body(asHtml: true, htmlVersion: 2)
                     rating
                     ratingAmount
                     userRating

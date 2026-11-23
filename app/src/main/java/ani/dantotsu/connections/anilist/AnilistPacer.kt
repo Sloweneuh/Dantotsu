@@ -45,17 +45,56 @@ object AnilistPacer {
         while (sent.isNotEmpty() && sent.first() <= now - WINDOW_MS) sent.removeFirst()
     }
 
-    /** Suspends until a request fits in the window, then counts it as sent. */
-    suspend fun acquire() {
+    /**
+     * What a query costs against the limit. Since AniList's 2026-11-23 changelog every top-level
+     * field — each aliased `Page`/`Media`/… in a batched request — counts on its own, so a request
+     * is worth as many units as it has root fields. Only the first selection set is read (fragment
+     * definitions after it don't count); braces inside arguments and strings are skipped.
+     */
+    fun costOf(query: String): Int {
+        var brace = 0
+        var paren = 0
+        var inString = false
+        var count = 0
+        var i = 0
+        while (i < query.length) {
+            val c = query[i]
+            when {
+                inString -> if (c == '\\') i++ else if (c == '"') inString = false
+                c == '"' -> inString = true
+                c == '(' -> paren++
+                c == ')' -> paren--
+                paren > 0 -> {}
+                c == '{' -> brace++
+                c == '}' -> { brace--; if (brace == 0) break }
+                brace == 1 && (c.isLetter() || c == '_') -> {
+                    var j = i
+                    while (j < query.length && (query[j].isLetterOrDigit() || query[j] == '_')) j++
+                    var k = j
+                    while (k < query.length && query[k].isWhitespace()) k++
+                    // `alias: field` is one field; the alias itself isn't counted.
+                    if (k >= query.length || query[k] != ':') count++
+                    i = j - 1
+                }
+            }
+            i++
+        }
+        return count.coerceAtLeast(1)
+    }
+
+    /** Suspends until a request costing [cost] units fits in the window, then counts it as sent. */
+    suspend fun acquire(cost: Int = 1) {
         var logged = false
         while (true) {
             val wait = mutex.withLock {
                 val now = SystemClock.elapsedRealtime()
                 prune(now)
-                if (sent.size < budget()) {
-                    sent.addLast(now)
+                // One request bigger than the whole budget waits for an empty window, not forever.
+                val units = cost.coerceIn(1, budget())
+                if (sent.size + units <= budget()) {
+                    repeat(units) { sent.addLast(now) }
                     0L
-                } else sent.first() + WINDOW_MS - now
+                } else sent.elementAt(sent.size + units - budget() - 1) + WINDOW_MS - now
             }
             if (wait <= 0) return
             if (!logged) {

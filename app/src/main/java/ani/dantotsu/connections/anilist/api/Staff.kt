@@ -77,6 +77,9 @@ data class Staff(
 
     // Notes for site moderators
     @SerialName("modNotes") var modNotes: String?,
+
+    // The person's height
+    @SerialName("height") var height: Height? = null,
 )
 
 @Serializable

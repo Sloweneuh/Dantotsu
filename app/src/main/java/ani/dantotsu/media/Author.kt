@@ -16,4 +16,5 @@ data class Author(
     var character: ArrayList<Character>? = null,
     var isFav: Boolean = false,
     var description: String? = null,
+    var height: String? = null,
 ) : Serializable

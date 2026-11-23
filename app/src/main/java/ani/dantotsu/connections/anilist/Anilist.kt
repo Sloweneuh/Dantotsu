@@ -386,7 +386,7 @@ object Anilist {
 
     private suspend fun sendQuery(query: String, variables: String, auth: String?, show: Boolean): String {
         checkNotRefusing()
-        AnilistPacer.acquire()
+        AnilistPacer.acquire(AnilistPacer.costOf(query))
         // Re-checked after the pacer: a 429 or an outage may have landed while this one was queued.
         checkNotRefusing()
 

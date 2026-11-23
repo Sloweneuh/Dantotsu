@@ -108,8 +108,27 @@ class AniMarkdown { //istg anilist has the worst api
                 .underlineToHtml()
         }
 
+        private val SPOILER_OPEN =
+            """<(span|div) class="markdown-spoiler" data-label="([^"]*)">""".toRegex()
+
+        /**
+         * AniList's `htmlVersion: 2` spoilers, hidden behind a tap-to-reveal chip showing their label.
+         * These WebViews run no JavaScript, so it's the checkbox trick: a hidden checkbox and its
+         * `<label>` chip go in right after each opening tag, ahead of the spoiler's one child
+         * (`<span>` or `<div>`), and CSS hides that child until the box is ticked. Only opening tags
+         * are rewritten, so nested spoilers need no pairing.
+         */
+        private fun String.convertSpoilersToToggles(): String {
+            var n = 0
+            return SPOILER_OPEN.replace(this) { m ->
+                val id = "sp${n++}"
+                val label = m.groupValues[2].trim().ifEmpty { "Spoiler" }
+                """${m.value}<input type="checkbox" id="$id" class="sp-t"><label for="$id" class="sp-l">$label</label>"""
+            }
+        }
+
         fun getFullAniHTML(html: String, textColor: Int): String {
-            val basicHtml = getBasicAniHTML(html)
+            val basicHtml = getBasicAniHTML(html).convertSpoilersToToggles()
 
 
             val returnHtml = """
@@ -135,6 +154,17 @@ class AniMarkdown { //istg anilist has the worst api
             a {
                 color: ${textColor.toCssColor()};
             }
+            .sp-t { display: none; }
+            .sp-l {
+                display: inline-block;
+                padding: 0 8px;
+                border-radius: 6px;
+                background: rgba(128, 128, 128, 0.35);
+                font-size: 0.9em;
+            }
+            .sp-t:checked + .sp-l { display: none; }
+            .sp-t:not(:checked) + .sp-l + * { display: none; }
+            div.markdown-spoiler { margin: 4px 0; }
             /* Add responsive design elements for other content as needed */
         </style>
 </head>

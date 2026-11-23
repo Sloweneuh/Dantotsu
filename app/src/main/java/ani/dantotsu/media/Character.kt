@@ -16,4 +16,5 @@ data class Character(
     var dateOfBirth: FuzzyDate? = null,
     var roles: ArrayList<Media>? = null,
     val voiceActor: ArrayList<Author>? = null,
+    var height: String? = null,
 ) : Serializable

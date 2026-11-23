@@ -38,7 +38,9 @@ class CharacterDetailsAdapter(private val character: Character, private val acti
                             )
 
                             else -> character.gender
-                        } else "") + "\n" + character.description
+                        } else "") +
+                    (character.height?.let { "${currActivity()!!.getString(R.string.height)} $it" } ?: "") +
+                    "\n" + character.description
 
         binding.characterDesc.isTextSelectable
         val markWon = buildMarkwon(activity)

@@ -1666,6 +1666,7 @@
     <string name="hometown">\n"__Ville natale :__ "</string>
     <string name="years_active">\n"__Années d\'activité :__ "</string>
     <string name="date_of_death">\n"__Date de décès :__ "</string>
+    <string name="height">\n"__Taille :__ "</string>
     <string name="question_1">Qu\'est-ce que Dantotsu ?</string>
     <string name="answer_1">Dantotsu est conçu à partir des cendres de Saikou et basé sur une élégance simpliste mais de pointe. C\'est un client AniList uniquement, qui vous permet également de regarder et télécharger des Anime / Manga via des extensions. \n>Dantotsu (断トツ; Dan-totsu) signifie littéralement le meilleur du meilleur en japonais. Eh bien, nous aimerions dire que c\'est la meilleure application open source pour l\'anime et le manga sur Android, mais hé, essayez-la vous-même et jugez !</string>
     <string name="question_2">Quelles sont les fonctionnalités de Dantotsu ?</string>

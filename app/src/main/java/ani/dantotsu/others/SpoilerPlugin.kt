@@ -49,6 +49,33 @@ class SpoilerPlugin(private val anilist: Boolean = false) : AbstractMarkwonPlugi
         }
     }
 
+    /**
+     * AniList's `htmlVersion: 2` spoilers: `<span|div class="markdown-spoiler" data-label="…">`,
+     * inline and block. Hidden the same way as the `||` and `~!` ones, revealed with a tap. Spans
+     * and divs of any other class pass through untouched.
+     */
+    class AniListSpoilerTagHandler : io.noties.markwon.html.tag.SimpleTagHandler() {
+        override fun getSpans(
+            configuration: io.noties.markwon.MarkwonConfiguration,
+            renderProps: io.noties.markwon.RenderProps,
+            tag: io.noties.markwon.html.HtmlTag,
+        ): Any? {
+            if (tag.attributes()["class"]?.split(' ')?.contains("markdown-spoiler") != true) return null
+            val spoiler = RedditSpoilerSpan()
+            val reveal = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    spoiler.setRevealed(true)
+                    widget.postInvalidateOnAnimation()
+                }
+
+                override fun updateDrawState(ds: TextPaint) {}
+            }
+            return arrayOf(spoiler, reveal)
+        }
+
+        override fun supportedTags(): Collection<String> = setOf("span", "div")
+    }
+
     companion object {
         // DOTALL: a spoiler can run over several lines, as the comment box's spoiler button makes them.
         private val RE = Pattern.compile("\\|\\|.+?\\|\\|", Pattern.DOTALL)

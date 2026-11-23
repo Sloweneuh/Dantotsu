@@ -46,7 +46,46 @@ data class Character(
 
     // Notes for site moderators
     @SerialName("modNotes") var modNotes: String?,
+
+    // The character's height
+    @SerialName("height") var height: Height? = null,
 ) : java.io.Serializable
+
+/**
+ * A character's or staff member's height. [min] and [max] are a range, a single height when equal;
+ * [initial] is the height a character starts at when the final one isn't known.
+ */
+@Serializable
+data class Height(
+    @SerialName("initial") var initial: HeightValue? = null,
+    @SerialName("min") var min: HeightValue? = null,
+    @SerialName("max") var max: HeightValue? = null,
+) : java.io.Serializable {
+    /** "190 cm (6'3\")", "170–183 cm (5'7\"–6'0\")", with the initial height ahead of an arrow. Null when empty. */
+    fun format(): String? {
+        val range = when {
+            min != null && max != null && min!!.metric != max!!.metric ->
+                "${min!!.cm()}–${max!!.cm()} cm (${min!!.imperial}–${max!!.imperial})"
+            else -> (min ?: max)?.label()
+        }
+        return listOfNotNull(initial?.label(), range).joinToString(" → ").ifEmpty { null }
+    }
+}
+
+@Serializable
+data class HeightValue(
+    // In centimetres
+    @SerialName("metric") var metric: Double? = null,
+    // Feet and inches, already formatted (5'7")
+    @SerialName("imperial") var imperial: String? = null,
+) : java.io.Serializable {
+    fun cm(): String? = metric?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+    fun label(): String? = when {
+        metric != null && imperial != null -> "${cm()} cm ($imperial)"
+        metric != null -> "${cm()} cm"
+        else -> imperial
+    }
+}
 
 @Serializable
 data class CharacterConnection(
