@@ -47,6 +47,48 @@ class ListFragment : Fragment() {
     /** The list [mediaAdaptor] shows — the tab's own copy, so updates can be diffed into it. */
     private val shownList = ArrayList<Media>()
 
+    /** What [mergedAdaptor] shows, AniList and MangaUpdates entries together. */
+    private var shownMerged: List<Any> = emptyList()
+
+    private fun mergedId(item: Any): Any = when (item) {
+        is Media -> "ani:${item.id}"
+        is MUMedia -> "mu:${item.id}"
+        else -> item
+    }
+
+    /**
+     * Whether going from [old] to [new] re-sorts the list rather than updating it: the same entries,
+     * with most of them having to move. Measured as the fewest entries to move — everything outside
+     * the longest run [new] keeps in [old]'s order — so one entry jumping to the top after a read
+     * elsewhere is one move, while a direction flip moves all but one.
+     */
+    private fun resorted(old: List<Any>, new: List<Any>): Boolean {
+        if (old.size < RESORT_MIN_ROWS || old.size != new.size) return false
+        val oldIndex = old.withIndex().associate { (i, id) -> id to i }
+        if (oldIndex.size != old.size || new.any { it !in oldIndex }) return false
+        // Longest increasing run of old positions, in new order (patience sorting).
+        val tails = ArrayList<Int>()
+        for (id in new) {
+            val position = oldIndex.getValue(id)
+            val at = tails.binarySearch(position).let { if (it < 0) -it - 1 else it }
+            if (at == tails.size) tails += position else tails[at] = position
+        }
+        return new.size - tails.size > new.size * RESORT_SHARE
+    }
+
+    /**
+     * Runs [update] with the list held at the same place: the same row index at the top, the same
+     * distance into it. Left alone, RecyclerView keeps the first row on screen in view wherever an
+     * update moves it — a pass that sends it to the far end of the list carries the screen there,
+     * sweeping through everything between.
+     */
+    private fun keepingPosition(update: () -> Unit) {
+        val manager = binding.listRecyclerView.layoutManager
+        val state = manager?.onSaveInstanceState()
+        update()
+        if (state != null) manager.onRestoreInstanceState(state)
+    }
+
     /** What each shown row displays, as of the last update; see [RowKey]. */
     private var shownRows: List<RowKey> = emptyList()
 
@@ -174,11 +216,15 @@ class ListFragment : Fragment() {
 
                 val type = if (g) 0 else 1
                 val existing = mergedAdaptor
-                if (existing != null && mediaAdaptor == null && currentAdapterType == type) {
+                val reordered = resorted(shownMerged.map(::mergedId), mergedItems.map(::mergedId))
+                shownMerged = mergedItems
+                if (existing != null && mediaAdaptor == null && currentAdapterType == type && !reordered) {
                     // Same display mode, same adapter kind already showing: update its rows in
                     // place rather than tearing down the RecyclerView's views and scroll position.
-                    existing.submitList(mergedItems)
+                    keepingPosition { existing.submitList(mergedItems) }
                 } else {
+                    // A re-sort starts the list over (see [resorted]); so does a new adapter.
+                    if (reordered) binding.listRecyclerView.scrollToPosition(0)
                     val mergedAdapter = MergedReadingAdapter(mergedItems, type, true)
                     mergedAdaptor = mergedAdapter
                     currentAdapterType = type
@@ -194,7 +240,17 @@ class ListFragment : Fragment() {
                 // adapter and its scroll position are kept unless the display mode changed.
                 val newRows = aniList.map(::rowKey)
                 val adaptor = mediaAdaptor
-                if (adaptor != null && mergedAdaptor == null && currentAdapterType == type) {
+                val reordered = resorted(shownRows.map { it.id }, newRows.map { it.id })
+                if (adaptor != null && mergedAdaptor == null && currentAdapterType == type && reordered) {
+                    // A re-sort, the direction flipped above all: the rows are all new, and the
+                    // reader wants the new order's start, not the old first row followed to the end.
+                    shownList.clear()
+                    shownList.addAll(aniList)
+                    shownRows = newRows
+                    @Suppress("NotifyDataSetChanged")
+                    adaptor.notifyDataSetChanged()
+                    binding.listRecyclerView.scrollToPosition(0)
+                } else if (adaptor != null && mergedAdaptor == null && currentAdapterType == type) {
                     val oldRows = shownRows
                     val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
                         override fun getOldListSize() = oldRows.size
@@ -205,7 +261,7 @@ class ListFragment : Fragment() {
                     shownList.clear()
                     shownList.addAll(aniList)
                     shownRows = newRows
-                    diff.dispatchUpdatesTo(adaptor)
+                    keepingPosition { diff.dispatchUpdatesTo(adaptor) }
                 } else {
                     mergedAdaptor = null
                     shownList.clear()
@@ -293,6 +349,12 @@ class ListFragment : Fragment() {
                     putBoolean("calendar", calendar)
                 }
             }
+
+        /** Shorter lists fit on a screen or two; reordering them in place is harmless. */
+        private const val RESORT_MIN_ROWS = 8
+
+        /** Share of the entries that must move for an update to count as a re-sort. */
+        private const val RESORT_SHARE = 0.5
     }
 
     override fun onDestroyView() {
