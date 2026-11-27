@@ -14,6 +14,7 @@ import ani.dantotsu.R
 import ani.dantotsu.currActivity
 import ani.dantotsu.databinding.BottomSheetSelectorBinding
 import ani.dantotsu.getThemeColor
+import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.media.MediaSingleton
 import ani.dantotsu.media.manga.MangaChapter
@@ -51,13 +52,13 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
             dismiss()
         }
 
-        model.getMedia().observe(viewLifecycleOwner) { m ->
-            if (m != null && !loaded) {
+        fun start(m: Media) {
+            run {
                 // A premium chapter can't be read here; offer the source's page instead.
                 if (isLocked(chp)) {
                     showLocked(requireContext(), model, m, chp)
                     dismiss()
-                    return@observe
+                    return
                 }
 
                 loaded = true
@@ -80,6 +81,16 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
                     }
                 }
             }
+        }
+
+        // The read tab can be running on the media the page was opened with (previewMedia) while
+        // AniList's full details are still queued behind its rate limit. Its source and chapters
+        // are already set on that object, so the pages can load now instead of waiting on AniList.
+        val preview = model.previewMedia
+        if (model.getMedia().value == null && preview?.selected != null) start(preview)
+
+        model.getMedia().observe(viewLifecycleOwner) { m ->
+            if (m != null && !loaded) start(m)
         }
     }
 
