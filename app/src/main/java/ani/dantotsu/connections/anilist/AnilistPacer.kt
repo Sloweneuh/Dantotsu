@@ -3,6 +3,9 @@ package ani.dantotsu.connections.anilist
 import android.os.SystemClock
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -38,6 +41,38 @@ object AnilistPacer {
 
     @Volatile
     private var limit = DEFAULT_LIMIT
+
+    /**
+     * A wait the pacer is holding requests for, in wall-clock millis, so the rate-limit badge can
+     * show it: a queued request is otherwise a screen sitting blank with nothing to say why.
+     */
+    data class Queue(val startedAt: Long, val endsAt: Long)
+
+    private val _queue = MutableStateFlow<Queue?>(null)
+
+    /** Null whenever no request is waiting on the budget. */
+    val queue: StateFlow<Queue?> = _queue.asStateFlow()
+
+    private val waitLock = Any()
+    private var waiting = 0
+
+    private fun startWaiting(waitMs: Long) = synchronized(waitLock) {
+        waiting++
+        val now = System.currentTimeMillis()
+        val current = _queue.value
+        val endsAt = now + waitMs
+        if (current == null || endsAt > current.endsAt) {
+            _queue.value = Queue(current?.startedAt ?: now, endsAt)
+        }
+    }
+
+    private fun stopWaiting() = synchronized(waitLock) {
+        waiting--
+        if (waiting <= 0) {
+            waiting = 0
+            _queue.value = null
+        }
+    }
 
     private fun budget() = (limit - HEADROOM).coerceAtLeast(1)
 
@@ -101,7 +136,12 @@ object AnilistPacer {
                 Logger.log("AnilistPacer: budget of ${budget()}/min spent, queueing for ${wait}ms")
                 logged = true
             }
-            delay(wait)
+            startWaiting(wait)
+            try {
+                delay(wait)
+            } finally {
+                stopWaiting()
+            }
         }
     }
 

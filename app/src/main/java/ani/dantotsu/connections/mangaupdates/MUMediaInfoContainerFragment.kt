@@ -57,6 +57,8 @@ class MUMediaInfoContainerFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMediaInfoContainerBinding.inflate(inflater, container, false)
+        // The AniList page's loading spinner; this page has its series before it is shown.
+        binding.mediaInfoLoading.visibility = View.GONE
         return binding.root
     }
 

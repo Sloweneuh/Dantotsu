@@ -1237,6 +1237,7 @@
     <string name="anilist_api_retry_in">retrying in %1$ds</string>
     <string name="anilist_discord">Discord</string>
     <string name="anilist_rate_limited">AniList rate limit reached</string>
+    <string name="anilist_requests_queued">Waiting on AniList: requests are spaced out to stay under its rate limit</string>
     <string name="failed_to_load_data">Failed to load saved data of %1$d</string>
     <string name="mal_login_uri_not_found">Mal Login : Uri not Found</string>
     <string name="mal_login_code_challenge_not_found">Mal Login : codeChallenge not found</string>

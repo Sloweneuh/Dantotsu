@@ -19,6 +19,15 @@
         app:tabIconTint="?attr/colorOnBackground"
         app:tabRippleColor="@null" />
 
+    <!-- Until AniList's full details arrive, which under its rate limit can take a while. -->
+    <ani.dantotsu.others.MaterialProgressBar
+        android:id="@+id/mediaInfoLoading"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="32dp"
+        android:indeterminate="true" />
+
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/mediaInfoViewPager"
         android:layout_width="match_parent"

@@ -102,6 +102,7 @@ class MediaInfoFragment : Fragment() {
 
         model.getMedia().observe(viewLifecycleOwner) { media ->
             currentMedia = media
+            binding.mediaInfoLoading.visibility = if (media == null) View.VISIBLE else View.GONE
             if (media != null && !isSetup) {
                 isSetup = true
 

@@ -17,6 +17,7 @@ import ani.dantotsu.snackString
 import com.google.android.material.progressindicator.CircularProgressIndicator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
@@ -66,33 +67,53 @@ fun attachAnilistRateLimitBadge(activity: Activity) {
         badge.visibility = View.GONE
         // The pill states the wait; tapping says what is waiting, for anyone who wonders which of
         // the app's several backends stopped answering.
-        badge.setOnClickListener { snackString(AnilistRateLimit.waitMessage()) }
+        badge.setOnClickListener {
+            snackString(
+                if (AnilistRateLimit.isLimited()) AnilistRateLimit.waitMessage()
+                else activity.getString(R.string.anilist_requests_queued)
+            )
+        }
 
+        // A 429 window and the pacer holding requests back both mean "AniList answers later": the
+        // pacer's wait used to show nothing at all, so a details page or chapter search queued
+        // behind it just sat blank. The 429 window wins when both run, since it is the harder stop.
         owner.lifecycleScope.launch {
-            AnilistRateLimit.window.collectLatest { window ->
+            AnilistRateLimit.window.combine(AnilistPacer.queue) { w, q -> w to q }.collectLatest { (window, _) ->
                 // A window that has already run out reaches an activity that was not on screen to
                 // tick it down (the reader and the player never attach this badge). Showing it for
                 // the one frame it takes to notice would be a pill that blinks for no reason.
-                if (window == null || !AnilistRateLimit.isLimited()) {
+                if (window != null && !AnilistRateLimit.isLimited()) AnilistRateLimit.clear()
+                fun wait(): Pair<Long, Int>? {
+                    if (AnilistRateLimit.isLimited()) {
+                        return AnilistRateLimit.remainingMillis() to AnilistRateLimit.remainingPercent()
+                    }
+                    val q = AnilistPacer.queue.value ?: return null
+                    val left = q.endsAt - System.currentTimeMillis()
+                    if (left <= 0) return null
+                    val total = (q.endsAt - q.startedAt).coerceAtLeast(1L)
+                    return left to ((left * 100) / total).toInt().coerceIn(0, 100)
+                }
+                val first = wait()
+                if (first == null) {
                     badge.visibility = View.GONE
-                    AnilistRateLimit.clear()
                     return@collectLatest
                 }
                 // Straight to where the wait actually is, without animating: an extended window, or
                 // one picked up by a screen opened mid-wait, would otherwise sweep the ring up from
                 // empty, which reads as the wait having just started over.
-                progress.setProgressCompat(AnilistRateLimit.remainingPercent(), false)
-                countdown.text = formatEta(AnilistRateLimit.remainingMillis())
+                progress.setProgressCompat(first.second, false)
+                countdown.text = formatEta(first.first)
                 badge.visibility = View.VISIBLE
                 // Nothing arrives from AniList to say the wait is over, so the countdown is also
-                // what notices. collectLatest cancels this loop if a new window replaces the one
-                // being drawn, which is why the tick can assume its own window is still current.
-                while (AnilistRateLimit.isLimited()) {
-                    countdown.text = formatEta(AnilistRateLimit.remainingMillis())
-                    progress.setProgressCompat(AnilistRateLimit.remainingPercent(), true)
+                // what notices. collectLatest cancels this loop when either wait changes.
+                while (true) {
+                    val (left, percent) = wait() ?: break
+                    countdown.text = formatEta(left)
+                    progress.setProgressCompat(percent, true)
                     delay(250)
                 }
                 AnilistRateLimit.clear()
+                badge.visibility = View.GONE
             }
         }
     }

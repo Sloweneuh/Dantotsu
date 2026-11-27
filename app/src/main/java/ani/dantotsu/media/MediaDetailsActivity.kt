@@ -166,9 +166,39 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             // culprit traced back to this call), and a background-thread ANR gets the process
             // killed with nothing left in the task's back stack. Fetch off the main thread instead
             // and continue setup once it lands.
+            // Something on screen while it's fetched: under AniList's rate limit the lookup can
+            // queue for most of a minute, which was a blank window. setUpWithMedia's
+            // setContentView replaces it.
+            setContentView(
+                android.widget.FrameLayout(this).apply {
+                    addView(
+                        ani.dantotsu.others.MaterialProgressBar(context).apply { isIndeterminate = true },
+                        android.widget.FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            Gravity.CENTER
+                        )
+                    )
+                }
+            )
             lifecycleScope.launch {
-                val media = withContext(Dispatchers.IO) { Anilist.query.getMedia(id, false) }
+                var media = withContext(Dispatchers.IO) { Anilist.query.getMedia(id, false) }
+                // Refused for a rate limit rather than not found: wait it out and ask again,
+                // instead of closing the page on a "No media found" that isn't true.
+                var retries = 2
+                while (media == null && retries-- > 0 && ani.dantotsu.connections.anilist.AnilistRateLimit.isLimited()) {
+                    delay(ani.dantotsu.connections.anilist.AnilistRateLimit.remainingMillis() + 500)
+                    media = withContext(Dispatchers.IO) { Anilist.query.getMedia(id, false) }
+                }
+                if (media == null && isOnline(this@MediaDetailsActivity)) {
+                    // A failed request, not a missing entry: say so, and close like before.
+                    snackString(getString(R.string.error_getting_data))
+                    onBackPressedDispatcher.onBackPressed()
+                    return@launch
+                }
                 setUpWithMedia(media ?: emptyMedia())
+                // setContentView dropped the rate-limit badge initActivity had attached.
+                ani.dantotsu.connections.anilist.attachAnilistRateLimitBadge(this@MediaDetailsActivity)
             }
         } else {
             val media: Media = intent.getSerialized("media") ?: mediaSingleton ?: emptyMedia()

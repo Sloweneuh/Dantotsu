@@ -1652,6 +1652,7 @@
     <string name="anilist_api_retry_in">nouvelle tentative dans %1$d s</string>
     <string name="anilist_discord">Discord</string>
     <string name="anilist_rate_limited">Limite de requêtes AniList atteinte</string>
+    <string name="anilist_requests_queued">En attente d\'AniList : les requêtes sont espacées pour rester sous sa limite</string>
     <string name="failed_to_load_data">Échec du chargement des données sauvegardées de %1$d</string>
     <string name="mal_login_uri_not_found">Connexion Mal : Uri non trouvée</string>
     <string name="mal_login_code_challenge_not_found">Connexion Mal : codeChallenge non trouvé</string>
