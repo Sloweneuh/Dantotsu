@@ -509,6 +509,9 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     }
 
     private fun updateChapters() {
+        // The chapters LiveData lives in the activity's ViewModel, so a recreated view can get
+        // its (stale or early) value before onMedia has run. onMedia loads/redraws them itself.
+        if (!::media.isInitialized || !::headerAdapter.isInitialized || !::chapterAdapter.isInitialized) return
         val loadedChapters = model.getMangaChapters().value
         if (loadedChapters != null) {
             val chapters = loadedChapters[media.selected!!.sourceIndex]

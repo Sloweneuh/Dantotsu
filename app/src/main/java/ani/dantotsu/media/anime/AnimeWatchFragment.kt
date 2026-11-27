@@ -326,7 +326,8 @@ class AnimeWatchFragment : Fragment() {
             }
         }
         model.getEpisodes().observe(viewLifecycleOwner) { loadedEpisodes ->
-            if (loadedEpisodes != null) {
+            // Same as the manga tab: the ViewModel's episodes can reach a recreated view before media.
+            if (loadedEpisodes != null && ::media.isInitialized) {
                 val episodes = loadedEpisodes[media.selected!!.sourceIndex]
                 if (episodes != null) {
                     episodes.forEach { (i, episode) ->
