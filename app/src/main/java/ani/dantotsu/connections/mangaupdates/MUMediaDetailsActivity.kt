@@ -207,8 +207,24 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         lifecycleScope.launch(Dispatchers.IO) {
             // A hand pick Comick now links to this series itself is an automatic match.
             comic.slug?.let { ani.dantotsu.connections.comick.ComickMatches.retireIfLinked(it, comic.links) }
+            // Where the account is in a split chapter ("45.1" where MangaUpdates counts 45), as on
+            // the AniList page: only Comick knows, and the chapter list reads it from SplitProgress.
+            val progressSplit = if (!ani.dantotsu.connections.comick.Comick.getSavedToken()) null else runCatching {
+                (comic.hid?.let { ani.dantotsu.connections.comick.Comick.getEntry(it) }
+                    as? ani.dantotsu.connections.comick.Comick.EntryLookup.Followed)
+                    ?.entry?.progress?.number?.trim()
+                    ?.takeIf { n -> n.toDoubleOrNull()?.let { it % 1.0 != 0.0 } == true }
+            }.getOrNull()
+            ani.dantotsu.notifications.unread.SplitProgress.record(muMediaKey(muMedia.id), progressSplit)
             val latest = ani.dantotsu.media.comickLatestExactFor(comic.hid, comic.last_chapter, target)
-                ?: return@launch
+            if (latest == null) {
+                if (progressSplit != null) withContext(Dispatchers.Main) {
+                    if (isDestroyed) return@withContext
+                    liveComickProgressSplit = progressSplit
+                    progress()
+                }
+                return@launch
+            }
             val last = latest.whole
             val group = latest.group
             ani.dantotsu.connections.ReleaseSourceAnswers.record(
@@ -218,6 +234,10 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 if (isDestroyed) return@withContext
                 liveComickChapter = last
                 liveComickSource = group
+                liveComickProgressSplit = progressSplit
+                liveComickLatestSplit = latest.splitLabel
+                // Redrawn even when the whole number didn't move: a newer part (45.2) still shows.
+                progress()
                 if (ani.dantotsu.connections.ReleaseSourceIgnores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)) return@withContext
                 val before = knownChapter
                 offerKnownChapter(last, "Comick", fromComick = true)
@@ -271,6 +291,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     private var liveComickChapter: Int? = null
     private var liveComickSource: String? = null
 
+    /** Where Comick says the account is in a split chapter ("45.1"), from this visit's lookup. */
+    private var liveComickProgressSplit: String? = null
+
+    /** Comick's newest chapter as it numbers it, when that's a part of a split one ("45.2"). */
+    private var liveComickLatestSplit: String? = null
+
     /**
      * The sheet behind the progress line: MangaUpdates, MALSync and Comick, each with what it
      * reports, to ignore the one that is wrong for this series.
@@ -320,6 +346,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 groupsBefore = groupsNow
                 liveComickChapter = null
                 liveComickSource = null
+                liveComickLatestSplit = null
                 offerComickChapter(comickComic)
             }
             // Worked out again from what is still believed: the caches read without what is
@@ -347,23 +374,43 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         val white = getThemeColor(com.google.android.material.R.attr.colorOnBackground)
         val colorSecondary = getThemeColor(com.google.android.material.R.attr.colorSecondary)
+        val progress = currentChapter ?: 0
+        // latest_chapter from MU is the newest released chapter, not the series total.
+        val latest = MalSyncMu.latestChapter(
+            MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(muMedia.id, muMedia.latestChapter), believedMalSync()),
+            knownChapter,
+        )
+        // Split chapters, Comick's, as on the AniList page: where the account is in one (45.1
+        // while MangaUpdates counts 45), and a newer part out at the newest whole number (45.2).
+        val ignores = ani.dantotsu.connections.ReleaseSourceIgnores
+        val target = ignores.mu(muMedia.id)
+        val comickIgnored = ignores.isIgnored(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)
+        fun wholeOf(label: String?) = label?.toDoubleOrNull()?.let { kotlin.math.floor(it).toInt() }
+        fun isSplit(label: String?) = label?.toDoubleOrNull()?.let { it % 1.0 != 0.0 } == true
+        val progressSplit = if (statusName == null) null
+        else ani.dantotsu.notifications.unread.SplitProgress.label(muMediaKey(muMedia.id), currentChapter, liveComickProgressSplit)
+        val cachedComick = if (comickIgnored) null
+        else ani.dantotsu.notifications.unread.UnreadCache.rawComick().firstOrNull { it.muMedia?.id == muMedia.id }
+        val latestSplit = if (comickIgnored) null else (
+            liveComickLatestSplit ?: cachedComick?.latestLabel
+                ?: ani.dantotsu.connections.ReleaseSourceAnswers.get(ani.dantotsu.connections.ReleaseSourceIgnores.Provider.COMICK, target)?.exact?.takeIf { isSplit(it) }
+            )?.takeIf { wholeOf(it) == latest }
+        // A newer part of the chapter read to is something left to read too.
+        val splitUnread = latestSplit != null && latest == progress &&
+            latestSplit.toDouble() > (progressSplit?.toDouble() ?: progress.toDouble())
         binding.mediaTotal.text = SpannableStringBuilder().apply {
             if (statusName != null) {
                 append(getString(R.string.read_num))
-                bold { color(colorSecondary) { append("${currentChapter ?: 0}") } }
+                bold { color(colorSecondary) { append("$progress") } }
+                // "Read 45 (45.1)": MangaUpdates' count, then the part Comick has read to.
+                progressSplit?.let { bold { color(colorSecondary) { append(" ($it)") } } }
                 append(getString(R.string.chapters_out_of))
             } else {
                 append(getString(R.string.chapters_total_of))
             }
-            // latest_chapter from MU is the newest released chapter, not the series total.
-            // Only show it when it is >= user progress (i.e. there are still chapters to read).
-            val progress = currentChapter ?: 0
-            val latest = MalSyncMu.latestChapter(
-                MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(muMedia.id, muMedia.latestChapter), believedMalSync()),
-                knownChapter,
-            )
+            // Only shown when it is >= user progress (i.e. there are still chapters to read).
             if (latest != null && latest >= progress) {
-                bold { color(white) { append("$latest") } }
+                bold { color(white) { append(latestSplit ?: "$latest") } }
                 append(" / ")
             }
             bold { color(white) { append("??") } }
@@ -378,7 +425,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         val bestChapter = if (malWins) believedMalSync() else knownChapter
         val bestSource = if (malWins) malSyncSource else knownSource
         val unread = (bestChapter ?: 0) > (currentChapter ?: 0)
-        val source = bestSource?.takeIf { it.isNotBlank() && unread }
+        val source = if (!unread && splitUnread) {
+            liveComickSource ?: cachedComick?.source ?: getString(R.string.release_source_comick)
+        } else bestSource?.takeIf { it.isNotBlank() && unread }
         binding.mediaUnreadSource?.isVisible = source != null
         if (source != null) {
             binding.mediaUnreadSource?.text =

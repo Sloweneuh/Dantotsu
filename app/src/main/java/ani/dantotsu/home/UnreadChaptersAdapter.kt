@@ -166,7 +166,10 @@ class UnreadChaptersAdapter(
             itemCompactTitle.text = media.userPreferredName
 
             // Set progress text in format: progress | lastEp | totalChapters (or ~)
-            itemCompactUserProgress.text = info.userProgressLabel ?: info.userProgress.toString()
+            itemCompactUserProgress.text = info.userProgressLabel
+                // Not in the unread list (nothing newer out): where it was saved as read to.
+                ?: ani.dantotsu.notifications.unread.SplitProgress.label(media.id, info.userProgress)
+                ?: info.userProgress.toString()
 
             val totalChapters = media.manga?.totalChapters ?: "~"
             itemCompactTotal.text = if (info.lastChapter > 0) {
@@ -281,7 +284,9 @@ class UnreadChaptersAdapter(
 
             // Set progress info - show: userProgress / (lastChapter | totalChapters)
             val totalChapters = media.manga?.totalChapters ?: "~"
-            itemUserProgressLarge.text = info.userProgressLabel ?: info.userProgress.toString()
+            itemUserProgressLarge.text = info.userProgressLabel
+                ?: ani.dantotsu.notifications.unread.SplitProgress.label(media.id, info.userProgress)
+                ?: info.userProgress.toString()
             itemProgressSeparator.visibility = View.VISIBLE
             itemCompactTotal.text = if (info.lastChapter > 0) "${info.lastChapterLabel ?: info.lastChapter} | $totalChapters" else "$totalChapters"
             itemTotal.text = ""
@@ -427,6 +432,8 @@ class UnreadChaptersAdapter(
             val malSync = malSyncInfoFor(item)
             val userChapter = item.userChapter
             itemCompactUserProgress.text = malSync?.userProgressLabel?.takeIf { userChapter == malSync.userProgress }
+                // Not in the unread list (nothing newer out): where it was saved as read to.
+                ?: ani.dantotsu.notifications.unread.SplitProgress.label(muMediaKey(item.id), userChapter)
                 ?: userChapter?.toString() ?: "~"
             val latest = MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), malSync?.lastChapter)
             val split = malSync?.lastChapterLabel != null && latest == malSync.lastChapter
@@ -548,6 +555,7 @@ class UnreadChaptersAdapter(
             val malSync = malSyncInfoFor(item)
             val userChapter = item.userChapter
             itemUserProgressLarge.text = malSync?.userProgressLabel?.takeIf { userChapter == malSync.userProgress }
+                ?: ani.dantotsu.notifications.unread.SplitProgress.label(muMediaKey(item.id), userChapter)
                 ?: userChapter?.toString() ?: "~"
             itemProgressSeparator.visibility = View.VISIBLE
             val latest = MalSyncMu.latestChapter(ani.dantotsu.connections.ReleaseSourceIgnores.muLatest(item.id, item.latestChapter), malSync?.lastChapter)
