@@ -135,6 +135,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     override fun onDestroy() {
         // Refresh.activity holds an entry per open screen; without this every visit leaves one.
         Refresh.activity.remove(this.hashCode())
+        Refresh.selfUpdating.remove(this.hashCode())
         super.onDestroy()
     }
 
@@ -1425,6 +1426,23 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 }
         )
         discoverSource?.let { setUpQueue(it, media) }
+
+        // A progress write doesn't reload the page (a full details query per chapter): it hands over
+        // the new values, AniList having accepted them, and the page redraws from those.
+        Refresh.selfUpdating.add(this.hashCode())
+        val alreadyPosted = Refresh.progressChanged.value?.seq
+        Refresh.progressChanged.observe(this) { change ->
+            // LiveData replays the last write on observe; that one predates this page.
+            val changed = change.media
+            if (change.seq == alreadyPosted || changed.id != media.id) return@observe
+            if (changed !== media) {
+                media.userProgress = changed.userProgress
+                media.userVolume = changed.userVolume
+                media.userStatus = changed.userStatus
+                media.userStartedAt = changed.userStartedAt
+            }
+            model.setMedia(media)
+        }
 
         val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(true) }
         live.observe(this) {

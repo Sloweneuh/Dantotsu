@@ -548,14 +548,29 @@ class MediaDetailsViewModel : ViewModel() {
     @Volatile
     var previewMedia: Media? = null
     fun getMedia(): LiveData<Media> = media
+    /** A refresh asked for while a load was running; that load's answer may predate it. */
+    @Volatile private var reloadPending = false
+
     suspend fun loadMedia(m: Media) {
-        if (!loading) {
+        synchronized(this) {
+            if (loading) {
+                // Don't drop it: reading chapter N+1 while chapter N's reload is out would leave
+                // the page on N, the answer fetched before N+1 was written.
+                reloadPending = true
+                return
+            }
             loading = true
-            val loaded = Anilist.query.mediaDetails(m)
-            media.postValue(loaded)
-            loadThemes(loaded)
         }
-        loading = false
+        try {
+            do {
+                reloadPending = false
+                val loaded = Anilist.query.mediaDetails(m)
+                media.postValue(loaded)
+                loadThemes(loaded)
+            } while (reloadPending)
+        } finally {
+            loading = false
+        }
     }
 
     private val themes = MutableLiveData<ArrayList<AnimeThemeTrack>?>(null)

@@ -123,6 +123,14 @@ data class Media(
     var muAddedAt: Long? = null
 ) : Serializable {
 
+    /**
+     * The [ani.dantotsu.Refresh.listGeneration] at which our own progress write last confirmed this
+     * object's list fields (status, start date, being on the list at all). While it still matches,
+     * the next write can skip re-reading the entry first. Body property, so it stays out of
+     * equals/copy; transient, so a restored object starts unconfirmed.
+     */
+    @Transient var entryConfirmedGen: Int = 0
+
     constructor(apiMedia: ApiMedia) : this(
         id = apiMedia.id,
         idMAL = apiMedia.idMal,

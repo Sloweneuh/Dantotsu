@@ -154,12 +154,45 @@ var selectedOption = 1
 
 object Refresh {
     fun all() {
+        // Something other than a plain progress write changed the list (an edit, a delete):
+        // whatever a media object knew about its list entry has to be asked again.
+        listGeneration++
         for (i in activity) {
             activity[i.key]!!.postValue(true)
         }
     }
 
+    /**
+     * After a progress write that went through: screens in [selfUpdating] redraw from [changed]
+     * with no request (the write's success is the confirmation), the rest refresh as usual. While
+     * the reader is on top those are stopped, so however many chapters go by they reload once, on
+     * the way back.
+     */
+    fun progress(changed: ani.dantotsu.media.Media) {
+        progressChanged.postValue(ProgressChange(progressSeq.incrementAndGet(), changed))
+        for ((key, live) in activity) if (key !in selfUpdating) live.postValue(true)
+    }
+
     val activity = mutableMapOf<Int, MutableLiveData<Boolean>>()
+
+    /** Keys in [activity] whose screen takes [progressChanged] instead of reloading on [progress]. */
+    val selfUpdating = mutableSetOf<Int>()
+
+    /**
+     * The media whose progress was last written, with the new values already on it. [seq] tells a
+     * new write from LiveData replaying the last one to a screen that just started observing.
+     */
+    class ProgressChange(val seq: Int, val media: ani.dantotsu.media.Media)
+    private val progressSeq = java.util.concurrent.atomic.AtomicInteger()
+    val progressChanged = MutableLiveData<ProgressChange>()
+
+    /**
+     * Bumped by every [all]. A media's [ani.dantotsu.media.Media.entryConfirmedGen] matching it means
+     * that object's list fields are what our own last write left on AniList. Starts at 1: a
+     * deserialised media comes back with 0, and must not pass for confirmed.
+     */
+    @Volatile var listGeneration = 1
+        private set
 }
 
 fun currContext(): Context? {

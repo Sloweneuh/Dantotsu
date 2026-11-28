@@ -18,6 +18,9 @@ import ani.dantotsu.toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * @param sourceVolume The volume the chapter just read actually belongs to, when the source's
@@ -48,6 +51,17 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
         toast(R.string.sneaky_sneaky)
         return
     }
+    // One update per media at a time. Each call is its own coroutine, so two chapters finished in
+    // quick succession would both pass the "is this ahead?" check and race their writes; when the
+    // earlier one landed last, the tracker and the media page were left one chapter behind.
+    progressLocks.getOrPut(media.id) { Mutex() }.withLock {
+        writeProgress(media, number, sourceVolume)
+    }
+}
+
+private val progressLocks = ConcurrentHashMap<Int, Mutex>()
+
+private suspend fun writeProgress(media: Media, number: String, sourceVolume: Int?) {
     // The source named a volume for this chapter — trust it over whatever's on record, and it
     // becomes what's on record from here on (below). Otherwise resend the existing value
     // unchanged, same round trip this function always did before sourceVolume existed.
@@ -101,7 +115,7 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
                 toast(currContext()?.getString(R.string.setting_progress, a))
                 media.userProgress = a
                 media.userVolume = volume
-                Refresh.all()
+                Refresh.progress(media)
                 // Keyed the way the widget keys MangaUpdates rows, not by media.id.
                 a?.let {
                     noteWidgetProgress(
@@ -152,9 +166,14 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
 
     if (Anilist.userid != null) {
         val a = number.toFloatOrNull()?.toInt()
-        if ((a ?: 0) > (media.userProgress ?: -1)) {
-            Anilist.query.userMediaDetails(media)
-            val isNewEntry = media.userListId == null
+        // Re-reading the entry first tells us whether it's new, its status and its start date. Our
+        // own last write already told us, on this same object, unless something else touched the
+        // list since (Refresh.all bumps the generation) — then a chapter costs one request, not two.
+        val confirmed = media.entryConfirmedGen == Refresh.listGeneration
+        if ((a ?: 0) > (media.userProgress ?: -1) &&
+            (confirmed || Anilist.query.userMediaDetails(media).let { (a ?: 0) > (it.userProgress ?: -1) })
+        ) {
+            val isNewEntry = media.userListId == null && !confirmed
             val status = if (media.userStatus == "REPEATING") media.userStatus else "CURRENT"
             var startDate: FuzzyDate? = null
             if (status == "CURRENT" && media.userStartedAt.isEmpty()) {
@@ -164,13 +183,18 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
             // below, so AniList's activity feed shows a normal start instead of a first-ever
             // entry jumping straight to a high number.
             Anilist.mutation.primeActivity(media.id, isNewEntry, a, status, startDate)
-            Anilist.mutation.editList(
+            val saved = Anilist.mutation.editList(
                 media.id,
                 a,
                 progressVolumes = volume,
                 status = status,
                 startedAt = startDate
             )
+            if (!saved) {
+                // executeQuery(show = true) has already said why; leave the page on what AniList has.
+                media.entryConfirmedGen = 0
+                return
+            }
             toast(currContext()?.getString(R.string.setting_progress, a))
 
             // AniList is the source of truth and has already accepted the update; MAL and
@@ -228,6 +252,12 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
                     exactProgress = number,
                 )
             }
+            media.userProgress = a
+            media.userVolume = volume
+            media.userStatus = status
+            startDate?.let { media.userStartedAt = it }
+            media.entryConfirmedGen = Refresh.listGeneration
+            a?.let { noteWidgetProgress(media.id, it) }
         } else if (advancesFraction(number, a)) {
             mirrorScope.launch {
                 ComickSync.syncFromAnilist(
@@ -236,10 +266,10 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
                 )
             }
         }
-        media.userProgress = a
-        media.userVolume = volume
-        Refresh.all()
-        a?.let { noteWidgetProgress(media.id, it) }
+        // Signalled either way so a split part ("45.2") shows, but the local progress only moves
+        // with a write: re-reading an earlier chapter writes nothing, and lowering the value here
+        // left the page showing less than AniList holds.
+        Refresh.progress(media)
     } else {
         toast(currContext()?.getString(R.string.login_anilist_account))
     }

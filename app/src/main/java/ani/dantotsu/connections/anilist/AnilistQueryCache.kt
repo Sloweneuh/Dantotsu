@@ -73,12 +73,12 @@ object AnilistQueryCache {
                 val text = fetch()
                 synchronized(lock) {
                     if (gen == generation) stored.put(key, Entry(text, SystemClock.elapsedRealtime()))
-                    inFlight.remove(key)
+                    if (inFlight[key] === deferred) inFlight.remove(key)
                 }
                 deferred.complete(text)
                 return text
             } catch (e: Throwable) {
-                synchronized(lock) { inFlight.remove(key) }
+                synchronized(lock) { if (inFlight[key] === deferred) inFlight.remove(key) }
                 deferred.completeExceptionally(e)
                 throw e
             }
@@ -88,5 +88,8 @@ object AnilistQueryCache {
     fun clear() = synchronized(lock) {
         generation++
         stored.evictAll()
+        // Requests already on their way were sent before the mutation: those already waiting on
+        // one keep it, but anything asked from now on sends its own instead of joining it.
+        inFlight.clear()
     }
 }
