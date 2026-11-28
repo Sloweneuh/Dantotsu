@@ -460,32 +460,10 @@ class HomeFragment : Fragment() {
             return
         }
         lifecycleScope.launch {
-            val unreadInfo = mutableMapOf<Int, UnreadChapterInfo>()
-
-            withContext(Dispatchers.IO) {
-                // Only perform MalSync batch if preference enabled and check mode allows manga
-                val malMode3 = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
-                if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode3 != "anime") {
-                    // Collect pairs of (anilistId, malId) - prefer MAL ID, fallback to AniList ID
-                    val mediaIds = unreadList.map { media -> Pair(media.id, media.idMAL) }
-                    val batchResults =
-                        ani.dantotsu.connections.malsync.MalSyncApi.getBatchProgressByMedia(mediaIds)
-
-                    // Map results back to media IDs
-                    for (media in unreadList) {
-                        val result = batchResults[media.id]
-                        if (result != null && result.lastEp != null) {
-                            unreadInfo[media.id] = UnreadChapterInfo(
-                                mediaId = media.id,
-                                lastChapter = result.lastEp.total,
-                                source = result.source,
-                                userProgress = media.userProgress ?: 0,
-                                latestChapterAt = result.lastEp.timestampMillis()
-                            )
-                        }
-                    }
-                }
-            }
+            // MALSync's answers from the scan that produced [unreadList] (AnilistViewModel), not a
+            // second scan of the same titles.
+            val ids = unreadList.mapTo(HashSet()) { it.id }
+            val unreadInfo = model.unreadChapterInfo.filterKeys { it in ids }
 
             withContext(Dispatchers.Main) {
                 if (_binding == null) return@withContext

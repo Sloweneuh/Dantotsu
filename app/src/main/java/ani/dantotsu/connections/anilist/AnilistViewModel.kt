@@ -149,6 +149,15 @@ class AnilistHomeViewModel : ViewModel() {
 
     fun getUnreadChapters(): LiveData<ArrayList<Media>> = unreadChapters
 
+    /**
+     * MALSync's answer for each of [getUnreadChapters]' media, from the same scan. The row used to
+     * ask MALSync again for these right after this scan, which doubled the requests under its
+     * rate limit for nothing.
+     */
+    @Volatile
+    var unreadChapterInfo: Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo> = emptyMap()
+        private set
+
     private val unreadChaptersLoading: MutableLiveData<Boolean> = MutableLiveData(false)
 
     fun getUnreadChaptersLoading(): LiveData<Boolean> = unreadChaptersLoading
@@ -223,6 +232,8 @@ class AnilistHomeViewModel : ViewModel() {
                 }
             }
 
+            // Before the list: its observer reads this.
+            unreadChapterInfo = unreadInfo
             unreadChapters.postValue(unreadList)
             // Through the background check's own announce step: cached the same way (merged with
             // what is stored, since a failed batch answers for nothing and must not delete entries
