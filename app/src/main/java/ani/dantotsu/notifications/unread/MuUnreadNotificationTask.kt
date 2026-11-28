@@ -74,7 +74,11 @@ class MuUnreadNotificationTask : Task {
      *   so a later source (Comick) leaves those chapters to it and announces only ones past them —
      *   or empty when it didn't run.
      */
-    suspend fun checkMangaUpdatesUnread(context: Context): Map<Long, Int> {
+    suspend fun checkMangaUpdatesUnread(
+        context: Context,
+        /** The reading list when the caller has it already (the home row); fetched otherwise. */
+        reading: List<MUMedia>? = null,
+    ): Map<Long, Int> {
         if (!PrefManager.getVal<Boolean>(PrefName.MangaUpdatesNotificationsEnabled)) {
             Logger.log("MuUnreadNotificationTask: MangaUpdates notifications disabled")
             return emptyMap()
@@ -86,7 +90,7 @@ class MuUnreadNotificationTask : Task {
 
         Logger.log("MuUnreadNotificationTask: checking MangaUpdates unread chapters")
 
-        val unreadItems = currentUnreadItems(context)
+        val unreadItems = currentUnreadItems(context, reading)
         Logger.log("MuUnreadNotificationTask: found ${unreadItems.size} items with unread chapters")
 
         val notifiedKey = "notified_mu_chapters"
@@ -240,6 +244,14 @@ class MuUnreadNotificationTask : Task {
      */
     private var settledIds: Set<Long> = emptySet()
 
+    /**
+     * MALSync's info for the reading list, as the last [currentUnreadItems] got it (keyed by
+     * [muMediaKey], without sources the user ignores): what the home row shows for its MangaUpdates
+     * half when it runs this check.
+     */
+    var lastMalSyncInfo: Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo> = emptyMap()
+        private set
+
     /** A MangaUpdates entry with unread chapters, over both sources that can know about them. */
     private data class UnreadItem(
         val media: MUMedia,
@@ -255,18 +267,19 @@ class MuUnreadNotificationTask : Task {
      * Also used, unfiltered, by [sendTestNotification] to find a real entry to test with. Returns
      * an empty list when logged out or a fetch fails (caller decides whether that's worth logging).
      */
-    private suspend fun currentUnreadItems(context: Context): List<UnreadItem> {
-        val tokenLoaded = MangaUpdates.getSavedToken()
-        if (!tokenLoaded || MangaUpdates.token.isNullOrBlank()) {
-            Logger.log("MuUnreadNotificationTask: MangaUpdates not logged in, skipping")
-            return emptyList()
-        }
-
-        val allLists = try {
-            MangaUpdates.getAllUserLists()
-        } catch (e: Exception) {
-            Logger.log("MuUnreadNotificationTask: getAllUserLists error: ${e.message}")
-            return emptyList()
+    private suspend fun currentUnreadItems(context: Context, reading: List<MUMedia>? = null): List<UnreadItem> {
+        val allLists = if (reading != null) mapOf("Reading" to reading) else {
+            val tokenLoaded = MangaUpdates.getSavedToken()
+            if (!tokenLoaded || MangaUpdates.token.isNullOrBlank()) {
+                Logger.log("MuUnreadNotificationTask: MangaUpdates not logged in, skipping")
+                return emptyList()
+            }
+            try {
+                MangaUpdates.getAllUserLists()
+            } catch (e: Exception) {
+                Logger.log("MuUnreadNotificationTask: getAllUserLists error: ${e.message}")
+                return emptyList()
+            }
         }
 
         val readingList = allLists["Reading"] ?: emptyList()
@@ -294,6 +307,7 @@ class MuUnreadNotificationTask : Task {
             settled.clear()
             emptyMap()
         }
+        lastMalSyncInfo = malSyncInfo
         // Only from a reading list that actually came back.
         settledIds = if (allLists.containsKey("Reading")) settled.toSet() else emptySet()
         readingListLatest = readingList.mapNotNull { muMedia ->

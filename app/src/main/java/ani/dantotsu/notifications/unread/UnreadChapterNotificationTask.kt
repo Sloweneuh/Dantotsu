@@ -33,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.Serializable
 
@@ -50,6 +51,7 @@ class UnreadChapterNotificationTask : Task {
 
         try {
             withContext(Dispatchers.IO) {
+              HomeUnreadCheck.lock.withLock {
                 currentlyPerforming = true
                 PrefManager.init(context)
                 App.context = context
@@ -212,52 +214,7 @@ class UnreadChapterNotificationTask : Task {
                             delay(2000)
                         }
 
-                        val unreadInfo = mutableMapOf<Int, UnreadChapterInfo>()
-                        for (media in mangaList) {
-                            val result = batchResults[media.id]
-                            if (result != null && result.lastEp != null) {
-                                val userProgress = media.userProgress ?: 0
-                                val lastChapter = result.lastEp.total
-                                if (lastChapter > userProgress) {
-                                    unreadInfo[media.id] = UnreadChapterInfo(
-                                        mediaId = media.id,
-                                        lastChapter = lastChapter,
-                                        source = result.source,
-                                        userProgress = userProgress,
-                                        // What this map becomes is the home row's cache (and the
-                                        // copy other devices reuse over UnreadSync), so it has to
-                                        // carry everything the row orders by. Dropped, every entry
-                                        // reaching the row from here had no release date, and the
-                                        // by-most-recent order — where an unknown date sorts last —
-                                        // had nothing to place them by.
-                                        latestChapterAt = result.lastEp.timestampMillis()
-                                    )
-                                }
-                            }
-                        }
-
-                        Logger.log("UnreadChapterNotificationTask: found ${unreadInfo.size} manga with unread chapters")
-
-                        // Every answer, caught up or not, for the release sources sheet.
-                        ani.dantotsu.connections.ReleaseSourceAnswers.record(
-                            ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC,
-                            batchResults.mapNotNull { (id, result) ->
-                                result.lastEp?.let {
-                                    ani.dantotsu.connections.ReleaseSourceIgnores.anilist(id) to (it.total to result.source)
-                                }
-                            }.toMap(),
-                        )
-
-                        // Publish for the user's other devices, then cache + notify locally.
-                        UnreadSync.push(unreadInfo)
-                        anilistKnownLatest = mangaList.mapNotNull { media ->
-                            batchResults[media.id]?.lastEp?.total?.let { media.id to it }
-                        }.toMap()
-                        handleUnreadResult(
-                            context, unreadInfo, mangaList,
-                            answeredIds = batchResults.keys,
-                            knownLatest = anilistKnownLatest,
-                        )
+                        anilistKnownLatest = announceManga(context, mangaList, batchResults)
 
                         if (progressNotification != null) {
                             Logger.log("UnreadChapterNotificationTask: Canceling progress notification")
@@ -350,8 +307,10 @@ class UnreadChapterNotificationTask : Task {
                 // Last, so titles the AniList and MangaUpdates checks already cover are known and
                 // skipped rather than announced a second time from Comick.
                 ComickUnreadNotificationTask().checkComickUnread(context, anilistKnownLatest, muKnownLatest)
+                HomeUnreadCheck.noteComickRan()
 
                 currentlyPerforming = false
+              }
             }
             return true
         } catch (e: Exception) {
@@ -359,6 +318,69 @@ class UnreadChapterNotificationTask : Task {
             currentlyPerforming = false
             return false
         }
+    }
+
+    /**
+     * What MALSync's [batchResults] for [mangaList] (the AniList reading list) leaves unread:
+     * recorded for the release sources sheet, shared with the user's other devices, cached for the
+     * home row and — with [notify] — announced. Also how the home row announces its own scan
+     * ([HomeUnreadCheck]), so the two can't disagree about what's new.
+     *
+     * @return the newest chapter MALSync gave for each title it gave one for.
+     */
+    suspend fun announceManga(
+        context: Context,
+        mangaList: List<Media>,
+        batchResults: Map<Int, ani.dantotsu.connections.malsync.MalSyncResponse>,
+        notify: Boolean = true,
+    ): Map<Int, Int> {
+        val unreadInfo = mutableMapOf<Int, UnreadChapterInfo>()
+        for (media in mangaList) {
+            val result = batchResults[media.id]
+            if (result != null && result.lastEp != null) {
+                val userProgress = media.userProgress ?: 0
+                val lastChapter = result.lastEp.total
+                if (lastChapter > userProgress) {
+                    unreadInfo[media.id] = UnreadChapterInfo(
+                        mediaId = media.id,
+                        lastChapter = lastChapter,
+                        source = result.source,
+                        userProgress = userProgress,
+                        // What this map becomes is the home row's cache (and the copy other
+                        // devices reuse over UnreadSync), so it has to carry everything the row
+                        // orders by. Dropped, every entry reaching the row from here had no release
+                        // date, and the by-most-recent order — where an unknown date sorts last —
+                        // had nothing to place them by.
+                        latestChapterAt = result.lastEp.timestampMillis()
+                    )
+                }
+            }
+        }
+
+        Logger.log("UnreadChapterNotificationTask: found ${unreadInfo.size} manga with unread chapters")
+
+        // Every answer, caught up or not, for the release sources sheet.
+        ani.dantotsu.connections.ReleaseSourceAnswers.record(
+            ani.dantotsu.connections.ReleaseSourceIgnores.Provider.MALSYNC,
+            batchResults.mapNotNull { (id, result) ->
+                result.lastEp?.let {
+                    ani.dantotsu.connections.ReleaseSourceIgnores.anilist(id) to (it.total to result.source)
+                }
+            }.toMap(),
+        )
+
+        // Publish for the user's other devices, then cache + notify locally.
+        UnreadSync.push(unreadInfo)
+        val knownLatest = mangaList.mapNotNull { media ->
+            batchResults[media.id]?.lastEp?.total?.let { media.id to it }
+        }.toMap()
+        handleUnreadResult(
+            context, unreadInfo, mangaList,
+            answeredIds = batchResults.keys,
+            knownLatest = knownLatest,
+            notify = notify,
+        )
+        return knownLatest
     }
 
     /**
@@ -402,6 +424,8 @@ class UnreadChapterNotificationTask : Task {
          * missing from it said nothing either way.
          */
         knownLatest: Map<Int, Int> = emptyMap(),
+        /** False to only cache: the home row while the background check is announcing. */
+        notify: Boolean = true,
     ) {
         // Nothing is announced for a series MALSync is ignored on, and it isn't marked announced
         // either, so it announces itself if the source is counted again. The cache keeps it: its
@@ -416,6 +440,7 @@ class UnreadChapterNotificationTask : Task {
                 Logger.log("UnreadChapterNotificationTask: Failed to cache/broadcast unread results: ${e.message}")
             }
         }
+        if (!notify) return
 
         val notifiedKey = if (isAnime) "notified_unread_episodes" else "notified_unread_chapters"
         val notified = getNotifiedSet(context, notifiedKey)

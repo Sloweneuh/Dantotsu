@@ -165,6 +165,7 @@ class AnilistHomeViewModel : ViewModel() {
             unreadChapters.postValue(arrayListOf())
             unreadChaptersError.postValue(false)
             unreadChaptersLoading.postValue(false)
+            ani.dantotsu.notifications.unread.HomeUnreadCheck.aniListSkipped()
             return
         }
 
@@ -175,6 +176,7 @@ class AnilistHomeViewModel : ViewModel() {
                 unreadChapters.postValue(arrayListOf())
                 unreadChaptersError.postValue(false)
                 unreadChaptersLoading.postValue(false)
+                ani.dantotsu.notifications.unread.HomeUnreadCheck.aniListSkipped()
                 return
             }
 
@@ -196,6 +198,7 @@ class AnilistHomeViewModel : ViewModel() {
                 unreadChapters.postValue(arrayListOf())
                 unreadChaptersError.postValue(true)
                 unreadChaptersLoading.postValue(false)
+                ani.dantotsu.notifications.unread.HomeUnreadCheck.aniListSkipped()
                 return
             }
 
@@ -221,16 +224,11 @@ class AnilistHomeViewModel : ViewModel() {
             }
 
             unreadChapters.postValue(unreadList)
-            // Through UnreadCache so this run merges with what is already stored instead of
-            // replacing it. getBatchProgressByMedia answers for as many manga as it manages to —
-            // a failed batch simply contributes nothing — so writing this list out whole would
-            // delete entries a previous, luckier run had found. It also keeps the two halves of
-            // the cache in step: cached_unread_chapters used to be written here and
-            // cached_unread_info only by the background task, so the media and the chapter counts
-            // describing them could come from different scans.
-            ani.dantotsu.notifications.unread.UnreadCache.save(
-                unreadInfo, currentManga, batchResults.keys
-            )
+            // Through the background check's own announce step: cached the same way (merged with
+            // what is stored, since a failed batch answers for nothing and must not delete entries
+            // a luckier run found), and the chapters it's the first to see announced now instead of
+            // whenever that check next runs. See HomeUnreadCheck.
+            ani.dantotsu.notifications.unread.HomeUnreadCheck.aniList(currentManga, batchResults)
             unreadChaptersError.postValue(false)
             unreadChaptersLoading.postValue(false)
         } catch (e: Exception) {
@@ -241,6 +239,7 @@ class AnilistHomeViewModel : ViewModel() {
             unreadChapters.postValue(arrayListOf())
             unreadChaptersError.postValue(true)
             unreadChaptersLoading.postValue(false)
+            ani.dantotsu.notifications.unread.HomeUnreadCheck.aniListSkipped()
         }
     }
 

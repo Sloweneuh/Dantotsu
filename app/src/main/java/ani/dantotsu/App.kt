@@ -439,7 +439,12 @@ class App : MultiDexApplication() {
             // Only check if:
             // 1. It's been more than the configured interval since last check
             // 2. This isn't the very first activity resume (skip initial app launch)
-            val timeSinceLastCheck = now - lastUnreadChapterCheck
+            // The home row runs the same checks when it loads (HomeUnreadCheck): counted, or opening
+            // a page and coming back asked MALSync for the whole list again minutes later.
+            val timeSinceLastCheck = now - maxOf(
+                lastUnreadChapterCheck,
+                ani.dantotsu.notifications.unread.HomeUnreadCheck.lastRunAt,
+            )
 
             // Get user's configured interval (in minutes), with a minimum of 15 minutes
             val intervalMinutes = kotlin.math.max(

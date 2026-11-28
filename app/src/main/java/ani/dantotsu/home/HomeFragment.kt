@@ -345,18 +345,16 @@ class HomeFragment : Fragment() {
      * resolution behind it is cached per series (misses included).
      */
     private fun fetchMuUnreadInfo(force: Boolean = false) {
-        if (!MalSyncMu.enabledForManga()) {
-            muUnreadInfo = emptyMap()
-            muUnreadInfoKey = null
-            return
-        }
+        if (!MalSyncMu.enabledForManga()) muUnreadInfo = emptyMap()
         val reading = model.getMuHomeLists().value?.get("Reading").orEmpty()
         if (reading.isEmpty()) return
         val key = reading.joinToString(",") { "${it.id}:${it.userChapter}" }
         if (!force && key == muUnreadInfoKey) return
         if (muUnreadInfoJob?.isActive == true) return
         muUnreadInfoJob = lifecycleScope.launch {
-            val info = MalSyncMu.unreadInfo(reading)
+            // Also the background check's MangaUpdates step on this same list, so MangaUpdates' own
+            // counts are announced as soon as the row sees them, not on that check's next run.
+            val info = ani.dantotsu.notifications.unread.HomeUnreadCheck.mu(reading)
             if (_binding == null) return@launch
             muUnreadInfoKey = key
             if (info.isEmpty() && muUnreadInfo.isEmpty()) return@launch
